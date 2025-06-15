@@ -1,0 +1,80 @@
+[
+  {
+    "id": "sample-1",
+    "name": "Sample Workflow 1",
+    "description": "This is a sample workflow to demonstrate the structure and content of a YAML file for workflows.",
+    "version": "1.0",
+    "triggers": [
+      {
+        "id": "cron_trigger",
+        "type": "schedule",
+        "configuration": {
+          "cron": "0 0 * * *",
+          "timezone": "UTC"
+        }
+      }
+    ],
+    "variables": {},
+    "metadata": {},
+    "created_at": "2023-10-01T00:00:00Z",
+    "updated_at": "2023-10-01T00:00:00Z",
+    "status": "active",
+    "steps": [
+      {
+        "id": "bitcoin_data",
+        "conditional": {},
+        "enabled": true,
+        "on_success": "get_price",
+        "action": {
+          "uid": "bitcoin_data",
+          "type": "http_request",
+          "name": "Fetch Bitcoin Data",
+          "description": "Fetch data from the CoinPaprika API for Bitcoin",
+          "configuration": {
+            "method": "GET",
+            "url": "https://api.coinpaprika.com/v1/coins/btc-bitcoin/ohlcv/today",
+            "headers": {
+              "Content": "application/json"
+            },
+            "retry": {
+              "attempts": 3,
+              "delay": 5
+            }
+          }
+        }
+      },
+      {
+        "id": "get_price",
+        "conditional": {},
+        "enabled": true,
+        "on_success": "save_price",
+        "action": {
+          "id": "get_price",
+          "type": "transform",
+          "name": "Process Data using JSONata",
+          "description": "Process the data fetched from the API",
+          "configuration": {
+            "input": "$.bitcoin_data",
+            "exp": "{\n  \"price\": $.close ? $.close : $.open\n}"
+          }
+        }
+      },
+      {
+        "id": "save_price",
+        "conditional": {},
+        "enabled": true,
+        "action": {
+          "id": "save_price",
+          "type": "file_write",
+          "name": "Save Price to File",
+          "description": "Save the processed price data to a file",
+          "configuration": {
+            "file_name": "bitcoin_price.json",
+            "directory": "/tmp",
+            "overwrite": true
+          }
+        }
+      }
+    ]
+  }
+]

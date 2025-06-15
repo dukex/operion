@@ -7,6 +7,7 @@ toolchain go1.24.4
 require (
 	github.com/gofiber/fiber/v2 v2.52.8
 	github.com/moogar0880/problems v1.0.1
+	github.com/robfig/cron v1.2.0
 )
 
 require (
@@ -14,7 +15,6 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
-	github.com/robfig/cron v1.2.0 // indirect
 	golang.org/x/crypto v0.33.0 // indirect
 	golang.org/x/net v0.34.0 // indirect
 	golang.org/x/text v0.22.0 // indirect
