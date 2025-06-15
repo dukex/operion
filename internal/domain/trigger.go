@@ -14,7 +14,7 @@ type Trigger interface {
 }
 
 type TriggerItem struct {
-    ID     string                 `json:"id"`
-    Type   string                 `json:"type"`
-    Configuration map[string]interface{} `json:"configuration"`
+	ID            string                 `json:"id"`
+	Type          string                 `json:"type"`
+	Configuration map[string]interface{} `json:"configuration"`
 }

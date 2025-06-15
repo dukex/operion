@@ -469,20 +469,20 @@ make mod-check
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET    | `/api/v1/workflows` | List workflows |
-| POST   | `/api/v1/workflows` | Create workflow |
-| GET    | `/api/v1/workflows/{id}` | Get workflow |
-| PUT    | `/api/v1/workflows/{id}` | Update workflow |
-| DELETE | `/api/v1/workflows/{id}` | Delete workflow |
-| POST   | `/api/v1/workflows/{id}/execute` | Execute workflow |
+| GET    | `/workflows` | List workflows |
+| POST   | `/workflows` | Create workflow |
+| GET    | `/workflows/{id}` | Get workflow |
+| PUT    | `/workflows/{id}` | Update workflow |
+| DELETE | `/workflows/{id}` | Delete workflow |
+| POST   | `/workflows/{id}/execute` | Execute workflow |
 
 ### Executions API
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET    | `/api/v1/executions` | List executions |
-| GET    | `/api/v1/executions/{id}` | Get execution |
-| POST   | `/api/v1/executions/{id}/cancel` | Cancel execution |
+| GET    | `/executions` | List executions |
+| GET    | `/executions/{id}` | Get execution |
+| POST   | `/executions/{id}/cancel` | Cancel execution |
 
 ### Health API
 

@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/dukex/operion/internal/adapters/persistence/file"
-	"github.com/dukex/operion/internal/admin/workflows"
+	"github.com/dukex/operion/internal/application"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -17,7 +17,7 @@ var validate *validator.Validate
 func main() {
 	persistence := file.NewFilePersistence("./data/workflows/index.json")
 
-	workflowRepository := workflows.NewRepository(persistence)
+	workflowRepository := application.NewWorkflowRepository(persistence)
 
 	validate = validator.New(validator.WithRequiredStructEnabled())
 
@@ -33,36 +33,9 @@ func main() {
 		return c.SendString("Hi!")
 	})
 
-	workflows := app.Group("/workflows")
-	// workflows.Post("/", func(c *fiber.Ctx) error {
-	// 	workflowDTO := &dto.CreateWorkflowDTO{}
-	// 	c.BodyParser(workflowDTO)
-
-	// 	err := validate.Struct(workflowDTO)
-	// 	if err != nil {
-	// 		problem := problems.NewStatusProblem(422).
-	// 			WithInstance(c.Path()).
-	// 			WithType("validation_error").
-	// 			WithError(err)
-
-	// 		return c.Status(fiber.StatusBadRequest).JSON(problem)
-	// 	}
-
-	// 	workflow, err := workflow.Create(workflowDTO)
-
-	// 	if err != nil {
-	// 		problem := problems.NewStatusProblem(500).
-	// 			WithInstance(c.Path()).
-	// 			WithType("internal_error").
-	// 			WithError(err)
-	// 		return c.Status(fiber.StatusInternalServerError).JSON(problem)
-	// 	}
-
-	// 	return c.Status(fiber.StatusCreated).JSON(workflow)
-	// });
-
-	workflows.Get("/", func(c *fiber.Ctx) error {
-		responses, err := workflowRepository.FetchAll()
+	w := app.Group("/workflows")
+	w.Get("/", func(c *fiber.Ctx) error {
+		workflows, err := workflowRepository.FetchAll()
 
 		if err != nil {
 			problem := problems.NewStatusProblem(500).
@@ -72,7 +45,7 @@ func main() {
 			return c.Status(fiber.StatusInternalServerError).JSON(problem)
 		}
 
-		return c.JSON(responses)
+		return c.JSON(workflows)
 	})
 
 	log.Fatal(app.Listen(":" + port))
