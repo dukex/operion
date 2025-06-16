@@ -5,7 +5,7 @@ import "context"
 type Action interface {
 	GetID() string
 	GetType() string
-	Execute(ctx context.Context, input ExecutionContext) (ExecutionContext, error)
+	Execute(ctx context.Context, ectx ExecutionContext) (interface{}, error)
 	Validate() error
 	GetConfig() map[string]interface{}
 }

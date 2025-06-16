@@ -1,0 +1,76 @@
+{
+  "id": "bitcoin-price",
+  "name": "Bitcoin Price",
+  "description": "This is a sample workflow to demonstrate the structure and content of a JSON file for workflows.",
+  "version": "1.0",
+  "triggers": [
+    {
+      "id": "3c18ab9e-a291-4e1a-b8fd-e3a02299d8ce",
+      "type": "schedule",
+      "configuration": {
+        "cron": "*/1 * * * *"
+      }
+    }
+  ],
+  "variables": {},
+  "metadata": {
+    "tags": ["sample", "bitcoin", "api"]
+  },
+  "created_at": "2023-10-01T00:00:00Z",
+  "updated_at": "2023-10-01T00:00:00Z",
+  "status": "active",
+  "steps": [
+    {
+      "id": "c90f6195-d6fb-4519-803d-cf32f5f86c48",
+      "name": "bitcoin_data",
+      "conditional": {},
+      "enabled": true,
+      "on_success": "8de00551-e4de-48bf-aeff-21d394c86a9e",
+      "action": {
+        "id": "bd2f81e0-bbf0-48b0-a12b-c1b5c206075e",
+        "type": "http_request",
+        "configuration": {
+          "method": "GET",
+          "url": "https://api.coinpaprika.com/v1/coins/btc-bitcoin/ohlcv/today",
+          "headers": {
+            "Content": "application/json"
+          },
+          "retry": {
+            "attempts": 3,
+            "delay": 5
+          }
+        }
+      }
+    },
+    {
+      "id": "8de00551-e4de-48bf-aeff-21d394c86a9e",
+      "name": "process_bitcoin_data",
+      "conditional": {},
+      "enabled": true,
+      "on_success": "8866978c-806e-468e-a1f6-d03fa418b238",
+      "action": {
+        "id": "5490ab2b-9f48-45c8-9437-63a29b9a1472",
+        "type": "transform",
+        "configuration": {
+          "input": "$.bitcoin_data.body",
+          "exp": "{  \"price\": $.close ? $.close : $.open}"
+        }
+      }
+    },
+    {
+      "id": "8866978c-806e-468e-a1f6-d03fa418b238",
+      "conditional": {},
+      "enabled": true,
+      "action": {
+        "id": "f6889c0e-2e33-4876-9435-834050c972da",
+        "type": "file_write",
+        "configuration": {
+          "input": "$.process_bitcoin_data",
+          "file_name": "bitcoin_price.json",
+          "directory": "/tmp",
+          "overwrite": true
+        }
+      }
+    }
+  ]
+}

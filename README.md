@@ -148,7 +148,6 @@ curl -X POST http://localhost:8080/workflows \
         "type": "schedule",
         "configuration": {
           "cron": "0 0 * * *",
-          "timezone": "UTC"
         }
       }
     ],
@@ -250,7 +249,6 @@ trigger:
   type: "schedule"
   config:
     cron: "0 */6 * * *"        # Every 6 hours
-    timezone: "America/New_York"
     enabled: true
 ```
 

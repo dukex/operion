@@ -3,153 +3,151 @@ package application
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
-	"strings"
 	"sync"
 	"syscall"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/dukex/operion/internal/domain"
+	"github.com/dukex/operion/pkg/registry"
 )
 
 // WorkerManager manages workflow execution workers
 type WorkerManager struct {
 	workerID         string
 	workflowRepo     *WorkflowRepository
-	triggerRegistry  *TriggerRegistry
-	workflowService  *WorkflowService
+	triggerRegistry  *registry.TriggerRegistry
+	WorkflowExecutor *WorkflowExecutor
 	runningTriggers  map[string]domain.Trigger
 	triggerMutex     sync.RWMutex
 	ctx              context.Context
 	cancel           context.CancelFunc
+	logger           *log.Entry
 }
 
-// NewWorkerManager creates a new worker manager
 func NewWorkerManager(
 	workerID string,
 	workflowRepo *WorkflowRepository,
-	triggerRegistry *TriggerRegistry,
-	workflowService *WorkflowService,
+	triggerRegistry *registry.TriggerRegistry,
+	WorkflowExecutor *WorkflowExecutor,
 ) *WorkerManager {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &WorkerManager{
-		workerID:        workerID,
-		workflowRepo:    workflowRepo,
-		triggerRegistry: triggerRegistry,
-		workflowService: workflowService,
-		runningTriggers: make(map[string]domain.Trigger),
-		ctx:             ctx,
-		cancel:          cancel,
+		workerID:         workerID,
+		workflowRepo:     workflowRepo,
+		triggerRegistry:  triggerRegistry,
+		WorkflowExecutor: WorkflowExecutor,
+		runningTriggers:  make(map[string]domain.Trigger),
+		ctx:              ctx,
+		cancel:           cancel,
+		logger: log.WithFields(log.Fields{
+			"module":    "worker_manager",
+			"worker_id": workerID,
+		}),
 	}
 }
 
-// StartWorkers starts workers for workflows matching the filter
-func (wm *WorkerManager) StartWorkers(filterTags string) error {
+func (wm *WorkerManager) StartWorkers() error {
 	workflows, err := wm.workflowRepo.FetchAll()
 	if err != nil {
 		return fmt.Errorf("failed to fetch workflows: %w", err)
 	}
 
-	filteredWorkflows := wm.filterWorkflows(workflows, filterTags)
-	
-	if len(filteredWorkflows) == 0 {
-		fmt.Println("No workflows match the filter criteria")
+	if len(workflows) == 0 {
+		wm.logger.Info("No workflows")
 		return nil
 	}
 
-	fmt.Printf("[Worker %s] Found %d workflows to execute\n", wm.workerID, len(filteredWorkflows))
+	wm.logger.Infof("Found %d workflows", len(workflows))
 
-	// Setup signal handling
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 
 	var wg sync.WaitGroup
 
-	// Start each workflow
-	for _, workflow := range filteredWorkflows {
+	for _, workflow := range workflows {
 		wg.Add(1)
-		go func(wf domain.Workflow) {
+		go func(wf *domain.Workflow) {
 			defer wg.Done()
 			if err := wm.startWorkflowTriggers(wf); err != nil {
-				log.Printf("[Worker %s] Failed to start workflow %s: %v", wm.workerID, wf.ID, err)
+				wm.logger.Errorf("Failed to start workflow %s: %v", wf.ID, err)
 			}
 		}(workflow)
 	}
 
-	// Wait for shutdown signal
 	go func() {
 		<-c
-		fmt.Printf("\n[Worker %s] Shutting down...\n", wm.workerID)
+		wm.logger.Info("Shutting down...\n")
 		wm.Stop()
 	}()
 
 	wg.Wait()
-	fmt.Printf("[Worker %s] Stopped\n", wm.workerID)
+	wm.logger.Info("Stopped\n")
 	return nil
 }
 
-// startWorkflowTriggers starts all triggers for a workflow
-func (wm *WorkerManager) startWorkflowTriggers(workflow domain.Workflow) error {
-	fmt.Printf("[Worker %s] Starting triggers for workflow: %s (%s)\n", wm.workerID, workflow.Name, workflow.ID)
+func (wm *WorkerManager) startWorkflowTriggers(workflow *domain.Workflow) error {
+	logger := wm.logger.WithFields(log.Fields{
+		"workflow_id":   workflow.ID,
+		"workflow_name": workflow.Name,
+	})
+	logger.Info("Starting triggers for workflow")
 
 	for _, triggerItem := range workflow.Triggers {
-		// Add the trigger ID to the configuration
+		logger = logger.WithFields(log.Fields{
+			"trigger_id":     triggerItem.ID,
+			"trigger_type":   triggerItem.Type,
+			"trigger_config": triggerItem.Configuration,
+		})
+
 		config := make(map[string]interface{})
 		for k, v := range triggerItem.Configuration {
 			config[k] = v
 		}
+		config["workflow_id"] = workflow.ID
 		config["id"] = triggerItem.ID
 		trigger, err := wm.triggerRegistry.Create(triggerItem.Type, config)
 		if err != nil {
-			log.Printf("[Worker %s] Failed to create trigger %s for workflow %s: %v", 
-				wm.workerID, triggerItem.ID, workflow.ID, err)
+			logger.Errorf("Failed to create trigger: %v", err)
 			continue
 		}
 
-		// Store the trigger
 		wm.triggerMutex.Lock()
 		wm.runningTriggers[triggerItem.ID] = trigger
 		wm.triggerMutex.Unlock()
 
-		// Create callback for this workflow
 		callback := wm.createWorkflowCallback(workflow.ID)
 
-		// Start the trigger
 		if err := trigger.Start(wm.ctx, callback); err != nil {
-			log.Printf("[Worker %s] Failed to start trigger %s for workflow %s: %v", 
-				wm.workerID, triggerItem.ID, workflow.ID, err)
-			
-			// Remove from running triggers if failed to start
+			logger.Errorf("Failed to start trigger: %v", err)
+
 			wm.triggerMutex.Lock()
 			delete(wm.runningTriggers, triggerItem.ID)
 			wm.triggerMutex.Unlock()
 			continue
 		}
 
-		fmt.Printf("[Worker %s] Started trigger %s (%s) for workflow %s\n", 
-			wm.workerID, triggerItem.ID, triggerItem.Type, workflow.ID)
+		logger.Info("Started trigger")
 	}
 
-	// Keep the goroutine alive until context is cancelled
 	<-wm.ctx.Done()
 	return nil
 }
 
-// createWorkflowCallback creates a callback function for workflow execution
 func (wm *WorkerManager) createWorkflowCallback(workflowID string) domain.TriggerCallback {
 	return func(ctx context.Context, data map[string]interface{}) error {
-		fmt.Printf("[Worker %s] Executing workflow %s triggered by %s\n", 
-			wm.workerID, workflowID, data["trigger_id"])
-		
-		// Execute the workflow using the workflow service
-		wm.workflowService.ExecuteWorkflow(ctx, workflowID, data)
+		wm.logger.Infof("Executing workflow triggered by %s", data["trigger_id"])
+		err := wm.WorkflowExecutor.Execute(ctx, workflowID, data)
+		if err != nil {
+			wm.logger.Errorf("Error executing workflow %s: %v", workflowID, err)
+		}
 		return nil
 	}
 }
 
-// Stop stops all running triggers and cancels the context
 func (wm *WorkerManager) Stop() {
 	wm.cancel()
 
@@ -157,80 +155,12 @@ func (wm *WorkerManager) Stop() {
 	defer wm.triggerMutex.Unlock()
 
 	for triggerID, trigger := range wm.runningTriggers {
-		fmt.Printf("[Worker %s] Stopping trigger %s\n", wm.workerID, triggerID)
+		wm.logger.Infof("Stopping trigger %s\n", triggerID)
 		if err := trigger.Stop(context.Background()); err != nil {
-			log.Printf("[Worker %s] Error stopping trigger %s: %v", wm.workerID, triggerID, err)
+			wm.logger.Errorf("Error stopping trigger %s: %v", triggerID, err)
 		}
 	}
 
 	// Clear running triggers
 	wm.runningTriggers = make(map[string]domain.Trigger)
-}
-
-// GetWorkerID returns the worker ID
-func (wm *WorkerManager) GetWorkerID() string {
-	return wm.workerID
-}
-
-// filterWorkflows filters workflows based on tags
-func (wm *WorkerManager) filterWorkflows(workflows []domain.Workflow, filterTags string) []domain.Workflow {
-	if filterTags == "" {
-		return workflows
-	}
-
-	tags := strings.Split(filterTags, ",")
-	for i := range tags {
-		tags[i] = strings.TrimSpace(tags[i])
-	}
-
-	var filtered []domain.Workflow
-	for _, workflow := range workflows {
-		if wm.workflowMatchesTags(workflow, tags) {
-			filtered = append(filtered, workflow)
-		}
-	}
-
-	return filtered
-}
-
-// workflowMatchesTags checks if a workflow matches the required tags
-func (wm *WorkerManager) workflowMatchesTags(workflow domain.Workflow, tags []string) bool {
-	workflowTags, exists := workflow.Metadata["tags"]
-	if !exists {
-		return false
-	}
-
-	var workflowTagList []string
-	switch t := workflowTags.(type) {
-	case []interface{}:
-		for _, tag := range t {
-			if str, ok := tag.(string); ok {
-				workflowTagList = append(workflowTagList, str)
-			}
-		}
-	case []string:
-		workflowTagList = t
-	case string:
-		workflowTagList = strings.Split(t, ",")
-		for i := range workflowTagList {
-			workflowTagList[i] = strings.TrimSpace(workflowTagList[i])
-		}
-	default:
-		return false
-	}
-
-	for _, requiredTag := range tags {
-		found := false
-		for _, workflowTag := range workflowTagList {
-			if strings.EqualFold(requiredTag, workflowTag) {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return false
-		}
-	}
-
-	return true
 }
