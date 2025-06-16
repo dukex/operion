@@ -26,7 +26,7 @@ The project follows **Hexagonal Architecture** (Ports & Adapters) with clear sep
 ### Plugin Architecture
 
 Uses registry pattern for extensibility:
-- **TriggerRegistry** & **ActionRegistry** in `internal/application/registry.go`
+- **TriggerRegistry** & **ActionRegistry** in `pkg/registry/`
 - Factory pattern for creating triggers and actions
 - Runtime configuration from `map[string]interface{}`
 
@@ -55,22 +55,27 @@ go mod tidy         # Clean up dependencies
 
 ### Available Components
 - **API Server** (`cmd/api/`) - Fiber-based REST API with workflows endpoint
-- **Schedule Trigger** (`internal/triggers/schedule/`) - Cron-based using robfig/cron
-- **HTTP Request Action** (`internal/actions/http_request/`) - External API calls
+- **CLI Tool** (`cmd/operion/`) - Functional CLI with worker management
+- **Worker Manager** (`internal/application/worker_manager.go`) - Background workflow execution
+- **Workflow Executor** (`internal/application/workflow_executor.go`) - Executes workflow steps
+- **Schedule Trigger** (`pkg/triggers/schedule/`) - Cron-based using robfig/cron
+- **HTTP Request Action** (`pkg/actions/http_request/`) - External API calls
+- **Transform Action** (`pkg/actions/transform/`) - Data processing using JSONata
+- **File Write Action** (`pkg/actions/file_write/`) - Save data to files
+- **Log Action** (`pkg/actions/log/`) - Logging with configurable levels
 - **File Persistence** (`internal/adapters/persistence/file/`) - JSON file storage
 
 ### Incomplete/Placeholder Components
-- **CLI Tool** (`cmd/operion/`) - Only skeleton exists
 - **Dashboard** (`cmd/dashboard/`) - Directory exists but not implemented
-- **Kafka Trigger** (`internal/triggers/kafka/`) - Interface defined but not implemented
-- **Workflow Execution Engine** - Service exists but execution logic incomplete
+- **Kafka Trigger** (`pkg/triggers/kafka/`) - Interface defined but not fully implemented
+- **Extended CLI Commands** - Only worker commands implemented
 
 ## Key Configuration
 
 - **Port**: 3000 (configurable via `PORT` environment variable)
-- **Data Storage**: `./data/workflows/index.json` (file-based persistence)
+- **Data Storage**: `./data/workflows/` directory (file-based persistence with individual JSON files)
 - **Go Version**: 1.24 with toolchain 1.24.4
-- **Main Dependencies**: Fiber v2, validator/v10, robfig/cron, problems (RFC7807)
+- **Main Dependencies**: Fiber v2, validator/v10, robfig/cron, problems (RFC7807), urfave/cli/v3, sirupsen/logrus
 
 ## Development Patterns
 
@@ -94,4 +99,28 @@ To add new persistence: Implement `domain.Persistence` interface
 
 ## Sample Data
 
-Sample workflow in `./data/workflows/index.json` demonstrates Bitcoin price fetching with HTTP actions and cron scheduling.
+Sample workflows in `./data/workflows/` directory:
+- `bitcoin-price.json` - Demonstrates Bitcoin price fetching with HTTP actions, data transformation, and cron scheduling
+- `weather-pocrane.json` - Additional workflow example
+
+## CLI Usage
+
+### Worker Management
+```bash
+# Start workflow workers
+./bin/operion workers run
+
+# Start workers with custom worker ID  
+./bin/operion workers run --worker-id my-worker
+```
+
+The CLI tool provides:
+- Background workflow execution
+- Worker lifecycle management  
+- Signal handling for graceful shutdown
+- Structured logging with logrus
+```
+
+## Claude Guidance
+
+- Never use emoji at documentation
