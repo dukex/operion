@@ -23,11 +23,12 @@ Operion enables you to create automated workflows through:
 
 ## Architecture
 
-The project follows **Hexagonal Architecture** with clear separation of concerns:
+The project follows a clean, layered architecture with clear separation of concerns:
 
-- **Domain Layer** (`internal/domain/`) - Core business logic and interfaces
-- **Application Layer** (`internal/application/`) - Use cases and orchestration
-- **Infrastructure Layer** (`internal/adapters/`) - External integrations
+- **Models** (`pkg/models/`) - Core domain models and interfaces
+- **Business Logic** (`pkg/workflow/`) - Workflow execution and management
+- **Infrastructure** (`pkg/persistence/`, `pkg/event_bus/`) - External integrations and data access
+- **Extensions** (`pkg/registry/`) - Unified registry system for actions and triggers
 - **Interface Layer** (`cmd/`) - Entry points (API server, CLI tool)
 
 ## Installation
@@ -76,10 +77,10 @@ The API will be available at `http://localhost:3000`
 
 ```bash
 # Start workers to execute workflows
-./bin/operion workers run
+./bin/operion-worker run
 
 # Start workers with custom worker ID
-./bin/operion workers run --worker-id my-worker
+./bin/operion-worker run --worker-id my-worker
 ```
 
 ### API Endpoints

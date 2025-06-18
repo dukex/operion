@@ -8,12 +8,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Architecture
 
-The project follows **Hexagonal Architecture** (Ports & Adapters) with clear separation of concerns:
+The project follows a clean, layered architecture with clear separation of concerns:
 
-- **Domain Layer** (`internal/domain/`) - Core business logic and interfaces
-- **Application Layer** (`internal/application/`) - Use cases and orchestration  
-- **Infrastructure Layer** (`internal/adapters/`) - External integrations
-- **Interface Layer** (`cmd/`) - Entry points (API, CLI, Dashboard)
+- **Models Layer** (`pkg/models/`) - Core domain models and interfaces
+- **Business Logic** (`pkg/workflow/`) - Workflow execution and management
+- **Infrastructure Layer** (`pkg/persistence/`, `pkg/event_bus/`) - External integrations and data access
+- **Extensions** (`pkg/registry/`) - Plugin system for actions and triggers
+- **Interface Layer** (`cmd/`) - Entry points (API server, CLI tool)
 
 ### Key Domain Models
 
@@ -25,9 +26,11 @@ The project follows **Hexagonal Architecture** (Ports & Adapters) with clear sep
 
 ### Plugin Architecture
 
-Uses registry pattern for extensibility:
-- **TriggerRegistry** & **ActionRegistry** in `pkg/registry/`
-- Factory pattern for creating triggers and actions
+Uses unified registry pattern for extensibility:
+- **Registry** - Single registry for both actions and triggers in `pkg/registry/`
+- Schema-based component registration with `RegisteredComponent`
+- Type-safe factory pattern with generics
+- JSON Schema validation for configurations
 - Runtime configuration from `map[string]interface{}`
 
 ## Development Commands
@@ -55,15 +58,12 @@ go mod tidy         # Clean up dependencies
 
 ### Available Components
 - **API Server** (`cmd/api/`) - Fiber-based REST API with workflows endpoint
-- **CLI Tool** (`cmd/operion/`) - Functional CLI with worker management
-- **Worker Manager** (`internal/application/worker_manager.go`) - Background workflow execution
-- **Workflow Executor** (`internal/application/workflow_executor.go`) - Executes workflow steps
-- **Schedule Trigger** (`pkg/triggers/schedule/`) - Cron-based using robfig/cron
-- **HTTP Request Action** (`pkg/actions/http_request/`) - External API calls
-- **Transform Action** (`pkg/actions/transform/`) - Data processing using JSONata
-- **File Write Action** (`pkg/actions/file_write/`) - Save data to files
-- **Log Action** (`pkg/actions/log/`) - Logging with configurable levels
-- **File Persistence** (`internal/adapters/persistence/file/`) - JSON file storage
+- **CLI Worker** (`cmd/operion-worker/`) - Background workflow execution tool
+- **Domain Models** (`pkg/models/`) - Core workflow, action, and trigger models
+- **Workflow Engine** (`pkg/workflow/`) - Workflow execution, management, and repository
+- **Event System** (`pkg/event_bus/`, `pkg/events/`) - Event-driven communication
+- **Unified Registry** (`pkg/registry/`) - Schema-based action and trigger registration system
+- **File Persistence** (`pkg/persistence/file/`) - JSON file storage
 
 ### Incomplete/Placeholder Components
 - **Dashboard** (`cmd/dashboard/`) - Directory exists but not implemented
@@ -87,9 +87,39 @@ go mod tidy         # Clean up dependencies
 
 ## Extension Points
 
-To add new triggers: Implement `domain.Trigger` interface and register in `TriggerRegistry`
-To add new actions: Implement `domain.Action` interface and register in `ActionRegistry`  
-To add new persistence: Implement `domain.Persistence` interface
+To add new triggers: Implement `models.Trigger` interface and register with `Registry.RegisterTrigger()`
+To add new actions: Implement `models.Action` interface and register with `Registry.RegisterAction()`  
+To add new persistence: Implement `persistence.Persistence` interface
+
+### Registry Usage
+
+```go
+// Create registry
+registry := registry.GetDefaultRegistry()
+
+// Register action with schema
+component := &models.RegisteredComponent{
+    Type: "my-action",
+    Name: "My Custom Action",
+    Description: "Description of what this action does",
+    Schema: &models.JSONSchema{
+        Type: "object",
+        Properties: map[string]*models.Property{
+            "param": {Type: "string", Description: "Parameter description"},
+        },
+        Required: []string{"param"},
+    },
+}
+
+registry.RegisterAction(component, func(config map[string]interface{}) (models.Action, error) {
+    return NewMyAction(config)
+})
+
+// Create instance
+action, err := registry.CreateAction("my-action", map[string]interface{}{
+    "param": "value",
+})
+```
 
 ## API Endpoints
 
@@ -108,10 +138,10 @@ Sample workflows in `./data/workflows/` directory:
 ### Worker Management
 ```bash
 # Start workflow workers
-./bin/operion workers run
+./bin/operion-worker run
 
 # Start workers with custom worker ID  
-./bin/operion workers run --worker-id my-worker
+./bin/operion-worker run --worker-id my-worker
 ```
 
 The CLI tool provides:
