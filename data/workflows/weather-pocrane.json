@@ -1,0 +1,119 @@
+{
+  "id": "weather-pocrane",
+  "name": "Pocrane Weather Monitor",
+  "description": "Monitor weather conditions in Pocrane, MG, Brazil every minute",
+  "triggers": [
+    {
+      "id": "9294bfce-4a7a-43fc-ac6a-c74d76e7a0f0",
+      "type": "schedule",
+      "configuration": {
+        "cron": "*/1 * * * *"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "id": "ee3b3aab-45d7-4c85-92dc-39d93af37c0d",
+      "action": {
+        "id": "e9ec5d3a-cb73-4b36-882b-06cda5200a87",
+        "type": "http_request",
+        "name": "",
+        "description": "",
+        "configuration": {
+          "headers": {
+            "Accept": "application/json"
+          },
+          "method": "GET",
+          "retry": {
+            "attempts": 2,
+            "delay": 3
+          },
+          "url": "https://api.open-meteo.com/v1/forecast?latitude=-19.6197\u0026longitude=-41.6369\u0026daily=sunset\u0026current=temperature_2m,rain\u0026timezone=America%2FSao_Paulo\u0026past_days=1\u0026forecast_days=1"
+        }
+      },
+      "name": "fetch_weather",
+      "conditional": {
+        "language": "",
+        "expression": ""
+      },
+      "on_success": "42cfdc57-0a1f-4cb8-b33a-3952c75a5173",
+      "on_failure": "53bd39e7-5dd7-40b7-8c50-ecffb47a145f",
+      "enabled": true
+    },
+    {
+      "id": "42cfdc57-0a1f-4cb8-b33a-3952c75a5173",
+      "action": {
+        "id": "26ea6a53-b9b0-4deb-afea-1156e203ef64",
+        "type": "transform",
+        "name": "",
+        "description": "",
+        "configuration": {
+          "expression": "{ \"temp\": $.current.temperature_2m, \"rain\": $.current.rain}",
+          "input": "$.fetch_weather.body"
+        }
+      },
+      "name": "process_weather",
+      "conditional": {
+        "language": "",
+        "expression": ""
+      },
+      "on_success": "cf5c1398-01f7-4005-8b97-95b0e857c102",
+      "on_failure": "53bd39e7-5dd7-40b7-8c50-ecffb47a145f",
+      "enabled": true
+    },
+    {
+      "id": "cf5c1398-01f7-4005-8b97-95b0e857c102",
+      "action": {
+        "id": "e9ffc262-3111-4ba8-b0cc-a705d3cf3435",
+        "type": "file_write",
+        "name": "",
+        "description": "",
+        "configuration": {
+          "directory": "/tmp/weather",
+          "file_name": "pocrane_weather.json",
+          "input": "$.process_weather",
+          "overwrite": true
+        }
+      },
+      "name": "save_weather",
+      "conditional": {
+        "language": "",
+        "expression": ""
+      },
+      "on_failure": "53bd39e7-5dd7-40b7-8c50-ecffb47a145f",
+      "enabled": true
+    },
+    {
+      "id": "53bd39e7-5dd7-40b7-8c50-ecffb47a145f",
+      "action": {
+        "id": "6d335a5c-33af-4fda-ae79-a767934ce159",
+        "type": "log",
+        "name": "Log Message",
+        "description": "Log a message with configurable level",
+        "configuration": {
+          "level": "info",
+          "message": "Error"
+        }
+      },
+      "name": "error_log",
+      "conditional": {
+        "language": "",
+        "expression": ""
+      },
+      "enabled": true
+    }
+  ],
+  "variables": null,
+  "status": "active",
+  "metadata": {
+    "tags": [
+      "weather",
+      "pocrane",
+      "brazil",
+      "monitor"
+    ]
+  },
+  "owner": "",
+  "created_at": "2025-06-15T04:00:00Z",
+  "updated_at": "2025-06-17T15:36:49.336803-03:00"
+}

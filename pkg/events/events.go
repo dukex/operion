@@ -29,6 +29,7 @@ type BaseEvent struct {
 
 type WorkflowTriggered struct {
 	BaseEvent
+	TriggerID   string                 `json:"trigger_id"`
 	TriggerType string                 `json:"trigger_type"`
 	TriggerData map[string]interface{} `json:"trigger_data,omitempty"`
 }

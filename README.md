@@ -73,8 +73,24 @@ air
 
 The API will be available at `http://localhost:3000`
 
-### Start Workflow Workers
+### Start Services
 
+#### Trigger Service (Event Publishers)
+```bash
+# Start trigger service to listen for triggers and publish events
+./bin/operion-trigger run
+
+# Start with custom trigger service ID
+./bin/operion-trigger run --trigger-id my-trigger-service
+
+# List all available triggers
+./bin/operion-trigger list
+
+# Validate trigger configurations
+./bin/operion-trigger validate
+```
+
+#### Worker Service (Workflow Execution)
 ```bash
 # Start workers to execute workflows
 ./bin/operion-worker run
@@ -82,6 +98,12 @@ The API will be available at `http://localhost:3000`
 # Start workers with custom worker ID
 ./bin/operion-worker run --worker-id my-worker
 ```
+
+#### Event-Driven Architecture
+The system uses an event-driven architecture where:
+1. **Trigger Service** listens for trigger conditions and publishes `WorkflowTriggered` events
+2. **Worker Service** subscribes to events and executes the corresponding workflows
+3. **Event Bus** decouples trigger detection from workflow execution (supports in-memory and Kafka)
 
 ### API Endpoints
 
@@ -104,11 +126,13 @@ See `./data/workflows/bitcoin-price.json` for a complete workflow example that:
 ## Current Implementation
 
 ### Available Triggers
-- **Schedule**: Cron-based execution using robfig/cron
+- **Schedule**: Cron-based execution using robfig/cron (fully implemented and registered)
+- **Kafka**: Message-based triggering from Kafka topics (fully implemented and registered)
 
 ### Available Actions  
+- Actions are available but need to be migrated to the new registry system
 - **HTTP Request**: Make HTTP calls to external APIs
-- **Transform**: Process data using JSONata expressions
+- **Transform**: Process data using JSONata expressions  
 - **File Write**: Save data to files
 - **Log**: Output log messages with configurable levels
 

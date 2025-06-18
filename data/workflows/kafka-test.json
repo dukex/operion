@@ -1,0 +1,35 @@
+{
+  "id": "kafka-test-workflow",
+  "name": "Kafka Test Workflow",
+  "description": "Simple test workflow for Kafka integration",
+  "version": "1.0.0",
+  "triggers": [],
+  "variables": {
+    "test_message": "Hello from Kafka workflow!"
+  },
+  "steps": [
+    {
+      "id": "log-start",
+      "name": "Log Start",
+      "action": {
+        "type": "log",
+        "config": {
+          "message": "Kafka test workflow started",
+          "level": "info"
+        }
+      },
+      "next_step_id": "log-finish"
+    },
+    {
+      "id": "log-finish",
+      "name": "Log Finish",
+      "action": {
+        "type": "log",
+        "config": {
+          "message": "Kafka test workflow completed successfully",
+          "level": "info"
+        }
+      }
+    }
+  ]
+}

@@ -59,16 +59,23 @@ go mod tidy         # Clean up dependencies
 ### Available Components
 - **API Server** (`cmd/api/`) - Fiber-based REST API with workflows endpoint
 - **CLI Worker** (`cmd/operion-worker/`) - Background workflow execution tool
+- **CLI Trigger Service** (`cmd/operion-trigger/`) - Trigger listener and event publisher
 - **Domain Models** (`pkg/models/`) - Core workflow, action, and trigger models
 - **Workflow Engine** (`pkg/workflow/`) - Workflow execution, management, and repository
 - **Event System** (`pkg/event_bus/`, `pkg/events/`) - Event-driven communication
 - **Unified Registry** (`pkg/registry/`) - Schema-based action and trigger registration system
 - **File Persistence** (`pkg/persistence/file/`) - JSON file storage
 
+### Available Triggers
+- **Schedule Trigger** (`pkg/triggers/schedule/`) - Cron-based scheduling with robfig/cron
+- **Kafka Trigger** (`pkg/triggers/kafka/`) - Kafka topic-based triggering with IBM/sarama
+
+### Available Actions
+- Actions will be registered as they are migrated to the new architecture
+
 ### Incomplete/Placeholder Components
 - **Dashboard** (`cmd/dashboard/`) - Directory exists but not implemented
-- **Kafka Trigger** (`pkg/triggers/kafka/`) - Interface defined but not fully implemented
-- **Extended CLI Commands** - Only worker commands implemented
+- **Actions** - Need to be migrated to new pkg structure and registered
 
 ## Key Configuration
 
@@ -137,17 +144,50 @@ Sample workflows in `./data/workflows/` directory:
 
 ### Worker Management
 ```bash
-# Start workflow workers
+# Start workflow workers (execution)
 ./bin/operion-worker run
 
 # Start workers with custom worker ID  
 ./bin/operion-worker run --worker-id my-worker
 ```
 
-The CLI tool provides:
-- Background workflow execution
-- Worker lifecycle management  
-- Signal handling for graceful shutdown
+### Trigger Management
+```bash
+# Start trigger service (listens for triggers and publishes events)
+./bin/operion-trigger run
+
+# Start trigger service with custom ID
+./bin/operion-trigger run --trigger-id my-trigger-service
+
+# List all triggers in workflows
+./bin/operion-trigger list
+
+# Validate trigger configurations
+./bin/operion-trigger validate
+
+# Use Kafka as event bus
+./bin/operion-trigger run --kafka
+```
+
+## Architecture Overview
+
+The system is designed with clear separation of concerns:
+
+- **Trigger Service** (`operion-trigger`) - Listens to external triggers and publishes `WorkflowTriggered` events
+- **Worker Service** (`operion-worker`) - Subscribes to `WorkflowTriggered` events and executes workflows
+- **Event Bus** - Decouples trigger detection from workflow execution (supports GoChannel and Kafka)
+
+## Event Flow
+
+1. **Trigger Service** detects trigger conditions (cron, webhook, etc.)
+2. **Trigger Service** publishes `WorkflowTriggered` event to event bus
+3. **Worker Service** receives event and executes corresponding workflow
+4. **Worker Service** publishes workflow lifecycle events (`WorkflowStarted`, `WorkflowFinished`, etc.)
+
+The CLI tools provide:
+- Background workflow execution and trigger management
+- Event-driven architecture with pub/sub messaging
+- Signal handling for graceful shutdown  
 - Structured logging with logrus
 ```
 
