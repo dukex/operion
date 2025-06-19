@@ -31,6 +31,7 @@ func RunWorkers(cmd *cli.Command) error {
 	)
 
 	logger.Info("Starting worker")
+	logger.Info("OpenTelemetry tracing initialized - spans will be sent to OTEL_EXPORTER_OTLP_ENDPOINT")
 
 	// Setup persistence
 	persistence := setupPersistence(cmd.String("data-path"))

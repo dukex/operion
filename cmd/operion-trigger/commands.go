@@ -29,6 +29,7 @@ func RunTriggerService(cmd *cli.Command) error {
 	})
 
 	logger.Info("Starting trigger service")
+	logger.Info("OpenTelemetry tracing initialized - spans will be sent to OTEL_EXPORTER_OTLP_ENDPOINT")
 
 	// Setup persistence
 	persistence := setupPersistence(cmd.String("data-path"))
@@ -37,6 +38,7 @@ func RunTriggerService(cmd *cli.Command) error {
 	workflowRepository := workflow.NewRepository(persistence)
 
 	// Setup registry
+	registry.RegisterAllComponents()
 	registry := registry.DefaultRegistry
 
 	// Setup event bus

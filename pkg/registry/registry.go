@@ -1,9 +1,14 @@
 package registry
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/dukex/operion/pkg/models"
+	trc "github.com/dukex/operion/pkg/tracer"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // ComponentType defines the type of component (action or trigger)
@@ -22,6 +27,7 @@ type Registry struct {
 	actionFactories  map[string]Factory[models.Action]
 	triggerFactories map[string]Factory[models.Trigger]
 	components       map[string]*models.RegisteredComponent
+	tracer           trace.Tracer
 }
 
 // NewRegistry creates a new unified registry
@@ -30,6 +36,7 @@ func NewRegistry() *Registry {
 		actionFactories:  make(map[string]Factory[models.Action]),
 		triggerFactories: make(map[string]Factory[models.Trigger]),
 		components:       make(map[string]*models.RegisteredComponent),
+		tracer:           trc.GetTracer("registry"),
 	}
 }
 
@@ -43,22 +50,72 @@ func (r *Registry) RegisterTrigger(component *models.RegisteredComponent, factor
 	r.components[component.Type] = component
 }
 
-// CreateAction creates an action instance by type
+// CreateAction creates an action instance by type  
 func (r *Registry) CreateAction(actionType string, config map[string]interface{}) (models.Action, error) {
+	return r.CreateActionWithContext(context.Background(), actionType, config)
+}
+
+// CreateActionWithContext creates an action instance by type with context
+func (r *Registry) CreateActionWithContext(ctx context.Context, actionType string, config map[string]interface{}) (models.Action, error) {
+	_, span := trc.StartSpan(ctx, r.tracer, "registry.create_action",
+		attribute.String(trc.ActionTypeKey, actionType),
+	)
+	defer span.End()
+
+	span.AddEvent("looking_up_action_factory")
 	factory, ok := r.actionFactories[actionType]
 	if !ok {
-		return nil, fmt.Errorf("action type '%s' not registered", actionType)
+		err := fmt.Errorf("action type '%s' not registered", actionType)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "action type not registered")
+		return nil, err
 	}
-	return factory(config)
+
+	span.AddEvent("creating_action_instance")
+	action, err := factory(config)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to create action instance")
+		return nil, err
+	}
+
+	span.AddEvent("action_created")
+	span.SetStatus(codes.Ok, "action created successfully")
+	return action, nil
 }
 
 // CreateTrigger creates a trigger instance by type
 func (r *Registry) CreateTrigger(triggerType string, config map[string]interface{}) (models.Trigger, error) {
+	return r.CreateTriggerWithContext(context.Background(), triggerType, config)
+}
+
+// CreateTriggerWithContext creates a trigger instance by type with context
+func (r *Registry) CreateTriggerWithContext(ctx context.Context, triggerType string, config map[string]interface{}) (models.Trigger, error) {
+	_, span := trc.StartSpan(ctx, r.tracer, "registry.create_trigger",
+		attribute.String(trc.TriggerTypeKey, triggerType),
+	)
+	defer span.End()
+
+	span.AddEvent("looking_up_trigger_factory")
 	factory, ok := r.triggerFactories[triggerType]
 	if !ok {
-		return nil, fmt.Errorf("trigger type '%s' not registered", triggerType)
+		err := fmt.Errorf("trigger type '%s' not registered", triggerType)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "trigger type not registered")
+		return nil, err
 	}
-	return factory(config)
+
+	span.AddEvent("creating_trigger_instance")
+	trigger, err := factory(config)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to create trigger instance")
+		return nil, err
+	}
+
+	span.AddEvent("trigger_created")
+	span.SetStatus(codes.Ok, "trigger created successfully")
+	return trigger, nil
 }
 
 // GetAvailableActions returns all available action types

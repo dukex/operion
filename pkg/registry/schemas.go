@@ -3,6 +3,7 @@ package registry
 import (
 	file_write_action "github.com/dukex/operion/pkg/actions/file_write"
 	http_request_action "github.com/dukex/operion/pkg/actions/http_request"
+	log_action "github.com/dukex/operion/pkg/actions/log"
 	transform_action "github.com/dukex/operion/pkg/actions/transform"
 	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/triggers/kafka"
@@ -35,6 +36,13 @@ func registerActions(registry *Registry) {
 		file_write_action.GetFileWriteActionSchema(),
 		func(config map[string]interface{}) (models.Action, error) {
 			return file_write_action.NewFileWriteAction(config)
+		},
+	)
+
+	registry.RegisterAction(
+		log_action.GetLogActionSchema(),
+		func(config map[string]interface{}) (models.Action, error) {
+			return log_action.NewLogAction(config)
 		},
 	)
 }

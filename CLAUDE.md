@@ -54,6 +54,94 @@ go mod download     # Download dependencies
 go mod tidy         # Clean up dependencies
 ```
 
+## OpenTelemetry Observability
+
+The system includes comprehensive OpenTelemetry tracing for excellent observability across all components.
+
+### Tracing Configuration
+
+Set the following environment variable to configure where traces are sent:
+```bash
+export OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4318"  # For OTLP HTTP
+# or
+export OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4317"  # For OTLP gRPC
+```
+
+### Traced Operations
+
+The following operations are fully instrumented with spans:
+
+#### Trigger Service (`operion-trigger`)
+- **Service Start**: `trigger_service.start` - Service initialization and workflow loading
+- **Workflow Trigger Setup**: `trigger_service.start_workflow_triggers` - Setting up triggers for each workflow
+- **Individual Trigger Start**: `trigger_service.start_trigger` - Starting each trigger instance
+- **Trigger Fired**: `trigger_service.trigger_fired` - When a trigger fires and publishes an event
+
+#### Worker Service (`operion-worker`)
+- **Worker Start**: `worker.start` - Worker initialization and event subscription
+- **Event Handling**: `worker.handle_workflow_triggered` - Processing workflow triggered events
+
+#### Workflow Execution (`workflow-executor`)
+- **Workflow Execution**: `workflow.execute` - Complete workflow execution
+- **Step Execution**: `workflow.execute_step` - Individual workflow step execution
+- **Action Execution**: `workflow.execute_action` - Individual action execution within steps
+
+#### Event Bus (`event-bus`)
+- **Event Publishing**: `event_bus.publish` - Publishing events to the message queue
+- **Event Subscription**: `event_bus.subscribe` - Subscribing to events
+- **Message Handling**: `event_bus.handle_message` - Processing individual messages
+
+#### Registry (`registry`)
+- **Action Creation**: `registry.create_action` - Creating action instances
+- **Trigger Creation**: `registry.create_trigger` - Creating trigger instances
+
+### Span Attributes
+
+All spans include relevant attributes for filtering and analysis:
+
+- `operion.workflow.id` - Workflow ID
+- `operion.workflow.name` - Workflow name
+- `operion.trigger.id` - Trigger ID
+- `operion.trigger.type` - Trigger type (e.g., "schedule", "kafka")
+- `operion.action.id` - Action ID
+- `operion.action.type` - Action type
+- `operion.step.id` - Step ID
+- `operion.step.name` - Step name
+- `operion.execution.id` - Execution ID
+- `operion.event.id` - Event ID
+- `operion.service.id` - Service ID (trigger service ID)
+- `operion.worker.id` - Worker ID
+
+### Example Trace Flow
+
+A complete workflow execution will show the following trace hierarchy:
+
+```
+trigger_service.trigger_fired
+└── event_bus.publish
+    └── event_bus.handle_message
+        └── worker.handle_workflow_triggered
+            └── workflow.execute
+                ├── workflow.execute_step (step 1)
+                │   ├── registry.create_action
+                │   └── workflow.execute_action
+                ├── workflow.execute_step (step 2)
+                │   ├── registry.create_action
+                │   └── workflow.execute_action
+                └── event_bus.publish (workflow finished event)
+```
+
+### Observability Benefits
+
+With this tracing implementation, you can:
+
+1. **End-to-End Visibility**: Track a workflow execution from trigger to completion
+2. **Performance Analysis**: Identify bottlenecks in workflow execution
+3. **Error Debugging**: See exactly where and why workflows fail
+4. **Dependency Mapping**: Understand the flow between services
+5. **Resource Monitoring**: Track execution times and resource usage
+6. **Business Metrics**: Monitor workflow success rates and processing times
+
 ## Current Implementation Status
 
 ### Available Components
