@@ -13,27 +13,27 @@ type ExampleAction struct {
 	message string
 }
 
-func (a *ExampleAction) GetID() string                 { return "example-1" }
-func (a *ExampleAction) GetType() string               { return "example" }
-func (a *ExampleAction) Validate() error               { return nil }
-func (a *ExampleAction) GetConfig() map[string]interface{} { 
-	return map[string]interface{}{"message": a.message} 
+func (a *ExampleAction) GetID() string   { return "example-1" }
+func (a *ExampleAction) GetType() string { return "example" }
+func (a *ExampleAction) Validate() error { return nil }
+func (a *ExampleAction) GetConfig() map[string]interface{} {
+	return map[string]interface{}{"message": a.message}
 }
 
 func (a *ExampleAction) Execute(ctx context.Context, ectx models.ExecutionContext) (interface{}, error) {
 	return fmt.Sprintf("Hello: %s", a.message), nil
 }
 
-// Example trigger implementation  
+// Example trigger implementation
 type ExampleTrigger struct {
 	interval string
 }
 
-func (t *ExampleTrigger) GetID() string                 { return "example-1" }
-func (t *ExampleTrigger) GetType() string               { return "example" }
-func (t *ExampleTrigger) Validate() error               { return nil }
-func (t *ExampleTrigger) GetConfig() map[string]interface{} { 
-	return map[string]interface{}{"interval": t.interval} 
+func (t *ExampleTrigger) GetID() string   { return "example-1" }
+func (t *ExampleTrigger) GetType() string { return "example" }
+func (t *ExampleTrigger) Validate() error { return nil }
+func (t *ExampleTrigger) GetConfig() map[string]interface{} {
+	return map[string]interface{}{"interval": t.interval}
 }
 
 func (t *ExampleTrigger) Start(ctx context.Context, callback models.TriggerCallback) error {
@@ -79,7 +79,7 @@ func ExampleRegistry() {
 	// Register a trigger with schema
 	triggerComponent := &models.RegisteredComponent{
 		Type:        "example-trigger",
-		Name:        "Example Trigger", 
+		Name:        "Example Trigger",
 		Description: "An example trigger that runs on an interval",
 		Schema: &models.JSONSchema{
 			Type: "object",

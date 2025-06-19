@@ -4,10 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/IBM/sarama"
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-kafka/v3/pkg/kafka"
-	"github.com/ThreeDotsLabs/watermill/pubsub/gochannel"
+	"github.com/dukex/operion/pkg/channels/kafka"
 	"github.com/dukex/operion/pkg/event_bus"
 	"github.com/dukex/operion/pkg/persistence"
 	"github.com/dukex/operion/pkg/persistence/file"
@@ -21,11 +19,11 @@ import (
 func RunTriggerService(cmd *cli.Command) error {
 	serviceID := cmd.String("trigger-id")
 	if serviceID == "" {
-		serviceID = fmt.Sprintf("trigger-service-%s", uuid.New().String()[:8])
+		serviceID = fmt.Sprintf("trigger-%s", uuid.New().String()[:8])
 	}
 
 	logger := log.WithFields(log.Fields{
-		"module":     "trigger-service",
+		"module":     "trigger",
 		"service_id": serviceID,
 		"action":     "run",
 	})
@@ -39,10 +37,10 @@ func RunTriggerService(cmd *cli.Command) error {
 	workflowRepository := workflow.NewRepository(persistence)
 
 	// Setup registry
-	registry := registry.GetDefaultRegistry()
+	registry := registry.DefaultRegistry
 
 	// Setup event bus
-	eventBus, err := setupEventBus(cmd, logger)
+	eventBus, err := setupEventBus(cmd, logger, serviceID)
 	if err != nil {
 		return fmt.Errorf("failed to setup event bus: %w", err)
 	}
@@ -62,7 +60,6 @@ func RunTriggerService(cmd *cli.Command) error {
 
 	return nil
 }
-
 
 func ListTriggers(cmd *cli.Command) error {
 	logger := log.WithFields(log.Fields{
@@ -117,8 +114,8 @@ func ValidateTriggers(cmd *cli.Command) error {
 	persistence := setupPersistence(cmd.String("data-path"))
 	workflowRepository := workflow.NewRepository(persistence)
 
-	// Setup registry
-	registry := registry.GetDefaultRegistry()
+	registry.RegisterAllComponents()
+	registry := registry.DefaultRegistry
 
 	// Fetch all workflows
 	workflows, err := workflowRepository.FetchAll()
@@ -182,70 +179,22 @@ func setupPersistence(dataPath string) persistence.Persistence {
 	if dataPath == "" {
 		dataPath = os.Getenv("DATA_PATH")
 		if dataPath == "" {
-			dataPath = "./data/workflows"
+			dataPath = "./data"
 		}
 	}
 	return file.NewFilePersistence(dataPath)
 }
 
-func setupEventBus(cmd *cli.Command, logger *log.Entry) (event_bus.EventBusI, error) {
+func setupEventBus(cmd *cli.Command, logger *log.Entry, id string) (event_bus.EventBusI, error) {
 	var eventBus event_bus.EventBusI
-	watermillLogger := watermill.NewStdLogger(false, false)
+	watermillLogger := watermill.NewStdLogger(true, true)
 
-	if cmd.Bool("kafka") {
-		logger.Info("Using Kafka as event bus")
-		pub, sub, err := createKafkaPubSub(watermillLogger)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create Kafka pub/sub: %w", err)
-		}
-		eventBus = event_bus.NewEventBus(pub, sub)
-	} else {
-		logger.Info("Using GoChannel as event bus")
-		pubSub := gochannel.NewGoChannel(
-			gochannel.Config{},
-			watermillLogger,
-		)
-		eventBus = event_bus.NewEventBus(pubSub, pubSub)
+	pub, sub, err := kafka.CreateChannel(watermillLogger, "operion-trigger")
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Kafka pub/sub: %w", err)
 	}
+	eventBus = event_bus.NewEventBus(pub, sub, id)
 
 	return eventBus, nil
-}
-
-func createKafkaPubSub(logger watermill.LoggerAdapter) (*kafka.Publisher, *kafka.Subscriber, error) {
-	brokers := []string{"kafka:9092"}
-	if host := os.Getenv("KAFKA_BROKERS"); host != "" {
-		brokers = []string{host}
-	}
-
-	saramaSubscriberConfig := kafka.DefaultSaramaSubscriberConfig()
-	saramaSubscriberConfig.Consumer.Offsets.Initial = sarama.OffsetOldest
-
-	subscriber, err := kafka.NewSubscriber(
-		kafka.SubscriberConfig{
-			Brokers:               brokers,
-			Unmarshaler:           kafka.DefaultMarshaler{},
-			OverwriteSaramaConfig: saramaSubscriberConfig,
-			ConsumerGroup:         "operion-triggers",
-		},
-		logger,
-	)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	saramaPublisherConfig := sarama.NewConfig()
-	saramaPublisherConfig.Producer.Return.Successes = true
-	publisher, err := kafka.NewPublisher(
-		kafka.PublisherConfig{
-			Brokers:               brokers,
-			Marshaler:             kafka.DefaultMarshaler{},
-			OverwriteSaramaConfig: saramaPublisherConfig,
-		},
-		logger,
-	)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return publisher, subscriber, nil
 }

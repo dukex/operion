@@ -33,13 +33,11 @@ func NewRegistry() *Registry {
 	}
 }
 
-// RegisterAction registers an action with its metadata and factory
 func (r *Registry) RegisterAction(component *models.RegisteredComponent, factory Factory[models.Action]) {
 	r.actionFactories[component.Type] = factory
 	r.components[component.Type] = component
 }
 
-// RegisterTrigger registers a trigger with its metadata and factory
 func (r *Registry) RegisterTrigger(component *models.RegisteredComponent, factory Factory[models.Trigger]) {
 	r.triggerFactories[component.Type] = factory
 	r.components[component.Type] = component
@@ -99,7 +97,7 @@ func (r *Registry) GetAllComponents() []*models.RegisteredComponent {
 // GetComponentsByType returns components filtered by type (action or trigger)
 func (r *Registry) GetComponentsByType(compType ComponentType) []*models.RegisteredComponent {
 	var components []*models.RegisteredComponent
-	
+
 	for _, component := range r.components {
 		switch compType {
 		case ComponentTypeAction:
@@ -112,7 +110,7 @@ func (r *Registry) GetComponentsByType(compType ComponentType) []*models.Registe
 			}
 		}
 	}
-	
+
 	return components
 }
 

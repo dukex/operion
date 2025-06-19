@@ -10,7 +10,6 @@ type EventType string
 
 const (
 	WorkflowTriggeredEvent    EventType = "workflow.triggered"
-	WorkflowStartedEvent      EventType = "workflow.started"
 	WorkflowFinishedEvent     EventType = "workflow.finished"
 	WorkflowFailedEvent       EventType = "workflow.failed"
 	WorkflowStepStartedEvent  EventType = "workflow.step.started"
@@ -34,10 +33,7 @@ type WorkflowTriggered struct {
 	TriggerData map[string]interface{} `json:"trigger_data,omitempty"`
 }
 
-type WorkflowStarted struct {
-	BaseEvent
-	ExecutionID string `json:"execution_id"`
-}
+
 
 type WorkflowFinished struct {
 	BaseEvent

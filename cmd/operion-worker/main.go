@@ -37,6 +37,11 @@ func main() {
 						Name:  "mysql",
 						Value: false,
 					},
+					&cli.StringFlag{
+						Name:  "data-path",
+						Usage: "Path to data directory",
+						Value: "./data",
+					},
 				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
 					return RunWorkers(cmd)

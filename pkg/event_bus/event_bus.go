@@ -30,7 +30,7 @@ type EventBus struct {
 	subscriber message.Subscriber
 }
 
-func NewEventBus(pub message.Publisher, sub message.Subscriber) *EventBus {
+func NewEventBus(pub message.Publisher, sub message.Subscriber, id string) *EventBus {
 	return &EventBus{
 		publisher:  pub,
 		subscriber: sub,
@@ -43,8 +43,6 @@ func (eb *EventBus) Publish(ctx context.Context, event interface{}) error {
 	switch event.(type) {
 	case events.WorkflowTriggered:
 		topic = string(events.WorkflowTriggeredEvent)
-	case events.WorkflowStarted:
-		topic = string(events.WorkflowStartedEvent)
 	case events.WorkflowFinished:
 		topic = string(events.WorkflowFinishedEvent)
 	case events.WorkflowFailed:
@@ -82,8 +80,6 @@ func (eb *EventBus) Subscribe(ctx context.Context, topic string, handler EventHa
 			switch eventType {
 			case events.WorkflowTriggeredEvent:
 				event = &events.WorkflowTriggered{}
-			case events.WorkflowStartedEvent:
-				event = &events.WorkflowStarted{}
 			case events.WorkflowFinishedEvent:
 				event = &events.WorkflowFinished{}
 			case events.WorkflowFailedEvent:

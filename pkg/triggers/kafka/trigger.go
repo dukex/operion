@@ -21,13 +21,13 @@ type KafkaTrigger struct {
 	WorkflowID    string
 	Brokers       []string
 	Enabled       bool
-	
+
 	// Kafka components
-	consumer       sarama.ConsumerGroup
-	callback       models.TriggerCallback
-	ctx            context.Context
-	cancel         context.CancelFunc
-	logger         *log.Entry
+	consumer sarama.ConsumerGroup
+	callback models.TriggerCallback
+	ctx      context.Context
+	cancel   context.CancelFunc
+	logger   *log.Entry
 }
 
 func NewKafkaTrigger(config map[string]interface{}) (*KafkaTrigger, error) {
@@ -35,7 +35,7 @@ func NewKafkaTrigger(config map[string]interface{}) (*KafkaTrigger, error) {
 	topic, _ := config["topic"].(string)
 	consumerGroup, _ := config["consumer_group"].(string)
 	workflowID, _ := config["workflow_id"].(string)
-	
+
 	// Get broker hosts from environment variable or config
 	var brokers []string
 	if brokersEnv := os.Getenv("KAFKA_BROKERS"); brokersEnv != "" {
@@ -45,7 +45,7 @@ func NewKafkaTrigger(config map[string]interface{}) (*KafkaTrigger, error) {
 	} else {
 		brokers = []string{"localhost:9092"} // default
 	}
-	
+
 	// Default consumer group if not provided
 	if consumerGroup == "" {
 		consumerGroup = fmt.Sprintf("operion-triggers-%s", id)
@@ -67,11 +67,11 @@ func NewKafkaTrigger(config map[string]interface{}) (*KafkaTrigger, error) {
 			"brokers":        brokers,
 		}),
 	}
-	
+
 	if err := trigger.Validate(); err != nil {
 		return nil, err
 	}
-	
+
 	return trigger, nil
 }
 
@@ -143,11 +143,11 @@ func (t *KafkaTrigger) Start(ctx context.Context, callback models.TriggerCallbac
 		t.logger.Info("KafkaTrigger is disabled")
 		return nil
 	}
-	
+
 	t.logger.Info("Starting KafkaTrigger")
 	t.callback = callback
 	t.ctx, t.cancel = context.WithCancel(ctx)
-	
+
 	// Setup Kafka consumer
 	config := sarama.NewConfig()
 	config.Consumer.Group.Session.Timeout = 10 * time.Second
@@ -155,20 +155,20 @@ func (t *KafkaTrigger) Start(ctx context.Context, callback models.TriggerCallbac
 	config.Consumer.Return.Errors = true
 	config.Consumer.Offsets.Initial = sarama.OffsetNewest
 	config.Version = sarama.V2_6_0_0
-	
+
 	consumer, err := sarama.NewConsumerGroup(t.Brokers, t.ConsumerGroup, config)
 	if err != nil {
 		return fmt.Errorf("failed to create Kafka consumer group: %w", err)
 	}
-	
+
 	t.consumer = consumer
-	
+
 	// Start consuming in a goroutine
 	go t.consume()
-	
+
 	// Start error handling goroutine
 	go t.handleErrors()
-	
+
 	t.logger.Info("KafkaTrigger started successfully")
 	return nil
 }
@@ -178,7 +178,7 @@ func (t *KafkaTrigger) consume() {
 		trigger: t,
 		logger:  t.logger,
 	}
-	
+
 	for {
 		select {
 		case <-t.ctx.Done():
@@ -208,18 +208,18 @@ func (t *KafkaTrigger) handleErrors() {
 
 func (t *KafkaTrigger) Stop(ctx context.Context) error {
 	t.logger.Info("Stopping KafkaTrigger")
-	
+
 	if t.cancel != nil {
 		t.cancel()
 	}
-	
+
 	if t.consumer != nil {
 		if err := t.consumer.Close(); err != nil {
 			t.logger.Errorf("Error closing Kafka consumer: %v", err)
 			return err
 		}
 	}
-	
+
 	t.logger.Info("KafkaTrigger stopped")
 	return nil
 }
@@ -249,18 +249,18 @@ func (h *ConsumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession,
 			if message == nil {
 				return nil
 			}
-			
+
 			h.logger.WithFields(log.Fields{
 				"topic":     message.Topic,
 				"partition": message.Partition,
 				"offset":    message.Offset,
 			}).Info("Received Kafka message")
-			
+
 			// Process the message
 			if err := h.processMessage(message); err != nil {
 				h.logger.Errorf("Error processing message: %v", err)
 			}
-			
+
 			// Mark message as processed
 			session.MarkMessage(message, "")
 		}
@@ -276,7 +276,7 @@ func (h *ConsumerGroupHandler) processMessage(message *sarama.ConsumerMessage) e
 			"raw_message": string(message.Value),
 		}
 	}
-	
+
 	// Create trigger data
 	triggerData := map[string]interface{}{
 		"trigger_id":   h.trigger.ID,
@@ -288,19 +288,19 @@ func (h *ConsumerGroupHandler) processMessage(message *sarama.ConsumerMessage) e
 		"message_data": messageData,
 		"headers":      convertHeaders(message.Headers),
 	}
-	
+
 	// Add message key if present
 	if message.Key != nil {
 		triggerData["message_key"] = string(message.Key)
 	}
-	
+
 	// Call the trigger callback
 	go func() {
 		if err := h.trigger.callback(context.Background(), triggerData); err != nil {
 			h.logger.Errorf("Error executing workflow callback: %v", err)
 		}
 	}()
-	
+
 	return nil
 }
 

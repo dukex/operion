@@ -12,13 +12,15 @@ import (
 	"github.com/dukex/operion/pkg/events"
 	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/registry"
+	trc "github.com/dukex/operion/pkg/tracer"
 	"github.com/dukex/operion/pkg/workflow"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
 type TriggerManager struct {
-	serviceID       string
+	id              string
 	repository      *workflow.Repository
 	registry        *registry.Registry
 	eventBus        event_bus.EventBusI
@@ -26,28 +28,37 @@ type TriggerManager struct {
 	triggerMutex    sync.RWMutex
 	ctx             context.Context
 	cancel          context.CancelFunc
+	tp              *sdktrace.TracerProvider
 	logger          *log.Entry
 }
 
 func NewTriggerManager(
-	serviceID string,
+	id string,
 	repository *workflow.Repository,
 	registry *registry.Registry,
 	eventBus event_bus.EventBusI,
 ) *TriggerManager {
 	ctx, cancel := context.WithCancel(context.Background())
 
+	tp, err := trc.InitTracer(ctx, "operion-trigger")
+
+	if err != nil {
+		log.Errorf("Failed to initialize tracer: %v", err)
+		os.Exit(1)
+	}
+
 	return &TriggerManager{
-		serviceID:       serviceID,
+		id:              id,
 		repository:      repository,
 		registry:        registry,
 		eventBus:        eventBus,
 		runningTriggers: make(map[string]models.Trigger),
 		ctx:             ctx,
 		cancel:          cancel,
+		tp:              tp,
 		logger: log.WithFields(log.Fields{
 			"module":     "trigger_manager",
-			"service_id": serviceID,
+			"trigger_id": id,
 		}),
 	}
 }
@@ -55,7 +66,6 @@ func NewTriggerManager(
 func (tm *TriggerManager) Start() error {
 	tm.logger.Info("Starting trigger service")
 
-	// Fetch all workflows to get their triggers
 	workflows, err := tm.repository.FetchAll()
 	if err != nil {
 		return fmt.Errorf("failed to fetch workflows: %w", err)
@@ -190,6 +200,8 @@ func (tm *TriggerManager) createTriggerCallback(workflowID, triggerID, triggerTy
 }
 
 func (tm *TriggerManager) Stop() {
+	tm.tp.Shutdown(tm.ctx)
+
 	tm.cancel()
 
 	tm.triggerMutex.Lock()

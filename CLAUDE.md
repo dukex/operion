@@ -102,7 +102,7 @@ To add new persistence: Implement `persistence.Persistence` interface
 
 ```go
 // Create registry
-registry := registry.GetDefaultRegistry()
+registry.RegisterAllComponent()
 
 // Register action with schema
 component := &models.RegisteredComponent{

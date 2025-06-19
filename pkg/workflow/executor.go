@@ -87,8 +87,7 @@ func (s *Executor) Execute(ctx context.Context, workflowID string, triggerData m
 		shouldExecute, err := s.evaluateConditional(step.Conditional, executionCtx)
 		if err != nil {
 			log.Printf("Error evaluating conditional for step %s: %v", step.ID, err)
-			currentStepID = s.getNextStepID(step, false)
-			continue
+			return fmt.Errorf("error evaluating conditional for step %s: %w", step.ID, err)
 		}
 
 		if !shouldExecute {
@@ -97,23 +96,22 @@ func (s *Executor) Execute(ctx context.Context, workflowID string, triggerData m
 			continue
 		}
 
-		result, err := s.executeAction(ctx, step.Action, &executionCtx)
-		if err != nil {
-			logger.Errorf("Failed to execute action for step: %v", err)
-			currentStepID = s.getNextStepID(step, false)
-			continue
-		}
+	 	result, err := s.executeAction(ctx, step.Action, &executionCtx)
+	 	if err != nil {
+	 		logger.Errorf("Failed to execute action for step: %v", err)
+			return fmt.Errorf("failed to execute action for step %s: %w", step.ID, err)
+	 	}
 
-		if executionCtx.StepResults == nil {
-			executionCtx.StepResults = make(map[string]interface{})
-		}
-		executionCtx.StepResults[step.Name] = result
-		logger.Infof("Step executed successfully, result: %v", result)
+	 	if executionCtx.StepResults == nil {
+	 		executionCtx.StepResults = make(map[string]interface{})
+	 	}
+	 	executionCtx.StepResults[step.Name] = result
+	 	logger.Infof("Step executed successfully, result: %v", result)
 
-		currentStepID = s.getNextStepID(step, true)
+	 	currentStepID = s.getNextStepID(step, true)
 	}
 
-	log.Printf("Completed execution of workflow %s (execution ID: %s)", workflowID, executionCtx.ID)
+	logger.Infof("Completed execution of workflow (execution ID: %s)", executionCtx.ID)
 	return nil
 }
 

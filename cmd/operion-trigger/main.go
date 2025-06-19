@@ -37,8 +37,8 @@ func main() {
 					},
 					&cli.StringFlag{
 						Name:  "data-path",
-						Usage: "Path to workflow data directory",
-						Value: "./data/workflows",
+						Usage: "Path to data directory",
+						Value: "./data",
 					},
 				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
