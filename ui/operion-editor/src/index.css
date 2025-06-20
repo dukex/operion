@@ -1,0 +1,304 @@
+@import "tailwindcss";
+
+/* CSS Variables for light and dark modes */
+:root {
+  --background: 210 20% 95%; /* #F0F4FF */
+  --foreground: 224 71% 4%; /* hsl(224, 71%, 4%) for dark text on light bg */
+
+  --card: 210 20% 100%; /* Slightly lighter than background or pure white */
+  --card-foreground: 224 71% 4%;
+
+  --popover: 210 20% 100%;
+  --popover-foreground: 224 71% 4%;
+
+  --primary: 210 75% 50%; /* #3285FF */
+  --primary-foreground: 0 0% 100%; /* White text on primary */
+
+  --secondary: 210 20% 85%; /* A slightly darker shade for secondary elements */
+  --secondary-foreground: 224 71% 4%;
+
+  --muted: 210 20% 80%;
+  --muted-foreground: 210 10% 40%; /* Softer text color */
+
+  --accent: 180 60% 40%; /* #29A9A9 */
+  --accent-foreground: 0 0% 100%; /* White text on accent */
+
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
+
+  --border: 210 20% 80%;
+  --input: 210 20% 88%;
+  --ring: 210 75% 50%; /* Use primary color for rings */
+
+  --radius: 0.5rem;
+
+  --chart-1: 12 76% 61%;
+  --chart-2: 173 58% 39%;
+  --chart-3: 197 37% 24%;
+  --chart-4: 43 74% 66%;
+  --chart-5: 27 87% 67%;
+
+  --sidebar-background: 210 20% 98%; /* Slightly off-white for sidebar */
+  --sidebar-foreground: 224 71% 4%;
+  --sidebar-primary: 210 75% 50%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 180 60% 40%;
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-border: 210 20% 85%;
+  --sidebar-ring: 210 75% 50%;
+}
+
+.dark {
+  --background: 224 71% 4%;
+  --foreground: 210 20% 95%;
+
+  --card: 224 71% 8%;
+  --card-foreground: 210 20% 95%;
+
+  --popover: 224 71% 8%;
+  --popover-foreground: 210 20% 95%;
+
+  --primary: 210 75% 50%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 224 71% 12%;
+  --secondary-foreground: 210 20% 95%;
+
+  --muted: 224 71% 12%;
+  --muted-foreground: 210 10% 60%;
+
+  --accent: 180 60% 40%;
+  --accent-foreground: 0 0% 100%;
+
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 0 0% 98%;
+
+  --border: 224 71% 12%;
+  --input: 224 71% 10%;
+  --ring: 210 75% 50%;
+  
+  --chart-1: 220 70% 50%;
+  --chart-2: 160 60% 45%;
+  --chart-3: 30 80% 55%;
+  --chart-4: 280 65% 60%;
+  --chart-5: 340 75% 55%;
+
+  --sidebar-background: 224 71% 6%;
+  --sidebar-foreground: 210 20% 95%;
+  --sidebar-primary: 210 75% 50%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 180 60% 40%;
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-border: 224 71% 10%;
+  --sidebar-ring: 210 75% 50%;
+}
+
+/* Theme customizations using the new @theme directive */
+@theme {
+  /* Container */
+  --container-center: true;
+  --container-padding: 2rem;
+  --container-2xl: 1400px;
+
+  /* Font families */
+  --font-family-body: Inter, sans-serif;
+  --font-family-headline: Inter, sans-serif;
+  --font-family-code: 'Source Code Pro', monospace;
+
+  /* Custom colors - these reference CSS variables defined above */
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  
+  /* Chart colors */
+  --color-chart-1: hsl(var(--chart-1));
+  --color-chart-2: hsl(var(--chart-2));
+  --color-chart-3: hsl(var(--chart-3));
+  --color-chart-4: hsl(var(--chart-4));
+  --color-chart-5: hsl(var(--chart-5));
+  
+  /* Sidebar colors */
+  --color-sidebar: hsl(var(--sidebar-background));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+
+  /* Border radius */
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  /* Keyframes */
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+}
+
+/* Define keyframes */
+@keyframes accordion-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+  }
+}
+
+@keyframes accordion-up {
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+  to {
+    height: 0;
+  }
+}
+
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-family-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom scrollbar styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--background) / 0.5);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted));
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--accent) / 0.8);
+}
+
+/* Custom utilities that might have been added by tailwindcss-animate plugin */
+@layer utilities {
+  .animate-accordion-down {
+    animation: var(--animate-accordion-down);
+  }
+  
+  .animate-accordion-up {
+    animation: var(--animate-accordion-up);
+  }
+}
+/* Custom scrollbar styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: hsl(var(--background) / 0.5);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted));
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--accent) / 0.8);
+}
+
+
+.react-flow__devtools {
+  --border-radius: 4px;
+  --highlight-color: rgba(238, 58, 115, 1);
+  --font: monospace, sans-serif;
+ 
+  border-radius: var(--border-radius);
+  font-size: 11px;
+  font-family: var(--font);
+}
+ 
+.react-flow__devtools button {
+  background: white;
+  border: none;
+  padding: 5px 15px;
+  color: #222;
+  font-weight: bold;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: var(--font);
+  background-color: #f4f4f4;
+  border-right: 1px solid #ddd;
+}
+ 
+.react-flow__devtools button:hover {
+  background: var(--highlight-color);
+  opacity: 0.8;
+  color: white;
+}
+ 
+.react-flow__devtools button.active {
+  background: var(--highlight-color);
+  color: white;
+}
+ 
+.react-flow__devtools button:first-child {
+  border-radius: var(--border-radius) 0 0 var(--border-radius);
+}
+ 
+.react-flow__devtools button:last-child {
+  border-radius: 0 var(--border-radius) var(--border-radius) 0;
+  border-right: none;
+}
+ 
+.react-flow__devtools-changelogger {
+  pointer-events: none;
+  position: relative;
+  top: 50px;
+  left: 20px;
+  font-family: var(--font);
+}
+ 
+.react-flow__devtools-title {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+ 
+.react-flow__devtools-nodeinspector {
+  pointer-events: none;
+  font-family: monospace, sans-serif;
+  font-size: 10px;
+}
+ 
+.react-flow__devtools-nodeinfo {
+  top: 5px;
+}
