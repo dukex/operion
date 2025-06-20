@@ -2,29 +2,26 @@ import { useParams } from "react-router";
 import type { Workflow, ApiErrorProblem } from "@/types/operion";
 import { useCallback, useEffect, useState } from "react";
 import { getWorkflowById } from "@/lib/api-client";
-import { AlertTriangle, Save } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import {
   ReactFlow,
   MiniMap,
-  Controls,
   Background,
   useNodesState,
   useEdgesState,
-  Node,
+  type Node,
   addEdge,
-  Edge,
-  ReactFlowProvider,
+  type Edge,
   MarkerType,
   Position,
   BackgroundVariant,
-  ConnectionLineType,
+  type Connection,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import type { TriggerItem, WorkflowStep } from "../../types/operion";
-import DevTools from "../../components/devtools/DevTools";
-import TriggerNode from "../../components/flow/TriggerNode";
-import StepNode from "../../components/flow/StepNode";
+import type { TriggerItem, WorkflowStep } from "@/types/operion";
+import TriggerNode from "@/components/flow/TriggerNode";
+import StepNode from "@/components/flow/StepNode";
 import dagre from "@dagrejs/dagre";
 
 const nodeTypes = {
@@ -36,7 +33,7 @@ const nodeWidth = 359;
 const nodeHeight = 102;
 
 const getLayoutedElements = (
-  nodes: Node[],
+  nodes: Partial<Node>[],
   edges: Edge[],
   direction = "TB"
 ): { nodes: Node[]; edges: Edge[] } => {
@@ -44,7 +41,7 @@ const getLayoutedElements = (
   dagreGraph.setGraph({ rankdir: direction });
 
   nodes.forEach((node) => {
-    dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
+    dagreGraph.setNode(node.id!, { width: nodeWidth, height: nodeHeight });
   });
 
   edges.forEach((edge) => {
@@ -54,7 +51,7 @@ const getLayoutedElements = (
   dagre.layout(dagreGraph);
 
   const newNodes = nodes.map((node) => {
-    const nodeWithPosition = dagreGraph.node(node.id);
+    const nodeWithPosition = dagreGraph.node(node.id!);
     const newNode = {
       ...node,
       targetPosition: isHorizontal ? Position.Left : Position.Top,
@@ -65,7 +62,7 @@ const getLayoutedElements = (
       },
     };
 
-    return newNode;
+    return newNode as Node;
   });
 
   return { nodes: newNodes, edges };
@@ -85,7 +82,7 @@ export default function WorkflowsGet() {
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
   const onConnect = useCallback(
-    (params) => setEdges((eds) => addEdge(params, eds)),
+    (params: Edge | Connection) => setEdges((eds) => addEdge(params, eds)),
     [setEdges]
   );
 
@@ -114,7 +111,7 @@ export default function WorkflowsGet() {
   useEffect(() => {
     if (!workflow) return;
 
-    const triggerNodes: Node[] = workflow.triggers.map<Node>(
+    const triggerNodes: Partial<Node>[] = workflow.triggers.map<Partial<Node>>(
       (trigger: TriggerItem) => {
         return {
           id: trigger.id,
@@ -124,7 +121,7 @@ export default function WorkflowsGet() {
       }
     );
 
-    const stepsNodes: Node[] = workflow.steps.map<Node>(
+    const stepsNodes: Partial<Node>[] = workflow.steps.map<Partial<Node>>(
       (step: WorkflowStep) => {
         return {
           id: step.id,
@@ -237,7 +234,7 @@ export default function WorkflowsGet() {
               {/* <Controls /> */}
 
               {/* <DevTools /> */}
-              {/* <MiniMap /> */}
+              <MiniMap />
             </ReactFlow>
           </div>
         </div>

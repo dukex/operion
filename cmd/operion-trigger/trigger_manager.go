@@ -181,7 +181,7 @@ func (tm *TriggerManager) createTriggerCallback(workflowID, triggerID, triggerTy
 
 		event := events.WorkflowTriggered{
 			BaseEvent:   events.NewBaseEvent(events.WorkflowTriggeredEvent, workflowID),
-			TriggerID:  triggerID,
+			TriggerID:   triggerID,
 			TriggerType: triggerType,
 			TriggerData: data,
 		}

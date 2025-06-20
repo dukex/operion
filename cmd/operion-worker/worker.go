@@ -104,23 +104,22 @@ func (w *Worker) handleWorkflowTriggered(ctx context.Context, event interface{})
 	}
 	println(triggerData)
 
+	if err := w.workflowExecutor.Execute(ctx, triggeredEvent.WorkflowID, triggerData); err != nil {
+		w.logger.WithError(err).Error("Failed to execute workflow")
 
-	 if err := w.workflowExecutor.Execute(ctx, triggeredEvent.WorkflowID, triggerData); err != nil {
-	 	w.logger.WithError(err).Error("Failed to execute workflow")
+		// 	failedEvent := events.WorkflowFailed{
+		// 		BaseEvent:   events.NewBaseEvent(events.WorkflowFailedEvent, triggeredEvent.WorkflowID),
+		// 		ExecutionID: triggeredEvent.ID,
+		// 		Error:       err.Error(),
+		// 	}
+		// 	failedEvent.WorkerID = w.id
 
-	// 	failedEvent := events.WorkflowFailed{
-	// 		BaseEvent:   events.NewBaseEvent(events.WorkflowFailedEvent, triggeredEvent.WorkflowID),
-	// 		ExecutionID: triggeredEvent.ID,
-	// 		Error:       err.Error(),
-	// 	}
-	// 	failedEvent.WorkerID = w.id
+		// 	if publishErr := w.eventBus.Publish(ctx, failedEvent); publishErr != nil {
+		// 		w.logger.WithError(publishErr).Error("Failed to publish workflow failed event")
+		// 	}
 
-	// 	if publishErr := w.eventBus.Publish(ctx, failedEvent); publishErr != nil {
-	// 		w.logger.WithError(publishErr).Error("Failed to publish workflow failed event")
-	// 	}
-
-	 	return err
-	 }
+		return err
+	}
 
 	// finishedEvent := events.WorkflowFinished{
 	// 	BaseEvent:   events.NewBaseEvent(events.WorkflowFinishedEvent, triggeredEvent.WorkflowID),
