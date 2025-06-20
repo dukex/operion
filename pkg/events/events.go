@@ -9,7 +9,7 @@ import (
 type EventType string
 
 const (
-	WorkflowTriggeredEvent    EventType = "workflow.triggered"
+	WorkflowTriggeredEvent EventType = "workflow.triggered"
 	// WorkflowFinishedEvent     EventType = "workflow.finished"
 	// WorkflowFailedEvent       EventType = "workflow.failed"
 	// WorkflowStepStartedEvent  EventType = "workflow.step.started"
@@ -32,8 +32,6 @@ type WorkflowTriggered struct {
 	TriggerType string                 `json:"trigger_type"`
 	TriggerData map[string]interface{} `json:"trigger_data,omitempty"`
 }
-
-
 
 // type WorkflowFinished struct {
 // 	BaseEvent

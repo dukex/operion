@@ -30,7 +30,7 @@ func registerActions(registry *Registry) {
 			return transform_action.NewTransformAction(config)
 		},
 	)
-	
+
 	registry.RegisterAction(
 		file_write_action.GetFileWriteActionSchema(),
 		func(config map[string]interface{}) (models.Action, error) {
@@ -62,5 +62,3 @@ func registerTriggers(registry *Registry) {
 		},
 	)
 }
-
-

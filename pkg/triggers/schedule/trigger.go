@@ -121,7 +121,7 @@ func (t *ScheduleTrigger) run() {
 	t.logger.Info("Cron job triggered")
 
 	triggerData := map[string]interface{}{
-		"timestamp":    time.Now().UTC().Format(time.RFC3339),
+		"timestamp": time.Now().UTC().Format(time.RFC3339),
 	}
 
 	go func() {

@@ -96,19 +96,19 @@ func (s *Executor) Execute(ctx context.Context, workflowID string, triggerData m
 			continue
 		}
 
-	 	result, err := s.executeAction(ctx, step.Action, &executionCtx)
-	 	if err != nil {
-	 		logger.Errorf("Failed to execute action for step: %v", err)
+		result, err := s.executeAction(ctx, step.Action, &executionCtx)
+		if err != nil {
+			logger.Errorf("Failed to execute action for step: %v", err)
 			return fmt.Errorf("failed to execute action for step %s: %w", step.ID, err)
-	 	}
+		}
 
-	 	if executionCtx.StepResults == nil {
-	 		executionCtx.StepResults = make(map[string]interface{})
-	 	}
-	 	executionCtx.StepResults[step.Name] = result
-	 	logger.Infof("Step executed successfully, result: %v", result)
+		if executionCtx.StepResults == nil {
+			executionCtx.StepResults = make(map[string]interface{})
+		}
+		executionCtx.StepResults[step.UID] = result
+		logger.Infof("Step executed successfully, result: %v", result)
 
-	 	currentStepID = s.getNextStepID(step, true)
+		currentStepID = s.getNextStepID(step, true)
 	}
 
 	logger.Infof("Completed execution of workflow (execution ID: %s)", executionCtx.ID)

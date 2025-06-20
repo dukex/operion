@@ -5,7 +5,8 @@ type StepType string
 type WorkflowStep struct {
 	ID          string                `json:"id"`
 	Action      ActionItem            `json:"action" validate:"required"`
-	Name        string                `json:"name" validate:"required,lowercase,alphanum"`
+	UID         string                `json:"uid" validate:"required,lowercase,alphanum"`
+	Name        string                `json:"name" validate:"required"`
 	Conditional ConditionalExpression `json:"conditional,omitempty"`
 	OnSuccess   *string               `json:"on_success,omitempty"`
 	OnFailure   *string               `json:"on_failure,omitempty"`

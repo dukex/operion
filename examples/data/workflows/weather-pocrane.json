@@ -17,7 +17,6 @@
       "action": {
         "id": "e9ec5d3a-cb73-4b36-882b-06cda5200a87",
         "type": "http_request",
-        "name": "",
         "description": "",
         "configuration": {
           "headers": {
@@ -31,7 +30,8 @@
           "url": "https://api.open-meteo.com/v1/forecast?latitude=-19.6197\u0026longitude=-41.6369\u0026daily=sunset\u0026current=temperature_2m,rain\u0026timezone=America%2FSao_Paulo\u0026past_days=1\u0026forecast_days=1"
         }
       },
-      "name": "fetch_weather",
+      "uid": "fetch_weather",
+      "name": "Fetch Weather",
       "conditional": {
         "language": "",
         "expression": ""
@@ -45,14 +45,14 @@
       "action": {
         "id": "26ea6a53-b9b0-4deb-afea-1156e203ef64",
         "type": "transform",
-        "name": "",
         "description": "",
         "configuration": {
           "expression": "{ \"temp\": $.current.temperature_2m, \"rain\": $.current.rain}",
           "input": "$.fetch_weather.body"
         }
       },
-      "name": "process_weather",
+      "name": "Extract temperature and rain",
+      "uid": "process_weather",
       "conditional": {
         "language": "",
         "expression": ""
@@ -66,7 +66,6 @@
       "action": {
         "id": "e9ffc262-3111-4ba8-b0cc-a705d3cf3435",
         "type": "file_write",
-        "name": "",
         "description": "",
         "configuration": {
           "directory": "/tmp/weather",
@@ -75,7 +74,8 @@
           "overwrite": true
         }
       },
-      "name": "save_weather",
+      "name": "Save Weather Data",
+      "uid": "save_weather",
       "conditional": {
         "language": "",
         "expression": ""
@@ -88,7 +88,6 @@
       "action": {
         "id": "6d335a5c-33af-4fda-ae79-a767934ce159",
         "type": "log",
-        "name": "Log Message",
         "description": "Log a message with configurable level",
         "configuration": {
           "level": "info",

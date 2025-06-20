@@ -14,11 +14,10 @@
   "steps": [
     {
       "id": "c90f6195-d6fb-4519-803d-cf32f5f86c48",
+      "name": "Fetch Bitcoin Data",
       "action": {
         "id": "78fddb21-01b9-4311-a969-7e6c7d834652",
         "type": "http_request",
-        "name": "",
-        "description": "",
         "configuration": {
           "headers": {
             "Content": "application/json"
@@ -31,7 +30,7 @@
           "url": "https://api.coinpaprika.com/v1/coins/btc-bitcoin/ohlcv/today"
         }
       },
-      "name": "bitcoin_data",
+      "uid": "bitcoin_data",
       "conditional": {
         "language": "",
         "expression": ""
@@ -45,14 +44,14 @@
       "action": {
         "id": "6ffc6b23-00bd-4e0c-8718-caa1ede0becf",
         "type": "transform",
-        "name": "",
         "description": "",
         "configuration": {
           "expression": "{  \"price\": $.close ? $.close : $.open}",
           "input": "$.bitcoin_data.body"
         }
       },
-      "name": "process_bitcoin_data",
+      "uid": "process_bitcoin_data",
+      "name": "Extract Bitcoin Price",
       "conditional": {
         "language": "",
         "expression": ""
@@ -66,7 +65,6 @@
       "action": {
         "id": "e7ca16b7-625b-4aa8-9f01-13eba575577e",
         "type": "file_write",
-        "name": "",
         "description": "",
         "configuration": {
           "directory": "/tmp",
@@ -75,7 +73,8 @@
           "overwrite": true
         }
       },
-      "name": "file_write",
+      "uid": "file_write",
+      "name": "Write to File",
       "conditional": {
         "language": "",
         "expression": ""
@@ -88,11 +87,11 @@
       "action": {
         "id": "49077a6a-8aa8-4fc9-9637-ea28c711a88a",
         "type": "log",
-        "name": "Log Message",
         "description": "Log a message with configurable level",
         "configuration": {}
       },
-      "name": "log_4",
+      "uid": "log-error",
+      "name": "Log Error",
       "conditional": {
         "language": "",
         "expression": ""

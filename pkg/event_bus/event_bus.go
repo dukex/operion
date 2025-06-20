@@ -42,7 +42,7 @@ func (eb *EventBus) Publish(ctx context.Context, event interface{}) error {
 
 	switch event.(type) {
 	// case events.WorkflowTriggered:
-		// topic = string(events.WorkflowTriggeredEvent)
+	// topic = string(events.WorkflowTriggeredEvent)
 	// case events.WorkflowFinished:
 	// 	topic = string(events.WorkflowFinishedEvent)
 	// case events.WorkflowFailed:
