@@ -80,7 +80,6 @@ func (w *Worker) handleWorkflowTriggered(ctx context.Context, event interface{})
 	ctx, span := trace.Start(ctx, "handleWorkflowTriggered")
 	defer span.End()
 
-	println(ctx)
 	triggeredEvent, ok := event.(*events.WorkflowTriggered)
 	if !ok {
 		w.logger.Error("Invalid event type for WorkflowTriggered")

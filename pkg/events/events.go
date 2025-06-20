@@ -10,11 +10,11 @@ type EventType string
 
 const (
 	WorkflowTriggeredEvent    EventType = "workflow.triggered"
-	WorkflowFinishedEvent     EventType = "workflow.finished"
-	WorkflowFailedEvent       EventType = "workflow.failed"
-	WorkflowStepStartedEvent  EventType = "workflow.step.started"
-	WorkflowStepFinishedEvent EventType = "workflow.step.finished"
-	WorkflowStepFailedEvent   EventType = "workflow.step.failed"
+	// WorkflowFinishedEvent     EventType = "workflow.finished"
+	// WorkflowFailedEvent       EventType = "workflow.failed"
+	// WorkflowStepStartedEvent  EventType = "workflow.step.started"
+	// WorkflowStepFinishedEvent EventType = "workflow.step.finished"
+	// WorkflowStepFailedEvent   EventType = "workflow.step.failed"
 )
 
 type BaseEvent struct {
@@ -35,47 +35,47 @@ type WorkflowTriggered struct {
 
 
 
-type WorkflowFinished struct {
-	BaseEvent
-	ExecutionID string                 `json:"execution_id"`
-	Result      map[string]interface{} `json:"result,omitempty"`
-	Duration    time.Duration          `json:"duration"`
-}
+// type WorkflowFinished struct {
+// 	BaseEvent
+// 	ExecutionID string                 `json:"execution_id"`
+// 	Result      map[string]interface{} `json:"result,omitempty"`
+// 	Duration    time.Duration          `json:"duration"`
+// }
 
-type WorkflowFailed struct {
-	BaseEvent
-	ExecutionID string        `json:"execution_id"`
-	Error       string        `json:"error"`
-	Duration    time.Duration `json:"duration"`
-}
+// type WorkflowFailed struct {
+// 	BaseEvent
+// 	ExecutionID string        `json:"execution_id"`
+// 	Error       string        `json:"error"`
+// 	Duration    time.Duration `json:"duration"`
+// }
 
-type WorkflowStepStarted struct {
-	BaseEvent
-	ExecutionID string `json:"execution_id"`
-	StepID      string `json:"step_id"`
-	StepName    string `json:"step_name"`
-	ActionType  string `json:"action_type"`
-}
+// type WorkflowStepStarted struct {
+// 	BaseEvent
+// 	ExecutionID string `json:"execution_id"`
+// 	StepID      string `json:"step_id"`
+// 	StepName    string `json:"step_name"`
+// 	ActionType  string `json:"action_type"`
+// }
 
-type WorkflowStepFinished struct {
-	BaseEvent
-	ExecutionID string                 `json:"execution_id"`
-	StepID      string                 `json:"step_id"`
-	StepName    string                 `json:"step_name"`
-	ActionType  string                 `json:"action_type"`
-	Result      map[string]interface{} `json:"result,omitempty"`
-	Duration    time.Duration          `json:"duration"`
-}
+// type WorkflowStepFinished struct {
+// 	BaseEvent
+// 	ExecutionID string                 `json:"execution_id"`
+// 	StepID      string                 `json:"step_id"`
+// 	StepName    string                 `json:"step_name"`
+// 	ActionType  string                 `json:"action_type"`
+// 	Result      map[string]interface{} `json:"result,omitempty"`
+// 	Duration    time.Duration          `json:"duration"`
+// }
 
-type WorkflowStepFailed struct {
-	BaseEvent
-	ExecutionID string        `json:"execution_id"`
-	StepID      string        `json:"step_id"`
-	StepName    string        `json:"step_name"`
-	ActionType  string        `json:"action_type"`
-	Error       string        `json:"error"`
-	Duration    time.Duration `json:"duration"`
-}
+// type WorkflowStepFailed struct {
+// 	BaseEvent
+// 	ExecutionID string        `json:"execution_id"`
+// 	StepID      string        `json:"step_id"`
+// 	StepName    string        `json:"step_name"`
+// 	ActionType  string        `json:"action_type"`
+// 	Error       string        `json:"error"`
+// 	Duration    time.Duration `json:"duration"`
+// }
 
 func NewBaseEvent(eventType EventType, workflowID string) BaseEvent {
 	return BaseEvent{

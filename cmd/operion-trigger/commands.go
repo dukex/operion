@@ -37,6 +37,7 @@ func RunTriggerService(cmd *cli.Command) error {
 	workflowRepository := workflow.NewRepository(persistence)
 
 	// Setup registry
+	registry.RegisterAllComponents()
 	registry := registry.DefaultRegistry
 
 	// Setup event bus

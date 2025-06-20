@@ -41,20 +41,20 @@ func (eb *EventBus) Publish(ctx context.Context, event interface{}) error {
 	var topic string
 
 	switch event.(type) {
-	case events.WorkflowTriggered:
-		topic = string(events.WorkflowTriggeredEvent)
-	case events.WorkflowFinished:
-		topic = string(events.WorkflowFinishedEvent)
-	case events.WorkflowFailed:
-		topic = string(events.WorkflowFailedEvent)
-	case events.WorkflowStepStarted:
-		topic = string(events.WorkflowStepStartedEvent)
-	case events.WorkflowStepFinished:
-		topic = string(events.WorkflowStepFinishedEvent)
-	case events.WorkflowStepFailed:
-		topic = string(events.WorkflowStepFailedEvent)
+	// case events.WorkflowTriggered:
+		// topic = string(events.WorkflowTriggeredEvent)
+	// case events.WorkflowFinished:
+	// 	topic = string(events.WorkflowFinishedEvent)
+	// case events.WorkflowFailed:
+	// 	topic = string(events.WorkflowFailedEvent)
+	// case events.WorkflowStepStarted:
+	// 	topic = string(events.WorkflowStepStartedEvent)
+	// case events.WorkflowStepFinished:
+	// 	topic = string(events.WorkflowStepFinishedEvent)
+	// case events.WorkflowStepFailed:
+	// 	topic = string(events.WorkflowStepFailedEvent)
 	default:
-		topic = "unknown"
+		topic = "workflows.events"
 	}
 
 	payload, err := json.Marshal(event)
@@ -80,16 +80,16 @@ func (eb *EventBus) Subscribe(ctx context.Context, topic string, handler EventHa
 			switch eventType {
 			case events.WorkflowTriggeredEvent:
 				event = &events.WorkflowTriggered{}
-			case events.WorkflowFinishedEvent:
-				event = &events.WorkflowFinished{}
-			case events.WorkflowFailedEvent:
-				event = &events.WorkflowFailed{}
-			case events.WorkflowStepStartedEvent:
-				event = &events.WorkflowStepStarted{}
-			case events.WorkflowStepFinishedEvent:
-				event = &events.WorkflowStepFinished{}
-			case events.WorkflowStepFailedEvent:
-				event = &events.WorkflowStepFailed{}
+			// case events.WorkflowFinishedEvent:
+			// 	event = &events.WorkflowFinished{}
+			// case events.WorkflowFailedEvent:
+			// 	event = &events.WorkflowFailed{}
+			// case events.WorkflowStepStartedEvent:
+			// 	event = &events.WorkflowStepStarted{}
+			// case events.WorkflowStepFinishedEvent:
+			// 	event = &events.WorkflowStepFinished{}
+			// case events.WorkflowStepFailedEvent:
+			// 	event = &events.WorkflowStepFailed{}
 			default:
 				msg.Nack()
 				continue

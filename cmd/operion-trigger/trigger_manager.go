@@ -179,9 +179,9 @@ func (tm *TriggerManager) createTriggerCallback(workflowID, triggerID, triggerTy
 
 		logger.Info("Trigger fired, publishing event")
 
-		// Create workflow triggered event
 		event := events.WorkflowTriggered{
 			BaseEvent:   events.NewBaseEvent(events.WorkflowTriggeredEvent, workflowID),
+			TriggerID:  triggerID,
 			TriggerType: triggerType,
 			TriggerData: data,
 		}
@@ -217,18 +217,6 @@ func (tm *TriggerManager) Stop() {
 	// Clear running triggers
 	tm.runningTriggers = make(map[string]models.Trigger)
 	tm.logger.Info("All triggers stopped")
-}
-
-func (tm *TriggerManager) GetRunningTriggers() map[string]models.Trigger {
-	tm.triggerMutex.RLock()
-	defer tm.triggerMutex.RUnlock()
-
-	// Return a copy to avoid race conditions
-	triggers := make(map[string]models.Trigger)
-	for id, trigger := range tm.runningTriggers {
-		triggers[id] = trigger
-	}
-	return triggers
 }
 
 func generateEventID() string {
