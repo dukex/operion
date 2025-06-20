@@ -76,6 +76,21 @@ air
 
 The API will be available at `http://localhost:3000`
 
+### Start the Visual Editor
+
+```bash
+# Navigate to the UI directory
+cd ui/operion-editor
+
+# Install dependencies (first time only)
+npm install
+
+# Start the development server
+npm run dev
+```
+
+The visual workflow editor will be available at `http://localhost:5173`
+
 ### Start Services
 
 #### Trigger Service (Event Publishers)
@@ -169,8 +184,10 @@ air                 # Start development server with live reload
 - **Database**: Execute database operations
 - **Template**: Generate files from templates
 
-### Planned Interfaces
+### Available Interfaces
+- **Visual Workflow Editor**: React-based browser interface for visualizing and editing workflows
 - **Web Dashboard**: Browser-based workflow editor and monitor
+
+### Planned Interfaces
 - **YAML Configuration**: Define workflows in YAML format
 - **Extended CLI**: Additional workflow management commands
-- 

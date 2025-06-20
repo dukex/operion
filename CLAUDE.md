@@ -48,6 +48,15 @@ air                 # Start development server with live reload (proxy on port 3
 ./bin/api           # Run built API server directly
 ```
 
+### Visual Editor Development
+```bash
+cd ui/operion-editor    # Navigate to UI directory
+npm install             # Install dependencies (first time)
+npm run dev             # Start development server on port 5173
+npm run build           # Build for production
+npm run lint            # Run ESLint
+```
+
 ### Dependencies
 ```bash
 go mod download     # Download dependencies
@@ -60,6 +69,7 @@ go mod tidy         # Clean up dependencies
 - **API Server** (`cmd/api/`) - Fiber-based REST API with workflows endpoint
 - **CLI Worker** (`cmd/operion-worker/`) - Background workflow execution tool
 - **CLI Trigger Service** (`cmd/operion-trigger/`) - Trigger listener and event publisher
+- **Visual Workflow Editor** (`ui/operion-editor/`) - React-based browser interface for workflow visualization
 - **Domain Models** (`pkg/models/`) - Core workflow, action, and trigger models
 - **Workflow Engine** (`pkg/workflow/`) - Workflow execution, management, and repository
 - **Event System** (`pkg/event_bus/`, `pkg/events/`) - Event-driven communication
@@ -74,8 +84,9 @@ go mod tidy         # Clean up dependencies
 - Actions will be registered as they are migrated to the new architecture
 
 ### Incomplete/Placeholder Components
-- **Dashboard** (`cmd/dashboard/`) - Directory exists but not implemented
+- **Dashboard** (`cmd/dashboard/`) - Directory exists but not implemented (replaced by React-based UI)
 - **Actions** - Need to be migrated to new pkg structure and registered
+- **Visual Editor Editing** - Current UI is read-only, workflow creation/editing features need implementation
 
 ## Key Configuration
 
