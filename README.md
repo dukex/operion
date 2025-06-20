@@ -12,6 +12,9 @@ Operion enables you to create automated workflows through:
 - **Context**: Data sharing between workflow steps
 - **Workers**: Background processes that execute workflows
 
+![image](https://github.com/user-attachments/assets/8dfd67d2-fe4b-4196-ab11-3d931ee2f90c)
+
+
 ## Features
 
 - **Extensible** - Plugin architecture for adding new triggers and actions
