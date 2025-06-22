@@ -102,7 +102,6 @@ func (w *Worker) handleWorkflowTriggered(ctx context.Context, event interface{})
 	if triggeredEvent.TriggerData != nil {
 		triggerData = triggeredEvent.TriggerData
 	}
-	println(triggerData)
 
 	if err := w.workflowExecutor.Execute(ctx, triggeredEvent.WorkflowID, triggerData); err != nil {
 		w.logger.WithError(err).Error("Failed to execute workflow")

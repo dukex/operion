@@ -1,9 +1,5 @@
 package models
 
-import (
-	log "github.com/sirupsen/logrus"
-)
-
 type ExecutionContext struct {
 	ID          string
 	WorkflowID  string
@@ -11,10 +7,9 @@ type ExecutionContext struct {
 	Variables   map[string]interface{}
 	StepResults map[string]interface{}
 	Metadata    map[string]interface{}
-	Logger      *log.Entry
 }
 
-func (ex *ExecutionContext) WithLogger(logger *log.Entry) *ExecutionContext {
+func (ex *ExecutionContext) WithLogger() *ExecutionContext {
 	return &ExecutionContext{
 		WorkflowID:  ex.WorkflowID,
 		ID:          ex.ID,
@@ -22,6 +17,5 @@ func (ex *ExecutionContext) WithLogger(logger *log.Entry) *ExecutionContext {
 		Variables:   ex.Variables,
 		StepResults: ex.StepResults,
 		Metadata:    ex.Metadata,
-		Logger:      logger,
 	}
 }

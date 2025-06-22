@@ -2,10 +2,10 @@
   "id": "weather-pocrane",
   "name": "Pocrane Weather Monitor",
   "description": "Monitor weather conditions in Pocrane, MG, Brazil every minute",
-  "triggers": [
+  "workflow_triggers": [
     {
       "id": "9294bfce-4a7a-43fc-ac6a-c74d76e7a0f0",
-      "type": "schedule",
+      "trigger_id": "schedule",
       "configuration": {
         "cron": "*/1 * * * *"
       }
@@ -105,12 +105,7 @@
   "variables": null,
   "status": "active",
   "metadata": {
-    "tags": [
-      "weather",
-      "pocrane",
-      "brazil",
-      "monitor"
-    ]
+    "tags": ["weather", "pocrane", "brazil", "monitor"]
   },
   "owner": "",
   "created_at": "2025-06-15T04:00:00Z",

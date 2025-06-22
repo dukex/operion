@@ -2,10 +2,12 @@
   "id": "bitcoin-price",
   "name": "Bitcoin Price",
   "description": "This is a sample workflow to demonstrate the structure and content of a JSON file for workflows.",
-  "triggers": [
+  "workflow_triggers": [
     {
       "id": "3c18ab9e-a291-4e1a-b8fd-e3a02299d8ce",
-      "type": "schedule",
+      "name": "Scheduled Trigger",
+      "description": "Trigger to fetch Bitcoin price every minute",
+      "trigger_id": "schedule",
       "configuration": {
         "cron": "*/1 * * * *"
       }
@@ -102,11 +104,7 @@
   "variables": {},
   "status": "active",
   "metadata": {
-    "tags": [
-      "sample",
-      "bitcoin",
-      "api"
-    ]
+    "tags": ["sample", "bitcoin", "api"]
   },
   "owner": "",
   "created_at": "2023-10-01T00:00:00Z",

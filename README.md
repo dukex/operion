@@ -17,10 +17,11 @@ Operion enables you to create automated workflows through:
 
 ## Features
 
-- **Extensible** - Plugin architecture for adding new triggers and actions
+- **Extensible** - Plugin system with dynamic .so file loading for triggers and actions
 - **REST API** - HTTP interface for managing workflows
-- **CLI Tool** - Command-line interface for running workflow workers
+- **CLI Tools** - Command-line interfaces for dispatcher and worker services
 - **File-based Storage** - Simple JSON persistence
+- **Event-Driven** - Decoupled architecture with pub/sub messaging
 - **Worker Management** - Background execution with proper lifecycle management
 - **Concurrent Execution** - Efficient resource usage
 
@@ -31,7 +32,7 @@ The project follows a clean, layered architecture with clear separation of conce
 - **Models** (`pkg/models/`) - Core domain models and interfaces
 - **Business Logic** (`pkg/workflow/`) - Workflow execution and management
 - **Infrastructure** (`pkg/persistence/`, `pkg/event_bus/`) - External integrations and data access
-- **Extensions** (`pkg/registry/`) - Unified registry system for actions and triggers
+- **Extensions** (`pkg/registry/`) - Plugin system for actions and triggers with .so file loading
 - **Interface Layer** (`cmd/`) - Entry points (API server, CLI tool)
 
 ## Installation
@@ -93,19 +94,19 @@ The visual workflow editor will be available at `http://localhost:5173`
 
 ### Start Services
 
-#### Trigger Service (Event Publishers)
+#### Dispatcher Service (Event Publishers)
 ```bash
-# Start trigger service to listen for triggers and publish events
-./bin/operion-trigger run
+# Start dispatcher service to listen for triggers and publish events
+./bin/operion-dispatcher run --database-url ./data/workflows --event-bus gochannel
 
-# Start with custom trigger service ID
-./bin/operion-trigger run --trigger-id my-trigger-service
+# Start with custom dispatcher ID and plugins
+./bin/operion-dispatcher run --dispatcher-id my-dispatcher --database-url ./data/workflows --event-bus kafka --plugins-path ./plugins
 
 # List all available triggers
-./bin/operion-trigger list
+./bin/operion-dispatcher list
 
 # Validate trigger configurations
-./bin/operion-trigger validate
+./bin/operion-dispatcher validate
 ```
 
 #### Worker Service (Workflow Execution)
@@ -119,9 +120,10 @@ The visual workflow editor will be available at `http://localhost:5173`
 
 #### Event-Driven Architecture
 The system uses an event-driven architecture where:
-1. **Trigger Service** listens for trigger conditions and publishes `WorkflowTriggered` events
-2. **Worker Service** subscribes to events and executes the corresponding workflows
-3. **Event Bus** decouples trigger detection from workflow execution (supports in-memory and Kafka)
+1. **Dispatcher Service** loads trigger plugins, listens for trigger conditions and publishes `WorkflowTriggered` events
+2. **Worker Service** subscribes to events and executes the corresponding workflows using action plugins
+3. **Event Bus** decouples trigger detection from workflow execution (supports GoChannel and Kafka)
+4. **Plugin System** enables dynamic loading of .so files for extensible triggers and actions
 
 ### API Endpoints
 
@@ -144,15 +146,21 @@ See `./data/workflows/bitcoin-price.json` for a complete workflow example that:
 ## Current Implementation
 
 ### Available Triggers
-- **Schedule**: Cron-based execution using robfig/cron (fully implemented and registered)
-- **Kafka**: Message-based triggering from Kafka topics (fully implemented and registered)
+- **Schedule**: Cron-based execution using robfig/cron (migrated to plugin system)
+- **Kafka**: Message-based triggering from Kafka topics (migrated to plugin system)
 
 ### Available Actions  
-- Actions are available but need to be migrated to the new registry system
-- **HTTP Request**: Make HTTP calls to external APIs
-- **Transform**: Process data using JSONata expressions  
-- **File Write**: Save data to files
-- **Log**: Output log messages with configurable levels
+- Actions are being migrated to the new plugin system
+- **Log**: Output log messages (example plugin in `examples/plugins/actions/log/`)
+- **HTTP Request**: Make HTTP calls to external APIs (migration needed)
+- **Transform**: Process data using JSONata expressions (migration needed)
+- **File Write**: Save data to files (migration needed)
+
+### Plugin System
+- Dynamic loading of `.so` plugin files from `./plugins` directory
+- Factory pattern with `ActionFactory` and `TriggerFactory` interfaces
+- Protocol-based interfaces in `pkg/protocol/` for type safety
+- Example plugins available in `examples/plugins/`
 
 ## Development
 
@@ -169,6 +177,19 @@ make clean          # Clean build artifacts
 ```bash
 air                 # Start development server with live reload
 ./bin/api           # Run built API server directly
+```
+
+### Plugin Development
+
+```bash
+# Build action plugin example
+cd examples/plugins/actions/log
+make
+
+# Build custom plugin
+# Create plugin.go implementing protocol.ActionFactory or protocol.TriggerFactory
+# Export symbol: var Action protocol.ActionFactory = &MyActionFactory{}
+go build -buildmode=plugin -o plugin.so plugin.go
 ```
 
 ## Future Features

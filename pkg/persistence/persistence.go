@@ -7,4 +7,7 @@ type Persistence interface {
 	SaveWorkflow(workflow *models.Workflow) error
 	WorkflowByID(id string) (*models.Workflow, error)
 	DeleteWorkflow(id string) error
+
+	Triggers() ([]*models.Trigger, error)
+	Close() error
 }

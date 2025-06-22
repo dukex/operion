@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/dukex/operion/pkg/events"
-	"github.com/google/uuid"
 )
 
 type EventPublisher interface {
@@ -19,25 +19,30 @@ type EventSubscriber interface {
 
 type EventHandler func(ctx context.Context, event interface{}) error
 
-type EventBusI interface {
+type EventBus interface {
 	EventPublisher
 	EventSubscriber
 	Close() error
+	GenerateID() string
 }
 
-type EventBus struct {
+type WatermillEventBus struct {
 	publisher  message.Publisher
 	subscriber message.Subscriber
 }
 
-func NewEventBus(pub message.Publisher, sub message.Subscriber, id string) *EventBus {
-	return &EventBus{
+func NewWatermillEventBus(pub message.Publisher, sub message.Subscriber) EventBus {
+	return &WatermillEventBus{
 		publisher:  pub,
 		subscriber: sub,
 	}
 }
 
-func (eb *EventBus) Publish(ctx context.Context, event interface{}) error {
+func (eb *WatermillEventBus) GenerateID() string {
+	return watermill.NewULID()
+}
+
+func (eb *WatermillEventBus) Publish(ctx context.Context, event interface{}) error {
 	var topic string
 
 	switch event.(type) {
@@ -62,11 +67,11 @@ func (eb *EventBus) Publish(ctx context.Context, event interface{}) error {
 		return err
 	}
 
-	msg := message.NewMessage(generateMessageID(), payload)
+	msg := message.NewMessage("msg-"+eb.GenerateID(), payload)
 	return eb.publisher.Publish(topic, msg)
 }
 
-func (eb *EventBus) Subscribe(ctx context.Context, topic string, handler EventHandler) error {
+func (eb *WatermillEventBus) Subscribe(ctx context.Context, topic string, handler EventHandler) error {
 	messages, err := eb.subscriber.Subscribe(ctx, topic)
 	if err != nil {
 		return err
@@ -112,17 +117,9 @@ func (eb *EventBus) Subscribe(ctx context.Context, topic string, handler EventHa
 	return nil
 }
 
-func (eb *EventBus) Close() error {
+func (eb *WatermillEventBus) Close() error {
 	if err := eb.publisher.Close(); err != nil {
 		return err
 	}
 	return eb.subscriber.Close()
-}
-
-func generateMessageID() string {
-	return "msg-" + generateUUID()
-}
-
-func generateUUID() string {
-	return uuid.New().String()
 }

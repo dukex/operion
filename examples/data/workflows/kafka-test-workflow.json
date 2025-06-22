@@ -3,7 +3,7 @@
   "name": "Kafka Test Workflow",
   "description": "Simple test workflow for Kafka integration",
   "version": "1.0.0",
-  "triggers": [],
+  "workflow_triggers": [],
   "variables": {
     "test_message": "Hello from Kafka workflow!"
   },

@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/dukex/operion/pkg/models"
@@ -17,8 +18,12 @@ type FilePersistence struct {
 
 func NewFilePersistence(root string) persistence.Persistence {
 	return &FilePersistence{
-		root: root,
+		root: strings.Replace(root, "file://", "", 1),
 	}
+}
+
+func (fp *FilePersistence) Close() error {
+	return nil
 }
 
 func (fp *FilePersistence) Workflows() ([]*models.Workflow, error) {
@@ -93,4 +98,48 @@ func (fp *FilePersistence) DeleteWorkflow(id string) error {
 		return nil
 	}
 	return err
+}
+
+func (fp *FilePersistence) Triggers() ([]*models.Trigger, error) {
+	root := os.DirFS(fp.root + "/triggers")
+	jsonFiles, err := fs.Glob(root, "*.json")
+
+	if err != nil {
+		return nil, err
+	}
+
+	if len(jsonFiles) == 0 {
+		return make([]*models.Trigger, 0), nil
+	}
+
+	triggers := make([]*models.Trigger, 0, len(jsonFiles))
+
+	for _, file := range jsonFiles {
+		trigger, err := fp.TriggerByID(file[:len(file)-5])
+		if err != nil {
+			return nil, err
+		}
+		triggers = append(triggers, trigger)
+	}
+
+	return triggers, nil
+}
+
+func (fp *FilePersistence) TriggerByID(triggerID string) (*models.Trigger, error) {
+	filePath := path.Join(fp.root+"/triggers", triggerID+".json")
+	body, err := os.ReadFile(filePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	var workflow models.Trigger
+	err = json.Unmarshal(body, &workflow)
+	if err != nil {
+		return nil, err
+	}
+
+	return &workflow, nil
 }

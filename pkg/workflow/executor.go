@@ -50,7 +50,7 @@ func (s *Executor) Execute(ctx context.Context, workflowID string, triggerData m
 		"execution_id": executionCtx.ID,
 		"variables":    executionCtx.Variables,
 	})
-	executionCtx.Logger = logger
+	// executionCtx.Logger = logger
 
 	logger.Info("Created execution context")
 
@@ -132,13 +132,13 @@ func (s *Executor) getWorkflowByID(workflowID string) (*models.Workflow, error) 
 	return workflow, nil
 }
 
-func (s *Executor) findStepByID(steps []models.WorkflowStep, stepID string) (models.WorkflowStep, bool) {
+func (s *Executor) findStepByID(steps []*models.WorkflowStep, stepID string) (*models.WorkflowStep, bool) {
 	for _, step := range steps {
 		if step.ID == stepID {
 			return step, true
 		}
 	}
-	return models.WorkflowStep{}, false
+	return nil, false
 }
 
 func (s *Executor) evaluateConditional(conditional models.ConditionalExpression, ctx models.ExecutionContext) (bool, error) {
@@ -153,14 +153,14 @@ func (s *Executor) evaluateConditional(conditional models.ConditionalExpression,
 		}
 		return false, nil
 	default:
-		ctx.Logger.Errorf("Unsupported conditional language: %s, defaulting to true", conditional.Language)
+		// ctx.Logger.Errorf("Unsupported conditional language: %s, defaulting to true", conditional.Language)
 		return true, nil
 	}
 }
 
 func (s *Executor) executeAction(ctx context.Context, actionItem models.ActionItem, executionCtx *models.ExecutionContext) (interface{}, error) {
 	if s.registry == nil {
-		executionCtx.Logger.Infof("Registry not initialized, skipping action %s", actionItem.ID)
+		// executionCtx.Logger.Infof("Registry not initialized, skipping action %s", actionItem.ID)
 		return nil, nil
 	}
 
@@ -170,30 +170,30 @@ func (s *Executor) executeAction(ctx context.Context, actionItem models.ActionIt
 	}
 	config["id"] = actionItem.ID
 
-	logger := executionCtx.Logger.WithFields(log.Fields{
-		"action_id":     actionItem.ID,
-		"action_type":   actionItem.Type,
-		"action_config": config,
-	})
+	// logger := executionCtx.Logger.WithFields(log.Fields{
+	// 	"action_id":     actionItem.ID,
+	// 	"action_type":   actionItem.Type,
+	// 	"action_config": config,
+	// })
 
 	action, err := s.registry.CreateAction(actionItem.Type, config)
 	if err != nil {
-		logger.Errorf("Failed to create action: %v", err)
+		// logger.Errorf("Failed to create action: %v", err)
 		return nil, err
 	}
 
-	result, err := action.Execute(ctx, *executionCtx.WithLogger(logger))
+	result, err := action.Execute(ctx, *executionCtx.WithLogger())
 	if err != nil {
-		logger.Errorf("Actionfailed: %v", err)
+		// logger.Errorf("Actionfailed: %v", err)
 		return nil, err
 	}
 
-	logger.Info("Action completed successfully")
+	// logger.Info("Action completed successfully")
 	return result, err
 }
 
 // getNextStepID determines the next step based on success/failure
-func (s *Executor) getNextStepID(step models.WorkflowStep, success bool) string {
+func (s *Executor) getNextStepID(step *models.WorkflowStep, success bool) string {
 	if success && step.OnSuccess != nil {
 		return *step.OnSuccess
 	} else if !success && step.OnFailure != nil {

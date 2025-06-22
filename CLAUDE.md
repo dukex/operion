@@ -26,11 +26,11 @@ The project follows a clean, layered architecture with clear separation of conce
 
 ### Plugin Architecture
 
-Uses unified registry pattern for extensibility:
-- **Registry** - Single registry for both actions and triggers in `pkg/registry/`
-- Schema-based component registration with `RegisteredComponent`
-- Type-safe factory pattern with generics
-- JSON Schema validation for configurations
+Uses plugin-based system for extensibility:
+- **Registry** - Plugin registry for both actions and triggers in `pkg/registry/`
+- Dynamic loading of `.so` plugin files from filesystem
+- Factory pattern with `ActionFactory` and `TriggerFactory` interfaces
+- Protocol-based interfaces in `pkg/protocol/` for actions and triggers
 - Runtime configuration from `map[string]interface{}`
 
 ## Development Commands
@@ -68,12 +68,12 @@ go mod tidy         # Clean up dependencies
 ### Available Components
 - **API Server** (`cmd/api/`) - Fiber-based REST API with workflows endpoint
 - **CLI Worker** (`cmd/operion-worker/`) - Background workflow execution tool
-- **CLI Trigger Service** (`cmd/operion-trigger/`) - Trigger listener and event publisher
+- **CLI Dispatcher Service** (`cmd/operion-dispatcher/`) - Trigger listener and event publisher (replaces operion-trigger)
 - **Visual Workflow Editor** (`ui/operion-editor/`) - React-based browser interface for workflow visualization
 - **Domain Models** (`pkg/models/`) - Core workflow, action, and trigger models
 - **Workflow Engine** (`pkg/workflow/`) - Workflow execution, management, and repository
 - **Event System** (`pkg/event_bus/`, `pkg/events/`) - Event-driven communication
-- **Unified Registry** (`pkg/registry/`) - Schema-based action and trigger registration system
+- **Plugin Registry** (`pkg/registry/`) - Plugin-based system for actions and triggers with .so file loading
 - **File Persistence** (`pkg/persistence/file/`) - JSON file storage
 
 ### Available Triggers
@@ -105,38 +105,63 @@ go mod tidy         # Clean up dependencies
 
 ## Extension Points
 
-To add new triggers: Implement `models.Trigger` interface and register with `Registry.RegisterTrigger()`
-To add new actions: Implement `models.Action` interface and register with `Registry.RegisterAction()`  
+To add new triggers: Implement `protocol.Trigger` and `protocol.TriggerFactory` interfaces, compile as `.so` plugin
+To add new actions: Implement `protocol.Action` and `protocol.ActionFactory` interfaces, compile as `.so` plugin
 To add new persistence: Implement `persistence.Persistence` interface
 
-### Registry Usage
+### Plugin Development
 
 ```go
-// Create registry
-registry.RegisterAllComponent()
+// Action plugin example
+type MyActionFactory struct{}
 
-// Register action with schema
-component := &models.RegisteredComponent{
-    Type: "my-action",
-    Name: "My Custom Action",
-    Description: "Description of what this action does",
-    Schema: &models.JSONSchema{
-        Type: "object",
-        Properties: map[string]*models.Property{
-            "param": {Type: "string", Description: "Parameter description"},
-        },
-        Required: []string{"param"},
-    },
+func (f *MyActionFactory) Type() string {
+    return "my-action"
 }
 
-registry.RegisterAction(component, func(config map[string]interface{}) (models.Action, error) {
+func (f *MyActionFactory) Create(config map[string]interface{}) (protocol.Action, error) {
     return NewMyAction(config)
-})
+}
 
-// Create instance
+// Export symbol for plugin loading
+var Action protocol.ActionFactory = &MyActionFactory{}
+
+// Trigger plugin example  
+type MyTriggerFactory struct{}
+
+func (f *MyTriggerFactory) ID() string {
+    return "my-trigger"
+}
+
+func (f *MyTriggerFactory) Create(config map[string]interface{}, logger *slog.Logger) (protocol.Trigger, error) {
+    return NewMyTrigger(config, logger)
+}
+
+// Export symbol for plugin loading
+var Trigger protocol.TriggerFactory = &MyTriggerFactory{}
+```
+
+### Plugin Registry Usage
+
+```go
+// Create registry and load plugins
+registry := NewRegistry(logger)
+actions, _ := registry.LoadActionPlugins("./plugins")
+triggers, _ := registry.LoadTriggerPlugins("./plugins")
+
+// Register loaded plugins
+for _, action := range actions {
+    registry.RegisterAction(action)
+}
+for _, trigger := range triggers {
+    registry.RegisterTrigger(trigger)
+}
+
+// Create instances
 action, err := registry.CreateAction("my-action", map[string]interface{}{
     "param": "value",
 })
+trigger, err := registry.CreateTrigger("my-trigger", config)
 ```
 
 ## API Endpoints
@@ -162,45 +187,43 @@ Sample workflows in `./data/workflows/` directory:
 ./bin/operion-worker run --worker-id my-worker
 ```
 
-### Trigger Management
+### Dispatcher Management
 ```bash
-# Start trigger service (listens for triggers and publishes events)
-./bin/operion-trigger run
+# Start dispatcher service (listens for triggers and publishes events)
+./bin/operion-dispatcher run --database-url ./data/workflows --event-bus gochannel
 
-# Start trigger service with custom ID
-./bin/operion-trigger run --trigger-id my-trigger-service
+# Start dispatcher with custom ID and plugins
+./bin/operion-dispatcher run --dispatcher-id my-dispatcher --database-url ./data/workflows --event-bus kafka --plugins-path ./plugins
 
 # List all triggers in workflows
-./bin/operion-trigger list
+./bin/operion-dispatcher list
 
 # Validate trigger configurations
-./bin/operion-trigger validate
-
-# Use Kafka as event bus
-./bin/operion-trigger run --kafka
+./bin/operion-dispatcher validate
 ```
 
 ## Architecture Overview
 
 The system is designed with clear separation of concerns:
 
-- **Trigger Service** (`operion-trigger`) - Listens to external triggers and publishes `WorkflowTriggered` events
-- **Worker Service** (`operion-worker`) - Subscribes to `WorkflowTriggered` events and executes workflows
+- **Dispatcher Service** (`operion-dispatcher`) - Loads trigger plugins, listens to external triggers and publishes `WorkflowTriggered` events
+- **Worker Service** (`operion-worker`) - Subscribes to `WorkflowTriggered` events and executes workflows with action plugins
 - **Event Bus** - Decouples trigger detection from workflow execution (supports GoChannel and Kafka)
+- **Plugin System** - Dynamic loading of `.so` files for extensible actions and triggers
 
 ## Event Flow
 
-1. **Trigger Service** detects trigger conditions (cron, webhook, etc.)
-2. **Trigger Service** publishes `WorkflowTriggered` event to event bus
-3. **Worker Service** receives event and executes corresponding workflow
+1. **Dispatcher Service** loads trigger plugins and detects trigger conditions (cron, webhook, etc.)
+2. **Dispatcher Service** publishes `WorkflowTriggered` event to event bus
+3. **Worker Service** receives event and executes corresponding workflow using action plugins
 4. **Worker Service** publishes workflow lifecycle events (`WorkflowStarted`, `WorkflowFinished`, etc.)
 
 The CLI tools provide:
 - Background workflow execution and trigger management
 - Event-driven architecture with pub/sub messaging
-- Signal handling for graceful shutdown  
-- Structured logging with logrus
-```
+- Plugin-based extensibility with .so file loading
+- Signal handling for graceful shutdown (SIGHUP for restart, SIGINT/SIGTERM for shutdown)
+- Structured logging with slog
 
 ## Claude Guidance
 
