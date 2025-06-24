@@ -1,0 +1,190 @@
+{
+  "id": "product-catalog-sync",
+  "name": "Product Catalog Synchronization",
+  "description": "Sync product catalog data from Fake Store API and process inventory information",
+  "status": "active",
+  "triggers": [
+    {
+      "id": "catalog-schedule",
+      "type": "schedule",
+      "configuration": {
+        "schedule": "0 1 * * *",
+        "timezone": "UTC"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "id": "fetch-all-products",
+      "name": "Fetch All Products",
+      "actionId": "http_request",
+      "uid": "products_data",
+      "configuration": {
+        "protocol": "https",
+        "host": "fakestoreapi.com",
+        "path": "/products",
+        "method": "GET",
+        "timeout": 15,
+        "headers": {
+          "Accept": "application/json",
+          "User-Agent": "Operion-CatalogSync/1.0"
+        },
+        "retry": {
+          "attempts": 3,
+          "delay": 2
+        }
+      },
+      "onSuccess": "fetch-categories",
+      "onFailure": "log-products-error",
+      "enabled": true
+    },
+    {
+      "id": "fetch-categories",
+      "name": "Fetch Product Categories",
+      "actionId": "http_request",
+      "uid": "categories_data",
+      "configuration": {
+        "protocol": "https",
+        "host": "fakestoreapi.com",
+        "path": "/products/categories",
+        "method": "GET",
+        "timeout": 10,
+        "headers": {
+          "Accept": "application/json",
+          "User-Agent": "Operion-CatalogSync/1.0"
+        }
+      },
+      "onSuccess": "process-products",
+      "onFailure": "log-categories-error",
+      "enabled": true
+    },
+    {
+      "id": "process-products",
+      "name": "Process Product Data",
+      "actionId": "transform",
+      "uid": "processed_products",
+      "configuration": {
+        "expression": "{\n  \"total_products\": $count(steps.products_data.body),\n  \"categories\": steps.categories_data.body,\n  \"category_stats\": $map(steps.categories_data.body, function($cat) {\n    {\n      \"category\": $cat,\n      \"count\": $count($filter(steps.products_data.body, function($p) { $p.category = $cat })),\n      \"avg_price\": $round($average($map($filter(steps.products_data.body, function($p) { $p.category = $cat }), function($p) { $p.price })), 2),\n      \"total_value\": $round($sum($map($filter(steps.products_data.body, function($p) { $p.category = $cat }), function($p) { $p.price })), 2)\n    }\n  }),\n  \"price_analysis\": {\n    \"min_price\": $min($map(steps.products_data.body, function($p) { $p.price })),\n    \"max_price\": $max($map(steps.products_data.body, function($p) { $p.price })),\n    \"avg_price\": $round($average($map(steps.products_data.body, function($p) { $p.price })), 2),\n    \"total_catalog_value\": $round($sum($map(steps.products_data.body, function($p) { $p.price })), 2)\n  },\n  \"timestamp\": $now()\n}"
+      },
+      "onSuccess": "analyze-inventory",
+      "enabled": true
+    },
+    {
+      "id": "analyze-inventory",
+      "name": "Analyze Inventory Status",
+      "actionId": "transform",
+      "uid": "inventory_analysis",
+      "configuration": {
+        "expression": "{\n  \"top_products\": $map($sort(steps.products_data.body, function($a, $b) {\n    $b.rating.rate - $a.rating.rate\n  })[0..2], function($product) {\n    {\n      \"id\": $product.id,\n      \"title\": $product.title,\n      \"category\": $product.category,\n      \"price\": $product.price,\n      \"rating\": $product.rating.rate,\n      \"review_count\": $product.rating.count\n    }\n  }),\n  \"expensive_products\": $map($sort(steps.products_data.body, function($a, $b) {\n    $b.price - $a.price\n  })[0..2], function($product) {\n    {\n      \"title\": $product.title,\n      \"price\": $product.price,\n      \"category\": $product.category\n    }\n  }),\n  \"inventory_health\": {\n    \"total_categories\": $count(steps.processed_products.categories),\n    \"products_per_category\": $round(steps.processed_products.total_products / $count(steps.processed_products.categories), 1),\n    \"health_score\": $min([5, $round(steps.processed_products.total_products / 4, 0)]),\n    \"status\": steps.processed_products.total_products > 15 ? \"HEALTHY\" : \"LOW_INVENTORY\"\n  },\n  \"timestamp\": $now()\n}"
+      },
+      "onSuccess": "create-catalog-report",
+      "enabled": true
+    },
+    {
+      "id": "create-catalog-report",
+      "name": "Create Catalog Report",
+      "actionId": "transform",
+      "uid": "catalog_report",
+      "configuration": {
+        "expression": "{\n  \"catalog_summary\": {\n    \"timestamp\": $now(),\n    \"total_products\": steps.processed_products.total_products,\n    \"total_categories\": $count(steps.processed_products.categories),\n    \"catalog_value\": steps.processed_products.price_analysis.total_catalog_value,\n    \"average_price\": steps.processed_products.price_analysis.avg_price,\n    \"inventory_status\": steps.inventory_analysis.inventory_health.status,\n    \"health_score\": steps.inventory_analysis.inventory_health.health_score & \"/5\"\n  },\n  \"category_breakdown\": steps.processed_products.category_stats,\n  \"featured_products\": {\n    \"top_rated\": steps.inventory_analysis.top_products,\n    \"most_expensive\": steps.inventory_analysis.expensive_products\n  },\n  \"price_insights\": steps.processed_products.price_analysis\n}"
+      },
+      "onSuccess": "log-catalog-stats",
+      "enabled": true
+    },
+    {
+      "id": "log-catalog-stats",
+      "name": "Log Catalog Statistics",
+      "actionId": "log",
+      "uid": "stats_log",
+      "configuration": {
+        "message": "\"Catalog Sync - Products: \" & $string(steps.catalog_report.catalog_summary.total_products) & \", Categories: \" & $string(steps.catalog_report.catalog_summary.total_categories) & \", Total Value: $\" & $string(steps.catalog_report.catalog_summary.catalog_value) & \", Status: \" & steps.catalog_report.catalog_summary.inventory_status"
+      },
+      "onSuccess": "check-inventory-health",
+      "enabled": true
+    },
+    {
+      "id": "check-inventory-health",
+      "name": "Check Inventory Health",
+      "actionId": "transform",
+      "uid": "health_check",
+      "configuration": {
+        "expression": "{\n  \"needs_attention\": steps.inventory_analysis.inventory_health.health_score < vars.health_threshold,\n  \"alert_message\": steps.inventory_analysis.inventory_health.health_score < vars.health_threshold ? \"Inventory health below threshold: \" & steps.inventory_analysis.inventory_health.health_score & \"/5\" : \"Inventory health is good\",\n  \"recommendations\": steps.inventory_analysis.inventory_health.health_score < vars.health_threshold ? [\"Consider adding more products\", \"Review category distribution\", \"Check for missing items\"] : [\"Maintain current inventory levels\"]\n}"
+      },
+      "onSuccess": "send-catalog-report",
+      "enabled": true
+    },
+    {
+      "id": "send-catalog-report",
+      "name": "Send Catalog Report",
+      "actionId": "http_request",
+      "uid": "report_response",
+      "configuration": {
+        "protocol": "https",
+        "host": "httpbin.org",
+        "path": "/post",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{\n  \"service\": \"catalog-sync\",\n  \"timestamp\": steps.catalog_report.catalog_summary.timestamp,\n  \"summary\": steps.catalog_report.catalog_summary,\n  \"analytics\": {\n    \"category_performance\": steps.catalog_report.category_breakdown,\n    \"price_analysis\": steps.catalog_report.price_insights,\n    \"featured_products\": steps.catalog_report.featured_products\n  },\n  \"health_check\": {\n    \"status\": steps.health_check.alert_message,\n    \"needs_attention\": steps.health_check.needs_attention,\n    \"recommendations\": steps.health_check.recommendations\n  }\n}",
+        "timeout": 10
+      },
+      "onSuccess": "log-success",
+      "onFailure": "log-webhook-error",
+      "enabled": true
+    },
+    {
+      "id": "log-success",
+      "name": "Log Success",
+      "actionId": "log",
+      "uid": "success_log",
+      "configuration": {
+        "message": "\"Product catalog synchronization completed. \" & steps.health_check.alert_message"
+      },
+      "enabled": true
+    },
+    {
+      "id": "log-products-error",
+      "name": "Log Products Error",
+      "actionId": "log",
+      "uid": "products_error_log",
+      "configuration": {
+        "message": "\"Failed to fetch products from Fake Store API\""
+      },
+      "enabled": true
+    },
+    {
+      "id": "log-categories-error",
+      "name": "Log Categories Error",
+      "actionId": "log",
+      "uid": "categories_error_log",
+      "configuration": {
+        "message": "\"Failed to fetch categories from Fake Store API\""
+      },
+      "enabled": true
+    },
+    {
+      "id": "log-webhook-error",
+      "name": "Log Webhook Error",
+      "actionId": "log",
+      "uid": "webhook_error_log",
+      "configuration": {
+        "message": "\"Failed to send catalog sync report\""
+      },
+      "enabled": true
+    }
+  ],
+  "variables": {
+    "health_threshold": 3,
+    "sync_frequency": "daily"
+  },
+  "metadata": {
+    "version": "1.0",
+    "author": "Operion",
+    "tags": ["product-catalog", "inventory", "fakestoreapi", "e-commerce", "real-api"],
+    "description": "Real product catalog synchronization using Fake Store API. No API key required.",
+    "api_requirements": {
+      "fakestoreapi": "Free API - no key required. No rate limits specified."
+    }
+  }
+}
