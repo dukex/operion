@@ -296,3 +296,6 @@ The CLI tools provide:
 ## Claude Guidance
 
 - Never use emoji at documentation
+- Always check the tests with `make test-all` to ensure everything is ok
+- Ensure the critical paths are well tested
+- Keep the code simple

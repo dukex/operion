@@ -59,16 +59,16 @@ func (eb *WatermillEventBus) Subscribe(ctx context.Context) error {
 			switch eventType {
 			case events.WorkflowTriggeredEvent:
 				event = &events.WorkflowTriggered{}
-			// case events.WorkflowFinishedEvent:
-			// 	event = &events.WorkflowFinished{}
+			case events.WorkflowFinishedEvent:
+				event = &events.WorkflowFinished{}
 			case events.WorkflowFailedEvent:
 				event = &events.WorkflowFailed{}
 			case events.WorkflowStepAvailableEvent:
 				event = &events.WorkflowStepAvailable{}
-			// case events.WorkflowStepFinishedEvent:
-			// 	event = &events.WorkflowStepFinished{}
-			// case events.WorkflowStepFailedEvent:
-			// 	event = &events.WorkflowStepFailed{}
+			case events.WorkflowStepFinishedEvent:
+				event = &events.WorkflowStepFinished{}
+			case events.WorkflowStepFailedEvent:
+				event = &events.WorkflowStepFailed{}
 			default:
 				msg.Nack()
 				continue

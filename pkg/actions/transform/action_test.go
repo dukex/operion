@@ -2,13 +2,60 @@ package transform
 
 import (
 	"context"
+	"log/slog"
+	"os"
 	"testing"
 
 	"github.com/dukex/operion/pkg/models"
-	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestNewTransformActionFactory(t *testing.T) {
+	factory := NewTransformActionFactory()
+	assert.NotNil(t, factory)
+	assert.Equal(t, "transform", factory.ID())
+}
+
+func TestTransformActionFactory_Create(t *testing.T) {
+	factory := NewTransformActionFactory()
+
+	tests := []struct {
+		name   string
+		config map[string]interface{}
+	}{
+		{
+			name:   "nil config",
+			config: nil,
+		},
+		{
+			name:   "empty config",
+			config: map[string]interface{}{},
+		},
+		{
+			name: "config with expression",
+			config: map[string]interface{}{
+				"expression": "$.name",
+			},
+		},
+		{
+			name: "config with input and expression",
+			config: map[string]interface{}{
+				"input":      "$.data",
+				"expression": "$.field",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			action, err := factory.Create(tt.config)
+			require.NoError(t, err)
+			assert.NotNil(t, action)
+			assert.IsType(t, &TransformAction{}, action)
+		})
+	}
+}
 
 func TestNewTransformAction(t *testing.T) {
 	tests := []struct {
@@ -17,28 +64,16 @@ func TestNewTransformAction(t *testing.T) {
 		expected *TransformAction
 	}{
 		{
-			name: "basic transform action",
+			name: "basic transform",
 			config: map[string]interface{}{
-				"id":         "test-transform-1",
-				"input":      "data",
-				"expression": "$uppercase(name)",
+				"id":         "test-1",
+				"input":      "$.data",
+				"expression": "$.field",
 			},
 			expected: &TransformAction{
-				ID:         "test-transform-1",
-				Input:      "data",
-				Expression: "$uppercase(name)",
-			},
-		},
-		{
-			name: "transform action without input",
-			config: map[string]interface{}{
-				"id":         "test-transform-2",
-				"expression": "$count(items)",
-			},
-			expected: &TransformAction{
-				ID:         "test-transform-2",
-				Input:      "",
-				Expression: "$count(items)",
+				ID:         "test-1",
+				Input:      "$.data",
+				Expression: "$.field",
 			},
 		},
 		{
@@ -51,16 +86,14 @@ func TestNewTransformAction(t *testing.T) {
 			},
 		},
 		{
-			name: "complex JSONata expression",
+			name: "partial config",
 			config: map[string]interface{}{
-				"id":         "test-transform-3",
-				"input":      "results[0]",
-				"expression": "{ \"total\": $sum(amounts), \"count\": $count(items) }",
+				"expression": "{ \"name\": $.name, \"age\": $.age }",
 			},
 			expected: &TransformAction{
-				ID:         "test-transform-3",
-				Input:      "results[0]",
-				Expression: "{ \"total\": $sum(amounts), \"count\": $count(items) }",
+				ID:         "",
+				Input:      "",
+				Expression: "{ \"name\": $.name, \"age\": $.age }",
 			},
 		},
 	}
@@ -68,302 +101,251 @@ func TestNewTransformAction(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			action, err := NewTransformAction(tt.config)
-
 			require.NoError(t, err)
-			assert.Equal(t, tt.expected.ID, action.ID)
-			assert.Equal(t, tt.expected.Input, action.Input)
-			assert.Equal(t, tt.expected.Expression, action.Expression)
+			assert.Equal(t, tt.expected, action)
 		})
 	}
 }
 
-func TestTransformAction_GetMethods(t *testing.T) {
+func TestTransformAction_Execute_SimpleTransform(t *testing.T) {
 	action := &TransformAction{
 		ID:         "test-transform",
-		Input:      "data.results",
-		Expression: "$uppercase(name)",
-	}
-
-	assert.Equal(t, "test-transform", action.GetID())
-	assert.Equal(t, "transform", action.GetType())
-
-	config := action.GetConfig()
-	assert.Equal(t, "test-transform", config["id"])
-	assert.Equal(t, "data.results", config["input"])
-	assert.Equal(t, "$uppercase(name)", config["expression"])
-
-	assert.NoError(t, action.Validate())
-}
-
-func TestTransformAction_Execute_SimpleTransformation(t *testing.T) {
-	action := &TransformAction{
-		ID:         "test-simple",
 		Input:      "",
-		Expression: "name",
+		Expression: "$.user.name",
 	}
 
-	logger := log.WithField("test", "transform_action")
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
-		Logger: logger,
 		StepResults: map[string]interface{}{
-			"name": "John Doe",
-			"age":  30,
+			"user": map[string]interface{}{
+				"name": "John Doe",
+				"age":  30,
+			},
 		},
 	}
 
-	result, err := action.Execute(context.Background(), execCtx)
+	result, err := action.Execute(context.Background(), execCtx, logger)
 
 	require.NoError(t, err)
 	assert.Equal(t, "John Doe", result)
 }
 
-func TestTransformAction_Execute_ArrayTransformation(t *testing.T) {
+func TestTransformAction_Execute_WithInput(t *testing.T) {
 	action := &TransformAction{
-		ID:         "test-array",
-		Input:      "",
-		Expression: "$count(items)",
+		ID:         "test-input",
+		Input:      "$.step1.data",
+		Expression: "$.temperature",
 	}
 
-	logger := log.WithField("test", "transform_action")
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
-		Logger: logger,
 		StepResults: map[string]interface{}{
-			"items": []interface{}{"a", "b", "c", "d"},
+			"step1": map[string]interface{}{
+				"data": map[string]interface{}{
+					"temperature": 25.5,
+					"humidity":    60,
+				},
+			},
 		},
 	}
 
-	result, err := action.Execute(context.Background(), execCtx)
+	result, err := action.Execute(context.Background(), execCtx, logger)
 
 	require.NoError(t, err)
-	// JSONata can return int or float64 depending on the operation
-	switch v := result.(type) {
-	case int:
-		assert.Equal(t, 4, v)
-	case float64:
-		assert.Equal(t, float64(4), v)
-	default:
-		t.Errorf("Expected int or float64, got %T", result)
-	}
+	assert.Equal(t, 25.5, result)
 }
 
 func TestTransformAction_Execute_ObjectConstruction(t *testing.T) {
 	action := &TransformAction{
 		ID:         "test-object",
 		Input:      "",
-		Expression: "{ \"fullName\": firstName & \" \" & lastName, \"isAdult\": age >= 18 }",
+		Expression: `{ "name": $.user.name, "status": "active", "age": $.user.age }`,
 	}
 
-	logger := log.WithField("test", "transform_action")
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
-		Logger: logger,
 		StepResults: map[string]interface{}{
-			"firstName": "John",
-			"lastName":  "Doe",
-			"age":       25,
+			"user": map[string]interface{}{
+				"name": "Alice",
+				"age":  25,
+			},
 		},
 	}
 
-	result, err := action.Execute(context.Background(), execCtx)
+	result, err := action.Execute(context.Background(), execCtx, logger)
 
 	require.NoError(t, err)
 	resultMap := result.(map[string]interface{})
-	assert.Equal(t, "John Doe", resultMap["fullName"])
-	assert.Equal(t, true, resultMap["isAdult"])
+	assert.Equal(t, "Alice", resultMap["name"])
+	assert.Equal(t, "active", resultMap["status"])
+	assert.Equal(t, 25, resultMap["age"])
 }
 
-func TestTransformAction_Execute_WithInputExpression(t *testing.T) {
+func TestTransformAction_Execute_ArrayTransform(t *testing.T) {
 	action := &TransformAction{
-		ID:         "test-input",
-		Input:      "data.users[0]",
-		Expression: "name",
+		ID:         "test-array",
+		Input:      "",
+		Expression: "$.users[0].name",
 	}
 
-	logger := log.WithField("test", "transform_action")
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
-		Logger: logger,
 		StepResults: map[string]interface{}{
-			"data": map[string]interface{}{
-				"users": []interface{}{
-					map[string]interface{}{
-						"name": "Alice",
-						"age":  28,
-					},
-					map[string]interface{}{
-						"name": "Bob",
-						"age":  32,
-					},
+			"users": []interface{}{
+				map[string]interface{}{
+					"name": "First User",
+					"id":   1,
+				},
+				map[string]interface{}{
+					"name": "Second User",
+					"id":   2,
 				},
 			},
 		},
 	}
 
-	result, err := action.Execute(context.Background(), execCtx)
+	result, err := action.Execute(context.Background(), execCtx, logger)
 
 	require.NoError(t, err)
-	assert.Equal(t, "Alice", result)
+	assert.Equal(t, "First User", result)
 }
 
-func TestTransformAction_Execute_MathOperations(t *testing.T) {
+func TestTransformAction_Execute_ComplexTransform(t *testing.T) {
 	action := &TransformAction{
-		ID:         "test-math",
-		Input:      "",
-		Expression: "{ \"sum\": $sum(numbers), \"avg\": $sum(numbers) / $count(numbers), \"max\": $max(numbers) }",
+		ID:         "test-complex",
+		Input:      "$.api_response",
+		Expression: `{ "price": $.close ? $.close : $.open, "currency": "USD", "timestamp": $.time }`,
 	}
 
-	logger := log.WithField("test", "transform_action")
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
-		Logger: logger,
 		StepResults: map[string]interface{}{
-			"numbers": []interface{}{10, 20, 30, 40, 50},
+			"api_response": map[string]interface{}{
+				"open":  45000.0,
+				"close": 46000.0,
+				"high":  47000.0,
+				"low":   44000.0,
+				"time":  "2023-10-01T10:00:00Z",
+			},
 		},
 	}
 
-	result, err := action.Execute(context.Background(), execCtx)
+	result, err := action.Execute(context.Background(), execCtx, logger)
 
 	require.NoError(t, err)
 	resultMap := result.(map[string]interface{})
-	assert.Equal(t, float64(150), resultMap["sum"])
-	assert.Equal(t, float64(30), resultMap["avg"])
-	assert.Equal(t, float64(50), resultMap["max"])
+	assert.Equal(t, 46000.0, resultMap["price"])
+	assert.Equal(t, "USD", resultMap["currency"])
+	assert.Equal(t, "2023-10-01T10:00:00Z", resultMap["timestamp"])
 }
 
-func TestTransformAction_Execute_StringOperations(t *testing.T) {
+func TestTransformAction_Execute_EmptyExpression(t *testing.T) {
 	action := &TransformAction{
-		ID:         "test-string",
+		ID:         "test-empty",
 		Input:      "",
-		Expression: "{ \"upper\": $uppercase(text), \"lower\": $lowercase(text), \"length\": $length(text) }",
+		Expression: "",
 	}
 
-	logger := log.WithField("test", "transform_action")
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
-		Logger: logger,
 		StepResults: map[string]interface{}{
-			"text": "Hello World",
+			"data": "test",
 		},
 	}
 
-	result, err := action.Execute(context.Background(), execCtx)
+	_, err := action.Execute(context.Background(), execCtx, logger)
 
-	require.NoError(t, err)
-	resultMap := result.(map[string]interface{})
-	assert.Equal(t, "HELLO WORLD", resultMap["upper"])
-	assert.Equal(t, "hello world", resultMap["lower"])
-	// JSONata can return int or float64 for length
-	switch v := resultMap["length"].(type) {
-	case int:
-		assert.Equal(t, 11, v)
-	case float64:
-		assert.Equal(t, float64(11), v)
-	default:
-		t.Errorf("Expected int or float64 for length, got %T", resultMap["length"])
-	}
+	// Empty expression should fail
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "transformation failed")
 }
 
 func TestTransformAction_Execute_InvalidExpression(t *testing.T) {
 	action := &TransformAction{
 		ID:         "test-invalid",
 		Input:      "",
-		Expression: "invalid((expression",
+		Expression: "$.invalid..syntax",
 	}
 
-	logger := log.WithField("test", "transform_action")
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
-		Logger:      logger,
-		StepResults: map[string]interface{}{},
+		StepResults: map[string]interface{}{
+			"data": "test",
+		},
 	}
 
-	result, err := action.Execute(context.Background(), execCtx)
+	_, err := action.Execute(context.Background(), execCtx, logger)
 
-	assert.Error(t, err)
-	assert.Nil(t, result)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "transformation failed")
 }
 
-func TestTransformAction_Execute_InvalidInputExpression(t *testing.T) {
+func TestTransformAction_Execute_InputNotFound(t *testing.T) {
 	action := &TransformAction{
-		ID:         "test-invalid-input",
-		Input:      "invalid((input",
-		Expression: "name",
+		ID:         "test-not-found",
+		Input:      "$.nonexistent.field",
+		Expression: "$.name",
 	}
 
-	logger := log.WithField("test", "transform_action")
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
-		Logger: logger,
 		StepResults: map[string]interface{}{
-			"name": "John",
+			"data": "test",
 		},
 	}
 
-	result, err := action.Execute(context.Background(), execCtx)
+	_, err := action.Execute(context.Background(), execCtx, logger)
 
-	assert.Error(t, err)
-	assert.Nil(t, result)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to get input data")
 }
 
-func TestTransformAction_Execute_NonExistentField(t *testing.T) {
+func TestTransformAction_Execute_WithCancel(t *testing.T) {
 	action := &TransformAction{
-		ID:         "test-nonexistent",
+		ID:         "test-cancel",
 		Input:      "",
-		Expression: "nonexistent.field",
+		Expression: "$.data",
 	}
 
-	logger := log.WithField("test", "transform_action")
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately
+
 	execCtx := models.ExecutionContext{
-		Logger: logger,
 		StepResults: map[string]interface{}{
-			"name": "John",
+			"data": "test value",
 		},
 	}
 
-	result, err := action.Execute(context.Background(), execCtx)
+	result, err := action.Execute(ctx, execCtx, logger)
 
-	// JSONata should return an error for non-existent fields in this case
-	assert.Error(t, err)
-	assert.Nil(t, result)
+	// Transform action should complete even with cancelled context
+	require.NoError(t, err)
+	assert.Equal(t, "test value", result)
 }
 
-func TestTransformAction_Execute_EmptyStepResults(t *testing.T) {
+func TestTransformAction_Extract(t *testing.T) {
 	action := &TransformAction{
-		ID:         "test-empty",
+		ID:         "test-extract",
 		Input:      "",
-		Expression: "$count($keys($))",
+		Expression: "",
 	}
 
-	logger := log.WithField("test", "transform_action")
 	execCtx := models.ExecutionContext{
-		Logger:      logger,
-		StepResults: map[string]interface{}{},
+		StepResults: map[string]interface{}{
+			"step1": "value1",
+			"step2": "value2",
+		},
 	}
 
-	result, err := action.Execute(context.Background(), execCtx)
-
+	// Test empty input - should return all step results
+	result, err := action.extract(execCtx)
 	require.NoError(t, err)
-	// JSONata can return int or float64 for count
-	switch v := result.(type) {
-	case int:
-		assert.Equal(t, 0, v)
-	case float64:
-		assert.Equal(t, float64(0), v)
-	default:
-		t.Errorf("Expected int or float64, got %T", result)
-	}
-}
+	assert.Equal(t, execCtx.StepResults, result)
 
-func TestTransformAction_GetConfig_Consistency(t *testing.T) {
-	config := map[string]interface{}{
-		"id":         "config-test",
-		"input":      "data.items",
-		"expression": "$sum(amounts)",
-	}
-
-	action, err := NewTransformAction(config)
+	// Test with specific input
+	action.Input = "$.step1"
+	result, err = action.extract(execCtx)
 	require.NoError(t, err)
-
-	retrievedConfig := action.GetConfig()
-
-	// Config should match the original action properties
-	assert.Equal(t, action.ID, retrievedConfig["id"])
-	assert.Equal(t, action.Input, retrievedConfig["input"])
-	assert.Equal(t, action.Expression, retrievedConfig["expression"])
+	assert.Equal(t, "value1", result)
 }

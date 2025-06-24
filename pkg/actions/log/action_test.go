@@ -2,247 +2,201 @@ package log_action
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
+	"os"
 	"testing"
 
 	"github.com/dukex/operion/pkg/models"
-	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewLogAction(t *testing.T) {
+func TestNewLogActionFactory(t *testing.T) {
+	factory := NewLogActionFactory()
+	assert.NotNil(t, factory)
+	assert.Equal(t, "log", factory.ID())
+}
+
+func TestLogActionFactory_Create(t *testing.T) {
+	factory := NewLogActionFactory()
+
 	tests := []struct {
-		name     string
-		config   map[string]interface{}
-		expected *LogAction
+		name   string
+		config map[string]interface{}
 	}{
 		{
-			name: "basic log action",
-			config: map[string]interface{}{
-				"id":      "test-log-1",
-				"message": "Hello, World!",
-				"level":   "info",
-			},
-			expected: &LogAction{
-				ID:      "test-log-1",
-				Message: "Hello, World!",
-				Level:   "info",
-			},
+			name:   "nil config",
+			config: nil,
 		},
 		{
-			name: "log action without level",
-			config: map[string]interface{}{
-				"id":      "test-log-2",
-				"message": "Debug message",
-			},
-			expected: &LogAction{
-				ID:      "test-log-2",
-				Message: "Debug message",
-				Level:   "",
-			},
-		},
-		{
-			name:   "log action with empty config",
+			name:   "empty config",
 			config: map[string]interface{}{},
-			expected: &LogAction{
-				ID:      "",
-				Message: "",
-				Level:   "",
-			},
 		},
 		{
-			name: "log action with error level",
+			name: "config with values",
 			config: map[string]interface{}{
-				"id":      "test-log-3",
-				"message": "An error occurred",
-				"level":   "error",
-			},
-			expected: &LogAction{
-				ID:      "test-log-3",
-				Message: "An error occurred",
-				Level:   "error",
+				"message": "test message",
+				"level":   "info",
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			action, err := NewLogAction(tt.config)
-
+			action, err := factory.Create(tt.config)
 			require.NoError(t, err)
-			assert.Equal(t, tt.expected.ID, action.ID)
-			assert.Equal(t, tt.expected.Message, action.Message)
-			assert.Equal(t, tt.expected.Level, action.Level)
+			assert.NotNil(t, action)
+			assert.IsType(t, &LogAction{}, action)
 		})
 	}
 }
 
-func TestLogAction_GetMethods(t *testing.T) {
-	action := &LogAction{
-		ID:      "test-log",
-		Message: "Test message",
-		Level:   "info",
+func TestNewLogAction(t *testing.T) {
+	tests := []struct {
+		name   string
+		config map[string]interface{}
+	}{
+		{
+			name:   "nil config",
+			config: nil,
+		},
+		{
+			name:   "empty config",
+			config: map[string]interface{}{},
+		},
+		{
+			name: "config with values",
+			config: map[string]interface{}{
+				"any": "value",
+			},
+		},
 	}
 
-	assert.Equal(t, "test-log", action.GetID())
-	assert.Equal(t, "log", action.GetType())
-
-	config := action.GetConfig()
-	assert.Equal(t, "test-log", config["id"])
-	assert.Equal(t, "Test message", config["message"])
-	assert.Equal(t, "info", config["level"])
-
-	assert.NoError(t, action.Validate())
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			action := NewLogAction(tt.config)
+			assert.NotNil(t, action)
+		})
+	}
 }
 
 func TestLogAction_Execute(t *testing.T) {
+	action := NewLogAction(map[string]interface{}{})
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+
 	tests := []struct {
-		name     string
-		action   *LogAction
-		expected map[string]interface{}
+		name        string
+		execCtx     models.ExecutionContext
+		expectError bool
 	}{
 		{
-			name: "info level log",
-			action: &LogAction{
-				ID:      "test-info",
-				Message: "Information message",
-				Level:   "info",
+			name: "empty execution context",
+			execCtx: models.ExecutionContext{
+				StepResults: make(map[string]interface{}),
 			},
-			expected: map[string]interface{}{
-				"logged_message": "[info] Information message",
-				"level":          "info",
-			},
+			expectError: false,
 		},
 		{
-			name: "error level log",
-			action: &LogAction{
-				ID:      "test-error",
-				Message: "Error message",
-				Level:   "error",
+			name: "execution context with step results",
+			execCtx: models.ExecutionContext{
+				ID:          "exec-123",
+				WorkflowID:  "workflow-456",
+				TriggerData: map[string]interface{}{"trigger": "test"},
+				StepResults: map[string]interface{}{
+					"step1": map[string]interface{}{
+						"status": "success",
+						"data":   "test data",
+					},
+					"step2": "simple result",
+				},
+				Metadata: map[string]interface{}{
+					"user": "test-user",
+				},
 			},
-			expected: map[string]interface{}{
-				"logged_message": "[error] Error message",
-				"level":          "error",
-			},
+			expectError: false,
 		},
 		{
-			name: "debug level log",
-			action: &LogAction{
-				ID:      "test-debug",
-				Message: "Debug information",
-				Level:   "debug",
+			name: "execution context with nil step results",
+			execCtx: models.ExecutionContext{
+				ID:          "exec-789",
+				WorkflowID:  "workflow-abc",
+				StepResults: nil,
 			},
-			expected: map[string]interface{}{
-				"logged_message": "[debug] Debug information",
-				"level":          "debug",
-			},
-		},
-		{
-			name: "warn level log",
-			action: &LogAction{
-				ID:      "test-warn",
-				Message: "Warning message",
-				Level:   "warn",
-			},
-			expected: map[string]interface{}{
-				"logged_message": "[warn] Warning message",
-				"level":          "warn",
-			},
-		},
-		{
-			name: "no level specified",
-			action: &LogAction{
-				ID:      "test-no-level",
-				Message: "Message without level",
-				Level:   "",
-			},
-			expected: map[string]interface{}{
-				"logged_message": "[] Message without level",
-				"level":          "",
-			},
+			expectError: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			logger := log.WithField("test", "log_action")
-			execCtx := models.ExecutionContext{Logger: logger}
+			result, err := action.Execute(context.Background(), tt.execCtx, logger)
 
-			result, err := tt.action.Execute(context.Background(), execCtx)
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, result)
 
-			require.NoError(t, err)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestLogAction_Execute_WithDifferentContexts(t *testing.T) {
-	action := &LogAction{
-		ID:      "context-test",
-		Message: "Context test message",
-		Level:   "info",
-	}
-
-	// Test with different execution contexts
-	contexts := []models.ExecutionContext{
-		{Logger: log.WithField("workflow", "test-1")},
-		{Logger: log.WithField("workflow", "test-2")},
-	}
-
-	for i, execCtx := range contexts {
-		t.Run(fmt.Sprintf("context_%d", i), func(t *testing.T) {
-			result, err := action.Execute(context.Background(), execCtx)
-
-			require.NoError(t, err)
-			expected := map[string]interface{}{
-				"logged_message": "[info] Context test message",
-				"level":          "info",
+				// Verify result is an empty map
+				resultMap, ok := result.(map[string]interface{})
+				assert.True(t, ok)
+				assert.Empty(t, resultMap)
 			}
-			assert.Equal(t, expected, result)
 		})
 	}
 }
 
-func TestLogAction_Execute_WithCancelledContext(t *testing.T) {
-	action := &LogAction{
-		ID:      "cancelled-test",
-		Message: "This should still work",
-		Level:   "info",
-	}
+func TestLogAction_Execute_WithCancel(t *testing.T) {
+	action := NewLogAction(map[string]interface{}{})
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	// Create cancelled context
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel immediately
 
-	logger := log.WithField("test", "log_action")
-	execCtx := models.ExecutionContext{Logger: logger}
-
-	// Log action should still work even with cancelled context
-	result, err := action.Execute(ctx, execCtx)
-
-	require.NoError(t, err)
-	expected := map[string]interface{}{
-		"logged_message": "[info] This should still work",
-		"level":          "info",
+	execCtx := models.ExecutionContext{
+		StepResults: map[string]interface{}{
+			"test": "data",
+		},
 	}
-	assert.Equal(t, expected, result)
+
+	result, err := action.Execute(ctx, execCtx, logger)
+
+	// Log action should complete even with cancelled context
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+
+	resultMap := result.(map[string]interface{})
+	assert.Empty(t, resultMap)
 }
 
-func TestLogAction_GetConfig_Consistency(t *testing.T) {
-	config := map[string]interface{}{
-		"id":      "config-test",
-		"message": "Original message",
-		"level":   "warn",
+func TestLogAction_Execute_LargeStepResults(t *testing.T) {
+	action := NewLogAction(map[string]interface{}{})
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+
+	// Create large step results to test logging performance
+	largeData := make(map[string]interface{})
+	for i := 0; i < 1000; i++ {
+		largeData[string(rune('A'+i%26))+string(rune('a'+i%26))] = map[string]interface{}{
+			"index": i,
+			"value": "test data " + string(rune('0'+i%10)),
+			"nested": map[string]interface{}{
+				"level1": map[string]interface{}{
+					"level2": "deep value",
+				},
+			},
+		}
 	}
 
-	action, err := NewLogAction(config)
-	require.NoError(t, err)
+	execCtx := models.ExecutionContext{
+		ID:          "exec-large",
+		WorkflowID:  "workflow-large",
+		StepResults: largeData,
+	}
 
-	retrievedConfig := action.GetConfig()
+	result, err := action.Execute(context.Background(), execCtx, logger)
 
-	// Config should match the original action properties
-	assert.Equal(t, action.ID, retrievedConfig["id"])
-	assert.Equal(t, action.Message, retrievedConfig["message"])
-	assert.Equal(t, action.Level, retrievedConfig["level"])
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+
+	resultMap := result.(map[string]interface{})
+	assert.Empty(t, resultMap)
 }

@@ -2,9 +2,14 @@ package registry
 
 import (
 	"context"
+	"log/slog"
+	"os"
 	"testing"
 
 	"github.com/dukex/operion/pkg/models"
+	"github.com/dukex/operion/pkg/protocol"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // Mock action for testing
@@ -13,41 +18,39 @@ type mockAction struct {
 	config map[string]interface{}
 }
 
-func (m *mockAction) GetID() string {
-	return m.id
+func (m *mockAction) Execute(ctx context.Context, execCtx models.ExecutionContext, logger *slog.Logger) (interface{}, error) {
+	return map[string]interface{}{
+		"id":     m.id,
+		"config": m.config,
+		"result": "mock execution completed",
+	}, nil
 }
 
-func (m *mockAction) GetType() string {
-	return "mock-action"
+// Mock action factory for testing
+type mockActionFactory struct {
+	actionType string
 }
 
-func (m *mockAction) Execute(ctx context.Context, ectx models.ExecutionContext) (interface{}, error) {
-	return "success", nil
+func (f *mockActionFactory) ID() string {
+	return f.actionType
 }
 
-func (m *mockAction) Validate() error {
-	return nil
-}
-
-func (m *mockAction) GetConfig() map[string]interface{} {
-	return m.config
+func (f *mockActionFactory) Create(config map[string]interface{}) (protocol.Action, error) {
+	return &mockAction{
+		id:     f.actionType,
+		config: config,
+	}, nil
 }
 
 // Mock trigger for testing
 type mockTrigger struct {
-	id     string
-	config map[string]interface{}
+	id       string
+	config   map[string]interface{}
+	callback protocol.TriggerCallback
 }
 
-func (m *mockTrigger) GetID() string {
-	return m.id
-}
-
-func (m *mockTrigger) GetType() string {
-	return "mock-trigger"
-}
-
-func (m *mockTrigger) Start(ctx context.Context, callback models.TriggerCallback) error {
+func (m *mockTrigger) Start(ctx context.Context, callback protocol.TriggerCallback) error {
+	m.callback = callback
 	return nil
 }
 
@@ -59,186 +62,297 @@ func (m *mockTrigger) Validate() error {
 	return nil
 }
 
-func (m *mockTrigger) GetConfig() map[string]interface{} {
-	return m.config
+func (m *mockTrigger) TriggerWorkflow() error {
+	if m.callback != nil {
+		return m.callback(context.Background(), map[string]interface{}{
+			"triggered_by": m.id,
+		})
+	}
+	return nil
+}
+
+// Mock trigger factory for testing
+type mockTriggerFactory struct {
+	triggerType string
+}
+
+func (f *mockTriggerFactory) ID() string {
+	return f.triggerType
+}
+
+func (f *mockTriggerFactory) Create(config map[string]interface{}, logger *slog.Logger) (protocol.Trigger, error) {
+	return &mockTrigger{
+		id:     f.triggerType,
+		config: config,
+	}, nil
+}
+
+func TestNewRegistry(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	registry := NewRegistry(logger)
+
+	assert.NotNil(t, registry)
+	assert.Equal(t, logger, registry.logger)
+	assert.NotNil(t, registry.actionFactories)
+	assert.NotNil(t, registry.triggerFactories)
+	assert.Empty(t, registry.actionFactories)
+	assert.Empty(t, registry.triggerFactories)
 }
 
 func TestRegistry_RegisterAndCreateAction(t *testing.T) {
-	registry := NewRegistry()
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	registry := NewRegistry(logger)
 
-	// Create a test action component
-	component := &models.RegisteredComponent{
-		Type:        "test-action",
-		Name:        "Test Action",
-		Description: "A test action for unit testing",
-		Schema: &models.JSONSchema{
-			Type: "object",
-			Properties: map[string]*models.Property{
-				"message": {
-					Type:        "string",
-					Description: "Test message",
-				},
-			},
-			Required: []string{"message"},
-		},
+	// Register mock action factory
+	actionFactory := &mockActionFactory{actionType: "test-action"}
+	registry.RegisterAction(actionFactory)
+
+	// Verify registration
+	assert.Len(t, registry.actionFactories, 1)
+	assert.Contains(t, registry.actionFactories, "test-action")
+
+	// Create action instance
+	config := map[string]interface{}{
+		"param1": "value1",
+		"param2": 42,
 	}
 
-	// Register the action
-	registry.RegisterAction(component, func(config map[string]interface{}) (models.Action, error) {
-		return &mockAction{id: "test-1", config: config}, nil
-	})
-
-	// Test creation
-	config := map[string]interface{}{"message": "hello"}
 	action, err := registry.CreateAction("test-action", config)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
+	require.NoError(t, err)
+	assert.NotNil(t, action)
+
+	// Verify action can be executed
+	execCtx := models.ExecutionContext{
+		StepResults: make(map[string]interface{}),
 	}
 
-	mockAct, ok := action.(*mockAction)
-	if !ok {
-		t.Fatalf("Expected mockAction, got %T", action)
-	}
+	result, err := action.Execute(context.Background(), execCtx, logger)
+	require.NoError(t, err)
 
-	if mockAct.GetConfig()["message"] != "hello" {
-		t.Errorf("Expected message 'hello', got %v", mockAct.GetConfig()["message"])
-	}
+	resultMap := result.(map[string]interface{})
+	assert.Equal(t, "test-action", resultMap["id"])
+	assert.Equal(t, config, resultMap["config"])
+	assert.Equal(t, "mock execution completed", resultMap["result"])
 }
 
 func TestRegistry_RegisterAndCreateTrigger(t *testing.T) {
-	registry := NewRegistry()
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	registry := NewRegistry(logger)
 
-	// Create a test trigger component
-	component := &models.RegisteredComponent{
-		Type:        "test-trigger",
-		Name:        "Test Trigger",
-		Description: "A test trigger for unit testing",
-		Schema: &models.JSONSchema{
-			Type: "object",
-			Properties: map[string]*models.Property{
-				"interval": {
-					Type:        "string",
-					Description: "Trigger interval",
-				},
-			},
-			Required: []string{"interval"},
+	// Register mock trigger factory
+	triggerFactory := &mockTriggerFactory{triggerType: "test-trigger"}
+	registry.RegisterTrigger(triggerFactory)
+
+	// Verify registration
+	assert.Len(t, registry.triggerFactories, 1)
+	assert.Contains(t, registry.triggerFactories, "test-trigger")
+
+	// Create trigger instance
+	config := map[string]interface{}{
+		"schedule": "* * * * *",
+		"enabled":  true,
+	}
+
+	trigger, err := registry.CreateTrigger("test-trigger", config)
+	require.NoError(t, err)
+	assert.NotNil(t, trigger)
+
+	// Verify trigger can be started and stopped
+	ctx := context.Background()
+	callback := func(ctx context.Context, data map[string]interface{}) error {
+		return nil
+	}
+
+	err = trigger.Start(ctx, callback)
+	assert.NoError(t, err)
+
+	err = trigger.Stop(ctx)
+	assert.NoError(t, err)
+}
+
+func TestRegistry_CreateAction_NotRegistered(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	registry := NewRegistry(logger)
+
+	// Try to create action that's not registered
+	action, err := registry.CreateAction("non-existent-action", map[string]interface{}{})
+
+	assert.Error(t, err)
+	assert.Nil(t, action)
+	assert.Contains(t, err.Error(), "not registered")
+}
+
+func TestRegistry_CreateTrigger_NotRegistered(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	registry := NewRegistry(logger)
+
+	// Try to create trigger that's not registered
+	trigger, err := registry.CreateTrigger("non-existent-trigger", map[string]interface{}{})
+
+	assert.Error(t, err)
+	assert.Nil(t, trigger)
+	assert.Contains(t, err.Error(), "not registered")
+}
+
+func TestRegistry_MultipleActionsAndTriggers(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	registry := NewRegistry(logger)
+
+	// Register multiple actions
+	actionFactory1 := &mockActionFactory{actionType: "action-1"}
+	actionFactory2 := &mockActionFactory{actionType: "action-2"}
+
+	registry.RegisterAction(actionFactory1)
+	registry.RegisterAction(actionFactory2)
+
+	// Register multiple triggers
+	triggerFactory1 := &mockTriggerFactory{triggerType: "trigger-1"}
+	triggerFactory2 := &mockTriggerFactory{triggerType: "trigger-2"}
+
+	registry.RegisterTrigger(triggerFactory1)
+	registry.RegisterTrigger(triggerFactory2)
+
+	// Verify all are registered
+	assert.Len(t, registry.actionFactories, 2)
+	assert.Len(t, registry.triggerFactories, 2)
+
+	// Create instances of each
+	action1, err := registry.CreateAction("action-1", map[string]interface{}{})
+	require.NoError(t, err)
+	assert.NotNil(t, action1)
+
+	action2, err := registry.CreateAction("action-2", map[string]interface{}{})
+	require.NoError(t, err)
+	assert.NotNil(t, action2)
+
+	trigger1, err := registry.CreateTrigger("trigger-1", map[string]interface{}{})
+	require.NoError(t, err)
+	assert.NotNil(t, trigger1)
+
+	trigger2, err := registry.CreateTrigger("trigger-2", map[string]interface{}{})
+	require.NoError(t, err)
+	assert.NotNil(t, trigger2)
+}
+
+func TestRegistry_OverwriteRegistration(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	registry := NewRegistry(logger)
+
+	// Register action factory
+	actionFactory1 := &mockActionFactory{actionType: "same-action"}
+	registry.RegisterAction(actionFactory1)
+
+	// Register different factory with same type (should overwrite)
+	actionFactory2 := &mockActionFactory{actionType: "same-action"}
+	registry.RegisterAction(actionFactory2)
+
+	// Should still have only one entry
+	assert.Len(t, registry.actionFactories, 1)
+
+	// The second factory should be used
+	action, err := registry.CreateAction("same-action", map[string]interface{}{})
+	require.NoError(t, err)
+	assert.NotNil(t, action)
+}
+
+func TestRegistry_LoadActionPlugins_NonExistentPath(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	registry := NewRegistry(logger)
+
+	// Try to load plugins from non-existent path
+	factories, err := registry.LoadActionPlugins("/non/existent/path")
+
+	// Should not fail, but return empty slice
+	assert.NoError(t, err)
+	assert.Empty(t, factories)
+}
+
+func TestRegistry_LoadTriggerPlugins_NonExistentPath(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	registry := NewRegistry(logger)
+
+	// Try to load plugins from non-existent path
+	factories, err := registry.LoadTriggerPlugins("/non/existent/path")
+
+	// Should not fail, but return empty slice
+	assert.NoError(t, err)
+	assert.Empty(t, factories)
+}
+
+func TestRegistry_LoadPlugins_EmptyDirectory(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	registry := NewRegistry(logger)
+
+	// Create temporary empty directory
+	tmpDir := os.TempDir()
+
+	// Try to load plugins from empty directory
+	actionFactories, err := registry.LoadActionPlugins(tmpDir)
+	assert.NoError(t, err)
+	assert.Empty(t, actionFactories)
+
+	triggerFactories, err := registry.LoadTriggerPlugins(tmpDir)
+	assert.NoError(t, err)
+	assert.Empty(t, triggerFactories)
+}
+
+func TestMockAction_Execute(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+
+	action := &mockAction{
+		id: "test-mock",
+		config: map[string]interface{}{
+			"test": "value",
 		},
 	}
 
-	// Register the trigger
-	registry.RegisterTrigger(component, func(config map[string]interface{}) (models.Trigger, error) {
-		return &mockTrigger{id: "test-1", config: config}, nil
-	})
-
-	// Test creation
-	config := map[string]interface{}{"interval": "1m"}
-	trigger, err := registry.CreateTrigger("test-trigger", config)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
+	execCtx := models.ExecutionContext{
+		ID:         "exec-123",
+		WorkflowID: "workflow-456",
+		StepResults: map[string]interface{}{
+			"previous": "data",
+		},
 	}
 
-	mockTrig, ok := trigger.(*mockTrigger)
-	if !ok {
-		t.Fatalf("Expected mockTrigger, got %T", trigger)
-	}
+	result, err := action.Execute(context.Background(), execCtx, logger)
 
-	if mockTrig.GetConfig()["interval"] != "1m" {
-		t.Errorf("Expected interval '1m', got %v", mockTrig.GetConfig()["interval"])
-	}
+	require.NoError(t, err)
+	assert.NotNil(t, result)
+
+	resultMap := result.(map[string]interface{})
+	assert.Equal(t, "test-mock", resultMap["id"])
+	assert.Equal(t, "mock execution completed", resultMap["result"])
 }
 
-func TestRegistry_GetComponentsByType(t *testing.T) {
-	registry := NewRegistry()
-
-	// Register an action
-	actionComponent := &models.RegisteredComponent{
-		Type: "test-action",
-		Name: "Test Action",
-	}
-	registry.RegisterAction(actionComponent, func(config map[string]interface{}) (models.Action, error) {
-		return &mockAction{id: "test-1"}, nil
-	})
-
-	// Register a trigger
-	triggerComponent := &models.RegisteredComponent{
-		Type: "test-trigger",
-		Name: "Test Trigger",
-	}
-	registry.RegisterTrigger(triggerComponent, func(config map[string]interface{}) (models.Trigger, error) {
-		return &mockTrigger{id: "test-1"}, nil
-	})
-
-	// Test filtering by action type
-	actions := registry.GetComponentsByType(ComponentTypeAction)
-	if len(actions) != 1 {
-		t.Errorf("Expected 1 action, got %d", len(actions))
-	}
-	if actions[0].Type != "test-action" {
-		t.Errorf("Expected test-action, got %s", actions[0].Type)
+func TestMockTrigger_StartStopAndCallback(t *testing.T) {
+	trigger := &mockTrigger{
+		id: "test-mock-trigger",
+		config: map[string]interface{}{
+			"enabled": true,
+		},
 	}
 
-	// Test filtering by trigger type
-	triggers := registry.GetComponentsByType(ComponentTypeTrigger)
-	if len(triggers) != 1 {
-		t.Errorf("Expected 1 trigger, got %d", len(triggers))
-	}
-	if triggers[0].Type != "test-trigger" {
-		t.Errorf("Expected test-trigger, got %s", triggers[0].Type)
-	}
-}
+	ctx := context.Background()
+	var callbackData map[string]interface{}
+	var callbackCalled bool
 
-func TestRegistry_GetAvailableActions(t *testing.T) {
-	registry := NewRegistry()
-
-	actionComponent := &models.RegisteredComponent{
-		Type: "test-action",
-		Name: "Test Action",
-	}
-	registry.RegisterAction(actionComponent, func(config map[string]interface{}) (models.Action, error) {
-		return &mockAction{id: "test-1"}, nil
-	})
-
-	actions := registry.GetAvailableActions()
-	if len(actions) != 1 {
-		t.Errorf("Expected 1 action, got %d", len(actions))
-	}
-	if actions[0] != "test-action" {
-		t.Errorf("Expected test-action, got %s", actions[0])
-	}
-}
-
-func TestRegistry_GetAvailableTriggers(t *testing.T) {
-	registry := NewRegistry()
-
-	triggerComponent := &models.RegisteredComponent{
-		Type: "test-trigger",
-		Name: "Test Trigger",
-	}
-	registry.RegisterTrigger(triggerComponent, func(config map[string]interface{}) (models.Trigger, error) {
-		return &mockTrigger{id: "test-1"}, nil
-	})
-
-	triggers := registry.GetAvailableTriggers()
-	if len(triggers) != 1 {
-		t.Errorf("Expected 1 trigger, got %d", len(triggers))
-	}
-	if triggers[0] != "test-trigger" {
-		t.Errorf("Expected test-trigger, got %s", triggers[0])
-	}
-}
-
-func TestRegistry_ErrorHandling(t *testing.T) {
-	registry := NewRegistry()
-
-	// Test creating non-existent action
-	_, err := registry.CreateAction("non-existent", map[string]interface{}{})
-	if err == nil {
-		t.Error("Expected error for non-existent action")
+	callback := func(ctx context.Context, data map[string]interface{}) error {
+		callbackData = data
+		callbackCalled = true
+		return nil
 	}
 
-	// Test creating non-existent trigger
-	_, err = registry.CreateTrigger("non-existent", map[string]interface{}{})
-	if err == nil {
-		t.Error("Expected error for non-existent trigger")
-	}
+	// Start trigger
+	err := trigger.Start(ctx, callback)
+	assert.NoError(t, err)
+
+	// Trigger workflow manually
+	err = trigger.TriggerWorkflow()
+	assert.NoError(t, err)
+	assert.True(t, callbackCalled)
+	assert.Equal(t, "test-mock-trigger", callbackData["triggered_by"])
+
+	// Stop trigger
+	err = trigger.Stop(ctx)
+	assert.NoError(t, err)
 }

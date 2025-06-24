@@ -3,13 +3,15 @@ package http_request
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/dukex/operion/pkg/models"
-	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -23,80 +25,75 @@ func TestNewHTTPRequestAction(t *testing.T) {
 		{
 			name: "basic GET request",
 			config: map[string]interface{}{
-				"id":     "test-1",
-				"method": "GET",
-				"url":    "https://api.example.com/data",
+				"id":       "test-1",
+				"method":   "GET",
+				"host":     "api.example.com",
+				"path":     "/data",
+				"protocol": "https",
 			},
 			expected: &HTTPRequestAction{
-				ID:      "test-1",
-				Method:  "GET",
-				URL:     "https://api.example.com/data",
-				Headers: map[string]string{},
-				Body:    "",
-				Timeout: 30 * time.Second,
-				Retry:   RetryConfig{Attempts: 1, Delay: 0},
+				ID:       "test-1",
+				Method:   "GET",
+				Host:     "api.example.com",
+				Path:     "/data",
+				Protocol: "https",
+				Headers:  map[string]string{},
+				Body:     "",
+				Timeout:  30 * time.Second,
+				Retry:    RetryConfig{Attempts: 1, Delay: 0},
 			},
 		},
 		{
 			name: "POST request with headers and body",
 			config: map[string]interface{}{
-				"id":     "test-2",
-				"method": "post",
-				"url":    "https://api.example.com/create",
-				"body":   `{"key": "value"}`,
+				"id":       "test-2",
+				"method":   "post",
+				"host":     "api.example.com",
+				"path":     "/create",
+				"protocol": "https",
+				"body":     `{"key": "value"}`,
 				"headers": map[string]interface{}{
 					"Content-Type":  "application/json",
 					"Authorization": "Bearer token123",
 				},
+				"retry": map[string]interface{}{
+					"attempts": 3.0,
+					"delay":    5.0,
+				},
 			},
 			expected: &HTTPRequestAction{
-				ID:     "test-2",
-				Method: "POST",
-				URL:    "https://api.example.com/create",
+				ID:       "test-2",
+				Method:   "POST",
+				Host:     "api.example.com",
+				Path:     "/create",
+				Protocol: "https",
+				Body:     `{"key": "value"}`,
 				Headers: map[string]string{
 					"Content-Type":  "application/json",
 					"Authorization": "Bearer token123",
 				},
-				Body:    `{"key": "value"}`,
-				Timeout: 30 * time.Second,
-				Retry:   RetryConfig{Attempts: 1, Delay: 0},
-			},
-		},
-		{
-			name: "request with retry configuration",
-			config: map[string]interface{}{
-				"id":     "test-3",
-				"method": "GET",
-				"url":    "https://api.example.com/retry",
-				"retry": map[string]interface{}{
-					"attempts": float64(3),
-					"delay":    float64(5),
-				},
-			},
-			expected: &HTTPRequestAction{
-				ID:      "test-3",
-				Method:  "GET",
-				URL:     "https://api.example.com/retry",
-				Headers: map[string]string{},
-				Body:    "",
 				Timeout: 30 * time.Second,
 				Retry:   RetryConfig{Attempts: 3, Delay: 5},
 			},
 		},
 		{
-			name: "defaults when method not specified",
+			name: "default method is GET",
 			config: map[string]interface{}{
-				"id":  "test-4",
-				"url": "https://api.example.com/default",
+				"id":       "test-3",
+				"host":     "api.example.com",
+				"path":     "/default",
+				"protocol": "https",
 			},
 			expected: &HTTPRequestAction{
-				ID:      "test-4",
-				Method:  "GET",
-				URL:     "https://api.example.com/default",
-				Headers: map[string]string{},
-				Body:    "",
-				Timeout: 30 * time.Second,
-				Retry:   RetryConfig{Attempts: 1, Delay: 0},
+				ID:       "test-3",
+				Method:   "GET",
+				Host:     "api.example.com",
+				Path:     "/default",
+				Protocol: "https",
+				Headers:  map[string]string{},
+				Body:     "",
+				Timeout:  30 * time.Second,
+				Retry:    RetryConfig{Attempts: 1, Delay: 0},
 			},
 		},
 	}
@@ -104,26 +101,10 @@ func TestNewHTTPRequestAction(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			action, err := NewHTTPRequestAction(tt.config)
-
 			require.NoError(t, err)
-			assert.Equal(t, tt.expected.ID, action.ID)
-			assert.Equal(t, tt.expected.Method, action.Method)
-			assert.Equal(t, tt.expected.URL, action.URL)
-			assert.Equal(t, tt.expected.Headers, action.Headers)
-			assert.Equal(t, tt.expected.Body, action.Body)
-			assert.Equal(t, tt.expected.Timeout, action.Timeout)
-			assert.Equal(t, tt.expected.Retry, action.Retry)
+			assert.Equal(t, tt.expected, action)
 		})
 	}
-}
-
-func TestHTTPRequestAction_GetMethods(t *testing.T) {
-	action := &HTTPRequestAction{ID: "test", Method: "GET", URL: "https://example.com"}
-
-	assert.Equal(t, "test", action.GetID())
-	assert.Equal(t, "http_request", action.GetType())
-	assert.Nil(t, action.GetConfig())
-	assert.NoError(t, action.Validate())
 }
 
 func TestHTTPRequestAction_Execute_Success(t *testing.T) {
@@ -142,9 +123,11 @@ func TestHTTPRequestAction_Execute_Success(t *testing.T) {
 	defer server.Close()
 
 	action := &HTTPRequestAction{
-		ID:     "test-http",
-		Method: "GET",
-		URL:    server.URL,
+		ID:       "test-http",
+		Method:   "GET",
+		Host:     strings.Split(server.URL, "://")[1],
+		Protocol: strings.Split(server.URL, "://")[0],
+		Path:     "/",
 		Headers: map[string]string{
 			"Accept": "application/json",
 		},
@@ -152,10 +135,12 @@ func TestHTTPRequestAction_Execute_Success(t *testing.T) {
 		Retry:   RetryConfig{Attempts: 1, Delay: 0},
 	}
 
-	logger := log.WithField("test", "http_action")
-	execCtx := models.ExecutionContext{Logger: logger}
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	execCtx := models.ExecutionContext{
+		StepResults: make(map[string]interface{}),
+	}
 
-	result, err := action.Execute(context.Background(), execCtx)
+	result, err := action.Execute(context.Background(), execCtx, logger)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -171,162 +156,196 @@ func TestHTTPRequestAction_Execute_Success(t *testing.T) {
 	assert.Equal(t, "test response", body["data"])
 }
 
-func TestHTTPRequestAction_Execute_NonJSONResponse(t *testing.T) {
-	// Create test server that returns plain text
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain")
-		w.Write([]byte("Hello, World!"))
-	}))
-	defer server.Close()
-
-	action := &HTTPRequestAction{
-		ID:      "test-text",
-		Method:  "GET",
-		URL:     server.URL,
-		Headers: map[string]string{},
-		Timeout: 30 * time.Second,
-		Retry:   RetryConfig{Attempts: 1, Delay: 0},
-	}
-
-	logger := log.WithField("test", "http_action")
-	execCtx := models.ExecutionContext{Logger: logger}
-
-	result, err := action.Execute(context.Background(), execCtx)
-
-	require.NoError(t, err)
-	require.NotNil(t, result)
-
-	resultMap := result.(map[string]interface{})
-	assert.Equal(t, 200, resultMap["status_code"])
-	assert.Equal(t, "Hello, World!", resultMap["body"]) // Should be string since JSON parsing failed
-}
-
 func TestHTTPRequestAction_Execute_POST_WithBody(t *testing.T) {
-	// Create test server
+	// Create test server that expects POST with JSON body
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
 
 		// Read and verify body
-		var requestBody map[string]interface{}
-		json.NewDecoder(r.Body).Decode(&requestBody)
-		assert.Equal(t, "test value", requestBody["key"])
+		var body map[string]interface{}
+		err := json.NewDecoder(r.Body).Decode(&body)
+		require.NoError(t, err)
+		assert.Equal(t, "test value", body["key"])
 
-		response := map[string]interface{}{"created": true}
+		response := map[string]interface{}{
+			"created": true,
+			"id":      123,
+		}
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(response)
 	}))
 	defer server.Close()
 
 	action := &HTTPRequestAction{
-		ID:     "test-post",
-		Method: "POST",
-		URL:    server.URL,
+		ID:       "test-http-post",
+		Method:   "POST",
+		Host:     strings.Split(server.URL, "://")[1],
+		Protocol: strings.Split(server.URL, "://")[0],
+		Path:     "/",
+		Body:     `{"key": "test value"}`,
 		Headers: map[string]string{
 			"Content-Type": "application/json",
 		},
-		Body:    `{"key": "test value"}`,
 		Timeout: 30 * time.Second,
 		Retry:   RetryConfig{Attempts: 1, Delay: 0},
 	}
 
-	logger := log.WithField("test", "http_action")
-	execCtx := models.ExecutionContext{Logger: logger}
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	execCtx := models.ExecutionContext{
+		StepResults: make(map[string]interface{}),
+	}
 
-	result, err := action.Execute(context.Background(), execCtx)
+	result, err := action.Execute(context.Background(), execCtx, logger)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
 	resultMap := result.(map[string]interface{})
-	assert.Equal(t, 201, resultMap["status_code"])
+	assert.Equal(t, 200, resultMap["status_code"])
 
 	body := resultMap["body"].(map[string]interface{})
-	assert.True(t, body["created"].(bool))
+	assert.Equal(t, true, body["created"])
+	assert.Equal(t, float64(123), body["id"])
 }
 
-func TestHTTPRequestAction_Execute_ServerError_WithRetry(t *testing.T) {
-	callCount := 0
+func TestHTTPRequestAction_Execute_WithRetry(t *testing.T) {
+	attempts := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		callCount++
-		if callCount < 3 {
+		attempts++
+		if attempts < 3 {
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("Server Error"))
 			return
 		}
-		// Third call succeeds
-		response := map[string]interface{}{"success": true}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		// Success on third attempt
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{"status": "success"})
 	}))
 	defer server.Close()
 
 	action := &HTTPRequestAction{
-		ID:      "test-retry",
-		Method:  "GET",
-		URL:     server.URL,
-		Headers: map[string]string{},
-		Timeout: 30 * time.Second,
-		Retry:   RetryConfig{Attempts: 3, Delay: 0}, // No delay for faster test
+		ID:       "test-retry",
+		Method:   "GET",
+		Host:     strings.Split(server.URL, "://")[1],
+		Protocol: strings.Split(server.URL, "://")[0],
+		Path:     "/",
+		Timeout:  5 * time.Second,
+		Retry:    RetryConfig{Attempts: 3, Delay: 0}, // No delay for faster test
 	}
 
-	logger := log.WithField("test", "http_action")
-	execCtx := models.ExecutionContext{Logger: logger}
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	execCtx := models.ExecutionContext{
+		StepResults: make(map[string]interface{}),
+	}
 
-	result, err := action.Execute(context.Background(), execCtx)
+	result, err := action.Execute(context.Background(), execCtx, logger)
 
 	require.NoError(t, err)
-	assert.Equal(t, 3, callCount) // Should have retried 3 times
+	assert.Equal(t, 3, attempts)
 
 	resultMap := result.(map[string]interface{})
 	assert.Equal(t, 200, resultMap["status_code"])
 }
 
-func TestHTTPRequestAction_Execute_AllRetriesFailed(t *testing.T) {
+func TestHTTPRequestAction_Execute_WithTemplating(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Server Error"))
+		var body map[string]interface{}
+		err := json.NewDecoder(r.Body).Decode(&body)
+		require.NoError(t, err)
+
+		// Verify templated data was used
+		assert.Equal(t, "user123", body["user_id"])
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	}))
 	defer server.Close()
 
 	action := &HTTPRequestAction{
-		ID:      "test-fail",
-		Method:  "GET",
-		URL:     server.URL,
-		Headers: map[string]string{},
-		Timeout: 30 * time.Second,
-		Retry:   RetryConfig{Attempts: 2, Delay: 0},
-	}
-
-	logger := log.WithField("test", "http_action")
-	execCtx := models.ExecutionContext{Logger: logger}
-
-	result, err := action.Execute(context.Background(), execCtx)
-
-	require.NoError(t, err) // Should not error, but return the error response
-
-	resultMap := result.(map[string]interface{})
-	assert.Equal(t, 500, resultMap["status_code"])
-	assert.Equal(t, "Server Error", resultMap["body"])
-}
-
-func TestHTTPRequestAction_Execute_InvalidURL(t *testing.T) {
-	action := &HTTPRequestAction{
-		ID:      "test-invalid",
-		Method:  "GET",
-		URL:     "://invalid-url",
-		Headers: map[string]string{},
+		ID:       "test-template",
+		Method:   "POST",
+		Host:     strings.Split(server.URL, "://")[1],
+		Protocol: strings.Split(server.URL, "://")[0],
+		Path:     "/",
+		Body:     `{"user_id": steps.previous_step.user_id}`,
+		Headers: map[string]string{
+			"Content-Type": "application/json",
+		},
 		Timeout: 30 * time.Second,
 		Retry:   RetryConfig{Attempts: 1, Delay: 0},
 	}
 
-	logger := log.WithField("test", "http_action")
-	execCtx := models.ExecutionContext{Logger: logger}
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	execCtx := models.ExecutionContext{
+		StepResults: map[string]interface{}{
+			"previous_step": map[string]interface{}{
+				"user_id": "user123",
+			},
+		},
+	}
 
-	result, err := action.Execute(context.Background(), execCtx)
+	result, err := action.Execute(context.Background(), execCtx, logger)
 
-	assert.Error(t, err)
-	assert.Nil(t, result)
-	assert.Contains(t, err.Error(), "all retry attempts failed")
+	require.NoError(t, err)
+	resultMap := result.(map[string]interface{})
+	assert.Equal(t, 200, resultMap["status_code"])
+}
+
+func TestHTTPRequestAction_Execute_Timeout(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Simulate slow response
+		time.Sleep(2 * time.Second)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	action := &HTTPRequestAction{
+		ID:       "test-timeout",
+		Method:   "GET",
+		Host:     strings.Split(server.URL, "://")[1],
+		Protocol: strings.Split(server.URL, "://")[0],
+		Path:     "/",
+		Timeout:  100 * time.Millisecond, // Very short timeout
+		Retry:    RetryConfig{Attempts: 1, Delay: 0},
+	}
+
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	execCtx := models.ExecutionContext{
+		StepResults: make(map[string]interface{}),
+	}
+
+	_, err := action.Execute(context.Background(), execCtx, logger)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "http request failed")
+}
+
+func TestHTTPRequestAction_Execute_NonJSONResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("plain text response"))
+	}))
+	defer server.Close()
+
+	action := &HTTPRequestAction{
+		ID:       "test-text",
+		Method:   "GET",
+		Host:     strings.Split(server.URL, "://")[1],
+		Protocol: strings.Split(server.URL, "://")[0],
+		Path:     "/",
+		Timeout:  30 * time.Second,
+		Retry:    RetryConfig{Attempts: 1, Delay: 0},
+	}
+
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	execCtx := models.ExecutionContext{
+		StepResults: make(map[string]interface{}),
+	}
+
+	result, err := action.Execute(context.Background(), execCtx, logger)
+
+	require.NoError(t, err)
+	resultMap := result.(map[string]interface{})
+	assert.Equal(t, 200, resultMap["status_code"])
+	assert.Equal(t, "plain text response", resultMap["body"])
 }

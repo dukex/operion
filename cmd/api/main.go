@@ -22,7 +22,6 @@ func main() {
 	persistence := file.NewFilePersistence("./examples/data")
 	workflowRepository := workflow.NewRepository(persistence)
 
-
 	validate = validator.New(validator.WithRequiredStructEnabled())
 
 	handlers := web.NewAPIHandlers(workflowRepository, validate, registry.NewRegistry(slog.Default()))

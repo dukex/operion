@@ -18,7 +18,9 @@ import (
 type HTTPRequestAction struct {
 	ID      string
 	Method  string
-	URL     string
+	Protocol string
+	Host    string
+	Path    string
 	Headers map[string]string
 	Body    string
 	Timeout time.Duration
@@ -33,7 +35,18 @@ type RetryConfig struct {
 func NewHTTPRequestAction(config map[string]interface{}) (*HTTPRequestAction, error) {
 	id, _ := config["id"].(string)
 	method, _ := config["method"].(string)
-	url, _ := config["url"].(string)
+	host, ok := config["host"].(string)
+	if !ok {
+		return nil, fmt.Errorf("missing or invalid 'host' in configuration")
+	}
+	path, _ := config["path"].(string)
+	if len(path) == 0 {
+		path = "/"
+	}
+	protocol, _ := config["protocol"].(string)
+	if protocol == "" {
+		protocol = "http"
+	}
 	body, _ := config["body"].(string)
 
 	headers := make(map[string]string)
@@ -66,7 +79,9 @@ func NewHTTPRequestAction(config map[string]interface{}) (*HTTPRequestAction, er
 	return &HTTPRequestAction{
 		ID:      id,
 		Method:  strings.ToUpper(method),
-		URL:     url,
+		Protocol: protocol,
+		Host:    host,
+		Path:    path,
 		Headers: headers,
 		Body:    body,
 		Timeout: 30 * time.Second,
@@ -93,24 +108,47 @@ func (a *HTTPRequestAction) Execute(ctx context.Context, executionCtx models.Exe
 
 		var bodyReader io.Reader
 		if a.Body != "" {
-			body, err := template.Render(a.Body, executionCtx.StepResults)
-			if err != nil {
-				cancel()
-				return nil, fmt.Errorf("failed to render body template: %w", err)
+			var body interface{} = a.Body
+			var err error
+			// Only render if it contains template expressions
+			if template.NeedsTemplating(a.Body) {
+				body, err = template.RenderWithContext(a.Body, &executionCtx)
+				if err != nil {
+					cancel()
+					return nil, fmt.Errorf("failed to render body template: %w", err)
+				}
 			}
 
-			bodyMarshalled, err := json.Marshal(body)
-
-			if err != nil {
-				cancel()
-				return nil, fmt.Errorf("failed to marshal body: %w", err)
+			var bodyBytes []byte
+			if str, ok := body.(string); ok {
+				bodyBytes = []byte(str)
+			} else {
+				bodyBytes, err = json.Marshal(body)
+				if err != nil {
+					cancel()
+					return nil, fmt.Errorf("failed to marshal body: %w", err)
+				}
 			}
 
-			bodyReader = strings.NewReader(string(bodyMarshalled))
+			bodyReader = strings.NewReader(string(bodyBytes))
 		}
 
-		logger.Debug("Creating HTTP request: %s %s", "method", a.Method, "url", a.URL)
-		req, err := http.NewRequestWithContext(reqCtx, a.Method, a.URL, bodyReader)
+		// Only render path if it contains template expressions
+		path := a.Path
+		if template.NeedsTemplating(a.Path) {
+			pathResult, err := template.RenderWithContext(a.Path, &executionCtx)
+			if err != nil {
+				cancel()
+				return nil, fmt.Errorf("failed to render path template: %w", err)
+			}
+			path = fmt.Sprintf("%v", pathResult)
+		}
+		url := fmt.Sprintf("%s://%s%s", a.Protocol, a.Host, path)
+		
+		logger.Debug("Creating HTTP request: %s %s", "method", a.Method, "url", url)
+
+
+		req, err := http.NewRequestWithContext(reqCtx, a.Method, url, bodyReader)
 		if err != nil {
 			cancel()
 			lastErr = fmt.Errorf("failed to create http request: %w", err)
@@ -118,7 +156,18 @@ func (a *HTTPRequestAction) Execute(ctx context.Context, executionCtx models.Exe
 		}
 
 		for key, value := range a.Headers {
-			req.Header.Set(key, value)
+			headerValue := value
+			// Only render if it contains template expressions
+			if template.NeedsTemplating(value) {
+				headerResult, err := template.RenderWithContext(value, &executionCtx)
+				if err != nil {
+					cancel()
+					lastErr = fmt.Errorf("failed to render header '%s' template: %w", key, err)
+					continue
+				}
+				headerValue = fmt.Sprintf("%v", headerResult)
+			}
+			req.Header.Set(key, headerValue)
 		}
 
 		client := &http.Client{}
