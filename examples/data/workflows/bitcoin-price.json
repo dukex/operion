@@ -17,20 +17,17 @@
     {
       "id": "c90f6195-d6fb-4519-803d-cf32f5f86c48",
       "name": "Fetch Bitcoin Data",
-      "action": {
-        "id": "78fddb21-01b9-4311-a969-7e6c7d834652",
-        "type": "http_request",
-        "configuration": {
-          "headers": {
-            "Content": "application/json"
-          },
-          "method": "GET",
-          "retry": {
-            "attempts": 3,
-            "delay": 5
-          },
-          "url": "https://api.coinpaprika.com/v1/coins/btc-bitcoin/ohlcv/today"
-        }
+      "action_id": "http_request",
+      "configuration": {
+        "headers": {
+          "Content": "application/json"
+        },
+        "method": "GET",
+        "retry": {
+          "attempts": 3,
+          "delay": 5
+        },
+        "url": "https://api.coinpaprika.com/v1/coins/btc-bitcoin/ohlcv/today"
       },
       "uid": "bitcoin_data",
       "conditional": {
@@ -43,14 +40,10 @@
     },
     {
       "id": "8de00551-e4de-48bf-aeff-21d394c86a9e",
-      "action": {
-        "id": "6ffc6b23-00bd-4e0c-8718-caa1ede0becf",
-        "type": "transform",
-        "description": "",
-        "configuration": {
-          "expression": "{  \"price\": $.close ? $.close : $.open}",
-          "input": "$.bitcoin_data.body"
-        }
+      "action_id": "transform",
+      "configuration": {
+        "expression": "{  \"price\": $.close ? $.close : $.open}",
+        "input": "$.bitcoin_data.body"
       },
       "uid": "process_bitcoin_data",
       "name": "Extract Bitcoin Price",
@@ -64,35 +57,32 @@
     },
     {
       "id": "8866978c-806e-468e-a1f6-d03fa418b238",
-      "action": {
-        "id": "e7ca16b7-625b-4aa8-9f01-13eba575577e",
-        "type": "file_write",
-        "description": "",
-        "configuration": {
-          "directory": "/tmp",
-          "file_name": "bitcoin_price.json",
-          "input": "$.process_bitcoin_data",
-          "overwrite": true
-        }
+      "action_id": "http_request",
+      "configuration": {
+        "body": "{\n  \"price\": $.process_bitcoin_data.price\n}",
+        "headers": {
+          "Content": "application/json"
+        },
+        "method": "POST",
+        "retry": {
+          "attempts": 3,
+          "delay": 5
+        },
+        "url": "https://test-operion.free.beeceptor.com/bitcoin"
       },
-      "uid": "file_write",
-      "name": "Write to File",
+      "uid": "save",
+      "name": "Save Bitcoin Price",
       "conditional": {
         "language": "",
         "expression": ""
       },
-      "on_failure": "temp_l7oaen33g",
       "enabled": true
     },
     {
       "id": "temp_l7oaen33g",
-      "action": {
-        "id": "49077a6a-8aa8-4fc9-9637-ea28c711a88a",
-        "type": "log",
-        "description": "Log a message with configurable level",
-        "configuration": {}
-      },
-      "uid": "log-error",
+      "action_id": "log",
+      "configuration": {},
+      "uid": "log_error",
       "name": "Log Error",
       "conditional": {
         "language": "",

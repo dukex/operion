@@ -42,7 +42,7 @@ func NewDispatcherManager(
 ) *DispatcherManager {
 	return &DispatcherManager{
 		id:              id,
-		logger:          slog.With("module", "operion-dispatcher", "dispatcher_id", id),
+		logger:          logger.With("module", "operion-dispatcher", "dispatcher_id", id),
 		persistence:     persistence,
 		registry:        registry,
 		restartCount:    0,
@@ -180,10 +180,8 @@ func (tm *DispatcherManager) createTriggerCallback(workflowID, triggerID string)
 			TriggerData: data,
 		}
 		event.ID = tm.eventBus.GenerateID()
-		event.TriggerID = triggerID
 
-		// Publish the event
-		if err := tm.eventBus.Publish(ctx, event); err != nil {
+		if err := tm.eventBus.Publish(ctx, workflowID, event); err != nil {
 			logger.Error("Failed to publish trigger event", "error", err)
 			return err
 		}

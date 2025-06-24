@@ -3,134 +3,185 @@ package workflow
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"maps"
 
+	"github.com/dukex/operion/pkg/event_bus"
+	"github.com/dukex/operion/pkg/events"
 	"github.com/dukex/operion/pkg/models"
+	"github.com/dukex/operion/pkg/persistence"
 	"github.com/dukex/operion/pkg/registry"
 	"github.com/google/uuid"
-	log "github.com/sirupsen/logrus"
 )
 
 type Executor struct {
-	repository *Repository
-	registry   *registry.Registry
+	persistence persistence.Persistence
+	registry    *registry.Registry
 }
 
-func NewExecutor(repository *Repository, registry *registry.Registry) *Executor {
+func NewExecutor(
+	persistence persistence.Persistence,
+	registry *registry.Registry,
+) *Executor {
 	return &Executor{
-		repository: repository,
-		registry:   registry,
+		registry:    registry,
+		persistence: persistence,
 	}
 }
 
-func (s *Executor) Execute(ctx context.Context, workflowID string, triggerData map[string]interface{}) error {
-	logger := log.WithFields(log.Fields{
-		"module":       "workflow_executor",
-		"workflow_id":  workflowID,
-		"trigger_data": triggerData,
-	})
-
+func (s *Executor) Start(ctx context.Context, logger *slog.Logger, workflowID string, triggerData map[string]interface{}) ([]event_bus.Event, error) {
 	logger.Info("Starting execution of workflow")
 
-	workflow, err := s.getWorkflowByID(workflowID)
+	workflowRepository := NewRepository(s.persistence)
+	workflowItem, err := workflowRepository.FetchByID(workflowID)
+
 	if err != nil {
-		logger.Errorf("Failed to fetch workflow: %v", err)
-		return fmt.Errorf("failed to fetch workflow %s: %w", workflowID, err)
+		logger.Error("Failed to get workflow", "error", err)
+		return nil, err
 	}
 
-	executionCtx := models.ExecutionContext{
+	logger.Info("Created execution context")
+
+	if len(workflowItem.Steps) == 0 {
+		logger.Info("Workflow has no steps to execute")
+		return nil, fmt.Errorf("workflow %s has no steps", workflowID)
+	}
+
+	// TODO: save it to the database
+	executionCtx := &models.ExecutionContext{
 		ID:          generateExecutionID(),
 		WorkflowID:  workflowID,
 		TriggerData: triggerData,
-		Variables:   workflow.Variables,
 		StepResults: make(map[string]interface{}),
 		Metadata:    make(map[string]interface{}),
 	}
 
-	logger = logger.WithFields(log.Fields{
-		"execution_id": executionCtx.ID,
-		"variables":    executionCtx.Variables,
-	})
-	// executionCtx.Logger = logger
-
-	logger.Info("Created execution context")
-
-	if len(workflow.Steps) == 0 {
-		logger.Info("Workflow has no steps to execute")
-		return nil
-	}
-
-	currentStepID := workflow.Steps[0].ID
-
-	for currentStepID != "" {
-		step, found := s.findStepByID(workflow.Steps, currentStepID)
-		if !found {
-			return fmt.Errorf("step %s not found in workflow %s", currentStepID, workflowID)
-		}
-
-		logger = logger.WithFields(log.Fields{
-			"step_id":          step.ID,
-			"step_action":      step.Action.Name,
-			"step_enabled":     step.Enabled,
-			"step_conditional": step.Conditional,
-			"step_on_success":  step.OnSuccess,
-			"step_on_failure":  step.OnFailure,
-		})
-
-		if !step.Enabled {
-			logger.Info("Step is disabled, skipping")
-			currentStepID = s.getNextStepID(step, true) // Treat as success
-			continue
-		}
-
-		logger.Info("Executing step action")
-
-		shouldExecute, err := s.evaluateConditional(step.Conditional, executionCtx)
-		if err != nil {
-			log.Printf("Error evaluating conditional for step %s: %v", step.ID, err)
-			return fmt.Errorf("error evaluating conditional for step %s: %w", step.ID, err)
-		}
-
-		if !shouldExecute {
-			log.Printf("Conditional evaluated to false for step %s, skipping", step.ID)
-			currentStepID = s.getNextStepID(step, true) // Treat as success
-			continue
-		}
-
-		result, err := s.executeAction(ctx, step.Action, &executionCtx)
-		if err != nil {
-			logger.Errorf("Failed to execute action for step: %v", err)
-			return fmt.Errorf("failed to execute action for step %s: %w", step.ID, err)
-		}
-
-		if executionCtx.StepResults == nil {
-			executionCtx.StepResults = make(map[string]interface{})
-		}
-		executionCtx.StepResults[step.UID] = result
-		logger.Infof("Step executed successfully, result: %v", result)
-
-		currentStepID = s.getNextStepID(step, true)
-	}
-
-	logger.Infof("Completed execution of workflow (execution ID: %s)", executionCtx.ID)
-	return nil
+	return []event_bus.Event{
+		&events.WorkflowStepAvailable{
+			BaseEvent:        events.NewBaseEvent(events.WorkflowStepAvailableEvent, workflowID),
+			ExecutionID:      executionCtx.ID,
+			StepID:           workflowItem.Steps[0].ID,
+			ExecutionContext: executionCtx,
+		},
+	}, nil
 }
 
-func (s *Executor) getWorkflowByID(workflowID string) (*models.Workflow, error) {
-	if s.repository == nil {
-		return nil, fmt.Errorf("workflow repository not initialized")
+func (s *Executor) ExecuteStep(ctx context.Context, logger *slog.Logger, workflow *models.Workflow, executionCtx *models.ExecutionContext, currentStepID string) (
+	[]event_bus.Event, error) {
+	step, found := s.findStepByID(workflow.Steps, currentStepID)
+	if !found {
+		return nil, fmt.Errorf("step %s not found in workflow %s", currentStepID, workflow.ID)
 	}
 
-	workflow, err := s.repository.FetchByID(workflowID)
+	logger = logger.With(
+		"step_id", step.ID,
+		"step_name", step.Name,
+	)
+
+	if !step.Enabled {
+		logger.Info("Step is disabled, skipping")
+
+		return s.nextStep(step, logger, workflow.ID, executionCtx, true), nil // Treat as success
+	}
+
+	logger.Info("Executing step action")
+
+	// TODO: Handle conditionals
+	// 	shouldExecute, err := s.evaluateConditional(step.Conditional, executionCtx)
+	// 	if err != nil {
+	// 		log.Printf("Error evaluating conditional for step %s: %v", step.ID, err)
+	// 		return fmt.Errorf("error evaluating conditional for step %s: %w", step.ID, err)
+	// 	}
+
+	// 	if !shouldExecute {
+	// 		log.Printf("Conditional evaluated to false for step %s, skipping", step.ID)
+	// 		currentStepID = s.getNextStepID(step, true) // Treat as success
+	// 		continue
+	// 	}
+
+	result, err := s.executeAction(ctx, logger, step, executionCtx)
 	if err != nil {
-		return nil, err
+		logger.Error("Failed to execute action for step", "error", err)
+
+		return append(s.nextStep(step, logger, workflow.ID, executionCtx, false),
+			&events.WorkflowStepFailed{
+				BaseEvent:   events.NewBaseEvent(events.WorkflowStepFailedEvent, workflow.ID),
+				ExecutionID: executionCtx.ID,
+				StepID:      currentStepID,
+				ActionID:    step.ActionID,
+				Error:       err.Error(),
+				Duration:    0, // TODO: calculate the duration
+			},
+		), fmt.Errorf("failed to execute action for step %s: %w", step.ID, err)
 	}
 
-	if workflow.ID == "" {
-		return nil, fmt.Errorf("workflow with ID %s not found", workflowID)
+	if executionCtx.StepResults == nil {
+		executionCtx.StepResults = make(map[string]interface{})
 	}
+	executionCtx.StepResults[step.UID] = result
+	logger.Info("Step executed successfully", "result", result)
 
-	return workflow, nil
+	return append(s.nextStep(step, logger, workflow.ID, executionCtx, true),
+		&events.WorkflowStepFinished{
+			BaseEvent:   events.NewBaseEvent(events.WorkflowStepFinishedEvent, workflow.ID),
+			ExecutionID: executionCtx.ID,
+			StepID:      step.ID,
+			ActionID:    step.ActionID,
+			Result:      result,
+			Duration:    0, // TODO: calculate the duration
+		},
+	), nil
 }
+
+func (s *Executor) nextStep(
+	step *models.WorkflowStep,
+	logger *slog.Logger,
+	workflowId string,
+	executionCtx *models.ExecutionContext,
+	success bool,
+) []event_bus.Event {
+	nextStepID, found := s.getNextStepID(step, success)
+
+	eventsToDispatcher := make([]event_bus.Event, 0)
+
+	if !found {
+		logger.Info("No next step defined, ending workflow execution")
+
+		eventsToDispatcher = append(eventsToDispatcher, &events.WorkflowFinished{
+			BaseEvent:   events.NewBaseEvent(events.WorkflowFinishedEvent, workflowId),
+			ExecutionID: executionCtx.ID,
+			Result:      executionCtx.StepResults,
+		})
+	} else {
+		logger.Info("Moving to next step", "next_step_id", nextStepID)
+
+		eventsToDispatcher = append(eventsToDispatcher, &events.WorkflowStepAvailable{
+			BaseEvent:        events.NewBaseEvent(events.WorkflowStepAvailableEvent, workflowId),
+			ExecutionID:      executionCtx.ID,
+			StepID:           nextStepID,
+			ExecutionContext: executionCtx,
+		})
+	}
+
+	return eventsToDispatcher
+}
+
+// func (s *Executor) getWorkflowByID(workflowID string) (*models.Workflow, error) {
+// 	if s.repository == nil {
+// 		return nil, fmt.Errorf("workflow repository not initialized")
+// 	}
+
+// 	workflow, err := s.repository.FetchByID(workflowID)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	if workflow.ID == "" {
+// 		return nil, fmt.Errorf("workflow with ID %s not found", workflowID)
+// 	}
+
+// 	return workflow, nil
+// }
 
 func (s *Executor) findStepByID(steps []*models.WorkflowStep, stepID string) (*models.WorkflowStep, bool) {
 	for _, step := range steps {
@@ -141,70 +192,64 @@ func (s *Executor) findStepByID(steps []*models.WorkflowStep, stepID string) (*m
 	return nil, false
 }
 
-func (s *Executor) evaluateConditional(conditional models.ConditionalExpression, ctx models.ExecutionContext) (bool, error) {
-	if conditional.Expression == "" && conditional.Language == "" {
-		return true, nil
-	}
+// func (s *Executor) evaluateConditional(conditional models.ConditionalExpression, ctx models.ExecutionContext) (bool, error) {
+// 	if conditional.Expression == "" && conditional.Language == "" {
+// 		return true, nil
+// 	}
 
-	switch conditional.Language {
-	case "simple", "":
-		if conditional.Expression == "true" || conditional.Expression == "" {
-			return true, nil
-		}
-		return false, nil
-	default:
-		// ctx.Logger.Errorf("Unsupported conditional language: %s, defaulting to true", conditional.Language)
-		return true, nil
-	}
-}
+// 	switch conditional.Language {
+// 	case "simple", "":
+// 		if conditional.Expression == "true" || conditional.Expression == "" {
+// 			return true, nil
+// 		}
+// 		return false, nil
+// 	default:
+// 		// ctx.Logger.Errorf("Unsupported conditional language: %s, defaulting to true", conditional.Language)
+// 		return true, nil
+// 	}
+// }
 
-func (s *Executor) executeAction(ctx context.Context, actionItem models.ActionItem, executionCtx *models.ExecutionContext) (interface{}, error) {
+func (s *Executor) executeAction(ctx context.Context, logger *slog.Logger, step *models.WorkflowStep, executionCtx *models.ExecutionContext) (interface{}, error) {
 	if s.registry == nil {
 		// executionCtx.Logger.Infof("Registry not initialized, skipping action %s", actionItem.ID)
 		return nil, nil
 	}
 
 	config := make(map[string]interface{})
-	for k, v := range actionItem.Configuration {
-		config[k] = v
-	}
-	config["id"] = actionItem.ID
+	maps.Copy(config, step.Configuration)
+	config["id"] = step.ActionID
 
-	// logger := executionCtx.Logger.WithFields(log.Fields{
-	// 	"action_id":     actionItem.ID,
-	// 	"action_type":   actionItem.Type,
-	// 	"action_config": config,
-	// })
+	logger = logger.With(
+		"action_id", step.ActionID,
+	)
 
-	action, err := s.registry.CreateAction(actionItem.Type, config)
+	action, err := s.registry.CreateAction(step.ActionID, config)
 	if err != nil {
 		// logger.Errorf("Failed to create action: %v", err)
 		return nil, err
 	}
 
-	result, err := action.Execute(ctx, *executionCtx.WithLogger())
+	result, err := action.Execute(ctx, *executionCtx, logger.With())
 	if err != nil {
 		// logger.Errorf("Actionfailed: %v", err)
 		return nil, err
 	}
 
-	// logger.Info("Action completed successfully")
+	logger.Info("Action completed successfully")
 	return result, err
 }
 
-// getNextStepID determines the next step based on success/failure
-func (s *Executor) getNextStepID(step *models.WorkflowStep, success bool) string {
+func (s *Executor) getNextStepID(step *models.WorkflowStep, success bool) (string, bool) {
 	if success && step.OnSuccess != nil {
-		return *step.OnSuccess
+		return *step.OnSuccess, true
 	} else if !success && step.OnFailure != nil {
-		return *step.OnFailure
+		return *step.OnFailure, true
 	}
 
 	// No next step specified, end workflow
-	return ""
+	return "", false
 }
 
-// generateExecutionID generates a unique execution ID
 func generateExecutionID() string {
 	return fmt.Sprintf("exec-%s", uuid.New().String()[:8])
 }

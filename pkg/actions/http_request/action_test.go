@@ -1,4 +1,4 @@
-package http_action
+package http_request
 
 import (
 	"context"

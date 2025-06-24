@@ -121,9 +121,13 @@ The visual workflow editor will be available at `http://localhost:5173`
 #### Event-Driven Architecture
 The system uses an event-driven architecture where:
 1. **Dispatcher Service** loads trigger plugins, listens for trigger conditions and publishes `WorkflowTriggered` events
-2. **Worker Service** subscribes to events and executes the corresponding workflows using action plugins
+2. **Worker Service** handles workflow events and executes steps individually:
+   - Receives `WorkflowTriggered` events and starts workflow execution
+   - Processes `WorkflowStepAvailable` events for step-by-step execution
+   - Publishes granular events: `WorkflowStepFinished`, `WorkflowStepFailed`, `WorkflowFinished`
 3. **Event Bus** decouples trigger detection from workflow execution (supports GoChannel and Kafka)
-4. **Plugin System** enables dynamic loading of .so files for extensible triggers and actions
+4. **Native Actions** - Core actions built into binary for better performance
+5. **Plugin System** enables dynamic loading of .so files for extensible triggers and custom actions
 
 ### API Endpoints
 
@@ -137,30 +141,47 @@ curl http://localhost:3000/
 
 ### Example Workflow
 
-See `./data/workflows/bitcoin-price.json` for a complete workflow example that:
-- Triggers every minute via cron schedule
-- Fetches Bitcoin price data from CoinPaprika API
-- Processes the data using JSONata transformation
-- Saves the result to a file
+See `./examples/data/workflows/bitcoin-price.json` for a complete workflow example that:
+- Triggers every minute via cron schedule (`schedule` trigger)
+- Fetches Bitcoin price data from CoinPaprika API (`http_request` action)
+- Processes the data using JSONata transformation (`transform` action)
+- Posts processed data to webhook endpoint (`http_request` action)
+- Logs errors if any step fails (`log` action)
+
+#### New Action Contract
+Actions now use a standardized contract with:
+- **Factory Pattern**: Actions created via `ActionFactory.Create(config)`
+- **Execution Context**: Access to previous step results via `ExecutionContext.StepResults`
+- **Template Support**: JSONata templating for dynamic configuration
+- **Structured Logging**: Each action receives a structured logger
+- **Result Mapping**: Step results stored by `uid` for cross-step references
 
 ## Current Implementation
 
 ### Available Triggers
-- **Schedule**: Cron-based execution using robfig/cron (migrated to plugin system)
-- **Kafka**: Message-based triggering from Kafka topics (migrated to plugin system)
+- **Schedule** (`pkg/triggers/schedule/`) - Cron-based execution using robfig/cron with native implementation
+- **Kafka** (`pkg/triggers/kafka/`) - Message-based triggering from Kafka topics with native implementation
 
 ### Available Actions  
-- Actions are being migrated to the new plugin system
-- **Log**: Output log messages (example plugin in `examples/plugins/actions/log/`)
-- **HTTP Request**: Make HTTP calls to external APIs (migration needed)
-- **Transform**: Process data using JSONata expressions (migration needed)
-- **File Write**: Save data to files (migration needed)
+- **HTTP Request** (`pkg/actions/http_request/`) - Make HTTP calls with retry logic, templating, and JSON/string response handling
+- **Transform** (`pkg/actions/transform/`) - Process data using JSONata expressions with input extraction and templating
+- **Log** (`pkg/actions/log/`) - Output structured log messages for debugging and monitoring
+- **Plugin Actions**: Custom actions via .so plugins (example in `examples/plugins/actions/log/`)
 
 ### Plugin System
 - Dynamic loading of `.so` plugin files from `./plugins` directory
 - Factory pattern with `ActionFactory` and `TriggerFactory` interfaces
 - Protocol-based interfaces in `pkg/protocol/` for type safety
 - Example plugins available in `examples/plugins/`
+- **Native vs Plugin Actions**: Core actions built-in for performance, plugins for extensibility
+
+### Workflow Execution Model
+The executor now operates on an event-driven, step-by-step model:
+- **Execution Context**: Maintains state across steps with `ExecutionContext.StepResults`
+- **Step Isolation**: Each step processed as individual event for scalability
+- **Event Publishing**: Granular events published for monitoring and debugging
+- **State Management**: Step results stored by `uid` and accessible via JSONata templates
+- **Error Handling**: Failed steps can route to different next steps via `on_failure`
 
 ## Development
 

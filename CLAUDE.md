@@ -81,11 +81,12 @@ go mod tidy         # Clean up dependencies
 - **Kafka Trigger** (`pkg/triggers/kafka/`) - Kafka topic-based triggering with IBM/sarama
 
 ### Available Actions
-- Actions will be registered as they are migrated to the new architecture
+- **HTTP Request** (`pkg/actions/http_request/`) - Make HTTP calls with retry logic and templating support
+- **Transform** (`pkg/actions/transform/`) - Process data using JSONata expressions with input extraction
+- **Log** (`pkg/actions/log/`) - Output log messages for debugging and monitoring
 
 ### Incomplete/Placeholder Components
 - **Dashboard** (`cmd/dashboard/`) - Directory exists but not implemented (replaced by React-based UI)
-- **Actions** - Need to be migrated to new pkg structure and registered
 - **Visual Editor Editing** - Current UI is read-only, workflow creation/editing features need implementation
 
 ## Key Configuration
@@ -109,13 +110,15 @@ To add new triggers: Implement `protocol.Trigger` and `protocol.TriggerFactory` 
 To add new actions: Implement `protocol.Action` and `protocol.ActionFactory` interfaces, compile as `.so` plugin
 To add new persistence: Implement `persistence.Persistence` interface
 
-### Plugin Development
+### Native Action Development
+
+Native actions are built into the main binary and implement the `protocol.Action` interface:
 
 ```go
-// Action plugin example
+// Native action factory example
 type MyActionFactory struct{}
 
-func (f *MyActionFactory) Type() string {
+func (f *MyActionFactory) ID() string {
     return "my-action"
 }
 
@@ -123,8 +126,45 @@ func (f *MyActionFactory) Create(config map[string]interface{}) (protocol.Action
     return NewMyAction(config)
 }
 
+// Native action implementation
+type MyAction struct {
+    ID     string
+    Config map[string]interface{}
+}
+
+func (a *MyAction) Execute(ctx context.Context, executionCtx models.ExecutionContext, logger *slog.Logger) (interface{}, error) {
+    logger = logger.With("action_type", "my-action")
+    logger.Info("Executing my action")
+    
+    // Access previous step results
+    previousResults := executionCtx.StepResults
+    
+    // Perform action logic
+    result := map[string]interface{}{
+        "status": "success",
+        "data": "processed data",
+    }
+    
+    return result, nil
+}
+```
+
+### Plugin Development (External Actions)
+
+```go
+// Plugin action factory example
+type MyPluginActionFactory struct{}
+
+func (f *MyPluginActionFactory) ID() string {
+    return "my-plugin-action"
+}
+
+func (f *MyPluginActionFactory) Create(config map[string]interface{}) (protocol.Action, error) {
+    return NewMyPluginAction(config)
+}
+
 // Export symbol for plugin loading
-var Action protocol.ActionFactory = &MyActionFactory{}
+var Action protocol.ActionFactory = &MyPluginActionFactory{}
 
 // Trigger plugin example  
 type MyTriggerFactory struct{}
@@ -207,23 +247,51 @@ Sample workflows in `./data/workflows/` directory:
 The system is designed with clear separation of concerns:
 
 - **Dispatcher Service** (`operion-dispatcher`) - Loads trigger plugins, listens to external triggers and publishes `WorkflowTriggered` events
-- **Worker Service** (`operion-worker`) - Subscribes to `WorkflowTriggered` events and executes workflows with action plugins
+- **Worker Service** (`operion-worker`) - Event-driven workflow execution with step-by-step processing
 - **Event Bus** - Decouples trigger detection from workflow execution (supports GoChannel and Kafka)
 - **Plugin System** - Dynamic loading of `.so` files for extensible actions and triggers
+- **Native Actions** - Core actions built into the main binary for better performance
+
+### Event-Driven Workflow Execution
+
+The workflow executor (`pkg/workflow/executor.go`) operates on an event-driven model:
+
+1. **Workflow Start**: `Start()` method creates execution context and publishes `WorkflowStepAvailable` for first step
+2. **Step Execution**: `ExecuteStep()` method processes individual steps and publishes result events
+3. **Event Publishing**: Each step execution publishes multiple events:
+   - `WorkflowStepFinished` - Step completed successfully
+   - `WorkflowStepFailed` - Step failed with error details
+   - `WorkflowStepAvailable` - Next step ready for execution
+   - `WorkflowFinished` - Workflow completed (no more steps)
+
+### Native Action Architecture
+
+Actions are now built into the main binary (`pkg/actions/`) with factory pattern:
+- **ActionFactory Interface** - `ID()` and `Create()` methods for action instantiation
+- **Execution Context** - `models.ExecutionContext` carries state between steps
+- **Template Rendering** - Actions support JSONata templating for dynamic configuration
+- **Structured Logging** - Each action receives structured logger for debugging
 
 ## Event Flow
 
 1. **Dispatcher Service** loads trigger plugins and detects trigger conditions (cron, webhook, etc.)
 2. **Dispatcher Service** publishes `WorkflowTriggered` event to event bus
-3. **Worker Service** receives event and executes corresponding workflow using action plugins
-4. **Worker Service** publishes workflow lifecycle events (`WorkflowStarted`, `WorkflowFinished`, etc.)
+3. **Worker Service** receives `WorkflowTriggered` and publishes `WorkflowStepAvailable` for first step
+4. **Worker Service** handles `WorkflowStepAvailable` events, executes steps, and publishes:
+   - `WorkflowStepFinished` on successful step completion
+   - `WorkflowStepFailed` on step failure
+   - `WorkflowStepAvailable` for next step (if exists)
+   - `WorkflowFinished` when no more steps remain
+5. **Event-Driven Execution** - Each step execution is handled as separate event for better scalability
 
 The CLI tools provide:
-- Background workflow execution and trigger management
-- Event-driven architecture with pub/sub messaging
-- Plugin-based extensibility with .so file loading
-- Signal handling for graceful shutdown (SIGHUP for restart, SIGINT/SIGTERM for shutdown)
-- Structured logging with slog
+- **Event-Driven Worker Architecture** - Each workflow step processed as individual events
+- **Native Action System** - Core actions (HTTP, Transform, Log, File Write) built into main binary
+- **Plugin-Based Extensibility** - .so file loading for custom actions and triggers
+- **Granular Event Publishing** - Step-level events for monitoring and debugging
+- **Execution Context Management** - State preservation across step boundaries
+- **Signal Handling** - Graceful shutdown (SIGINT/SIGTERM)
+- **Structured logging** - Comprehensive logging with slog
 
 ## Claude Guidance
 

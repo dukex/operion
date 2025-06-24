@@ -2,76 +2,45 @@ package log_action
 
 import (
 	"context"
-	"fmt"
-	"log"
+	"log/slog"
 
 	"github.com/dukex/operion/pkg/models"
+	"github.com/dukex/operion/pkg/protocol"
 )
 
+func NewLogActionFactory() *LogActionFactory {
+	return &LogActionFactory{}
+}
+
+type LogActionFactory struct {
+}
+
+func (*LogActionFactory) ID() string {
+	return "log"
+}
+
+func (f *LogActionFactory) Create(config map[string]interface{}) (protocol.Action, error) {
+	if config == nil {
+		config = map[string]interface{}{}
+	}
+
+	return NewLogAction(config), nil
+}
+
 type LogAction struct {
-	ID      string
-	Message string
-	Level   string
 }
 
-func NewLogAction(config map[string]interface{}) (*LogAction, error) {
-	id, _ := config["id"].(string)
-	message, _ := config["message"].(string)
-	level, _ := config["level"].(string)
-
-	return &LogAction{
-		ID:      id,
-		Message: message,
-		Level:   level,
-	}, nil
+func NewLogAction(config map[string]interface{}) *LogAction {
+	return &LogAction{}
 }
 
-func (a *LogAction) GetID() string   { return a.ID }
-func (a *LogAction) GetType() string { return "log" }
-func (a *LogAction) GetConfig() map[string]interface{} {
-	return map[string]interface{}{
-		"id":      a.ID,
-		"message": a.Message,
-		"level":   a.Level,
-	}
-}
-func (a *LogAction) Validate() error { return nil }
+func (a *LogAction) Execute(ctx context.Context, executionCtx models.ExecutionContext, logger *slog.Logger) (interface{}, error) {
+	logger = logger.With("action_type", "log")
 
-// GetSchema returns the JSON Schema for Log Action configuration
-func GetLogActionSchema() *models.RegisteredComponent {
-	return &models.RegisteredComponent{
-		Type:        "log",
-		Name:        "Log Message",
-		Description: "Log a message with configurable level",
-		Schema: &models.JSONSchema{
-			Type:        "object",
-			Title:       "Log Action Configuration",
-			Description: "Configuration for logging messages",
-			Properties: map[string]*models.Property{
-				"message": {
-					Type:        "string",
-					Description: "Message to log",
-				},
-				"level": {
-					Type:        "string",
-					Description: "Log level",
-					Enum:        []interface{}{"debug", "info", "warn", "error"},
-					Default:     "info",
-				},
-			},
-			Required: []string{"message"},
-		},
-	}
-}
+	logger.Info("Executing log action")
+	logger.Info("Log message", "message", executionCtx.StepResults)
 
-func (a *LogAction) Execute(ctx context.Context, executionCtx models.ExecutionContext) (interface{}, error) {
-	logMessage := fmt.Sprintf("[%s] %s", a.Level, a.Message)
-	log.Printf("LogAction '%s': %s", a.ID, logMessage)
-
-	result := map[string]interface{}{
-		"logged_message": logMessage,
-		"level":          a.Level,
-	}
+	result := map[string]interface{}{}
 
 	return result, nil
 }

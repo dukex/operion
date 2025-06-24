@@ -34,7 +34,7 @@ func (r *Registry) LoadTriggerPlugins(pluginsPath string) ([]protocol.TriggerFac
 }
 
 func (r *Registry) RegisterAction(actionFactory protocol.ActionFactory) {
-	r.actionFactories[actionFactory.Type()] = actionFactory
+	r.actionFactories[actionFactory.ID()] = actionFactory
 }
 
 func (r *Registry) RegisterTrigger(triggerFactory protocol.TriggerFactory) {

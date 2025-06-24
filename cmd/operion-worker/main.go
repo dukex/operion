@@ -14,39 +14,7 @@ func main() {
 		Usage:                 "Create and manage workflows",
 		EnableShellCompletion: true,
 		Commands: []*cli.Command{
-			{
-				Name:    "run",
-				Aliases: []string{"r"},
-				Usage:   "Start workers to execute workflows",
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:    "worker-id",
-						Aliases: []string{"id"},
-						Usage:   "Custom worker ID (auto-generated if not provided)",
-						Value:   "",
-					},
-					&cli.BoolFlag{
-						Name:  "kafka",
-						Value: false,
-					},
-					&cli.BoolFlag{
-						Name:  "rabbitmq",
-						Value: false,
-					},
-					&cli.BoolFlag{
-						Name:  "mysql",
-						Value: false,
-					},
-					&cli.StringFlag{
-						Name:  "data-path",
-						Usage: "Path to data directory",
-						Value: "./data",
-					},
-				},
-				Action: func(ctx context.Context, cmd *cli.Command) error {
-					return RunWorkers(cmd)
-				},
-			},
+			NewRunCommand(),
 		},
 	}
 

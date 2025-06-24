@@ -15,7 +15,6 @@ services:
     restart: unless-stopped
     depends_on:
       - kafka
-      - otel-collector
       - jaeger
     volumes:
       - ..:/app
@@ -39,7 +38,6 @@ services:
     restart: unless-stopped
     depends_on:
       - kafka
-      - otel-collector
       - jaeger
     volumes:
       - ..:/app
@@ -156,22 +154,4 @@ services:
       - 16686:16686
       - 5778:5778
       - 9411:9411
-
-  otel-collector:
-    image: ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-contrib:0.128.0
-    restart: unless-stopped
-    command: [ "--config=/etc/otelcol-config.yml" ]
-    user: 0:0
-    volumes:
-      - ./otel-collector/otelcol-config.yml:/etc/otelcol-config.yml
-    ports:
-      - 13133
-      - 4317
-      - 4318
-      - 55679
-    depends_on:
-      - jaeger
-
-
-
-
+      - 4318:4318 

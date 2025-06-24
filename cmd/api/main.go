@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"log/slog"
 	"os"
 
 	"github.com/dukex/operion/pkg/persistence/file"
@@ -21,12 +22,10 @@ func main() {
 	persistence := file.NewFilePersistence("./examples/data")
 	workflowRepository := workflow.NewRepository(persistence)
 
-	registry.RegisterAllComponents()
-	registry := registry.DefaultRegistry
 
 	validate = validator.New(validator.WithRequiredStructEnabled())
 
-	handlers := web.NewAPIHandlers(workflowRepository, validate, registry)
+	handlers := web.NewAPIHandlers(workflowRepository, validate, registry.NewRegistry(slog.Default()))
 
 	port, found := os.LookupEnv("PORT")
 	if !found {

@@ -1,16 +1,17 @@
-package http_action
+package http_request
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/dukex/operion/pkg/models"
-	log "github.com/sirupsen/logrus"
+	"github.com/dukex/operion/pkg/template"
 )
 
 // HTTPRequestAction performs an HTTP request
@@ -73,65 +74,10 @@ func NewHTTPRequestAction(config map[string]interface{}) (*HTTPRequestAction, er
 	}, nil
 }
 
-func (a *HTTPRequestAction) GetID() string                     { return a.ID }
-func (a *HTTPRequestAction) GetType() string                   { return "http_request" }
-func (a *HTTPRequestAction) GetConfig() map[string]interface{} { return nil }
-func (a *HTTPRequestAction) Validate() error                   { return nil }
-
-func GetHTTPRequestActionSchema() *models.RegisteredComponent {
-	return &models.RegisteredComponent{
-		Type:        "http_request",
-		Name:        "HTTP Request",
-		Description: "Make HTTP requests to external APIs",
-		Schema: &models.JSONSchema{
-			Type:        "object",
-			Title:       "HTTP Request Configuration",
-			Description: "Configuration for making HTTP requests",
-			Properties: map[string]*models.Property{
-				"url": {
-					Type:        "string",
-					Description: "The URL to make the request to",
-				},
-				"method": {
-					Type:        "string",
-					Description: "HTTP method",
-					Enum:        []interface{}{"GET", "POST", "PUT", "DELETE", "PATCH"},
-					Default:     "GET",
-				},
-				"headers": {
-					Type:        "object",
-					Description: "HTTP headers to include",
-				},
-				"body": {
-					Type:        "string",
-					Description: "Request body (for POST/PUT/PATCH)",
-				},
-				"retry": {
-					Type:        "object",
-					Description: "Retry configuration",
-					Properties: map[string]*models.Property{
-						"attempts": {
-							Type:        "integer",
-							Description: "Number of retry attempts",
-							Default:     1,
-						},
-						"delay": {
-							Type:        "integer",
-							Description: "Delay between retries in seconds",
-							Default:     0,
-						},
-					},
-				},
-			},
-			Required: []string{"url"},
-		},
-	}
-}
-
-func (a *HTTPRequestAction) Execute(ctx context.Context, executionCtx models.ExecutionContext) (interface{}, error) {
-	logger := executionCtx.Logger.WithFields(log.Fields{
-		"module": "http_request_action",
-	})
+func (a *HTTPRequestAction) Execute(ctx context.Context, executionCtx models.ExecutionContext, logger *slog.Logger) (interface{}, error) {
+	logger = logger.With(
+		"module", "http_request_action",
+	)
 	logger.Info("Executing HTTPRequestAction")
 
 	var lastErr error
@@ -139,7 +85,7 @@ func (a *HTTPRequestAction) Execute(ctx context.Context, executionCtx models.Exe
 
 	for attempt := 1; attempt <= a.Retry.Attempts; attempt++ {
 		if attempt > 1 {
-			logger.Infof("HTTPRequestAction retry attempt %d/%d", attempt, a.Retry.Attempts)
+			logger.Info(fmt.Sprintf("HTTPRequestAction retry attempt %d/%d", attempt, a.Retry.Attempts))
 			time.Sleep(time.Duration(a.Retry.Delay) * time.Second)
 		}
 
@@ -147,9 +93,23 @@ func (a *HTTPRequestAction) Execute(ctx context.Context, executionCtx models.Exe
 
 		var bodyReader io.Reader
 		if a.Body != "" {
-			bodyReader = strings.NewReader(a.Body)
+			body, err := template.Render(a.Body, executionCtx.StepResults)
+			if err != nil {
+				cancel()
+				return nil, fmt.Errorf("failed to render body template: %w", err)
+			}
+
+			bodyMarshalled, err := json.Marshal(body)
+
+			if err != nil {
+				cancel()
+				return nil, fmt.Errorf("failed to marshal body: %w", err)
+			}
+
+			bodyReader = strings.NewReader(string(bodyMarshalled))
 		}
 
+		logger.Debug("Creating HTTP request: %s %s", "method", a.Method, "url", a.URL)
 		req, err := http.NewRequestWithContext(reqCtx, a.Method, a.URL, bodyReader)
 		if err != nil {
 			cancel()
@@ -173,7 +133,7 @@ func (a *HTTPRequestAction) Execute(ctx context.Context, executionCtx models.Exe
 		if resp.StatusCode >= 500 && attempt < a.Retry.Attempts {
 			err = resp.Body.Close()
 			if err != nil {
-				logger.Errorf("failed to close response body: %v", err)
+				logger.Error("failed to close response body", "error", err)
 			}
 
 			lastErr = fmt.Errorf("server error (status %d), retrying", resp.StatusCode)
@@ -196,9 +156,8 @@ func (a *HTTPRequestAction) Execute(ctx context.Context, executionCtx models.Exe
 	var body interface{}
 	err = json.Unmarshal(bodyBytes, &body)
 	if err != nil {
-		// If JSON unmarshal fails, return the raw string body
 		body = string(bodyBytes)
-		logger.Warnf("Failed to parse response as JSON, returning as string: %v", err)
+		logger.Warn("Failed to parse response as JSON, returning as string", "error", err)
 	}
 
 	result := map[string]interface{}{
@@ -207,6 +166,6 @@ func (a *HTTPRequestAction) Execute(ctx context.Context, executionCtx models.Exe
 		"headers":     resp.Header,
 	}
 
-	logger.Infof("HTTPRequestAction completed with status %d, body length: %d", resp.StatusCode, len(bodyBytes))
+	logger.Info(fmt.Sprintf("HTTPRequestAction completed with status %d, body length: %d", resp.StatusCode, len(bodyBytes)))
 	return result, nil
 }
