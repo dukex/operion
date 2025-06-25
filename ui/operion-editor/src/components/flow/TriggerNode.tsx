@@ -14,10 +14,10 @@ const TriggerNode = memo(
           background="var(--color-green-100)"
           title="Trigger Node"
         >
-          {data.type == "schedule" && (
+          {data.trigger_id == "schedule" && (
             <div>
               Schedule:{" "}
-              <span className="font-normal">{data.configuration.cron}</span>
+              <span className="font-normal">{data.configuration.schedule}</span>
             </div>
           )}
 

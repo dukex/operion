@@ -6,7 +6,7 @@
   "workflow_triggers": [
     {
       "id": "sync-schedule",
-      "type": "schedule",
+      "trigger_id": "schedule",
       "configuration": {
         "schedule": "0 2 * * 0",
         "timezone": "UTC"

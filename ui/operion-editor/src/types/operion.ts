@@ -26,9 +26,9 @@ export type WorkflowStatus = "active" | "inactive" | "paused" | "error";
 
 export interface TriggerItem {
   id: string;
-  type: string;
+  trigger_id: string;
   configuration: {
-    cron?: string; // For schedule triggers
+    schedule?: string; // For schedule triggers
     [key: string]: unknown; // Additional trigger-specific configuration
   };
 }

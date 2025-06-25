@@ -6,7 +6,7 @@
   "workflow_triggers": [
     {
       "id": "weather-schedule",
-      "type": "schedule",
+      "trigger_id": "schedule",
       "configuration": {
         "schedule": "0 */3 * * *",
         "timezone": "UTC"

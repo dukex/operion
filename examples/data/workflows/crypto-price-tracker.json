@@ -6,7 +6,7 @@
   "workflow_triggers": [
     {
       "id": "crypto-schedule",
-      "type": "schedule",
+      "trigger_id": "schedule",
       "configuration": {
         "schedule": "*/5 * * * *",
         "timezone": "UTC"
