@@ -37,11 +37,11 @@ type LogAction struct {
 func NewLogAction(config map[string]interface{}) *LogAction {
 	message, _ := config["message"].(string)
 	level, _ := config["level"].(string)
-	
+
 	if level == "" {
 		level = "info"
 	}
-	
+
 	return &LogAction{
 		Message: message,
 		Level:   level,

@@ -332,7 +332,7 @@ func TestExecutor_ExecuteStep_StepNotFound(t *testing.T) {
 	assert.Contains(t, err.Error(), "step non-existent-step not found")
 }
 
-func TestExecutor_ExecuteStep_ActionFailure(t *testing.T) {
+func TestExecutor_ExecuteStep_Action_failure(t *testing.T) {
 	ctx := context.Background()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 

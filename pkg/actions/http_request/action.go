@@ -16,15 +16,15 @@ import (
 
 // HTTPRequestAction performs an HTTP request
 type HTTPRequestAction struct {
-	ID      string
-	Method  string
+	ID       string
+	Method   string
 	Protocol string
-	Host    string
-	Path    string
-	Headers map[string]string
-	Body    string
-	Timeout time.Duration
-	Retry   RetryConfig
+	Host     string
+	Path     string
+	Headers  map[string]string
+	Body     string
+	Timeout  time.Duration
+	Retry    RetryConfig
 }
 
 type RetryConfig struct {
@@ -77,15 +77,15 @@ func NewHTTPRequestAction(config map[string]interface{}) (*HTTPRequestAction, er
 	}
 
 	return &HTTPRequestAction{
-		ID:      id,
-		Method:  strings.ToUpper(method),
+		ID:       id,
+		Method:   strings.ToUpper(method),
 		Protocol: protocol,
-		Host:    host,
-		Path:    path,
-		Headers: headers,
-		Body:    body,
-		Timeout: 30 * time.Second,
-		Retry:   retry,
+		Host:     host,
+		Path:     path,
+		Headers:  headers,
+		Body:     body,
+		Timeout:  30 * time.Second,
+		Retry:    retry,
 	}, nil
 }
 
@@ -144,9 +144,8 @@ func (a *HTTPRequestAction) Execute(ctx context.Context, executionCtx models.Exe
 			path = fmt.Sprintf("%v", pathResult)
 		}
 		url := fmt.Sprintf("%s://%s%s", a.Protocol, a.Host, path)
-		
-		logger.Debug("Creating HTTP request: %s %s", "method", a.Method, "url", url)
 
+		logger.Debug("Creating HTTP request: %s %s", "method", a.Method, "url", url)
 
 		req, err := http.NewRequestWithContext(reqCtx, a.Method, url, bodyReader)
 		if err != nil {

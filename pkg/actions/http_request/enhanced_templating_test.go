@@ -55,10 +55,10 @@ func TestHTTPRequestAction_EnhancedTemplating(t *testing.T) {
 
 	// Create HTTP request action with enhanced templating
 	action := &HTTPRequestAction{
-		Method: "POST",
-		Host:   strings.Split(server.URL, "://")[1], // Extract host from URL
+		Method:   "POST",
+		Host:     strings.Split(server.URL, "://")[1], // Extract host from URL
 		Protocol: strings.Split(server.URL, "://")[0], // Extract protocol from URL
-		Path:   "$join([\"/users/\", $string(vars.user_id), \"/orders\"])",
+		Path:     "$join([\"/users/\", $string(vars.user_id), \"/orders\"])",
 		Headers: map[string]string{
 			"Authorization": "\"Bearer \" & env.TEST_API_TOKEN",
 			"Content-Type":  "application/json",
@@ -150,10 +150,10 @@ func TestHTTPRequestAction_EnvironmentVariableAccess(t *testing.T) {
 	defer server.Close()
 
 	action := &HTTPRequestAction{
-		Method: "GET",
-		Host:   strings.Split(server.URL, "://")[1], // Extract host from URL
+		Method:   "GET",
+		Host:     strings.Split(server.URL, "://")[1], // Extract host from URL
 		Protocol: strings.Split(server.URL, "://")[0], // Extract protocol from URL
-		Path: "/",
+		Path:     "/",
 		Headers: map[string]string{
 			"Authorization": "\"Bearer \" & env.TEST_API_KEY",
 		},

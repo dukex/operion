@@ -17,9 +17,9 @@ func TestHTTPRequestActionFactory_Create(t *testing.T) {
 
 	config := map[string]interface{}{
 		"protocol": "https",
-		"host":    "api.example.com",
-		"path":    "/test",
-		"method": "GET",
+		"host":     "api.example.com",
+		"path":     "/test",
+		"method":   "GET",
 	}
 
 	action, err := factory.Create(config)

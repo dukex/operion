@@ -47,7 +47,7 @@ services:
       - ..:/app
       - $GOPATH/pkg/mod:/go/pkg/mod
     working_dir: /app
-    command: /bin/operion-trigger run --kafka --data-path /app/examples/data
+    command: /bin/operion-trigger run --database-url file:///app/examples/data --event-bus kafka
     environment:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
       - OTEL_SERVICE_NAME=operion-trigger-kafka
@@ -70,7 +70,7 @@ services:
       - ..:/app
       - $GOPATH/pkg/mod:/go/pkg/mod
     working_dir: /app
-    command: /bin/operion-worker run --kafka --data-path /app/examples/data
+    command: /bin/operion-worker run --database-url file:///app/examples/data --event-bus kafka --plugins-path ./examples/plugins
     environment:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
       - OTEL_SERVICE_NAME=operion-worker-kafka
@@ -81,51 +81,8 @@ services:
         - action: rebuild
           path: ..
 
-  # worker-rabbitmq:
-  #   image: golang:1.24
-  #   restart: unless-stopped
-  #   depends_on:
-  #     - rabbitmq
-  #   volumes:
-  #     - .:/app
-  #     - $GOPATH/pkg/mod:/go/pkg/mod
-  #   working_dir: /app
-  #   command: go run cmd/operion-worker/main.go run --rabbitmq
-
-  # worker-mysql:
-  #   image: golang:1.24
-  #   restart: unless-stopped
-  #   depends_on:
-  #     - mysql
-  #   volumes:
-  #     - .:/app
-  #     - $GOPATH/pkg/mod:/go/pkg/mod
-  #   working_dir: /app
-  #   command: go run cmd/operion-worker/main.go run --mysql
-  
-  # worker-gochannel:
-  #   image: golang:1.24
-  #   restart: unless-stopped
-  #   volumes:
-  #     - .:/app
-  #     - $GOPATH/pkg/mod:/go/pkg/mod
-  #   working_dir: /app
-  #   command: go run cmd/operion-worker/main.go run
-
-  # mysql:
-  #   image: mysql:8.0
-  #   restart: unless-stopped
-  #   ports:
-  #     - 3306:3306
-  #   environment:
-  #     MYSQL_DATABASE: watermill
-  #     MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
-
-  # rabbitmq:
-  #   image: rabbitmq:3.7
-  #   restart: unless-stopped
-
   # Event bus
+
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.1
     ports:

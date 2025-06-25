@@ -34,7 +34,7 @@ func NeedsTemplating(input string) bool {
 		strings.Contains(input, "execution.") ||
 		strings.Contains(input, "metadata.") ||
 		strings.Contains(input, "$") || // JSONata functions start with $
-		strings.Contains(input, "&")    // JSONata string concatenation
+		strings.Contains(input, "&") // JSONata string concatenation
 }
 
 func getEnvVars() map[string]interface{} {

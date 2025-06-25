@@ -53,10 +53,10 @@ func TestLogActionFactory_Create(t *testing.T) {
 
 func TestNewLogAction(t *testing.T) {
 	tests := []struct {
-		name           string
-		config         map[string]interface{}
-		expectedMsg    string
-		expectedLevel  string
+		name          string
+		config        map[string]interface{}
+		expectedMsg   string
+		expectedLevel string
 	}{
 		{
 			name:          "nil config",
@@ -103,12 +103,12 @@ func TestLogAction_Execute(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	tests := []struct {
-		name           string
-		config         map[string]interface{}
-		execCtx        models.ExecutionContext
-		expectedMsg    string
-		expectedLevel  string
-		expectError    bool
+		name          string
+		config        map[string]interface{}
+		execCtx       models.ExecutionContext
+		expectedMsg   string
+		expectedLevel string
+		expectError   bool
 	}{
 		{
 			name: "simple message",
@@ -142,8 +142,8 @@ func TestLogAction_Execute(t *testing.T) {
 				"level":   "info",
 			},
 			execCtx: models.ExecutionContext{
-				ID:          "exec-123",
-				WorkflowID:  "workflow-456",
+				ID:         "exec-123",
+				WorkflowID: "workflow-456",
 				StepResults: map[string]interface{}{
 					"step1": map[string]interface{}{
 						"status": "success",
@@ -155,7 +155,7 @@ func TestLogAction_Execute(t *testing.T) {
 			expectError:   false,
 		},
 		{
-			name: "empty message",
+			name:   "empty message",
 			config: map[string]interface{}{},
 			execCtx: models.ExecutionContext{
 				StepResults: make(map[string]interface{}),

@@ -38,10 +38,10 @@ func NewAPI(
 }
 
 func (a *API) App() *fiber.App {
-	 workflowRepository := workflow.NewRepository(a.persistence)
+	workflowRepository := workflow.NewRepository(a.persistence)
 	validate = validator.New(validator.WithRequiredStructEnabled())
 
-	 handlers := web.NewAPIHandlers(workflowRepository, validate, a.registry)
+	handlers := web.NewAPIHandlers(workflowRepository, validate, a.registry)
 
 	app := fiber.New()
 	app.Use(cors.New())
@@ -56,9 +56,9 @@ func (a *API) App() *fiber.App {
 		return c.SendString("Operion API")
 	})
 
-	 w := app.Group("/workflows")
-	 w.Get("/", handlers.GetWorkflows)
-	 w.Get("/:id", handlers.GetWorkflow)
+	w := app.Group("/workflows")
+	w.Get("/", handlers.GetWorkflows)
+	w.Get("/:id", handlers.GetWorkflow)
 
 	// 	// w.Post("/", handlers.CreateWorkflow)
 	// 	// w.Patch("/:id", handlers.PatchWorkflow)
