@@ -3,7 +3,7 @@
   "name": "REST Countries Data Sync",
   "description": "Synchronize country data from REST Countries API and validate data consistency",
   "status": "active",
-  "triggers": [
+  "workflow_triggers": [
     {
       "id": "sync-schedule",
       "type": "schedule",
@@ -17,7 +17,7 @@
     {
       "id": "fetch-all-countries",
       "name": "Fetch All Countries",
-      "actionId": "http_request",
+      "action_id": "http_request",
       "uid": "countries_data",
       "configuration": {
         "protocol": "https",
@@ -34,14 +34,14 @@
           "delay": 5
         }
       },
-      "onSuccess": "fetch-region-data",
-      "onFailure": "log-fetch-error",
+      "on_success": "fetch-region-data",
+      "on_failure": "log-fetch-error",
       "enabled": true
     },
     {
       "id": "fetch-region-data",
       "name": "Fetch Europe Region Data",
-      "actionId": "http_request",
+      "action_id": "http_request",
       "uid": "europe_data",
       "configuration": {
         "protocol": "https",
@@ -54,69 +54,69 @@
           "User-Agent": "Operion-DataSync/1.0"
         }
       },
-      "onSuccess": "process-countries",
-      "onFailure": "log-region-error",
+      "on_success": "process-countries",
+      "on_failure": "log-region-error",
       "enabled": true
     },
     {
       "id": "process-countries",
       "name": "Process Countries Data",
-      "actionId": "transform",
+      "action_id": "transform",
       "uid": "processed_countries",
       "configuration": {
         "expression": "{\n  \"total_countries\": $count(steps.countries_data.body),\n  \"total_population\": $sum($map(steps.countries_data.body, function($country) {\n    $country.population ? $country.population : 0\n  })),\n  \"largest_countries\": $map($sort(steps.countries_data.body, function($a, $b) {\n    ($b.area ? $b.area : 0) - ($a.area ? $a.area : 0)\n  })[0..4], function($country) {\n    {\n      \"name\": $country.name.common,\n      \"area\": $country.area,\n      \"population\": $country.population,\n      \"region\": $country.region\n    }\n  }),\n  \"regions\": $distinct($map(steps.countries_data.body, function($country) {\n    $country.region\n  })),\n  \"timestamp\": $now()\n}"
       },
-      "onSuccess": "process-europe",
+      "on_success": "process-europe",
       "enabled": true
     },
     {
       "id": "process-europe",
       "name": "Process Europe Data",
-      "actionId": "transform",
+      "action_id": "transform",
       "uid": "processed_europe",
       "configuration": {
         "expression": "{\n  \"europe_countries\": $count(steps.europe_data.body),\n  \"europe_population\": $sum($map(steps.europe_data.body, function($country) {\n    $country.population ? $country.population : 0\n  })),\n  \"largest_eu_countries\": $map($sort(steps.europe_data.body, function($a, $b) {\n    ($b.population ? $b.population : 0) - ($a.population ? $a.population : 0)\n  })[0..2], function($country) {\n    {\n      \"name\": $country.name.common,\n      \"capital\": $country.capital ? $country.capital[0] : \"N/A\",\n      \"population\": $country.population\n    }\n  }),\n  \"timestamp\": $now()\n}"
       },
-      "onSuccess": "validate-data",
+      "on_success": "validate-data",
       "enabled": true
     },
     {
       "id": "validate-data",
       "name": "Validate Data Consistency",
-      "actionId": "transform",
+      "action_id": "transform",
       "uid": "validation_results",
       "configuration": {
         "expression": "{\n  \"validation\": {\n    \"total_countries_valid\": steps.processed_countries.total_countries > 0,\n    \"population_valid\": steps.processed_countries.total_population > 0,\n    \"europe_subset_valid\": steps.processed_europe.europe_countries <= steps.processed_countries.total_countries,\n    \"regions_count\": $count(steps.processed_countries.regions),\n    \"has_europe\": \"Europe\" in steps.processed_countries.regions\n  },\n  \"data_quality_score\": (\n    (steps.processed_countries.total_countries > 190 ? 1 : 0) +\n    (steps.processed_countries.total_population > 7000000000 ? 1 : 0) +\n    (steps.processed_europe.europe_countries > 40 ? 1 : 0) +\n    ($count(steps.processed_countries.regions) >= 5 ? 1 : 0)\n  ),\n  \"sync_status\": (\n    steps.processed_countries.total_countries > 190 and\n    steps.processed_countries.total_population > 7000000000 and\n    steps.processed_europe.europe_countries > 40\n  ) ? \"SUCCESS\" : \"WARNING\",\n  \"timestamp\": $now()\n}"
       },
-      "onSuccess": "create-sync-report",
+      "on_success": "create-sync-report",
       "enabled": true
     },
     {
       "id": "create-sync-report",
       "name": "Create Sync Report",
-      "actionId": "transform",
+      "action_id": "transform",
       "uid": "sync_report",
       "configuration": {
         "expression": "{\n  \"sync_summary\": {\n    \"timestamp\": $now(),\n    \"status\": steps.validation_results.sync_status,\n    \"data_quality_score\": steps.validation_results.data_quality_score & \"/4\",\n    \"statistics\": {\n      \"total_countries\": steps.processed_countries.total_countries,\n      \"world_population\": steps.processed_countries.total_population,\n      \"europe_countries\": steps.processed_europe.europe_countries,\n      \"europe_population\": steps.processed_europe.europe_population,\n      \"regions_found\": $count(steps.processed_countries.regions)\n    }\n  },\n  \"data_samples\": {\n    \"largest_countries\": steps.processed_countries.largest_countries,\n    \"largest_eu_countries\": steps.processed_europe.largest_eu_countries\n  },\n  \"validation\": steps.validation_results.validation\n}"
       },
-      "onSuccess": "log-sync-stats",
+      "on_success": "log-sync-stats",
       "enabled": true
     },
     {
       "id": "log-sync-stats",
       "name": "Log Sync Statistics",
-      "actionId": "log",
+      "action_id": "log",
       "uid": "stats_log",
       "configuration": {
         "message": "\"Data Sync - Status: \" & steps.sync_report.sync_summary.status & \", Countries: \" & $string(steps.sync_report.sync_summary.statistics.total_countries) & \", Quality Score: \" & steps.sync_report.sync_summary.data_quality_score"
       },
-      "onSuccess": "send-sync-report",
+      "on_success": "send-sync-report",
       "enabled": true
     },
     {
       "id": "send-sync-report",
       "name": "Send Sync Report",
-      "actionId": "http_request",
+      "action_id": "http_request",
       "uid": "report_response",
       "configuration": {
         "protocol": "https",
@@ -129,14 +129,14 @@
         "body": "{\n  \"service\": \"data-sync\",\n  \"timestamp\": steps.sync_report.sync_summary.timestamp,\n  \"sync_status\": steps.sync_report.sync_summary.status,\n  \"quality_metrics\": {\n    \"data_quality_score\": steps.sync_report.sync_summary.data_quality_score,\n    \"total_records\": steps.sync_report.sync_summary.statistics.total_countries,\n    \"validation_passed\": steps.validation_results.validation\n  },\n  \"statistics\": steps.sync_report.sync_summary.statistics,\n  \"sample_data\": steps.sync_report.data_samples\n}",
         "timeout": 10
       },
-      "onSuccess": "log-success",
-      "onFailure": "log-webhook-error",
+      "on_success": "log-success",
+      "on_failure": "log-webhook-error",
       "enabled": true
     },
     {
       "id": "log-success",
       "name": "Log Success",
-      "actionId": "log",
+      "action_id": "log",
       "uid": "success_log",
       "configuration": {
         "message": "\"Data synchronization completed successfully. Status: \" & steps.sync_report.sync_summary.status"
@@ -146,7 +146,7 @@
     {
       "id": "log-fetch-error",
       "name": "Log Fetch Error",
-      "actionId": "log",
+      "action_id": "log",
       "uid": "fetch_error_log",
       "configuration": {
         "message": "\"Failed to fetch countries data from REST Countries API\""
@@ -156,7 +156,7 @@
     {
       "id": "log-region-error",
       "name": "Log Region Error",
-      "actionId": "log",
+      "action_id": "log",
       "uid": "region_error_log",
       "configuration": {
         "message": "\"Failed to fetch Europe region data from REST Countries API\""
@@ -166,7 +166,7 @@
     {
       "id": "log-webhook-error",
       "name": "Log Webhook Error",
-      "actionId": "log",
+      "action_id": "log",
       "uid": "webhook_error_log",
       "configuration": {
         "message": "\"Failed to send data sync report\""

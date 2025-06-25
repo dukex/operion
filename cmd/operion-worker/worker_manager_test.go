@@ -216,7 +216,7 @@ func TestWorkerManager_BasicWorkflowExecution(t *testing.T) {
 	// Execute workflow triggered event
 	ctx := context.Background()
 	err = wm.handleWorkflowTriggered(ctx, mockEvent)
-	
+
 	// Verify execution succeeded (basic workflow functionality should work)
 	// Note: This may still fail due to missing action implementations, but the structure should be valid
 	if err != nil {
@@ -224,7 +224,6 @@ func TestWorkerManager_BasicWorkflowExecution(t *testing.T) {
 		t.Logf("Expected error due to missing action implementations: %v", err)
 	}
 }
-
 
 // Mock workflow repository for testing
 type MockWorkflowRepository struct {

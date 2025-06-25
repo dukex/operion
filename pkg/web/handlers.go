@@ -4,7 +4,7 @@ import (
 	"github.com/dukex/operion/pkg/registry"
 	"github.com/dukex/operion/pkg/workflow"
 	"github.com/go-playground/validator/v10"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type APIHandlers struct {
@@ -79,7 +79,7 @@ func NewAPIHandlers(
 // 	return nil
 // }
 
-func (h *APIHandlers) GetWorkflows(c *fiber.Ctx) error {
+func (h *APIHandlers) GetWorkflows(c fiber.Ctx) error {
 	workflows, err := h.repository.FetchAll()
 	if err != nil {
 		return internalError(c, err)
@@ -87,8 +87,9 @@ func (h *APIHandlers) GetWorkflows(c *fiber.Ctx) error {
 	return c.JSON(workflows)
 }
 
-func (h *APIHandlers) GetWorkflow(c *fiber.Ctx) error {
+func (h *APIHandlers) GetWorkflow(c fiber.Ctx) error {
 	id := c.Params("id")
+
 	if id == "" {
 		return badRequest(c, "Workflow ID is required")
 	}

@@ -3,7 +3,7 @@
   "name": "News Aggregator and Sentiment Analysis",
   "description": "Aggregate news from multiple sources and analyze trends using NewsAPI",
   "status": "active",
-  "triggers": [
+  "workflow_triggers": [
     {
       "id": "news-schedule",
       "type": "schedule",
@@ -17,7 +17,7 @@
     {
       "id": "fetch-top-headlines",
       "name": "Fetch Top Headlines",
-      "actionId": "http_request",
+      "action_id": "http_request",
       "uid": "headlines_data",
       "configuration": {
         "protocol": "https",
@@ -34,14 +34,14 @@
           "delay": 2
         }
       },
-      "onSuccess": "fetch-tech-news",
-      "onFailure": "log-headlines-error",
+      "on_success": "fetch-tech-news",
+      "on_failure": "log-headlines-error",
       "enabled": true
     },
     {
       "id": "fetch-tech-news",
       "name": "Fetch Technology News",
-      "actionId": "http_request",
+      "action_id": "http_request",
       "uid": "tech_news_data",
       "configuration": {
         "protocol": "https",
@@ -54,69 +54,69 @@
           "User-Agent": "Operion-NewsAggregator/1.0"
         }
       },
-      "onSuccess": "process-headlines",
-      "onFailure": "log-tech-error",
+      "on_success": "process-headlines",
+      "on_failure": "log-tech-error",
       "enabled": true
     },
     {
       "id": "process-headlines",
       "name": "Process Headlines",
-      "actionId": "transform",
+      "action_id": "transform",
       "uid": "processed_headlines",
       "configuration": {
         "expression": "{\n  \"total_articles\": steps.headlines_data.body.totalResults,\n  \"headlines\": $map(steps.headlines_data.body.articles[0..4], function($article) {\n    {\n      \"title\": $article.title,\n      \"source\": $article.source.name,\n      \"published\": $article.publishedAt,\n      \"url\": $article.url,\n      \"description\": $article.description,\n      \"word_count\": $count($split($article.title, \" \"))\n    }\n  }),\n  \"timestamp\": $now()\n}"
       },
-      "onSuccess": "process-tech-news",
+      "on_success": "process-tech-news",
       "enabled": true
     },
     {
       "id": "process-tech-news",
       "name": "Process Tech News",
-      "actionId": "transform",
+      "action_id": "transform",
       "uid": "processed_tech",
       "configuration": {
         "expression": "{\n  \"total_tech_articles\": steps.tech_news_data.body.totalResults,\n  \"tech_articles\": $map(steps.tech_news_data.body.articles[0..2], function($article) {\n    {\n      \"title\": $article.title,\n      \"source\": $article.source.name,\n      \"published\": $article.publishedAt,\n      \"url\": $article.url,\n      \"description\": $article.description\n    }\n  }),\n  \"timestamp\": $now()\n}"
       },
-      "onSuccess": "create-news-summary",
+      "on_success": "create-news-summary",
       "enabled": true
     },
     {
       "id": "create-news-summary",
       "name": "Create News Summary",
-      "actionId": "transform",
+      "action_id": "transform",
       "uid": "news_summary",
       "configuration": {
         "expression": "{\n  \"summary\": {\n    \"timestamp\": $now(),\n    \"total_headlines\": steps.processed_headlines.total_articles,\n    \"total_tech_articles\": steps.processed_tech.total_tech_articles,\n    \"sources\": $distinct($append(\n      $map(steps.processed_headlines.headlines, function($h) { $h.source }),\n      $map(steps.processed_tech.tech_articles, function($t) { $t.source })\n    )),\n    \"keywords\": $distinct($append(\n      $flatten($map(steps.processed_headlines.headlines, function($h) { $split($lowercase($h.title), \" \") })),\n      $flatten($map(steps.processed_tech.tech_articles, function($t) { $split($lowercase($t.title), \" \") }))\n    ))[0..9]\n  },\n  \"top_headlines\": steps.processed_headlines.headlines,\n  \"tech_news\": steps.processed_tech.tech_articles\n}"
       },
-      "onSuccess": "log-news-stats",
+      "on_success": "log-news-stats",
       "enabled": true
     },
     {
       "id": "log-news-stats",
       "name": "Log News Statistics",
-      "actionId": "log",
+      "action_id": "log",
       "uid": "stats_log",
       "configuration": {
         "message": "\"News Summary - Headlines: \" & $string(steps.news_summary.summary.total_headlines) & \", Tech Articles: \" & $string(steps.news_summary.summary.total_tech_articles) & \", Sources: \" & $string($count(steps.news_summary.summary.sources))"
       },
-      "onSuccess": "check-breaking-news",
+      "on_success": "check-breaking-news",
       "enabled": true
     },
     {
       "id": "check-breaking-news",
       "name": "Check Breaking News",
-      "actionId": "transform",
+      "action_id": "transform",
       "uid": "breaking_check",
       "configuration": {
         "expression": "{\n  \"breaking_threshold\": vars.breaking_news_threshold,\n  \"has_breaking_news\": steps.news_summary.summary.total_headlines > vars.breaking_news_threshold,\n  \"alert_message\": steps.news_summary.summary.total_headlines > vars.breaking_news_threshold ? \"High news activity detected - \" & $string(steps.news_summary.summary.total_headlines) & \" headlines\" : \"Normal news activity\"\n}"
       },
-      "onSuccess": "send-news-digest",
+      "on_success": "send-news-digest",
       "enabled": true
     },
     {
       "id": "send-news-digest",
       "name": "Send News Digest",
-      "actionId": "http_request",
+      "action_id": "http_request",
       "uid": "digest_response",
       "configuration": {
         "protocol": "https",
@@ -129,14 +129,14 @@
         "body": "{\n  \"service\": \"news-aggregator\",\n  \"timestamp\": steps.news_summary.summary.timestamp,\n  \"summary\": {\n    \"total_headlines\": steps.news_summary.summary.total_headlines,\n    \"total_tech_articles\": steps.news_summary.summary.total_tech_articles,\n    \"unique_sources\": $count(steps.news_summary.summary.sources),\n    \"top_keywords\": steps.news_summary.summary.keywords,\n    \"breaking_news_alert\": steps.breaking_check.has_breaking_news\n  },\n  \"featured_headlines\": steps.news_summary.top_headlines,\n  \"tech_highlights\": steps.news_summary.tech_news,\n  \"alert_message\": steps.breaking_check.alert_message\n}",
         "timeout": 10
       },
-      "onSuccess": "log-success",
-      "onFailure": "log-webhook-error",
+      "on_success": "log-success",
+      "on_failure": "log-webhook-error",
       "enabled": true
     },
     {
       "id": "log-success",
       "name": "Log Success",
-      "actionId": "log",
+      "action_id": "log",
       "uid": "success_log",
       "configuration": {
         "message": "\"News aggregation completed. \" & steps.breaking_check.alert_message"
@@ -146,7 +146,7 @@
     {
       "id": "log-headlines-error",
       "name": "Log Headlines Error",
-      "actionId": "log",
+      "action_id": "log",
       "uid": "headlines_error_log",
       "configuration": {
         "message": "\"Failed to fetch top headlines from NewsAPI\""
@@ -156,7 +156,7 @@
     {
       "id": "log-tech-error",
       "name": "Log Tech News Error",
-      "actionId": "log",
+      "action_id": "log",
       "uid": "tech_error_log",
       "configuration": {
         "message": "\"Failed to fetch technology news from NewsAPI\""
@@ -166,7 +166,7 @@
     {
       "id": "log-webhook-error",
       "name": "Log Webhook Error",
-      "actionId": "log",
+      "action_id": "log",
       "uid": "webhook_error_log",
       "configuration": {
         "message": "\"Failed to send news digest report\""

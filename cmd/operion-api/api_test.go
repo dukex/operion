@@ -11,39 +11,23 @@ import (
 	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/persistence/file"
 	"github.com/dukex/operion/pkg/registry"
-	"github.com/dukex/operion/pkg/web"
 	"github.com/dukex/operion/pkg/workflow"
-	"github.com/go-playground/validator/v10"
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/cors"
-	"github.com/gofiber/fiber/v2/middleware/healthcheck"
-	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func setupTestApp(tempDir string) *fiber.App {
 	persistence := file.NewFilePersistence(tempDir)
-	workflowRepository := workflow.NewRepository(persistence)
-	validate := validator.New(validator.WithRequiredStructEnabled())
-	handlers := web.NewAPIHandlers(workflowRepository, validate, registry.NewRegistry(slog.Default()))
 
-	app := fiber.New()
-	app.Use(cors.New())
-	app.Use(logger.New(logger.Config{
-		DisableColors: true,
-	}))
-	app.Use(healthcheck.New())
+	app := NewAPI(
+		persistence,
+		nil, // No event bus for tests
+		slog.Default(),
+		registry.NewRegistry(slog.Default()),
+	)
 
-	app.Get("/", func(c *fiber.Ctx) error {
-		return c.SendString("Operion Workflow Automation API")
-	})
-
-	w := app.Group("/workflows")
-	w.Get("/", handlers.GetWorkflows)
-	w.Get("/:id", handlers.GetWorkflow)
-
-	return app
+	return app.App()
 }
 
 func TestAPI_RootEndpoint(t *testing.T) {
@@ -58,7 +42,7 @@ func TestAPI_RootEndpoint(t *testing.T) {
 
 	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
-	assert.Equal(t, "Operion Workflow Automation API", string(body))
+	assert.Equal(t, "Operion API", string(body))
 }
 
 func TestAPI_HealthCheck(t *testing.T) {
@@ -96,7 +80,7 @@ func TestAPI_GetWorkflows_Empty(t *testing.T) {
 func TestAPI_GetWorkflows_WithData(t *testing.T) {
 	tempDir := t.TempDir()
 	persistence := file.NewFilePersistence(tempDir)
-	
+
 	// Create test workflows
 	workflow1 := &models.Workflow{
 		ID:     "test-workflow-1",
@@ -168,7 +152,7 @@ func TestAPI_GetWorkflows_WithData(t *testing.T) {
 func TestAPI_GetWorkflow_Success(t *testing.T) {
 	tempDir := t.TempDir()
 	persistence := file.NewFilePersistence(tempDir)
-	
+
 	// Create test workflow
 	workflow1 := &models.Workflow{
 		ID:     "test-workflow-specific",
@@ -275,7 +259,7 @@ func TestAPI_ContentType_JSON(t *testing.T) {
 func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
 	tempDir := t.TempDir()
 	persistence := file.NewFilePersistence(tempDir)
-	
+
 	// Create a comprehensive test workflow
 	complexWorkflow := &models.Workflow{
 		ID:          "integration-test-workflow",
@@ -352,8 +336,8 @@ func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
 		},
 		WorkflowTriggers: []*models.WorkflowTrigger{
 			{
-				ID:     "integration-test-trigger",
-				Name:   "Integration Test Trigger",
+				ID:        "integration-test-trigger",
+				Name:      "Integration Test Trigger",
 				TriggerID: "schedule",
 				Configuration: map[string]interface{}{
 					"schedule": "0 0 * * *",
@@ -414,7 +398,7 @@ func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
 	// Verify variables
 	assert.Equal(t, "test", fetchedWorkflow.Variables["environment"])
 	assert.Equal(t, "1.0.0", fetchedWorkflow.Variables["version"])
-	
+
 	config, ok := fetchedWorkflow.Variables["config"].(map[string]interface{})
 	require.True(t, ok)
 	assert.Equal(t, float64(3), config["retry_attempts"])

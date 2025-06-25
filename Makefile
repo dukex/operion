@@ -3,12 +3,16 @@ GOFLAGS ?= -ldflags="-s -w"
 ./bin/operion-worker:
 	go build $(GOFLAGS) -o ./bin/operion-worker ./cmd/operion-worker
 
-./bin/operion-trigger:
-	go build $(GOFLAGS) -o ./bin/operion-trigger ./cmd/operion-trigger
+./bin/operion-dispatcher:
+	go build $(GOFLAGS) -o ./bin/operion-dispatcher ./cmd/operion-dispatcher
+
+./bin/operion-api:
+	go build $(GOFLAGS) -o ./bin/operion-api ./cmd/operion-api
+
 
 .PHONY: build build-linux clean test test-coverage fmt lint docs mod-check
 
-build: ./bin/operion-worker ./bin/operion-trigger
+build: ./bin/operion-worker ./bin/operion-dispatcher ./bin/operion-api
 
 build-linux: build
 

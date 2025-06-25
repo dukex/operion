@@ -2,27 +2,24 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 
 	"github.com/dukex/operion/pkg/cmd"
-	"github.com/google/uuid"
 	"github.com/urfave/cli/v3"
 )
 
-func NewRunCommand() *cli.Command {
+func RunAPICommand() *cli.Command {
 	return &cli.Command{
 		Name:    "run",
 		Aliases: []string{"r"},
-		Usage:   "Start workers to execute workflows",
+		Usage:   "Start api",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:    "worker-id",
-				Aliases: []string{"id"},
-				Usage:   "Custom worker ID (auto-generated if not provided)",
-				Value:   "",
+			&cli.IntFlag{
+				Name:    "port",
+				Aliases: []string{"p"},
+				Usage:   "Port to run the API server on",
+				Value:   9091,
 			},
-
 			&cli.StringFlag{
 				Name:     "database-url",
 				Usage:    "Database connection URL for persistence",
@@ -51,38 +48,31 @@ func NewRunCommand() *cli.Command {
 			// 	}
 			// }()
 
-			workerID := command.String("worker-id")
-			if workerID == "" {
-				workerID = fmt.Sprintf("worker-%s", uuid.New().String()[:8])
-			}
+			port := command.Int("port")
 
 			logger := slog.With(
-				"module", "operion-worker",
-				"workerId", workerID,
+				"module", "api",
 			)
 
-			logger.Info("Initializing Operion Worker")
+			logger.Info("Initializing Operion API")
 
 			registry := cmd.NewRegistry(logger, command.String("plugins-path"))
-
 			eventBus := cmd.NewEventBus(command.String("event-bus"), logger)
 			defer eventBus.Close()
 
 			persistence := cmd.NewPersistence(command.String("database-url"))
 			defer persistence.Close()
 
-			worker := NewWorkerManager(
-				workerID,
+			api := NewAPI(
 				persistence,
 				eventBus,
 				logger,
 				registry,
 			)
 
-			if err := worker.Start(ctx); err != nil {
+			if err := api.Start(port); err != nil {
 				logger.Error("Failed to start event-driven worker", "error", err)
 			}
-
 			return nil
 		},
 	}

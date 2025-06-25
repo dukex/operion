@@ -3,7 +3,7 @@
   "name": "Weather Monitoring System",
   "description": "Monitor weather conditions and alert when temperature exceeds thresholds using OpenWeatherMap API",
   "status": "active",
-  "triggers": [
+  "workflow_triggers": [
     {
       "id": "weather-schedule",
       "type": "schedule",
@@ -17,7 +17,7 @@
     {
       "id": "fetch-weather",
       "name": "Fetch Current Weather",
-      "actionId": "http_request",
+      "action_id": "http_request",
       "uid": "weather_data",
       "configuration": {
         "protocol": "https",
@@ -34,47 +34,47 @@
           "delay": 2
         }
       },
-      "onSuccess": "process-weather",
-      "onFailure": "log-fetch-error",
+      "on_success": "process-weather",
+      "on_failure": "log-fetch-error",
       "enabled": true
     },
     {
       "id": "process-weather",
       "name": "Process Weather Data",
-      "actionId": "transform",
+      "action_id": "transform",
       "uid": "weather_processed",
       "configuration": {
         "expression": "{\n  \"city\": steps.weather_data.body.name,\n  \"country\": steps.weather_data.body.sys.country,\n  \"temperature\": steps.weather_data.body.main.temp,\n  \"feels_like\": steps.weather_data.body.main.feels_like,\n  \"humidity\": steps.weather_data.body.main.humidity,\n  \"pressure\": steps.weather_data.body.main.pressure,\n  \"weather\": steps.weather_data.body.weather[0].description,\n  \"wind_speed\": steps.weather_data.body.wind.speed,\n  \"timestamp\": $now(),\n  \"alert_needed\": steps.weather_data.body.main.temp > vars.temperature_threshold\n}"
       },
-      "onSuccess": "check-alert",
+      "on_success": "check-alert",
       "enabled": true
     },
     {
       "id": "check-alert",
       "name": "Check Alert Condition",
-      "actionId": "transform",
+      "action_id": "transform",
       "uid": "alert_decision",
       "configuration": {
         "expression": "steps.weather_processed.alert_needed ? \"ALERT\" : \"OK\""
       },
-      "onSuccess": "log-weather-status",
+      "on_success": "log-weather-status",
       "enabled": true
     },
     {
       "id": "log-weather-status",
       "name": "Log Weather Status",
-      "actionId": "log",
+      "action_id": "log",
       "uid": "weather_log",
       "configuration": {
         "message": "\"Weather in \" & steps.weather_processed.city & \": \" & $string(steps.weather_processed.temperature) & \"°C (\" & steps.weather_processed.weather & \") - Status: \" & steps.alert_decision"
       },
-      "onSuccess": "send-webhook",
+      "on_success": "send-webhook",
       "enabled": true
     },
     {
       "id": "send-webhook",
       "name": "Send Weather Report",
-      "actionId": "http_request",
+      "action_id": "http_request",
       "uid": "webhook_response",
       "configuration": {
         "protocol": "https",
@@ -87,14 +87,14 @@
         "body": "{\n  \"service\": \"weather-monitoring\",\n  \"timestamp\": steps.weather_processed.timestamp,\n  \"location\": {\n    \"city\": steps.weather_processed.city,\n    \"country\": steps.weather_processed.country\n  },\n  \"weather\": {\n    \"temperature\": steps.weather_processed.temperature,\n    \"feels_like\": steps.weather_processed.feels_like,\n    \"description\": steps.weather_processed.weather,\n    \"humidity\": steps.weather_processed.humidity,\n    \"wind_speed\": steps.weather_processed.wind_speed\n  },\n  \"alert_status\": steps.alert_decision,\n  \"threshold\": vars.temperature_threshold\n}",
         "timeout": 10
       },
-      "onSuccess": "log-success",
-      "onFailure": "log-webhook-error",
+      "on_success": "log-success",
+      "on_failure": "log-webhook-error",
       "enabled": true
     },
     {
       "id": "log-success",
       "name": "Log Success",
-      "actionId": "log",
+      "action_id": "log",
       "uid": "success_log",
       "configuration": {
         "message": "\"Weather monitoring completed successfully for \" & steps.weather_processed.city"
@@ -104,7 +104,7 @@
     {
       "id": "log-fetch-error",
       "name": "Log Fetch Error",
-      "actionId": "log",
+      "action_id": "log",
       "uid": "fetch_error_log",
       "configuration": {
         "message": "\"Failed to fetch weather data for \" & vars.city"
@@ -114,7 +114,7 @@
     {
       "id": "log-webhook-error",
       "name": "Log Webhook Error",
-      "actionId": "log",
+      "action_id": "log",
       "uid": "webhook_error_log",
       "configuration": {
         "message": "\"Failed to send weather report webhook\""

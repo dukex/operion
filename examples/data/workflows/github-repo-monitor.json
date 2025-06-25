@@ -3,7 +3,7 @@
   "name": "GitHub Repository Monitor",
   "description": "Monitor GitHub repository activity including new issues, pull requests, and releases",
   "status": "active",
-  "triggers": [
+  "workflow_triggers": [
     {
       "id": "github-schedule",
       "type": "schedule",
@@ -17,7 +17,7 @@
     {
       "id": "fetch-repo-info",
       "name": "Fetch Repository Info",
-      "actionId": "http_request",
+      "action_id": "http_request",
       "uid": "repo_data",
       "configuration": {
         "protocol": "https",
@@ -34,14 +34,14 @@
           "delay": 2
         }
       },
-      "onSuccess": "fetch-recent-issues",
-      "onFailure": "log-repo-error",
+      "on_success": "fetch-recent-issues",
+      "on_failure": "log-repo-error",
       "enabled": true
     },
     {
       "id": "fetch-recent-issues",
       "name": "Fetch Recent Issues",
-      "actionId": "http_request",
+      "action_id": "http_request",
       "uid": "issues_data",
       "configuration": {
         "protocol": "https",
@@ -54,14 +54,14 @@
           "User-Agent": "Operion-GitHubMonitor/1.0"
         }
       },
-      "onSuccess": "fetch-recent-releases",
-      "onFailure": "log-issues-error",
+      "on_success": "fetch-recent-releases",
+      "on_failure": "log-issues-error",
       "enabled": true
     },
     {
       "id": "fetch-recent-releases",
       "name": "Fetch Recent Releases",
-      "actionId": "http_request",
+      "action_id": "http_request",
       "uid": "releases_data",
       "configuration": {
         "protocol": "https",
@@ -74,47 +74,47 @@
           "User-Agent": "Operion-GitHubMonitor/1.0"
         }
       },
-      "onSuccess": "process-repo-data",
-      "onFailure": "log-releases-error",
+      "on_success": "process-repo-data",
+      "on_failure": "log-releases-error",
       "enabled": true
     },
     {
       "id": "process-repo-data",
       "name": "Process Repository Data",
-      "actionId": "transform",
+      "action_id": "transform",
       "uid": "repo_summary",
       "configuration": {
         "expression": "{\n  \"repository\": {\n    \"name\": steps.repo_data.body.full_name,\n    \"description\": steps.repo_data.body.description,\n    \"stars\": steps.repo_data.body.stargazers_count,\n    \"forks\": steps.repo_data.body.forks_count,\n    \"open_issues\": steps.repo_data.body.open_issues_count,\n    \"language\": steps.repo_data.body.language,\n    \"last_push\": steps.repo_data.body.pushed_at\n  },\n  \"recent_issues\": $map(steps.issues_data.body[0..2], function($issue) {\n    {\n      \"title\": $issue.title,\n      \"state\": $issue.state,\n      \"created\": $issue.created_at,\n      \"updated\": $issue.updated_at,\n      \"author\": $issue.user.login\n    }\n  }),\n  \"latest_releases\": $map(steps.releases_data.body[0..1], function($release) {\n    {\n      \"name\": $release.name,\n      \"tag\": $release.tag_name,\n      \"published\": $release.published_at,\n      \"author\": $release.author.login\n    }\n  }),\n  \"activity_score\": steps.repo_data.body.open_issues_count + $count(steps.issues_data.body) + $count(steps.releases_data.body),\n  \"timestamp\": $now()\n}"
       },
-      "onSuccess": "log-activity",
+      "on_success": "log-activity",
       "enabled": true
     },
     {
       "id": "log-activity",
       "name": "Log Repository Activity",
-      "actionId": "log",
+      "action_id": "log",
       "uid": "activity_log",
       "configuration": {
         "message": "\"GitHub Repo \" & steps.repo_summary.repository.name & \" - Stars: \" & $string(steps.repo_summary.repository.stars) & \", Open Issues: \" & $string(steps.repo_summary.repository.open_issues) & \", Activity Score: \" & $string(steps.repo_summary.activity_score)"
       },
-      "onSuccess": "check-high-activity",
+      "on_success": "check-high-activity",
       "enabled": true
     },
     {
       "id": "check-high-activity",
       "name": "Check High Activity",
-      "actionId": "transform",
+      "action_id": "transform",
       "uid": "activity_check",
       "configuration": {
         "expression": "{\n  \"high_activity\": steps.repo_summary.activity_score > vars.activity_threshold,\n  \"alert_message\": steps.repo_summary.activity_score > vars.activity_threshold ? \"High activity detected in \" & steps.repo_summary.repository.name : \"Normal activity level\"\n}"
       },
-      "onSuccess": "send-activity-report",
+      "on_success": "send-activity-report",
       "enabled": true
     },
     {
       "id": "send-activity-report",
       "name": "Send Activity Report",
-      "actionId": "http_request",
+      "action_id": "http_request",
       "uid": "report_response",
       "configuration": {
         "protocol": "https",
@@ -127,14 +127,14 @@
         "body": "{\n  \"service\": \"github-monitor\",\n  \"timestamp\": steps.repo_summary.timestamp,\n  \"repository\": steps.repo_summary.repository,\n  \"recent_activity\": {\n    \"issues\": steps.repo_summary.recent_issues,\n    \"releases\": steps.repo_summary.latest_releases,\n    \"activity_score\": steps.repo_summary.activity_score,\n    \"high_activity_alert\": steps.activity_check.high_activity\n  },\n  \"alert_message\": steps.activity_check.alert_message\n}",
         "timeout": 10
       },
-      "onSuccess": "log-success",
-      "onFailure": "log-webhook-error",
+      "on_success": "log-success",
+      "on_failure": "log-webhook-error",
       "enabled": true
     },
     {
       "id": "log-success",
       "name": "Log Success",
-      "actionId": "log",
+      "action_id": "log",
       "uid": "success_log",
       "configuration": {
         "message": "\"GitHub monitoring completed for \" & steps.repo_summary.repository.name & \". \" & steps.activity_check.alert_message"
@@ -144,7 +144,7 @@
     {
       "id": "log-repo-error",
       "name": "Log Repository Error",
-      "actionId": "log",
+      "action_id": "log",
       "uid": "repo_error_log",
       "configuration": {
         "message": "\"Failed to fetch repository data for \" & vars.repo_owner & \"/\" & vars.repo_name"
@@ -154,7 +154,7 @@
     {
       "id": "log-issues-error",
       "name": "Log Issues Error",
-      "actionId": "log",
+      "action_id": "log",
       "uid": "issues_error_log",
       "configuration": {
         "message": "\"Failed to fetch issues data for \" & vars.repo_owner & \"/\" & vars.repo_name"
@@ -164,7 +164,7 @@
     {
       "id": "log-releases-error",
       "name": "Log Releases Error",
-      "actionId": "log",
+      "action_id": "log",
       "uid": "releases_error_log",
       "configuration": {
         "message": "\"Failed to fetch releases data for \" & vars.repo_owner & \"/\" & vars.repo_name"
@@ -174,7 +174,7 @@
     {
       "id": "log-webhook-error",
       "name": "Log Webhook Error",
-      "actionId": "log",
+      "action_id": "log",
       "uid": "webhook_error_log",
       "configuration": {
         "message": "\"Failed to send GitHub activity report\""
@@ -190,7 +190,14 @@
   "metadata": {
     "version": "1.0",
     "author": "Operion",
-    "tags": ["github", "repository", "monitoring", "issues", "releases", "real-api"],
+    "tags": [
+      "github",
+      "repository",
+      "monitoring",
+      "issues",
+      "releases",
+      "real-api"
+    ],
     "description": "Real GitHub repository monitoring using GitHub's free API. No authentication required for public repos.",
     "api_requirements": {
       "github": "Free API - no key required for public repos. Rate limit: 60 requests/hour"
