@@ -33,14 +33,6 @@ export interface TriggerItem {
   };
 }
 
-export interface ActionItem {
-  id: string;
-  type: string;
-  name: string;
-  description: string;
-  configuration: Record<string, unknown>;
-}
-
 export interface ConditionalExpression {
   language: "javascript" | "cel" | "simple" | "";
   expression: string;
@@ -48,9 +40,11 @@ export interface ConditionalExpression {
 
 export interface WorkflowStep {
   id: string;
+  action_id: string;
   uid: string;
   name: string;
-  action: ActionItem;
+  description: string;
+  configuration: Record<string, unknown>;
   conditional?: ConditionalExpression;
   on_success?: string | null;
   on_failure?: string | null;
@@ -61,7 +55,7 @@ export interface Workflow {
   id: string;
   name: string;
   description: string;
-  triggers: TriggerItem[];
+  workflow_triggers: TriggerItem[];
   steps: WorkflowStep[];
   variables: Record<string, unknown>;
   status: WorkflowStatus;

@@ -8,7 +8,7 @@ import type {
   ApiErrorProblem,
 } from "@/types/operion";
 
-const API_BASE_URL = "http://localhost:3000";
+const API_BASE_URL = process.env.API_BASE_URL;
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (response.status === 204) {

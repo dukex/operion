@@ -1,7 +1,7 @@
 import { Handle, Position } from "@xyflow/react";
 import { memo } from "react";
 import type { WorkflowStep } from "../../types/operion";
-import { BoxIcon, CloudCog, FilePenLine, SquareFunction } from "lucide-react";
+import { BoxIcon, CloudCog, SquareFunction } from "lucide-react";
 import BaseNode from "./BaseNode";
 
 const colors = {
@@ -15,11 +15,6 @@ const colors = {
     background: "var(--color-orange-100)",
     icon: <SquareFunction />,
   },
-  file_write: {
-    color: "var(--color-yellow-500)",
-    background: "var(--color-yellow-100)",
-    icon: <FilePenLine />,
-  },
   default: {
     color: "var(--color-gray-500)",
     background: "var(--color-gray-100)",
@@ -30,14 +25,14 @@ const colors = {
 const StepNode = memo(
   ({ data, isConnectable }: { data: WorkflowStep; isConnectable: boolean }) => {
     const colorScheme =
-      colors[data.action.type as keyof typeof colors] || colors.default;
+      colors[data.action_id as keyof typeof colors] || colors.default;
 
     return (
       <BaseNode
         color={colorScheme.color}
         background={colorScheme.background}
         icon={colorScheme.icon}
-        title={data.action.type
+        title={data.action_id
           .split("_")
           .map((s) => (s === "http" ? "HTTP" : s))
           .join(" ")}
@@ -50,7 +45,7 @@ const StepNode = memo(
             position={Position.Bottom}
             isConnectable={isConnectable}
             style={{
-              left: "60%",
+              left: "40%",
               background: "var(--color-green-500)",
               width: 10,
               height: 10,
@@ -62,7 +57,7 @@ const StepNode = memo(
             position={Position.Bottom}
             isConnectable={isConnectable}
             style={{
-              left: "40%",
+              left: "60%",
               background: "var(--color-red-500)",
               width: 10,
               height: 10,

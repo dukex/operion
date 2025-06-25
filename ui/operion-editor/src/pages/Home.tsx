@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 
 import { getWorkflows } from "@/lib/api-client";
-import { Loader2, AlertTriangle, PlusCircle } from "lucide-react";
+import { Loader2, AlertTriangle } from "lucide-react";
 import type {
   Workflow,
   // CreateWorkflowPayload,

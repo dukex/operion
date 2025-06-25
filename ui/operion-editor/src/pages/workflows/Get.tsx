@@ -111,15 +111,15 @@ export default function WorkflowsGet() {
   useEffect(() => {
     if (!workflow) return;
 
-    const triggerNodes: Partial<Node>[] = workflow.triggers.map<Partial<Node>>(
-      (trigger: TriggerItem) => {
-        return {
-          id: trigger.id,
-          type: "trigger",
-          data: { ...trigger },
-        };
-      }
-    );
+    const triggerNodes: Partial<Node>[] = workflow.workflow_triggers.map<
+      Partial<Node>
+    >((trigger: TriggerItem) => {
+      return {
+        id: trigger.id,
+        type: "trigger",
+        data: { ...trigger },
+      };
+    });
 
     const stepsNodes: Partial<Node>[] = workflow.steps.map<Partial<Node>>(
       (step: WorkflowStep) => {
@@ -147,7 +147,7 @@ export default function WorkflowsGet() {
         };
 
         if (index === 0) {
-          workflow.triggers.forEach((trigger: TriggerItem) => {
+          workflow.workflow_triggers.forEach((trigger: TriggerItem) => {
             sEdges.push({
               ...defaultEdge,
               id: `trigger-${trigger.id}-to-${step.id}`,
@@ -169,6 +169,7 @@ export default function WorkflowsGet() {
             style: { stroke: "var(--color-green-500)", strokeWidth: 1 },
           });
         }
+
         if (step.on_failure) {
           sEdges.push({
             ...defaultEdge,
@@ -185,7 +186,6 @@ export default function WorkflowsGet() {
             },
           });
         }
-
         return sEdges;
       }
     );
