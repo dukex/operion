@@ -16,6 +16,7 @@ import (
 	"github.com/dukex/operion/pkg/persistence"
 	"github.com/dukex/operion/pkg/protocol"
 	"github.com/dukex/operion/pkg/registry"
+	"github.com/dukex/operion/pkg/triggers/webhook"
 	"github.com/dukex/operion/pkg/workflow"
 )
 
@@ -27,10 +28,12 @@ type DispatcherManager struct {
 	ctx             context.Context
 	cancel          context.CancelFunc
 	// tp              *sdktrace.TracerProvider
-	logger       *slog.Logger
-	persistence  persistence.Persistence
-	registry     *registry.Registry
-	restartCount int
+	logger         *slog.Logger
+	persistence    persistence.Persistence
+	registry       *registry.Registry
+	restartCount   int
+	webhookManager *webhook.WebhookServerManager
+	webhookPort    int
 }
 
 func NewDispatcherManager(
@@ -39,7 +42,9 @@ func NewDispatcherManager(
 	eventBus event_bus.EventBus,
 	logger *slog.Logger,
 	registry *registry.Registry,
+	webhookPort int,
 ) *DispatcherManager {
+	webhookManager := webhook.GetWebhookServerManager(webhookPort, logger)
 	return &DispatcherManager{
 		id:              id,
 		logger:          logger.With("module", "operion-dispatcher", "dispatcher_id", id),
@@ -48,6 +53,8 @@ func NewDispatcherManager(
 		restartCount:    0,
 		eventBus:        eventBus,
 		runningTriggers: make(map[string]protocol.Trigger),
+		webhookManager:  webhookManager,
+		webhookPort:     webhookPort,
 	}
 }
 
@@ -123,6 +130,12 @@ func (dm *DispatcherManager) run() {
 func (dm *DispatcherManager) Start(ctx context.Context) {
 	dm.ctx, dm.cancel = context.WithCancel(ctx)
 	dm.logger.Info("Starting dispatcher manager")
+
+	if err := dm.webhookManager.Start(dm.ctx); err != nil {
+		dm.logger.Error("Failed to start webhook server manager", "error", err)
+		return
+	}
+
 	dm.signals()
 	dm.run()
 	dm.logger.Info("Dispatcher manager stopped")
@@ -203,6 +216,10 @@ func (dm *DispatcherManager) stop() {
 		if err := trigger.Stop(context.Background()); err != nil {
 			dm.logger.Error("Error stopping trigger %s: %v", triggerID, err)
 		}
+	}
+
+	if err := dm.webhookManager.Stop(context.Background()); err != nil {
+		dm.logger.Error("Error stopping webhook server manager", "error", err)
 	}
 
 	dm.runningTriggers = make(map[string]protocol.Trigger)

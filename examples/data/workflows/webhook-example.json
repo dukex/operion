@@ -1,0 +1,50 @@
+{
+  "id": "webhook-example",
+  "name": "Webhook Example",
+  "description": "Example workflow triggered by webhook",
+  "status": "active",
+  "owner": "system",
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z",
+  "workflow_triggers": [
+    {
+      "id": "webhook-trigger-1",
+      "trigger_id": "webhook",
+      "configuration": {
+        "id": "example-webhook",
+        "path": "/api/webhook/example"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "id": "log-webhook-data",
+      "action": {
+        "id": "log",
+        "config": {
+          "message": "Received webhook data: {{trigger.body}}"
+        }
+      }
+    },
+    {
+      "id": "transform-data",
+      "action": {
+        "id": "transform",
+        "config": {
+          "expression": "{ \"processed\": true, \"timestamp\": trigger.timestamp, \"method\": trigger.method, \"headers\": trigger.headers }"
+        }
+      }
+    },
+    {
+      "id": "log-processed",
+      "action": {
+        "id": "log",
+        "config": {
+          "message": "Processed webhook data: {{transform-data}}"
+        }
+      }
+    }
+  ],
+  "variables": {},
+  "metadata": {}
+}

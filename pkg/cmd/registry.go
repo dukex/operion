@@ -8,6 +8,7 @@ import (
 	"github.com/dukex/operion/pkg/actions/transform"
 	"github.com/dukex/operion/pkg/registry"
 	"github.com/dukex/operion/pkg/triggers/schedule"
+	"github.com/dukex/operion/pkg/triggers/webhook"
 )
 
 func registreActionPlugins(reg *registry.Registry, pluginsPath string) {
@@ -40,6 +41,9 @@ func registerNativeActions(reg *registry.Registry) {
 func registerNativeTriggers(reg *registry.Registry) {
 	scheduleTrigger := schedule.NewScheduleTriggerFactory()
 	reg.RegisterTrigger(scheduleTrigger)
+
+	webhookTrigger := webhook.NewWebhookTriggerFactory()
+	reg.RegisterTrigger(webhookTrigger)
 }
 
 func NewRegistry(log *slog.Logger, pluginsPath string) *registry.Registry {

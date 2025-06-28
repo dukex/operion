@@ -39,6 +39,12 @@ func NewRunCommand() *cli.Command {
 				Value:    "./plugins",
 				Required: false,
 			},
+			&cli.IntFlag{
+				Name:     "webhook-port",
+				Usage:    "Port for webhook HTTP server",
+				Value:    8085,
+				Required: false,
+			},
 		},
 		Action: func(ctx context.Context, command *cli.Command) error {
 			tracerProvider, err := trc.InitTracer(ctx, "operion-trigger")
@@ -77,6 +83,7 @@ func NewRunCommand() *cli.Command {
 				eventBus,
 				logger,
 				registry,
+				command.Int("webhook-port"),
 			).Start(ctx)
 
 			return nil

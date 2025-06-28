@@ -78,6 +78,7 @@ go mod tidy         # Clean up dependencies
 
 ### Available Triggers
 - **Schedule Trigger** (`pkg/triggers/schedule/`) - Cron-based scheduling with robfig/cron
+- **Webhook Trigger** (`pkg/triggers/webhook/`) - HTTP webhook endpoints with centralized server management
 - **Kafka Trigger** (`pkg/triggers/kafka/`) - Kafka topic-based triggering with IBM/sarama
 
 ### Available Actions
@@ -230,10 +231,13 @@ Sample workflows in `./data/workflows/` directory:
 ### Dispatcher Management
 ```bash
 # Start dispatcher service (listens for triggers and publishes events)
-./bin/operion-dispatcher run --database-url ./data/workflows --event-bus gochannel
+./bin/operion-dispatcher run --database-url ./examples/data --event-bus gochannel
+
+# Start dispatcher with webhook server on custom port
+./bin/operion-dispatcher run --database-url ./examples/data --event-bus gochannel --webhook-port 8085
 
 # Start dispatcher with custom ID and plugins
-./bin/operion-dispatcher run --dispatcher-id my-dispatcher --database-url ./data/workflows --event-bus kafka --plugins-path ./plugins
+./bin/operion-dispatcher run --dispatcher-id my-dispatcher --database-url ./examples/data --event-bus kafka --plugins-path ./plugins --webhook-port 9090
 
 # List all triggers in workflows
 ./bin/operion-dispatcher list
