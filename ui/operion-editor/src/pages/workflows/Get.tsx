@@ -68,6 +68,31 @@ const getLayoutedElements = (
   return { nodes: newNodes, edges };
 };
 
+const withDefaultParams = (params: Edge, success: boolean): Edge => {
+  return {
+    animated: true,
+    sourceHandle: success ? "success" : "failure",
+    label: success ? "on success" : "on failure",
+    style: success
+      ? { stroke: "var(--color-green-500)", strokeWidth: 1 }
+      : { stroke: "hsl(var(--destructive))", strokeWidth: 1 },
+    markerEnd: success
+      ? {
+          type: MarkerType.ArrowClosed,
+          width: 20,
+          height: 20,
+          color: "var(--color-green-500)",
+        }
+      : {
+          type: MarkerType.ArrowClosed,
+          width: 20,
+          height: 20,
+          color: "hsl(var(--destructive))",
+        },
+    ...params,
+  };
+};
+
 const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
 
 export default function WorkflowsGet() {
@@ -82,7 +107,21 @@ export default function WorkflowsGet() {
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
   const onConnect = useCallback(
-    (params: Edge | Connection) => setEdges((eds) => addEdge(params, eds)),
+    (params: Connection) => {
+      setEdges((eds) =>
+        addEdge(
+          withDefaultParams(
+            {
+              ...params,
+              id: `${params.source}-${params.target}-${params.sourceHandle}`,
+            },
+            params["sourceHandle"] === "success"
+          ),
+          eds
+        )
+      );
+    },
+
     [setEdges]
   );
 
@@ -137,13 +176,6 @@ export default function WorkflowsGet() {
 
         const defaultEdge = {
           source: step.id,
-          animated: true,
-          markerEnd: {
-            type: MarkerType.ArrowClosed,
-            width: 20,
-            height: 20,
-            color: "var(--color-green-500)",
-          },
         };
 
         if (index === 0) {
@@ -160,31 +192,29 @@ export default function WorkflowsGet() {
         }
 
         if (step.on_success) {
-          sEdges.push({
-            ...defaultEdge,
-            id: `${step.id}-to-${step.on_success}-success`,
-            sourceHandle: "success",
-            label: "on success",
-            target: step.on_success,
-            style: { stroke: "var(--color-green-500)", strokeWidth: 1 },
-          });
+          sEdges.push(
+            withDefaultParams(
+              {
+                source: step.id,
+                id: `${step.id}-to-${step.on_success}-success`,
+                target: step.on_success,
+              },
+              true
+            )
+          );
         }
 
         if (step.on_failure) {
-          sEdges.push({
-            ...defaultEdge,
-            id: `${step.id}-to-${step.on_failure}-failure`,
-            sourceHandle: "failure",
-            label: "on failure",
-            target: step.on_failure,
-            style: { stroke: "hsl(var(--destructive))", strokeWidth: 1 },
-            markerEnd: {
-              type: MarkerType.ArrowClosed,
-              width: 20,
-              height: 20,
-              color: "hsl(var(--destructive))",
-            },
-          });
+          sEdges.push(
+            withDefaultParams(
+              {
+                source: step.id,
+                id: `${step.id}-to-${step.on_failure}-failure`,
+                target: step.on_failure,
+              },
+              false
+            )
+          );
         }
         return sEdges;
       }
@@ -223,6 +253,18 @@ export default function WorkflowsGet() {
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
               nodeTypes={nodeTypes}
+              nodeOrigin={[0.5, 0.5]}
+              // TODO get fitview playing nice with nodeOrigin
+              defaultViewport={{ x: 500, y: 0, zoom: 1 }}
+              defaultEdgeOptions={{
+                animated: true,
+                markerEnd: {
+                  type: MarkerType.ArrowClosed,
+                  width: 20,
+                  height: 20,
+                  color: "var(--color-green-500)",
+                },
+              }}
               fitView
             >
               <Background
