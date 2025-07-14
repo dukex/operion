@@ -1,6 +1,6 @@
 # Operion
 
-A workflow automation system built in Go that allows creating event-driven workflows with configurable triggers and actions.
+A cloud-native workflow automation platform built in Go that enables event-driven workflows with configurable triggers and actions. Designed for Kubernetes deployments and following cloud-native principles.
 
 ## Overview
 
@@ -17,13 +17,15 @@ Operion enables you to create automated workflows through:
 
 ## Features
 
+- **Cloud-Native** - Stateless, container-first design optimized for Kubernetes
+- **Event-Driven** - Decoupled architecture with pub/sub messaging for scalability
 - **Extensible** - Plugin system with dynamic .so file loading for triggers and actions
 - **REST API** - HTTP interface for managing workflows
 - **CLI Tools** - Command-line interfaces for dispatcher and worker services
-- **File-based Storage** - Simple JSON persistence
-- **Event-Driven** - Decoupled architecture with pub/sub messaging
+- **Multiple Storage Options** - File-based, database, and cloud storage support
 - **Worker Management** - Background execution with proper lifecycle management
-- **Concurrent Execution** - Efficient resource usage
+- **Horizontal Scaling** - Support for multiple instances and load balancing
+- **Observability** - Built-in metrics, structured logging, and health checks
 
 ## Architecture
 
@@ -161,6 +163,8 @@ Actions now use a standardized contract with:
 ### Available Triggers
 - **Schedule** (`pkg/triggers/schedule/`) - Cron-based execution using robfig/cron with native implementation
 - **Kafka** (`pkg/triggers/kafka/`) - Message-based triggering from Kafka topics with native implementation
+- **Redis Queue** (`pkg/triggers/queue/`) - Redis-based queue consumption for task processing
+- **Webhook** (`pkg/triggers/webhook/`) - HTTP endpoint triggers for external integrations
 
 ### Available Actions  
 - **HTTP Request** (`pkg/actions/http_request/`) - Make HTTP calls with retry logic, templating, and JSON/string response handling
@@ -215,21 +219,24 @@ go build -buildmode=plugin -o plugin.so plugin.go
 
 ## Future Features
 
-### Planned Triggers
-- **Kafka**: Listen to Kafka topics for events (interface exists)
-- **Webhook**: Receive HTTP requests to trigger workflows
-- **File System**: Watch for file changes
+See [TODO.md](./TODO.md) for a comprehensive list of planned features organized by priority.
 
-### Planned Actions
-- **Slack**: Send messages to Slack channels
-- **Email**: Send email notifications
-- **Database**: Execute database operations
-- **Template**: Generate files from templates
+### High Priority Cloud-Native Features
+- **RabbitMQ Trigger**: AMQP message consumption with enterprise features
+- **AWS SQS Trigger**: Native AWS queue integration with FIFO support
+- **Google Pub/Sub Trigger**: Google Cloud messaging integration
+- **Email Action**: SMTP-based notifications for cloud environments
+- **Slack/Discord Actions**: Team communication via webhooks
+- **Database Actions**: Cloud database operations (PostgreSQL, MySQL, MongoDB)
+- **Conditional Actions**: Workflow branching and business rule implementation
+
+### Infrastructure Enhancements
+- **Kubernetes Integration**: Helm charts, HPA support, and service mesh compatibility
+- **Enhanced Observability**: Prometheus metrics, Jaeger tracing, and health checks
+- **Security Features**: OAuth2/OIDC, RBAC, secret management integration
+- **Multi-tenancy**: Organization isolation and resource quotas
 
 ### Available Interfaces
 - **Visual Workflow Editor**: React-based browser interface for visualizing and editing workflows
-- **Web Dashboard**: Browser-based workflow editor and monitor
-
-### Planned Interfaces
-- **YAML Configuration**: Define workflows in YAML format
-- **Extended CLI**: Additional workflow management commands
+- **REST API**: Complete workflow management via HTTP endpoints
+- **CLI Tools**: Command-line workflow and service management
