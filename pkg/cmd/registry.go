@@ -7,6 +7,7 @@ import (
 	log_action "github.com/dukex/operion/pkg/actions/log"
 	"github.com/dukex/operion/pkg/actions/transform"
 	"github.com/dukex/operion/pkg/registry"
+	"github.com/dukex/operion/pkg/triggers/queue"
 	"github.com/dukex/operion/pkg/triggers/schedule"
 	"github.com/dukex/operion/pkg/triggers/webhook"
 )
@@ -44,6 +45,9 @@ func registerNativeTriggers(reg *registry.Registry) {
 
 	webhookTrigger := webhook.NewWebhookTriggerFactory()
 	reg.RegisterTrigger(webhookTrigger)
+
+	queueTrigger := queue.NewQueueTriggerFactory()
+	reg.RegisterTrigger(queueTrigger)
 }
 
 func NewRegistry(log *slog.Logger, pluginsPath string) *registry.Registry {

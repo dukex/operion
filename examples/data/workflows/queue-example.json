@@ -1,0 +1,62 @@
+{
+  "id": "queue-task-processor",
+  "name": "Redis Queue Task Processor",
+  "description": "Processes tasks from a Redis queue and performs HTTP requests",
+  "workflow_triggers": [
+    {
+      "id": "redis-queue-trigger",
+      "trigger_id": "queue",
+      "configuration": {
+        "provider": "redis",
+        "connection": {
+          "addr": "localhost:6379",
+          "password": "",
+          "db": "0"
+        },
+        "queue": "task_queue",
+        "consumer_group": "operion_workers"
+      }
+    }
+  ],
+  "variables": {
+    "api_base_url": "https://jsonplaceholder.typicode.com",
+    "timeout": 30
+  },
+  "steps": [
+    {
+      "id": "log-incoming-task",
+      "action_id": "log",
+      "configuration": {
+        "message": "Processing task from queue: {{ trigger.message }}",
+        "level": "info"
+      }
+    },
+    {
+      "id": "process-task-data",
+      "action_id": "transform",
+      "configuration": {
+        "template": "{\"task_id\": trigger.task_id, \"processed_at\": trigger.timestamp, \"url\": vars.api_base_url & \"/posts/\" & trigger.post_id}"
+      }
+    },
+    {
+      "id": "fetch-data",
+      "action_id": "http_request",
+      "configuration": {
+        "url": "{{ steps.process-task-data.url }}",
+        "method": "GET",
+        "timeout": "{{ vars.timeout }}s",
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "id": "log-result",
+      "action_id": "log",
+      "configuration": {
+        "message": "Task {{ steps.process-task-data.task_id }} completed. Status: {{ steps.fetch-data.status_code }}",
+        "level": "info"
+      }
+    }
+  ]
+}
