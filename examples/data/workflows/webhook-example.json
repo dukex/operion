@@ -31,7 +31,8 @@
         "language": "simple",
         "expression": "true"
       },
-      "enabled": true
+      "enabled": true,
+      "on_success": "transform-data"
     },
     {
       "id": "transform-data",
@@ -45,7 +46,8 @@
         "language": "simple",
         "expression": "true"
       },
-      "enabled": true
+      "enabled": true,
+      "on_success": "log-processed"
     },
     {
       "id": "log-processed",

@@ -28,7 +28,8 @@ export interface TriggerItem {
   id: string;
   trigger_id: string;
   configuration: {
-    schedule?: string; // For schedule triggers
+    cron?: string; // For schedule triggers
+    path?: string; // For webhook triggers
     [key: string]: unknown; // Additional trigger-specific configuration
   };
 }
