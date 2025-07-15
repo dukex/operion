@@ -9,6 +9,8 @@
   "workflow_triggers": [
     {
       "id": "webhook-trigger-1",
+      "name": "Webhook Trigger",
+      "description": "HTTP webhook trigger for example workflow",
       "trigger_id": "webhook",
       "configuration": {
         "id": "example-webhook",
@@ -19,30 +21,45 @@
   "steps": [
     {
       "id": "log-webhook-data",
-      "action": {
-        "id": "log",
-        "config": {
-          "message": "Received webhook data: {{trigger.body}}"
-        }
-      }
+      "name": "Log Webhook Data",
+      "action_id": "log",
+      "uid": "logwebhookdata",
+      "configuration": {
+        "message": "Received webhook data: {{trigger.body}}"
+      },
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
+      "enabled": true
     },
     {
       "id": "transform-data",
-      "action": {
-        "id": "transform",
-        "config": {
-          "expression": "{ \"processed\": true, \"timestamp\": trigger.timestamp, \"method\": trigger.method, \"headers\": trigger.headers }"
-        }
-      }
+      "name": "Transform Data",
+      "action_id": "transform",
+      "uid": "transformdata",
+      "configuration": {
+        "expression": "{ \"processed\": true, \"timestamp\": trigger.timestamp, \"method\": trigger.method, \"headers\": trigger.headers }"
+      },
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
+      "enabled": true
     },
     {
       "id": "log-processed",
-      "action": {
-        "id": "log",
-        "config": {
-          "message": "Processed webhook data: {{transform-data}}"
-        }
-      }
+      "name": "Log Processed",
+      "action_id": "log",
+      "uid": "logprocessed",
+      "configuration": {
+        "message": "Processed webhook data: {{transformdata}}"
+      },
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
+      "enabled": true
     }
   ],
   "variables": {},

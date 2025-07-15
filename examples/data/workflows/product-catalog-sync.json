@@ -6,9 +6,11 @@
   "workflow_triggers": [
     {
       "id": "catalog-schedule",
+      "name": "Product Catalog Schedule Trigger",
+      "description": "Trigger to sync product catalog daily at 1 AM UTC",
       "trigger_id": "schedule",
       "configuration": {
-        "schedule": "0 1 * * *",
+        "cron": "0 1 * * *",
         "timezone": "UTC"
       }
     }
@@ -18,7 +20,11 @@
       "id": "fetch-all-products",
       "name": "Fetch All Products",
       "action_id": "http_request",
-      "uid": "products_data",
+      "uid": "productsdata",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
       "configuration": {
         "protocol": "https",
         "host": "fakestoreapi.com",
@@ -42,7 +48,11 @@
       "id": "fetch-categories",
       "name": "Fetch Product Categories",
       "action_id": "http_request",
-      "uid": "categories_data",
+      "uid": "categoriesdata",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
       "configuration": {
         "protocol": "https",
         "host": "fakestoreapi.com",
@@ -62,9 +72,13 @@
       "id": "process-products",
       "name": "Process Product Data",
       "action_id": "transform",
-      "uid": "processed_products",
+      "uid": "processedproducts",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
       "configuration": {
-        "expression": "{\n  \"total_products\": $count(steps.products_data.body),\n  \"categories\": steps.categories_data.body,\n  \"category_stats\": $map(steps.categories_data.body, function($cat) {\n    {\n      \"category\": $cat,\n      \"count\": $count($filter(steps.products_data.body, function($p) { $p.category = $cat })),\n      \"avg_price\": $round($average($map($filter(steps.products_data.body, function($p) { $p.category = $cat }), function($p) { $p.price })), 2),\n      \"total_value\": $round($sum($map($filter(steps.products_data.body, function($p) { $p.category = $cat }), function($p) { $p.price })), 2)\n    }\n  }),\n  \"price_analysis\": {\n    \"min_price\": $min($map(steps.products_data.body, function($p) { $p.price })),\n    \"max_price\": $max($map(steps.products_data.body, function($p) { $p.price })),\n    \"avg_price\": $round($average($map(steps.products_data.body, function($p) { $p.price })), 2),\n    \"total_catalog_value\": $round($sum($map(steps.products_data.body, function($p) { $p.price })), 2)\n  },\n  \"timestamp\": $now()\n}"
+        "expression": "{\n  \"total_products\": $count(steps.productsdata.body),\n  \"categories\": steps.categoriesdata.body,\n  \"category_stats\": $map(steps.categoriesdata.body, function($cat) {\n    {\n      \"category\": $cat,\n      \"count\": $count($filter(steps.productsdata.body, function($p) { $p.category = $cat })),\n      \"avg_price\": $round($average($map($filter(steps.productsdata.body, function($p) { $p.category = $cat }), function($p) { $p.price })), 2),\n      \"total_value\": $round($sum($map($filter(steps.productsdata.body, function($p) { $p.category = $cat }), function($p) { $p.price })), 2)\n    }\n  }),\n  \"price_analysis\": {\n    \"min_price\": $min($map(steps.productsdata.body, function($p) { $p.price })),\n    \"max_price\": $max($map(steps.productsdata.body, function($p) { $p.price })),\n    \"avg_price\": $round($average($map(steps.productsdata.body, function($p) { $p.price })), 2),\n    \"total_catalog_value\": $round($sum($map(steps.productsdata.body, function($p) { $p.price })), 2)\n  },\n  \"timestamp\": $now()\n}"
       },
       "on_success": "analyze-inventory",
       "enabled": true
@@ -73,9 +87,13 @@
       "id": "analyze-inventory",
       "name": "Analyze Inventory Status",
       "action_id": "transform",
-      "uid": "inventory_analysis",
+      "uid": "inventoryanalysis",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
       "configuration": {
-        "expression": "{\n  \"top_products\": $map($sort(steps.products_data.body, function($a, $b) {\n    $b.rating.rate - $a.rating.rate\n  })[0..2], function($product) {\n    {\n      \"id\": $product.id,\n      \"title\": $product.title,\n      \"category\": $product.category,\n      \"price\": $product.price,\n      \"rating\": $product.rating.rate,\n      \"review_count\": $product.rating.count\n    }\n  }),\n  \"expensive_products\": $map($sort(steps.products_data.body, function($a, $b) {\n    $b.price - $a.price\n  })[0..2], function($product) {\n    {\n      \"title\": $product.title,\n      \"price\": $product.price,\n      \"category\": $product.category\n    }\n  }),\n  \"inventory_health\": {\n    \"total_categories\": $count(steps.processed_products.categories),\n    \"products_per_category\": $round(steps.processed_products.total_products / $count(steps.processed_products.categories), 1),\n    \"health_score\": $min([5, $round(steps.processed_products.total_products / 4, 0)]),\n    \"status\": steps.processed_products.total_products > 15 ? \"HEALTHY\" : \"LOW_INVENTORY\"\n  },\n  \"timestamp\": $now()\n}"
+        "expression": "{\n  \"top_products\": $map($sort(steps.productsdata.body, function($a, $b) {\n    $b.rating.rate - $a.rating.rate\n  })[0..2], function($product) {\n    {\n      \"id\": $product.id,\n      \"title\": $product.title,\n      \"category\": $product.category,\n      \"price\": $product.price,\n      \"rating\": $product.rating.rate,\n      \"review_count\": $product.rating.count\n    }\n  }),\n  \"expensive_products\": $map($sort(steps.productsdata.body, function($a, $b) {\n    $b.price - $a.price\n  })[0..2], function($product) {\n    {\n      \"title\": $product.title,\n      \"price\": $product.price,\n      \"category\": $product.category\n    }\n  }),\n  \"inventory_health\": {\n    \"total_categories\": $count(steps.processedproducts.categories),\n    \"products_per_category\": $round(steps.processedproducts.total_products / $count(steps.processedproducts.categories), 1),\n    \"health_score\": $min([5, $round(steps.processedproducts.total_products / 4, 0)]),\n    \"status\": steps.processedproducts.total_products > 15 ? \"HEALTHY\" : \"LOW_INVENTORY\"\n  },\n  \"timestamp\": $now()\n}"
       },
       "on_success": "create-catalog-report",
       "enabled": true
@@ -84,9 +102,13 @@
       "id": "create-catalog-report",
       "name": "Create Catalog Report",
       "action_id": "transform",
-      "uid": "catalog_report",
+      "uid": "catalogreport",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
       "configuration": {
-        "expression": "{\n  \"catalog_summary\": {\n    \"timestamp\": $now(),\n    \"total_products\": steps.processed_products.total_products,\n    \"total_categories\": $count(steps.processed_products.categories),\n    \"catalog_value\": steps.processed_products.price_analysis.total_catalog_value,\n    \"average_price\": steps.processed_products.price_analysis.avg_price,\n    \"inventory_status\": steps.inventory_analysis.inventory_health.status,\n    \"health_score\": steps.inventory_analysis.inventory_health.health_score & \"/5\"\n  },\n  \"category_breakdown\": steps.processed_products.category_stats,\n  \"featured_products\": {\n    \"top_rated\": steps.inventory_analysis.top_products,\n    \"most_expensive\": steps.inventory_analysis.expensive_products\n  },\n  \"price_insights\": steps.processed_products.price_analysis\n}"
+        "expression": "{\n  \"catalog_summary\": {\n    \"timestamp\": $now(),\n    \"total_products\": steps.processedproducts.total_products,\n    \"total_categories\": $count(steps.processedproducts.categories),\n    \"catalog_value\": steps.processedproducts.price_analysis.total_catalog_value,\n    \"average_price\": steps.processedproducts.price_analysis.avg_price,\n    \"inventory_status\": steps.inventoryanalysis.inventory_health.status,\n    \"health_score\": steps.inventoryanalysis.inventory_health.health_score & \"/5\"\n  },\n  \"category_breakdown\": steps.processedproducts.category_stats,\n  \"featured_products\": {\n    \"top_rated\": steps.inventoryanalysis.top_products,\n    \"most_expensive\": steps.inventoryanalysis.expensive_products\n  },\n  \"price_insights\": steps.processedproducts.price_analysis\n}"
       },
       "on_success": "log-catalog-stats",
       "enabled": true
@@ -95,9 +117,13 @@
       "id": "log-catalog-stats",
       "name": "Log Catalog Statistics",
       "action_id": "log",
-      "uid": "stats_log",
+      "uid": "statslog",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
       "configuration": {
-        "message": "\"Catalog Sync - Products: \" & $string(steps.catalog_report.catalog_summary.total_products) & \", Categories: \" & $string(steps.catalog_report.catalog_summary.total_categories) & \", Total Value: $\" & $string(steps.catalog_report.catalog_summary.catalog_value) & \", Status: \" & steps.catalog_report.catalog_summary.inventory_status"
+        "message": "\"Catalog Sync - Products: \" & $string(steps.catalogreport.catalog_summary.total_products) & \", Categories: \" & $string(steps.catalogreport.catalog_summary.total_categories) & \", Total Value: $\" & $string(steps.catalogreport.catalog_summary.catalog_value) & \", Status: \" & steps.catalogreport.catalog_summary.inventory_status"
       },
       "on_success": "check-inventory-health",
       "enabled": true
@@ -106,9 +132,13 @@
       "id": "check-inventory-health",
       "name": "Check Inventory Health",
       "action_id": "transform",
-      "uid": "health_check",
+      "uid": "healthcheck",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
       "configuration": {
-        "expression": "{\n  \"needs_attention\": steps.inventory_analysis.inventory_health.health_score < vars.health_threshold,\n  \"alert_message\": steps.inventory_analysis.inventory_health.health_score < vars.health_threshold ? \"Inventory health below threshold: \" & steps.inventory_analysis.inventory_health.health_score & \"/5\" : \"Inventory health is good\",\n  \"recommendations\": steps.inventory_analysis.inventory_health.health_score < vars.health_threshold ? [\"Consider adding more products\", \"Review category distribution\", \"Check for missing items\"] : [\"Maintain current inventory levels\"]\n}"
+        "expression": "{\n  \"needs_attention\": steps.inventoryanalysis.inventory_health.health_score < vars.health_threshold,\n  \"alert_message\": steps.inventoryanalysis.inventory_health.health_score < vars.health_threshold ? \"Inventory health below threshold: \" & steps.inventoryanalysis.inventory_health.health_score & \"/5\" : \"Inventory health is good\",\n  \"recommendations\": steps.inventoryanalysis.inventory_health.health_score < vars.health_threshold ? [\"Consider adding more products\", \"Review category distribution\", \"Check for missing items\"] : [\"Maintain current inventory levels\"]\n}"
       },
       "on_success": "send-catalog-report",
       "enabled": true
@@ -117,7 +147,11 @@
       "id": "send-catalog-report",
       "name": "Send Catalog Report",
       "action_id": "http_request",
-      "uid": "report_response",
+      "uid": "reportresponse",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
       "configuration": {
         "protocol": "https",
         "host": "httpbin.org",
@@ -126,7 +160,7 @@
         "headers": {
           "Content-Type": "application/json"
         },
-        "body": "{\n  \"service\": \"catalog-sync\",\n  \"timestamp\": steps.catalog_report.catalog_summary.timestamp,\n  \"summary\": steps.catalog_report.catalog_summary,\n  \"analytics\": {\n    \"category_performance\": steps.catalog_report.category_breakdown,\n    \"price_analysis\": steps.catalog_report.price_insights,\n    \"featured_products\": steps.catalog_report.featured_products\n  },\n  \"health_check\": {\n    \"status\": steps.health_check.alert_message,\n    \"needs_attention\": steps.health_check.needs_attention,\n    \"recommendations\": steps.health_check.recommendations\n  }\n}",
+        "body": "{\n  \"service\": \"catalog-sync\",\n  \"timestamp\": steps.catalogreport.catalog_summary.timestamp,\n  \"summary\": steps.catalogreport.catalog_summary,\n  \"analytics\": {\n    \"category_performance\": steps.catalogreport.category_breakdown,\n    \"price_analysis\": steps.catalogreport.price_insights,\n    \"featured_products\": steps.catalogreport.featured_products\n  },\n  \"health_check\": {\n    \"status\": steps.healthcheck.alert_message,\n    \"needs_attention\": steps.healthcheck.needs_attention,\n    \"recommendations\": steps.healthcheck.recommendations\n  }\n}",
         "timeout": 10
       },
       "on_success": "log-success",
@@ -137,9 +171,13 @@
       "id": "log-success",
       "name": "Log Success",
       "action_id": "log",
-      "uid": "success_log",
+      "uid": "successlog",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
       "configuration": {
-        "message": "\"Product catalog synchronization completed. \" & steps.health_check.alert_message"
+        "message": "\"Product catalog synchronization completed. \" & steps.healthcheck.alert_message"
       },
       "enabled": true
     },
@@ -147,7 +185,11 @@
       "id": "log-products-error",
       "name": "Log Products Error",
       "action_id": "log",
-      "uid": "products_error_log",
+      "uid": "productserrorlog",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
       "configuration": {
         "message": "\"Failed to fetch products from Fake Store API\""
       },
@@ -157,7 +199,11 @@
       "id": "log-categories-error",
       "name": "Log Categories Error",
       "action_id": "log",
-      "uid": "categories_error_log",
+      "uid": "categorieserrorlog",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
       "configuration": {
         "message": "\"Failed to fetch categories from Fake Store API\""
       },
@@ -167,7 +213,11 @@
       "id": "log-webhook-error",
       "name": "Log Webhook Error",
       "action_id": "log",
-      "uid": "webhook_error_log",
+      "uid": "webhookerrorlog",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
       "configuration": {
         "message": "\"Failed to send catalog sync report\""
       },

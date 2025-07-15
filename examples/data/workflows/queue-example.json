@@ -5,6 +5,8 @@
   "workflow_triggers": [
     {
       "id": "redis-queue-trigger",
+      "name": "Redis Queue Trigger",
+      "description": "Trigger when a task is received from Redis queue",
       "trigger_id": "queue",
       "configuration": {
         "provider": "redis",
@@ -25,38 +27,66 @@
   "steps": [
     {
       "id": "log-incoming-task",
+      "name": "Log Incoming Task",
       "action_id": "log",
+      "uid": "logincomingtask",
       "configuration": {
         "message": "Processing task from queue: {{ trigger.message }}",
         "level": "info"
-      }
+      },
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
+      "enabled": true
     },
     {
       "id": "process-task-data",
+      "name": "Process Task Data",
       "action_id": "transform",
+      "uid": "processtaskdata",
       "configuration": {
         "template": "{\"task_id\": trigger.task_id, \"processed_at\": trigger.timestamp, \"url\": vars.api_base_url & \"/posts/\" & trigger.post_id}"
-      }
+      },
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
+      "enabled": true
     },
     {
       "id": "fetch-data",
+      "name": "Fetch Data",
       "action_id": "http_request",
+      "uid": "fetchdata",
       "configuration": {
-        "url": "{{ steps.process-task-data.url }}",
+        "url": "{{ steps.processtaskdata.url }}",
         "method": "GET",
         "timeout": "{{ vars.timeout }}s",
         "headers": {
           "Content-Type": "application/json"
         }
-      }
+      },
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
+      "enabled": true
     },
     {
       "id": "log-result",
+      "name": "Log Result",
       "action_id": "log",
+      "uid": "logresult",
       "configuration": {
-        "message": "Task {{ steps.process-task-data.task_id }} completed. Status: {{ steps.fetch-data.status_code }}",
+        "message": "Task {{ steps.processtaskdata.task_id }} completed. Status: {{ steps.fetchdata.status_code }}",
         "level": "info"
-      }
+      },
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
+      "enabled": true
     }
   ]
 }

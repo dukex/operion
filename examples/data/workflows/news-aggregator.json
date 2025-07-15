@@ -6,9 +6,11 @@
   "workflow_triggers": [
     {
       "id": "news-schedule",
+      "name": "News Schedule Trigger",
+      "description": "Trigger to fetch news 3 times daily",
       "trigger_id": "schedule",
       "configuration": {
-        "schedule": "0 8,14,20 * * *",
+        "cron": "0 8,14,20 * * *",
         "timezone": "UTC"
       }
     }
@@ -18,7 +20,11 @@
       "id": "fetch-top-headlines",
       "name": "Fetch Top Headlines",
       "action_id": "http_request",
-      "uid": "headlines_data",
+      "uid": "headlinesdata",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
       "configuration": {
         "protocol": "https",
         "host": "newsapi.org",
@@ -42,7 +48,11 @@
       "id": "fetch-tech-news",
       "name": "Fetch Technology News",
       "action_id": "http_request",
-      "uid": "tech_news_data",
+      "uid": "technewsdata",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
       "configuration": {
         "protocol": "https",
         "host": "newsapi.org",
@@ -62,9 +72,13 @@
       "id": "process-headlines",
       "name": "Process Headlines",
       "action_id": "transform",
-      "uid": "processed_headlines",
+      "uid": "processedheadlines",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
       "configuration": {
-        "expression": "{\n  \"total_articles\": steps.headlines_data.body.totalResults,\n  \"headlines\": $map(steps.headlines_data.body.articles[0..4], function($article) {\n    {\n      \"title\": $article.title,\n      \"source\": $article.source.name,\n      \"published\": $article.publishedAt,\n      \"url\": $article.url,\n      \"description\": $article.description,\n      \"word_count\": $count($split($article.title, \" \"))\n    }\n  }),\n  \"timestamp\": $now()\n}"
+        "expression": "{\n  \"total_articles\": steps.headlinesdata.body.totalResults,\n  \"headlines\": $map(steps.headlinesdata.body.articles[0..4], function($article) {\n    {\n      \"title\": $article.title,\n      \"source\": $article.source.name,\n      \"published\": $article.publishedAt,\n      \"url\": $article.url,\n      \"description\": $article.description,\n      \"word_count\": $count($split($article.title, \" \"))\n    }\n  }),\n  \"timestamp\": $now()\n}"
       },
       "on_success": "process-tech-news",
       "enabled": true
@@ -73,9 +87,13 @@
       "id": "process-tech-news",
       "name": "Process Tech News",
       "action_id": "transform",
-      "uid": "processed_tech",
+      "uid": "processedtech",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
       "configuration": {
-        "expression": "{\n  \"total_tech_articles\": steps.tech_news_data.body.totalResults,\n  \"tech_articles\": $map(steps.tech_news_data.body.articles[0..2], function($article) {\n    {\n      \"title\": $article.title,\n      \"source\": $article.source.name,\n      \"published\": $article.publishedAt,\n      \"url\": $article.url,\n      \"description\": $article.description\n    }\n  }),\n  \"timestamp\": $now()\n}"
+        "expression": "{\n  \"total_tech_articles\": steps.technewsdata.body.totalResults,\n  \"tech_articles\": $map(steps.technewsdata.body.articles[0..2], function($article) {\n    {\n      \"title\": $article.title,\n      \"source\": $article.source.name,\n      \"published\": $article.publishedAt,\n      \"url\": $article.url,\n      \"description\": $article.description\n    }\n  }),\n  \"timestamp\": $now()\n}"
       },
       "on_success": "create-news-summary",
       "enabled": true
@@ -84,9 +102,13 @@
       "id": "create-news-summary",
       "name": "Create News Summary",
       "action_id": "transform",
-      "uid": "news_summary",
+      "uid": "newssummary",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
       "configuration": {
-        "expression": "{\n  \"summary\": {\n    \"timestamp\": $now(),\n    \"total_headlines\": steps.processed_headlines.total_articles,\n    \"total_tech_articles\": steps.processed_tech.total_tech_articles,\n    \"sources\": $distinct($append(\n      $map(steps.processed_headlines.headlines, function($h) { $h.source }),\n      $map(steps.processed_tech.tech_articles, function($t) { $t.source })\n    )),\n    \"keywords\": $distinct($append(\n      $flatten($map(steps.processed_headlines.headlines, function($h) { $split($lowercase($h.title), \" \") })),\n      $flatten($map(steps.processed_tech.tech_articles, function($t) { $split($lowercase($t.title), \" \") }))\n    ))[0..9]\n  },\n  \"top_headlines\": steps.processed_headlines.headlines,\n  \"tech_news\": steps.processed_tech.tech_articles\n}"
+        "expression": "{\n  \"summary\": {\n    \"timestamp\": $now(),\n    \"total_headlines\": steps.processedheadlines.total_articles,\n    \"total_tech_articles\": steps.processedtech.total_tech_articles,\n    \"sources\": $distinct($append(\n      $map(steps.processedheadlines.headlines, function($h) { $h.source }),\n      $map(steps.processedtech.tech_articles, function($t) { $t.source })\n    )),\n    \"keywords\": $distinct($append(\n      $flatten($map(steps.processedheadlines.headlines, function($h) { $split($lowercase($h.title), \" \") })),\n      $flatten($map(steps.processedtech.tech_articles, function($t) { $split($lowercase($t.title), \" \") }))\n    ))[0..9]\n  },\n  \"top_headlines\": steps.processedheadlines.headlines,\n  \"tech_news\": steps.processedtech.tech_articles\n}"
       },
       "on_success": "log-news-stats",
       "enabled": true
@@ -95,9 +117,13 @@
       "id": "log-news-stats",
       "name": "Log News Statistics",
       "action_id": "log",
-      "uid": "stats_log",
+      "uid": "statslog",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
       "configuration": {
-        "message": "\"News Summary - Headlines: \" & $string(steps.news_summary.summary.total_headlines) & \", Tech Articles: \" & $string(steps.news_summary.summary.total_tech_articles) & \", Sources: \" & $string($count(steps.news_summary.summary.sources))"
+        "message": "\"News Summary - Headlines: \" & $string(steps.newssummary.summary.total_headlines) & \", Tech Articles: \" & $string(steps.newssummary.summary.total_tech_articles) & \", Sources: \" & $string($count(steps.newssummary.summary.sources))"
       },
       "on_success": "check-breaking-news",
       "enabled": true
@@ -106,9 +132,13 @@
       "id": "check-breaking-news",
       "name": "Check Breaking News",
       "action_id": "transform",
-      "uid": "breaking_check",
+      "uid": "breakingcheck",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
       "configuration": {
-        "expression": "{\n  \"breaking_threshold\": vars.breaking_news_threshold,\n  \"has_breaking_news\": steps.news_summary.summary.total_headlines > vars.breaking_news_threshold,\n  \"alert_message\": steps.news_summary.summary.total_headlines > vars.breaking_news_threshold ? \"High news activity detected - \" & $string(steps.news_summary.summary.total_headlines) & \" headlines\" : \"Normal news activity\"\n}"
+        "expression": "{\n  \"breaking_threshold\": vars.breaking_news_threshold,\n  \"has_breaking_news\": steps.newssummary.summary.total_headlines > vars.breaking_news_threshold,\n  \"alert_message\": steps.newssummary.summary.total_headlines > vars.breaking_news_threshold ? \"High news activity detected - \" & $string(steps.newssummary.summary.total_headlines) & \" headlines\" : \"Normal news activity\"\n}"
       },
       "on_success": "send-news-digest",
       "enabled": true
@@ -117,7 +147,11 @@
       "id": "send-news-digest",
       "name": "Send News Digest",
       "action_id": "http_request",
-      "uid": "digest_response",
+      "uid": "digestresponse",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
       "configuration": {
         "protocol": "https",
         "host": "httpbin.org",
@@ -126,7 +160,7 @@
         "headers": {
           "Content-Type": "application/json"
         },
-        "body": "{\n  \"service\": \"news-aggregator\",\n  \"timestamp\": steps.news_summary.summary.timestamp,\n  \"summary\": {\n    \"total_headlines\": steps.news_summary.summary.total_headlines,\n    \"total_tech_articles\": steps.news_summary.summary.total_tech_articles,\n    \"unique_sources\": $count(steps.news_summary.summary.sources),\n    \"top_keywords\": steps.news_summary.summary.keywords,\n    \"breaking_news_alert\": steps.breaking_check.has_breaking_news\n  },\n  \"featured_headlines\": steps.news_summary.top_headlines,\n  \"tech_highlights\": steps.news_summary.tech_news,\n  \"alert_message\": steps.breaking_check.alert_message\n}",
+        "body": "{\n  \"service\": \"news-aggregator\",\n  \"timestamp\": steps.newssummary.summary.timestamp,\n  \"summary\": {\n    \"total_headlines\": steps.newssummary.summary.total_headlines,\n    \"total_tech_articles\": steps.newssummary.summary.total_tech_articles,\n    \"unique_sources\": $count(steps.newssummary.summary.sources),\n    \"top_keywords\": steps.newssummary.summary.keywords,\n    \"breaking_news_alert\": steps.breakingcheck.has_breaking_news\n  },\n  \"featured_headlines\": steps.newssummary.top_headlines,\n  \"tech_highlights\": steps.newssummary.tech_news,\n  \"alert_message\": steps.breakingcheck.alert_message\n}",
         "timeout": 10
       },
       "on_success": "log-success",
@@ -137,9 +171,13 @@
       "id": "log-success",
       "name": "Log Success",
       "action_id": "log",
-      "uid": "success_log",
+      "uid": "successlog",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
       "configuration": {
-        "message": "\"News aggregation completed. \" & steps.breaking_check.alert_message"
+        "message": "\"News aggregation completed. \" & steps.breakingcheck.alert_message"
       },
       "enabled": true
     },
@@ -147,7 +185,11 @@
       "id": "log-headlines-error",
       "name": "Log Headlines Error",
       "action_id": "log",
-      "uid": "headlines_error_log",
+      "uid": "headlineserrorlog",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
       "configuration": {
         "message": "\"Failed to fetch top headlines from NewsAPI\""
       },
@@ -157,7 +199,11 @@
       "id": "log-tech-error",
       "name": "Log Tech News Error",
       "action_id": "log",
-      "uid": "tech_error_log",
+      "uid": "techerrorlog",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
       "configuration": {
         "message": "\"Failed to fetch technology news from NewsAPI\""
       },
@@ -167,7 +213,11 @@
       "id": "log-webhook-error",
       "name": "Log Webhook Error",
       "action_id": "log",
-      "uid": "webhook_error_log",
+      "uid": "webhookerrorlog",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
       "configuration": {
         "message": "\"Failed to send news digest report\""
       },

@@ -8,8 +8,11 @@ import (
 
 	"github.com/dukex/operion/pkg/cmd"
 	"github.com/dukex/operion/pkg/workflow"
+	"github.com/go-playground/validator/v10"
 	"github.com/urfave/cli/v3"
 )
+
+var validate *validator.Validate
 
 func NewValidateCommand() *cli.Command {
 	return &cli.Command{
@@ -30,6 +33,8 @@ func NewValidateCommand() *cli.Command {
 			},
 		},
 		Action: func(ctx context.Context, command *cli.Command) error {
+			validate = validator.New(validator.WithRequiredStructEnabled())
+			
 			logger := slog.With(
 				"module", "operion-dispatcher",
 				"action", "validate",
@@ -52,9 +57,11 @@ func NewValidateCommand() *cli.Command {
 			fmt.Println("Trigger Validation Results:")
 			fmt.Println("===========================")
 
-			totalTriggers := 0
 			validTriggers := 0
 			invalidTriggers := 0
+			validSteps := 0
+			invalidSteps := 0
+
 
 			for _, workflow := range workflows {
 				fmt.Printf("\nWorkflow: %s (%s)\n", workflow.Name, workflow.ID)
@@ -65,7 +72,6 @@ func NewValidateCommand() *cli.Command {
 				}
 
 				for _, workflowTrigger := range workflow.WorkflowTriggers {
-					totalTriggers++
 					fmt.Printf("  WorkflowTrigger: %s (%s)\n", workflowTrigger.ID, workflowTrigger.TriggerID)
 
 					config := make(map[string]interface{})
@@ -80,6 +86,14 @@ func NewValidateCommand() *cli.Command {
 						invalidTriggers++
 					}
 
+					err = validate.Struct(workflowTrigger)
+					if err != nil {
+validationErrors := err.(validator.ValidationErrors)
+						fmt.Printf("    ❌ INVALID: %v\n", validationErrors)
+						invalidTriggers++
+						continue
+					}
+
 					err = trigger.Validate()
 
 					if err != nil {
@@ -90,18 +104,42 @@ func NewValidateCommand() *cli.Command {
 						validTriggers++
 					}
 				}
+
+				for _, step := range workflow.Steps {
+					fmt.Printf("  Step: %s\n", step.Name)
+
+					err = validate.Struct(step)
+			
+
+					if err != nil {
+						validationErrors := err.(validator.ValidationErrors)
+
+						fmt.Printf("    ❌ INVALID: %v\n", validationErrors)
+						invalidSteps++
+					} else {
+						validSteps++
+						fmt.Printf("    ✅ VALID\n")
+					}
+				}
 			}
 
 			fmt.Printf("\nValidation Summary:\n")
-			fmt.Printf("  Total triggers: %d\n", totalTriggers)
+			fmt.Printf("  Total triggers: %d\n", invalidTriggers + validTriggers)
 			fmt.Printf("  Valid triggers: %d\n", validTriggers)
 			fmt.Printf("  Invalid triggers: %d\n", invalidTriggers)
+			fmt.Printf("  Total steps: %d\n", invalidSteps + validSteps)
+			fmt.Printf("  Valid steps: %d\n", validSteps)
+			fmt.Printf("  Invalid steps: %d\n", invalidSteps)
 
 			if invalidTriggers > 0 {
 				return fmt.Errorf("found %d invalid triggers", invalidTriggers)
 			}
 
-			fmt.Println("All triggers are valid! ✅")
+			if invalidSteps > 0 {
+				return fmt.Errorf("found %d invalid steps", invalidSteps)
+			}
+
+			fmt.Println("All triggers and steps are valid! ✅")
 			return nil
 		},
 	}

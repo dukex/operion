@@ -35,7 +35,7 @@ services:
     depends_on:
       - api
 
-  trigger-kafka:
+  dispatcher-kafka:
     build: 
       dockerfile: Dockerfile 
       context: ..
@@ -46,11 +46,13 @@ services:
     volumes:
       - ..:/app
       - $GOPATH/pkg/mod:/go/pkg/mod
+    ports:
+      - 8085:8085 # Expose the webhook dispatcher port
     working_dir: /app
-    command: /bin/operion-trigger run --database-url file:///app/examples/data --event-bus kafka
+    command: /bin/operion-dispatcher run --database-url file:///app/examples/data --event-bus kafka
     environment:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
-      - OTEL_SERVICE_NAME=operion-trigger-kafka
+      - OTEL_SERVICE_NAME=operion-dispatcher-kafka
       - OTEL_TRACES_EXPORTER=otlp
       - KAFKA_BROKERS=kafka:9092
     develop:

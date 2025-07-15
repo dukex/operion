@@ -15,8 +15,8 @@ type Workflow struct {
 	ID               string                 `json:"id"`
 	Name             string                 `json:"name" validate:"required,min=3"`
 	Description      string                 `json:"description" validate:"required"`
-	WorkflowTriggers []*WorkflowTrigger     `json:"workflow_triggers"`
-	Steps            []*WorkflowStep        `json:"steps"`
+	WorkflowTriggers []*WorkflowTrigger     `json:"workflow_triggers" validate:"required,dive,required"`
+	Steps            []*WorkflowStep        `json:"steps" validate:"required,dive,required"`
 	Variables        map[string]interface{} `json:"variables"`
 	Status           WorkflowStatus         `json:"status" validate:"required,oneof=active inactive paused error"`
 	Metadata         map[string]interface{} `json:"metadata,omitempty"`

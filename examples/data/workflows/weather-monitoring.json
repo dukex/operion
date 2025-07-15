@@ -6,9 +6,11 @@
   "workflow_triggers": [
     {
       "id": "weather-schedule",
+      "name": "Weather Schedule Trigger",
+      "description": "Trigger to check weather conditions every 3 hours",
       "trigger_id": "schedule",
       "configuration": {
-        "schedule": "0 */3 * * *",
+        "cron": "0 */3 * * *",
         "timezone": "UTC"
       }
     }
@@ -18,7 +20,11 @@
       "id": "fetch-weather",
       "name": "Fetch Current Weather",
       "action_id": "http_request",
-      "uid": "weather_data",
+      "uid": "weatherdata",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
       "configuration": {
         "protocol": "https",
         "host": "api.openweathermap.org",
@@ -42,9 +48,13 @@
       "id": "process-weather",
       "name": "Process Weather Data",
       "action_id": "transform",
-      "uid": "weather_processed",
+      "uid": "weatherprocessed",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
       "configuration": {
-        "expression": "{\n  \"city\": steps.weather_data.body.name,\n  \"country\": steps.weather_data.body.sys.country,\n  \"temperature\": steps.weather_data.body.main.temp,\n  \"feels_like\": steps.weather_data.body.main.feels_like,\n  \"humidity\": steps.weather_data.body.main.humidity,\n  \"pressure\": steps.weather_data.body.main.pressure,\n  \"weather\": steps.weather_data.body.weather[0].description,\n  \"wind_speed\": steps.weather_data.body.wind.speed,\n  \"timestamp\": $now(),\n  \"alert_needed\": steps.weather_data.body.main.temp > vars.temperature_threshold\n}"
+        "expression": "{\n  \"city\": steps.weatherdata.body.name,\n  \"country\": steps.weatherdata.body.sys.country,\n  \"temperature\": steps.weatherdata.body.main.temp,\n  \"feels_like\": steps.weatherdata.body.main.feels_like,\n  \"humidity\": steps.weatherdata.body.main.humidity,\n  \"pressure\": steps.weatherdata.body.main.pressure,\n  \"weather\": steps.weatherdata.body.weather[0].description,\n  \"wind_speed\": steps.weatherdata.body.wind.speed,\n  \"timestamp\": $now(),\n  \"alert_needed\": steps.weatherdata.body.main.temp > vars.temperature_threshold\n}"
       },
       "on_success": "check-alert",
       "enabled": true
@@ -53,9 +63,13 @@
       "id": "check-alert",
       "name": "Check Alert Condition",
       "action_id": "transform",
-      "uid": "alert_decision",
+      "uid": "alertdecision",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
       "configuration": {
-        "expression": "steps.weather_processed.alert_needed ? \"ALERT\" : \"OK\""
+        "expression": "steps.weatherprocessed.alert_needed ? \"ALERT\" : \"OK\""
       },
       "on_success": "log-weather-status",
       "enabled": true
@@ -64,9 +78,13 @@
       "id": "log-weather-status",
       "name": "Log Weather Status",
       "action_id": "log",
-      "uid": "weather_log",
+      "uid": "weatherlog",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
       "configuration": {
-        "message": "\"Weather in \" & steps.weather_processed.city & \": \" & $string(steps.weather_processed.temperature) & \"°C (\" & steps.weather_processed.weather & \") - Status: \" & steps.alert_decision"
+        "message": "\"Weather in \" & steps.weatherprocessed.city & \": \" & $string(steps.weatherprocessed.temperature) & \"°C (\" & steps.weatherprocessed.weather & \") - Status: \" & steps.alertdecision"
       },
       "on_success": "send-webhook",
       "enabled": true
@@ -75,7 +93,11 @@
       "id": "send-webhook",
       "name": "Send Weather Report",
       "action_id": "http_request",
-      "uid": "webhook_response",
+      "uid": "webhookresponse",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
       "configuration": {
         "protocol": "https",
         "host": "httpbin.org",
@@ -84,7 +106,7 @@
         "headers": {
           "Content-Type": "application/json"
         },
-        "body": "{\n  \"service\": \"weather-monitoring\",\n  \"timestamp\": steps.weather_processed.timestamp,\n  \"location\": {\n    \"city\": steps.weather_processed.city,\n    \"country\": steps.weather_processed.country\n  },\n  \"weather\": {\n    \"temperature\": steps.weather_processed.temperature,\n    \"feels_like\": steps.weather_processed.feels_like,\n    \"description\": steps.weather_processed.weather,\n    \"humidity\": steps.weather_processed.humidity,\n    \"wind_speed\": steps.weather_processed.wind_speed\n  },\n  \"alert_status\": steps.alert_decision,\n  \"threshold\": vars.temperature_threshold\n}",
+        "body": "{\n  \"service\": \"weather-monitoring\",\n  \"timestamp\": steps.weatherprocessed.timestamp,\n  \"location\": {\n    \"city\": steps.weatherprocessed.city,\n    \"country\": steps.weatherprocessed.country\n  },\n  \"weather\": {\n    \"temperature\": steps.weatherprocessed.temperature,\n    \"feels_like\": steps.weatherprocessed.feels_like,\n    \"description\": steps.weatherprocessed.weather,\n    \"humidity\": steps.weatherprocessed.humidity,\n    \"wind_speed\": steps.weatherprocessed.wind_speed\n  },\n  \"alert_status\": steps.alertdecision,\n  \"threshold\": vars.temperature_threshold\n}",
         "timeout": 10
       },
       "on_success": "log-success",
@@ -95,9 +117,13 @@
       "id": "log-success",
       "name": "Log Success",
       "action_id": "log",
-      "uid": "success_log",
+      "uid": "successlog",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
       "configuration": {
-        "message": "\"Weather monitoring completed successfully for \" & steps.weather_processed.city"
+        "message": "\"Weather monitoring completed successfully for \" & steps.weatherprocessed.city"
       },
       "enabled": true
     },
@@ -105,7 +131,11 @@
       "id": "log-fetch-error",
       "name": "Log Fetch Error",
       "action_id": "log",
-      "uid": "fetch_error_log",
+      "uid": "fetcherrorlog",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
       "configuration": {
         "message": "\"Failed to fetch weather data for \" & vars.city"
       },
@@ -115,7 +145,11 @@
       "id": "log-webhook-error",
       "name": "Log Webhook Error",
       "action_id": "log",
-      "uid": "webhook_error_log",
+      "uid": "webhookerrorlog",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
       "configuration": {
         "message": "\"Failed to send weather report webhook\""
       },
