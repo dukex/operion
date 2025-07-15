@@ -27,11 +27,15 @@ services:
   editor:
     build:
       dockerfile: Dockerfile
+      target: vite-app
       context: ../ui/operion-editor
       args:
         API_BASE_URL: http://localhost:8099
+    command: npm run dev -- --host 0.0.0.0
+    environment:
+      - API_BASE_URL=http://localhost:8099
     ports:
-      - 8900:8080
+      - 8900:5173
     depends_on:
       - api
 

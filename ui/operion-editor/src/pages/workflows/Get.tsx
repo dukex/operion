@@ -191,6 +191,19 @@ export default function WorkflowsGet() {
           });
         }
 
+        if (step.on_failure) {
+          sEdges.push(
+            withDefaultParams(
+              {
+                source: step.id,
+                id: `${step.id}-to-${step.on_failure}-failure`,
+                target: step.on_failure,
+              },
+              false
+            )
+          );
+        }
+
         if (step.on_success) {
           sEdges.push(
             withDefaultParams(
@@ -204,18 +217,6 @@ export default function WorkflowsGet() {
           );
         }
 
-        if (step.on_failure) {
-          sEdges.push(
-            withDefaultParams(
-              {
-                source: step.id,
-                id: `${step.id}-to-${step.on_failure}-failure`,
-                target: step.on_failure,
-              },
-              false
-            )
-          );
-        }
         return sEdges;
       }
     );

@@ -17,7 +17,14 @@ const TriggerNode = memo(
           {data.trigger_id == "schedule" && (
             <div>
               Schedule:{" "}
-              <span className="font-normal">{data.configuration.schedule}</span>
+              <span className="font-normal">{data.configuration.cron}</span>
+            </div>
+          )}
+
+          {data.trigger_id == "webhook" && (
+            <div>
+              Webhook:{" "}
+              <span className="font-normal">{data.configuration.path}</span>
             </div>
           )}
 
