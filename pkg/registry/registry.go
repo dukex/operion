@@ -57,14 +57,15 @@ func (r *Registry) CreateTrigger(triggerID string, config map[string]interface{}
 	return factory.Create(config, r.logger)
 }
 
-// // GetAvailableActions returns all available action types
-// func (r *Registry) GetAvailableActions() []string {
-// 	types := make([]string, 0, len(r.actionFactories))
-// 	for actionType := range r.actionFactories {
-// 		types = append(types, actionType)
-// 	}
-// 	return types
-// }
+// GetAvailableActions returns all available action types sorted by ID
+func (r *Registry) GetAvailableActions() []protocol.ActionFactory {
+	actions := make([]protocol.ActionFactory, 0, len(r.actionFactories))
+	for _, action := range r.actionFactories {
+		actions = append(actions, action)
+	}
+
+	return actions
+}
 
 // // GetAvailableTriggers returns all available trigger types
 // func (r *Registry) GetAvailableTriggers() []string {
@@ -126,7 +127,6 @@ func loadPlugin[T interface{}](logger *slog.Logger, pluginsPath string, symbolNa
 	rootPath := pluginsPath + "/" + strings.ToLower(symbolName) + "s"
 	root := os.DirFS(rootPath)
 	pluginPathList, err := fs.Glob(root, "**/*.so")
-
 	if err != nil {
 		return nil, err
 	}

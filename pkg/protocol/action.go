@@ -18,4 +18,7 @@ type Action interface {
 type ActionFactory interface {
 	Create(config map[string]interface{}) (Action, error)
 	ID() string
+	Name() string
+	Description() string
+	Schema() map[string]interface{}
 }

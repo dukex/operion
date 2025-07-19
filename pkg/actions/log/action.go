@@ -1,4 +1,5 @@
-package log_action
+// Package log provides logging action implementation for workflow steps.
+package log
 
 import (
 	"context"
@@ -6,35 +7,16 @@ import (
 	"log/slog"
 
 	"github.com/dukex/operion/pkg/models"
-	"github.com/dukex/operion/pkg/protocol"
+
 	"github.com/dukex/operion/pkg/template"
 )
-
-func NewLogActionFactory() *LogActionFactory {
-	return &LogActionFactory{}
-}
-
-type LogActionFactory struct {
-}
-
-func (*LogActionFactory) ID() string {
-	return "log"
-}
-
-func (f *LogActionFactory) Create(config map[string]interface{}) (protocol.Action, error) {
-	if config == nil {
-		config = map[string]interface{}{}
-	}
-
-	return NewLogAction(config), nil
-}
 
 type LogAction struct {
 	Message string
 	Level   string
 }
 
-func NewLogAction(config map[string]interface{}) *LogAction {
+func NewLogAction(config map[string]any) *LogAction {
 	message, _ := config["message"].(string)
 	level, _ := config["level"].(string)
 
@@ -75,7 +57,7 @@ func (a *LogAction) Execute(ctx context.Context, executionCtx models.ExecutionCo
 		logger.Info(message)
 	}
 
-	result := map[string]interface{}{
+	result := map[string]any{
 		"message": message,
 		"level":   a.Level,
 	}

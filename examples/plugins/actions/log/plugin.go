@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/protocol"
@@ -11,36 +12,22 @@ type LogAction struct {
 	config map[string]interface{}
 }
 
-// Execute implements protocol.Action.
-func (l *LogAction) Execute(ctx context.Context, ectx models.ExecutionContext) (interface{}, error) {
-	panic("unimplemented")
-}
-
-// GetConfig implements protocol.Action.
-func (l *LogAction) GetConfig() map[string]interface{} {
-	panic("unimplemented")
-}
-
-// GetID implements protocol.Action.
-func (l *LogAction) GetID() string {
-	panic("unimplemented")
-}
-
-// GetType implements protocol.Action.
-func (l *LogAction) GetType() string {
-	panic("unimplemented")
-}
-
-// Validate implements protocol.Action.
-func (l *LogAction) Validate() error {
+func (l *LogAction) Execute(ctx context.Context, ectx models.ExecutionContext, logger *slog.Logger) (interface{}, error) {
 	panic("unimplemented")
 }
 
 type LogActionFactory struct{}
 
-// Type implements protocol.ActionFactory.
-func (l LogActionFactory) Type() string {
-	return "log"
+func (l LogActionFactory) ID() string {
+	return "custom-log"
+}
+
+func (l LogActionFactory) Name() string {
+	return "Custom Log"
+}
+
+func (l LogActionFactory) Description() string {
+	return "Logs a message to the console or a file based on the configuration provided."
 }
 
 func (l LogActionFactory) Create(config map[string]interface{}) (protocol.Action, error) {
