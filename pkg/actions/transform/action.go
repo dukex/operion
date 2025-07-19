@@ -1,3 +1,4 @@
+// Package transform provides data transformation action implementation using JSONata expressions.
 package transform
 
 import (
@@ -16,7 +17,7 @@ func NewTransformActionFactory() *TransformActionFactory {
 
 type TransformActionFactory struct{}
 
-func (h *TransformActionFactory) Create(config map[string]interface{}) (protocol.Action, error) {
+func (h *TransformActionFactory) Create(config map[string]any) (protocol.Action, error) {
 	return NewTransformAction(config)
 }
 
@@ -24,19 +25,56 @@ func (h *TransformActionFactory) ID() string {
 	return "transform"
 }
 
+func (h *TransformActionFactory) Name() string {
+	return "Transform"
+}
+
+func (h *TransformActionFactory) Description() string {
+	return "Transforms input data using a specified expression. The input can be a string or an expression that evaluates to data."
+}
+
+func (h *TransformActionFactory) Schema() map[string]any {
+	return map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"input": map[string]any{
+				"type":        "string",
+				"description": "Input data source expression. If empty, uses all step results. Supports templating.",
+				"examples": []string{
+					"",
+					"steps.fetch_users",
+					"steps.api_call.response.data",
+					"trigger.webhook.payload",
+				},
+			},
+			"expression": map[string]any{
+				"type":        "string",
+				"format":      "code",
+				"description": "JSONata expression to transform the input data. Use JSONata syntax for powerful data transformations.",
+				"examples": []string{
+					"$.name",
+					"$.users[0].email",
+					"{ \"fullName\": $.firstName & \" \" & $.lastName, \"isActive\": $.status = \"active\" }",
+					"$.data.users.{ \"user_id\": id, \"display_name\": name, \"created\": $now() }",
+					"$count($.items)",
+					"$.orders[total > 100]",
+				},
+			},
+		},
+		"required": []string{"expression"},
+	}
+}
+
 type TransformAction struct {
-	ID         string
 	Input      string
 	Expression string
 }
 
-func NewTransformAction(config map[string]interface{}) (*TransformAction, error) {
-	id, _ := config["id"].(string)
+func NewTransformAction(config map[string]any) (*TransformAction, error) {
 	input, _ := config["input"].(string)
 	expression, _ := config["expression"].(string)
 
 	return &TransformAction{
-		ID:         id,
 		Input:      input,
 		Expression: expression,
 	}, nil

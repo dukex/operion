@@ -1,4 +1,5 @@
-package http_request
+// Package httprequest provides HTTP request action implementation for workflow steps.
+package httprequest
 
 import (
 	"context"
@@ -32,7 +33,7 @@ type RetryConfig struct {
 	Delay    int
 }
 
-func NewHTTPRequestAction(config map[string]interface{}) (*HTTPRequestAction, error) {
+func NewHTTPRequestAction(config map[string]any) (*HTTPRequestAction, error) {
 	id, _ := config["id"].(string)
 	method, _ := config["method"].(string)
 	host, ok := config["host"].(string)
@@ -51,7 +52,7 @@ func NewHTTPRequestAction(config map[string]interface{}) (*HTTPRequestAction, er
 
 	headers := make(map[string]string)
 	if headersConfig, exists := config["headers"]; exists {
-		if headersMap, ok := headersConfig.(map[string]interface{}); ok {
+		if headersMap, ok := headersConfig.(map[string]any); ok {
 			for k, v := range headersMap {
 				if strVal, ok := v.(string); ok {
 					headers[k] = strVal
@@ -62,7 +63,7 @@ func NewHTTPRequestAction(config map[string]interface{}) (*HTTPRequestAction, er
 
 	retry := RetryConfig{Attempts: 1, Delay: 0}
 	if retryConfig, exists := config["retry"]; exists {
-		if retryMap, ok := retryConfig.(map[string]interface{}); ok {
+		if retryMap, ok := retryConfig.(map[string]any); ok {
 			if attempts, ok := retryMap["attempts"].(float64); ok {
 				retry.Attempts = int(attempts)
 			}
@@ -89,7 +90,7 @@ func NewHTTPRequestAction(config map[string]interface{}) (*HTTPRequestAction, er
 	}, nil
 }
 
-func (a *HTTPRequestAction) Execute(ctx context.Context, executionCtx models.ExecutionContext, logger *slog.Logger) (interface{}, error) {
+func (a *HTTPRequestAction) Execute(ctx context.Context, executionCtx models.ExecutionContext, logger *slog.Logger) (any, error) {
 	logger = logger.With(
 		"module", "http_request_action",
 	)
@@ -108,7 +109,7 @@ func (a *HTTPRequestAction) Execute(ctx context.Context, executionCtx models.Exe
 
 		var bodyReader io.Reader
 		if a.Body != "" {
-			var body interface{} = a.Body
+			var body any = a.Body
 			var err error
 			// Only render if it contains template expressions
 			if template.NeedsTemplating(a.Body) {
@@ -201,14 +202,14 @@ func (a *HTTPRequestAction) Execute(ctx context.Context, executionCtx models.Exe
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	var body interface{}
+	var body any
 	err = json.Unmarshal(bodyBytes, &body)
 	if err != nil {
 		body = string(bodyBytes)
 		logger.Warn("Failed to parse response as JSON, returning as string", "error", err)
 	}
 
-	result := map[string]interface{}{
+	result := map[string]any{
 		"status_code": resp.StatusCode,
 		"body":        body,
 		"headers":     resp.Header,

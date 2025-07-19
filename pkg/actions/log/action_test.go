@@ -1,4 +1,4 @@
-package log_action
+package log
 
 import (
 	"context"

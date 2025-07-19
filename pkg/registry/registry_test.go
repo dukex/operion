@@ -35,11 +35,31 @@ func (f *mockActionFactory) ID() string {
 	return f.actionType
 }
 
+func (f *mockActionFactory) Name() string {
+	return "Mock Action"
+}
+
+func (f *mockActionFactory) Description() string {
+	return "This is a mock action for testing purposes."
+}
+
 func (f *mockActionFactory) Create(config map[string]interface{}) (protocol.Action, error) {
 	return &mockAction{
 		id:     f.actionType,
 		config: config,
 	}, nil
+}
+
+func (f *mockActionFactory) Schema() map[string]interface{} {
+	return map[string]interface{}{
+		"type": "object",
+		"properties": map[string]interface{}{
+			"test_field": map[string]interface{}{
+				"type":        "string",
+				"description": "Test field for mock action",
+			},
+		},
+	}
 }
 
 // Mock trigger for testing

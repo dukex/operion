@@ -17,7 +17,6 @@ import (
 	"github.com/dukex/operion/pkg/events"
 	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/persistence/file"
-	"github.com/dukex/operion/pkg/protocol"
 	"github.com/dukex/operion/pkg/registry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -498,18 +497,8 @@ func createTestRegistry() *registry.Registry {
 	// Register native actions
 	reg.RegisterAction(log_action.NewLogActionFactory())
 	reg.RegisterAction(transform.NewTransformActionFactory())
-	reg.RegisterAction(&HTTPRequestActionFactory{})
+	reg.RegisterAction(http_request.NewHTTPRequestActionFactory())
 
 	return reg
 }
 
-// Simple HTTP request action factory for testing
-type HTTPRequestActionFactory struct{}
-
-func (f *HTTPRequestActionFactory) ID() string {
-	return "http_request"
-}
-
-func (f *HTTPRequestActionFactory) Create(config map[string]interface{}) (protocol.Action, error) {
-	return http_request.NewHTTPRequestAction(config)
-}

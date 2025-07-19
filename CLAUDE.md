@@ -32,6 +32,7 @@ Uses plugin-based system for extensibility:
 - Factory pattern with `ActionFactory` and `TriggerFactory` interfaces
 - Protocol-based interfaces in `pkg/protocol/` for actions and triggers
 - Runtime configuration from `map[string]interface{}`
+- **Schema Support** - All ActionFactory implementations include Schema() method returning JSON Schema for configuration validation
 
 ## Development Commands
 
@@ -66,7 +67,9 @@ go mod tidy         # Clean up dependencies
 ## Current Implementation Status
 
 ### Available Components
-- **API Server** (`cmd/api/`) - Fiber-based REST API with workflows endpoint
+- **API Server** (`cmd/api/`) - Fiber-based REST API with workflows and registry endpoints
+  - `/workflows` - CRUD operations for workflows
+  - `/registry/actions` - Sorted list of available actions with complete JSON schemas
 - **CLI Worker** (`cmd/operion-worker/`) - Background workflow execution tool
 - **CLI Dispatcher Service** (`cmd/operion-dispatcher/`) - Trigger listener and event publisher (replaces operion-trigger)
 - **Visual Workflow Editor** (`ui/operion-editor/`) - React-based browser interface for workflow visualization
@@ -83,8 +86,11 @@ go mod tidy         # Clean up dependencies
 
 ### Available Actions
 - **HTTP Request** (`pkg/actions/http_request/`) - Make HTTP calls with retry logic and templating support
+  - Schema includes: url (required), method, headers, body, timeout, retries
 - **Transform** (`pkg/actions/transform/`) - Process data using JSONata expressions with input extraction
+  - Schema includes: expression (required), input, id
 - **Log** (`pkg/actions/log/`) - Output log messages for debugging and monitoring
+  - Schema includes: message (required), level
 
 ### Incomplete/Placeholder Components
 - **Dashboard** (`cmd/dashboard/`) - Directory exists but not implemented (replaced by React-based UI)

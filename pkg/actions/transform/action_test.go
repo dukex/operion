@@ -71,7 +71,6 @@ func TestNewTransformAction(t *testing.T) {
 				"expression": "$.field",
 			},
 			expected: &TransformAction{
-				ID:         "test-1",
 				Input:      "$.data",
 				Expression: "$.field",
 			},
@@ -80,8 +79,7 @@ func TestNewTransformAction(t *testing.T) {
 			name:   "empty config",
 			config: map[string]interface{}{},
 			expected: &TransformAction{
-				ID:         "",
-				Input:      "",
+					Input:      "",
 				Expression: "",
 			},
 		},
@@ -91,8 +89,7 @@ func TestNewTransformAction(t *testing.T) {
 				"expression": "{ \"name\": $.name, \"age\": $.age }",
 			},
 			expected: &TransformAction{
-				ID:         "",
-				Input:      "",
+					Input:      "",
 				Expression: "{ \"name\": $.name, \"age\": $.age }",
 			},
 		},
@@ -109,7 +106,6 @@ func TestNewTransformAction(t *testing.T) {
 
 func TestTransformAction_Execute_SimpleTransform(t *testing.T) {
 	action := &TransformAction{
-		ID:         "test-transform",
 		Input:      "",
 		Expression: "$.user.name",
 	}
@@ -132,7 +128,6 @@ func TestTransformAction_Execute_SimpleTransform(t *testing.T) {
 
 func TestTransformAction_Execute_WithInput(t *testing.T) {
 	action := &TransformAction{
-		ID:         "test-input",
 		Input:      "$.step1.data",
 		Expression: "$.temperature",
 	}
@@ -157,7 +152,6 @@ func TestTransformAction_Execute_WithInput(t *testing.T) {
 
 func TestTransformAction_Execute_ObjectConstruction(t *testing.T) {
 	action := &TransformAction{
-		ID:         "test-object",
 		Input:      "",
 		Expression: `{ "name": $.user.name, "status": "active", "age": $.user.age }`,
 	}
@@ -183,7 +177,6 @@ func TestTransformAction_Execute_ObjectConstruction(t *testing.T) {
 
 func TestTransformAction_Execute_ArrayTransform(t *testing.T) {
 	action := &TransformAction{
-		ID:         "test-array",
 		Input:      "",
 		Expression: "$.users[0].name",
 	}
@@ -212,7 +205,6 @@ func TestTransformAction_Execute_ArrayTransform(t *testing.T) {
 
 func TestTransformAction_Execute_ComplexTransform(t *testing.T) {
 	action := &TransformAction{
-		ID:         "test-complex",
 		Input:      "$.api_response",
 		Expression: `{ "price": $.close ? $.close : $.open, "currency": "USD", "timestamp": $.time }`,
 	}
@@ -241,7 +233,6 @@ func TestTransformAction_Execute_ComplexTransform(t *testing.T) {
 
 func TestTransformAction_Execute_EmptyExpression(t *testing.T) {
 	action := &TransformAction{
-		ID:         "test-empty",
 		Input:      "",
 		Expression: "",
 	}
@@ -262,7 +253,6 @@ func TestTransformAction_Execute_EmptyExpression(t *testing.T) {
 
 func TestTransformAction_Execute_InvalidExpression(t *testing.T) {
 	action := &TransformAction{
-		ID:         "test-invalid",
 		Input:      "",
 		Expression: "$.invalid..syntax",
 	}
@@ -282,7 +272,6 @@ func TestTransformAction_Execute_InvalidExpression(t *testing.T) {
 
 func TestTransformAction_Execute_InputNotFound(t *testing.T) {
 	action := &TransformAction{
-		ID:         "test-not-found",
 		Input:      "$.nonexistent.field",
 		Expression: "$.name",
 	}
@@ -302,7 +291,6 @@ func TestTransformAction_Execute_InputNotFound(t *testing.T) {
 
 func TestTransformAction_Execute_WithCancel(t *testing.T) {
 	action := &TransformAction{
-		ID:         "test-cancel",
 		Input:      "",
 		Expression: "$.data",
 	}
@@ -326,7 +314,6 @@ func TestTransformAction_Execute_WithCancel(t *testing.T) {
 
 func TestTransformAction_Extract(t *testing.T) {
 	action := &TransformAction{
-		ID:         "test-extract",
 		Input:      "",
 		Expression: "",
 	}

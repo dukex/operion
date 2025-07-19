@@ -1,6 +1,8 @@
 package web
 
 import (
+	"sort"
+
 	"github.com/dukex/operion/pkg/registry"
 	"github.com/dukex/operion/pkg/workflow"
 	"github.com/go-playground/validator/v10"
@@ -283,12 +285,13 @@ func (h *APIHandlers) GetWorkflow(c fiber.Ctx) error {
 // 	return c.JSON(updatedWorkflow.Triggers)
 // }
 
-// type ActionInfo struct {
-// 	Type         string                 `json:"type"`
-// 	Name         string                 `json:"name"`
-// 	Description  string                 `json:"description"`
-// 	ConfigSchema map[string]interface{} `json:"config_schema"`
-// }
+type ActionResponse struct {
+	ID          string                 `json:"id"`
+	Type        string                 `json:"type"`
+	Name        string                 `json:"name"`
+	Description string                 `json:"description"`
+	Schema      map[string]interface{} `json:"schema"`
+}
 
 // type TriggerInfo struct {
 // 	Type         string                 `json:"type"`
@@ -344,22 +347,26 @@ func (h *APIHandlers) GetWorkflow(c fiber.Ctx) error {
 // 	return result
 // }
 
-// func (h *APIHandlers) GetAvailableActions(c *fiber.Ctx) error {
-// 	components := h.actionRegistry.GetRegisteredComponents()
+func (h *APIHandlers) GetAvailableActions(c fiber.Ctx) error {
+	components := h.registry.GetAvailableActions()
 
-// 	// Convert to the expected format for backward compatibility
-// 	actions := make([]ActionInfo, len(components))
-// 	for i, component := range components {
-// 		actions[i] = ActionInfo{
-// 			Type:         component.Type,
-// 			Name:         component.Name,
-// 			Description:  component.Description,
-// 			ConfigSchema: convertSchemaToMap(component.Schema),
-// 		}
-// 	}
+	actions := make([]ActionResponse, len(components))
+	for i, component := range components {
+		actions[i] = ActionResponse{
+			ID:          component.ID(),
+			Type:        "action",
+			Name:        component.Name(),
+			Description: component.Description(),
+			Schema:      component.Schema(),
+		}
+	}
 
-// 	return c.JSON(actions)
-// }
+	sort.Slice(actions, func(i, j int) bool {
+		return actions[i].ID < actions[j].ID
+	})
+
+	return c.JSON(actions)
+}
 
 // func (h *APIHandlers) GetAvailableTriggers(c *fiber.Ctx) error {
 // 	components := h.triggerRegistry.GetRegisteredComponents()
