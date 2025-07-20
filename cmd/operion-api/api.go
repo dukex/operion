@@ -68,7 +68,7 @@ func (a *API) App() *fiber.App {
 
 	registry := app.Group("/registry")
 	registry.Get("/actions", handlers.GetAvailableActions)
-	//  registry.Get("/triggers", handlers.GetAvailableTriggers)
+	registry.Get("/triggers", handlers.GetAvailableTriggers)
 
 	return app
 }

@@ -10,32 +10,53 @@ import (
 )
 
 type WebhookTrigger struct {
-	ID         string
-	Path       string
-	WorkflowId string
-	Enabled    bool
-	callback   protocol.TriggerCallback
-	logger     *slog.Logger
+	Path     string
+	Method   string
+	Headers  map[string]string
+	Enabled  bool
+	callback protocol.TriggerCallback
+	logger   *slog.Logger
 }
 
-func NewWebhookTrigger(config map[string]interface{}, logger *slog.Logger) (*WebhookTrigger, error) {
-	id, _ := config["id"].(string)
-	workflowId, _ := config["workflow_id"].(string)
+func NewWebhookTrigger(config map[string]any, logger *slog.Logger) (*WebhookTrigger, error) {
 	path, ok := config["path"].(string)
 	if !ok {
 		path = "/webhook"
 	}
 
+	method, ok := config["method"].(string)
+	if !ok {
+		method = "POST"
+	}
+
+	enabled := true
+	if enabledVal, exists := config["enabled"]; exists {
+		if enabledBool, ok := enabledVal.(bool); ok {
+			enabled = enabledBool
+		}
+	}
+
+	headers := make(map[string]string)
+	if headersConfig, exists := config["headers"]; exists {
+		if headersMap, ok := headersConfig.(map[string]any); ok {
+			for k, v := range headersMap {
+				if strVal, ok := v.(string); ok {
+					headers[k] = strVal
+				}
+			}
+		}
+	}
+
 	trigger := &WebhookTrigger{
-		ID:         id,
-		Path:       path,
-		Enabled:    true,
-		WorkflowId: workflowId,
+		Path:    path,
+		Method:  method,
+		Headers: headers,
+		Enabled: enabled,
 		logger: logger.With(
 			"module", "webhook_trigger",
-			"id", id,
 			"path", path,
-			"workflow_id", workflowId,
+			"method", method,
+			"enabled", enabled,
 		),
 	}
 
@@ -47,9 +68,6 @@ func NewWebhookTrigger(config map[string]interface{}, logger *slog.Logger) (*Web
 }
 
 func (t *WebhookTrigger) Validate() error {
-	if t.ID == "" {
-		return errors.New("webhook trigger ID is required")
-	}
 	if t.Path == "" {
 		return errors.New("webhook trigger path is required")
 	}
@@ -74,7 +92,7 @@ func (t *WebhookTrigger) Start(ctx context.Context, callback protocol.TriggerCal
 	t.callback = callback
 
 	handler := &WebhookHandler{
-		TriggerID: t.ID,
+		TriggerID: t.Path,
 		Callback:  callback,
 		Logger:    t.logger,
 	}
@@ -97,7 +115,7 @@ func (t *WebhookTrigger) Start(ctx context.Context, callback protocol.TriggerCal
 }
 
 func (t *WebhookTrigger) Stop(ctx context.Context) error {
-	t.logger.Info("Stopping WebhookTrigger", "id", t.ID)
+	t.logger.Info("Stopping WebhookTrigger", "path", t.Path)
 
 	manager := GetGlobalWebhookServerManager()
 	if manager != nil {

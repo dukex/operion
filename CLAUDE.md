@@ -32,7 +32,9 @@ Uses plugin-based system for extensibility:
 - Factory pattern with `ActionFactory` and `TriggerFactory` interfaces
 - Protocol-based interfaces in `pkg/protocol/` for actions and triggers
 - Runtime configuration from `map[string]interface{}`
-- **Schema Support** - All ActionFactory implementations include Schema() method returning JSON Schema for configuration validation
+- **Schema Support** - All ActionFactory and TriggerFactory implementations include Schema() method returning JSON Schema for configuration validation
+- **Templating Examples** - All action schemas include comprehensive examples showing how to use templating with step results, trigger data, and built-in functions
+- **Trigger Factory Interface** - All TriggerFactory implementations include ID(), Name(), Description(), and Schema() methods for consistent trigger registration and documentation
 
 ## Development Commands
 
@@ -70,6 +72,7 @@ go mod tidy         # Clean up dependencies
 - **API Server** (`cmd/api/`) - Fiber-based REST API with workflows and registry endpoints
   - `/workflows` - CRUD operations for workflows
   - `/registry/actions` - Sorted list of available actions with complete JSON schemas
+  - `/registry/triggers` - Sorted list of available triggers with complete JSON schemas
 - **CLI Worker** (`cmd/operion-worker/`) - Background workflow execution tool
 - **CLI Dispatcher Service** (`cmd/operion-dispatcher/`) - Trigger listener and event publisher (replaces operion-trigger)
 - **Visual Workflow Editor** (`ui/operion-editor/`) - React-based browser interface for workflow visualization
@@ -80,17 +83,21 @@ go mod tidy         # Clean up dependencies
 - **File Persistence** (`pkg/persistence/file/`) - JSON file storage
 
 ### Available Triggers
-- **Schedule Trigger** (`pkg/triggers/schedule/`) - Cron-based scheduling with robfig/cron
-- **Webhook Trigger** (`pkg/triggers/webhook/`) - HTTP webhook endpoints with centralized server management
-- **Kafka Trigger** (`pkg/triggers/kafka/`) - Kafka topic-based triggering with IBM/sarama
+- **Schedule Trigger** (`pkg/triggers/schedule/`) - Cron-based scheduling with robfig/cron with complete JSON schema
+- **Webhook Trigger** (`pkg/triggers/webhook/`) - HTTP webhook endpoints with centralized server management and complete JSON schema
+- **Queue Trigger** (`pkg/triggers/queue/`) - Message queue-based triggering with complete JSON schema
 
 ### Available Actions
 - **HTTP Request** (`pkg/actions/http_request/`) - Make HTTP calls with retry logic and templating support
-  - Schema includes: url (required), method, headers, body, timeout, retries
+  - Schema includes: url (required), method, headers, body, retries (object with attempts/delay)
+  - Templating examples: `{{steps.get_user_id.user_id}}`, `{{trigger.webhook.url}}/callback`
+  - Retry config: `{"attempts": 3, "delay": 1000}` (attempts: 0-5, delay: 100-30000ms)
 - **Transform** (`pkg/actions/transform/`) - Process data using JSONata expressions with input extraction
   - Schema includes: expression (required), input, id
+  - JSONata examples: `$.name`, `{ "fullName": $.firstName & " " & $.lastName }`, `$count($.items)`
 - **Log** (`pkg/actions/log/`) - Output log messages for debugging and monitoring
   - Schema includes: message (required), level
+  - Templating examples: `Processing user: {{trigger.webhook.user_name}}`, `{{steps.api_call.status}}`
 
 ### Incomplete/Placeholder Components
 - **Dashboard** (`cmd/dashboard/`) - Directory exists but not implemented (replaced by React-based UI)

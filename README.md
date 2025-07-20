@@ -14,7 +14,6 @@ Operion enables you to create automated workflows through:
 
 ![image](https://github.com/user-attachments/assets/8dfd67d2-fe4b-4196-ab11-3d931ee2f90c)
 
-
 ## Features
 
 - **Cloud-Native** - Stateless, container-first design optimized for Kubernetes
@@ -97,6 +96,7 @@ The visual workflow editor will be available at `http://localhost:5173`
 ### Start Services
 
 #### Dispatcher Service (Event Publishers)
+
 ```bash
 # Start dispatcher service to listen for triggers and publish events
 ./bin/operion-dispatcher run --database-url ./data/workflows --event-bus gochannel
@@ -112,6 +112,7 @@ The visual workflow editor will be available at `http://localhost:5173`
 ```
 
 #### Worker Service (Workflow Execution)
+
 ```bash
 # Start workers to execute workflows
 ./bin/operion-worker run
@@ -121,7 +122,9 @@ The visual workflow editor will be available at `http://localhost:5173`
 ```
 
 #### Event-Driven Architecture
+
 The system uses an event-driven architecture where:
+
 1. **Dispatcher Service** loads trigger plugins, listens for trigger conditions and publishes `WorkflowTriggered` events
 2. **Worker Service** handles workflow events and executes steps individually:
    - Receives `WorkflowTriggered` events and starts workflow execution
@@ -144,6 +147,7 @@ curl http://localhost:3000/
 ### Example Workflow
 
 See `./examples/data/workflows/bitcoin-price.json` for a complete workflow example that:
+
 - Triggers every minute via cron schedule (`schedule` trigger)
 - Fetches Bitcoin price data from CoinPaprika API (`http_request` action)
 - Processes the data using JSONata transformation (`transform` action)
@@ -151,7 +155,9 @@ See `./examples/data/workflows/bitcoin-price.json` for a complete workflow examp
 - Logs errors if any step fails (`log` action)
 
 #### New Action Contract
+
 Actions now use a standardized contract with:
+
 - **Factory Pattern**: Actions created via `ActionFactory.Create(config)`
 - **Execution Context**: Access to previous step results via `ExecutionContext.StepResults`
 - **Template Support**: JSONata templating for dynamic configuration
@@ -161,18 +167,21 @@ Actions now use a standardized contract with:
 ## Current Implementation
 
 ### Available Triggers
+
 - **Schedule** (`pkg/triggers/schedule/`) - Cron-based execution using robfig/cron with native implementation
 - **Kafka** (`pkg/triggers/kafka/`) - Message-based triggering from Kafka topics with native implementation
 - **Redis Queue** (`pkg/triggers/queue/`) - Redis-based queue consumption for task processing
 - **Webhook** (`pkg/triggers/webhook/`) - HTTP endpoint triggers for external integrations
 
-### Available Actions  
+### Available Actions
+
 - **HTTP Request** (`pkg/actions/http_request/`) - Make HTTP calls with retry logic, templating, and JSON/string response handling
 - **Transform** (`pkg/actions/transform/`) - Process data using JSONata expressions with input extraction and templating
 - **Log** (`pkg/actions/log/`) - Output structured log messages for debugging and monitoring
 - **Plugin Actions**: Custom actions via .so plugins (example in `examples/plugins/actions/log/`)
 
 ### Plugin System
+
 - Dynamic loading of `.so` plugin files from `./plugins` directory
 - Factory pattern with `ActionFactory` and `TriggerFactory` interfaces
 - Protocol-based interfaces in `pkg/protocol/` for type safety
@@ -180,7 +189,9 @@ Actions now use a standardized contract with:
 - **Native vs Plugin Actions**: Core actions built-in for performance, plugins for extensibility
 
 ### Workflow Execution Model
+
 The executor now operates on an event-driven, step-by-step model:
+
 - **Execution Context**: Maintains state across steps with `ExecutionContext.StepResults`
 - **Step Isolation**: Each step processed as individual event for scalability
 - **Event Publishing**: Granular events published for monitoring and debugging
@@ -193,7 +204,7 @@ The executor now operates on an event-driven, step-by-step model:
 
 ```bash
 make build          # Build API server for current platform
-make build-linux    # Cross-compile for Linux  
+make build-linux    # Cross-compile for Linux
 make clean          # Clean build artifacts
 ```
 
@@ -222,6 +233,7 @@ go build -buildmode=plugin -o plugin.so plugin.go
 See [TODO.md](./TODO.md) for a comprehensive list of planned features organized by priority.
 
 ### High Priority Cloud-Native Features
+
 - **RabbitMQ Trigger**: AMQP message consumption with enterprise features
 - **AWS SQS Trigger**: Native AWS queue integration with FIFO support
 - **Google Pub/Sub Trigger**: Google Cloud messaging integration
