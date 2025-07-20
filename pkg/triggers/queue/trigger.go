@@ -15,12 +15,10 @@ import (
 )
 
 type QueueTrigger struct {
-	ID            string
 	Provider      string
 	Connection    map[string]string
 	Queue         string
 	ConsumerGroup string
-	WorkflowID    string
 	Enabled       bool
 
 	client   redis.UniversalClient
@@ -31,7 +29,6 @@ type QueueTrigger struct {
 }
 
 func NewQueueTrigger(config map[string]any, logger *slog.Logger) (*QueueTrigger, error) {
-	id, _ := config["id"].(string)
 	provider, _ := config["provider"].(string)
 	if provider == "" {
 		provider = "redis"
@@ -39,7 +36,6 @@ func NewQueueTrigger(config map[string]any, logger *slog.Logger) (*QueueTrigger,
 
 	queue, _ := config["queue"].(string)
 	consumerGroup, _ := config["consumer_group"].(string)
-	workflowID, _ := config["workflow_id"].(string)
 
 	connectionConfig, _ := config["connection"].(map[string]any)
 	connection := make(map[string]string)
@@ -50,20 +46,16 @@ func NewQueueTrigger(config map[string]any, logger *slog.Logger) (*QueueTrigger,
 	}
 
 	trigger := &QueueTrigger{
-		ID:            id,
 		Provider:      provider,
 		Connection:    connection,
 		Queue:         queue,
 		ConsumerGroup: consumerGroup,
 		Enabled:       true,
-		WorkflowID:    workflowID,
 		stopCh:        make(chan struct{}),
 		logger: logger.With(
 			"module", "queue_trigger",
-			"id", id,
 			"provider", provider,
 			"queue", queue,
-			"workflow_id", workflowID,
 		),
 	}
 
@@ -75,9 +67,6 @@ func NewQueueTrigger(config map[string]any, logger *slog.Logger) (*QueueTrigger,
 }
 
 func (t *QueueTrigger) Validate() error {
-	if t.ID == "" {
-		return errors.New("queue trigger ID is required")
-	}
 	if t.Queue == "" {
 		return errors.New("queue trigger queue name is required")
 	}
@@ -204,7 +193,7 @@ func (t *QueueTrigger) processMessage(ctx context.Context) error {
 }
 
 func (t *QueueTrigger) Stop(ctx context.Context) error {
-	t.logger.Info("Stopping QueueTrigger", "id", t.ID)
+	t.logger.Info("Stopping QueueTrigger")
 
 	close(t.stopCh)
 	t.wg.Wait()
@@ -217,4 +206,3 @@ func (t *QueueTrigger) Stop(ctx context.Context) error {
 
 	return nil
 }
-

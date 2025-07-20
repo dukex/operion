@@ -13,30 +13,30 @@ import (
 )
 
 type ScheduleTrigger struct {
-	ID         string
-	CronExpr   string
-	WorkflowId string
-	Enabled    bool
-	cron       *cron.Cron
-	callback   protocol.TriggerCallback
-	logger     *slog.Logger
+	CronExpr string
+	Enabled  bool
+	cron     *cron.Cron
+	callback protocol.TriggerCallback
+	logger   *slog.Logger
 }
 
-func NewScheduleTrigger(config map[string]interface{}, logger *slog.Logger) (*ScheduleTrigger, error) {
-	id, _ := config["id"].(string)
+func NewScheduleTrigger(config map[string]any, logger *slog.Logger) (*ScheduleTrigger, error) {
 	cronExpr, _ := config["cron"].(string)
-	workflowId, _ := config["workflow_id"].(string)
+
+	enabled := true
+	if enabledVal, exists := config["enabled"]; exists {
+		if enabledBool, ok := enabledVal.(bool); ok {
+			enabled = enabledBool
+		}
+	}
 
 	trigger := &ScheduleTrigger{
-		ID:         id,
-		CronExpr:   cronExpr,
-		Enabled:    true,
-		WorkflowId: workflowId,
+		CronExpr: cronExpr,
+		Enabled:  enabled,
 		logger: logger.With(
 			"module", "schedule_trigger",
-			"id", id,
 			"cron", cronExpr,
-			"workflow_id", workflowId,
+			"enabled", enabled,
 		),
 	}
 	if err := trigger.Validate(); err != nil {
@@ -45,21 +45,7 @@ func NewScheduleTrigger(config map[string]interface{}, logger *slog.Logger) (*Sc
 	return trigger, nil
 }
 
-// func (t *ScheduleTrigger) GetID() string   { return t.ID }
-// func (t *ScheduleTrigger) GetType() string { return "schedule" }
-// func (t *ScheduleTrigger) GetConfig() map[string]interface{} {
-// 	return map[string]interface{}{
-// 		"id":          t.ID,
-// 		"cron":        t.CronExpr,
-// 		"enabled":     t.Enabled,
-// 		"workflow_id": t.WorkflowId,
-// 	}
-// }
-
 func (t *ScheduleTrigger) Validate() error {
-	if t.ID == "" {
-		return errors.New("schedule trigger ID is required")
-	}
 	if t.CronExpr == "" {
 		return errors.New("schedule trigger cron expression is required")
 	}
@@ -68,32 +54,6 @@ func (t *ScheduleTrigger) Validate() error {
 	}
 	return nil
 }
-
-// // GetSchema returns the JSON Schema for Schedule Trigger configuration
-// func GetScheduleTriggerSchema() *models.RegisteredComponent {
-// 	return &models.RegisteredComponent{
-// 		Type:        "schedule",
-// 		Name:        "Schedule (Cron)",
-// 		Description: "Trigger workflow on a schedule using cron expressions",
-// 		Schema: &models.JSONSchema{
-// 			Type:        "object",
-// 			Title:       "Schedule Trigger Configuration",
-// 			Description: "Configuration for cron-based scheduling",
-// 			Properties: map[string]*models.Property{
-// 				"cron": {
-// 					Type:        "string",
-// 					Description: "Cron expression (e.g., '0 */5 * * *' for every 5 minutes)",
-// 					Pattern:     `^(\*|[0-5]?\d)(\s+(\*|[01]?\d|2[0-3]))(\s+(\*|[12]?\d|3[01]))(\s+(\*|[1-9]|1[0-2]))(\s+(\*|[0-6]))?$`,
-// 				},
-// 				"workflow_id": {
-// 					Type:        "string",
-// 					Description: "ID of the workflow to trigger",
-// 				},
-// 			},
-// 			Required: []string{"cron"},
-// 		},
-// 	}
-// }
 
 func (t *ScheduleTrigger) Start(ctx context.Context, callback protocol.TriggerCallback) error {
 	if !t.Enabled {
@@ -112,7 +72,7 @@ func (t *ScheduleTrigger) Start(ctx context.Context, callback protocol.TriggerCa
 
 	t.logger.Info("Adding cron job for trigger", "id", id)
 	if err != nil {
-		return fmt.Errorf("failed to add cron job for trigger %s: %w", t.ID, err)
+		return fmt.Errorf("failed to add cron job for trigger with cron %s: %w", t.CronExpr, err)
 	}
 	t.cron.Start()
 	return nil
@@ -121,7 +81,7 @@ func (t *ScheduleTrigger) Start(ctx context.Context, callback protocol.TriggerCa
 func (t *ScheduleTrigger) run() {
 	t.logger.Info("Cron job triggered")
 
-	triggerData := map[string]interface{}{
+	triggerData := map[string]any{
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
 	}
 
@@ -133,7 +93,7 @@ func (t *ScheduleTrigger) run() {
 }
 
 func (t *ScheduleTrigger) Stop(ctx context.Context) error {
-	t.logger.Info("Stopping ScheduleTrigger", "id", t.ID)
+	t.logger.Info("Stopping ScheduleTrigger", "cron", t.CronExpr)
 
 	if t.cron != nil {
 		t.cron.Stop()

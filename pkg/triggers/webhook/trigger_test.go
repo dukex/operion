@@ -12,37 +12,33 @@ func TestWebhookTrigger_Validation(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		config  map[string]interface{}
+		config  map[string]any
 		wantErr bool
 	}{
 		{
 			name: "valid config",
-			config: map[string]interface{}{
-				"id":   "test-webhook",
+			config: map[string]any{
 				"path": "/webhook",
 			},
 			wantErr: false,
 		},
 		{
-			name: "missing id",
-			config: map[string]interface{}{
+			name: "minimal config",
+			config: map[string]any{
 				"path": "/webhook",
 			},
-			wantErr: true,
+			wantErr: false,
 		},
 		{
 			name: "invalid path",
-			config: map[string]interface{}{
-				"id":   "test-webhook",
+			config: map[string]any{
 				"path": "webhook",
 			},
 			wantErr: true,
 		},
 		{
-			name: "default path when missing",
-			config: map[string]interface{}{
-				"id": "test-webhook",
-			},
+			name:    "default path when missing",
+			config:  map[string]any{},
 			wantErr: false,
 		},
 	}
@@ -64,7 +60,7 @@ func TestWebhookTrigger_StartStop(t *testing.T) {
 	ResetGlobalManager()
 	manager := GetWebhookServerManager(8081, logger)
 
-	config := map[string]interface{}{
+	config := map[string]any{
 		"id":   "test-webhook",
 		"path": "/test",
 	}
@@ -74,7 +70,7 @@ func TestWebhookTrigger_StartStop(t *testing.T) {
 		t.Fatalf("Failed to create webhook trigger: %v", err)
 	}
 
-	callback := func(ctx context.Context, data map[string]interface{}) error {
+	callback := func(ctx context.Context, data map[string]any) error {
 		return nil
 	}
 
@@ -125,7 +121,7 @@ func TestWebhookTrigger_ServerShutdown(t *testing.T) {
 	ResetGlobalManager()
 	manager := GetWebhookServerManager(8082, logger)
 
-	config := map[string]interface{}{
+	config := map[string]any{
 		"id":   "test-webhook-shutdown",
 		"path": "/test-shutdown",
 	}
@@ -135,7 +131,7 @@ func TestWebhookTrigger_ServerShutdown(t *testing.T) {
 		t.Fatalf("Failed to create webhook trigger: %v", err)
 	}
 
-	callback := func(ctx context.Context, data map[string]interface{}) error {
+	callback := func(ctx context.Context, data map[string]any) error {
 		return nil
 	}
 
@@ -179,7 +175,7 @@ func TestWebhookTriggerFactory(t *testing.T) {
 	}
 
 	logger := slog.Default()
-	config := map[string]interface{}{
+	config := map[string]any{
 		"id":   "test-webhook",
 		"path": "/webhook",
 	}

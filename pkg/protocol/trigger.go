@@ -16,4 +16,7 @@ type Trigger interface {
 type TriggerFactory interface {
 	Create(config map[string]any, logger *slog.Logger) (Trigger, error)
 	ID() string
+	Name() string
+	Description() string
+	Schema() map[string]any
 }

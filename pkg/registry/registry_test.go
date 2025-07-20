@@ -100,6 +100,25 @@ func (f *mockTriggerFactory) ID() string {
 	return f.triggerType
 }
 
+func (f *mockTriggerFactory) Name() string {
+	return "Mock Trigger"
+}
+
+func (f *mockTriggerFactory) Description() string {
+	return "Mock trigger for testing"
+}
+
+func (f *mockTriggerFactory) Schema() map[string]any {
+	return map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"test": map[string]any{
+				"type": "string",
+			},
+		},
+	}
+}
+
 func (f *mockTriggerFactory) Create(config map[string]any, logger *slog.Logger) (protocol.Trigger, error) {
 	return &mockTrigger{
 		id:     f.triggerType,

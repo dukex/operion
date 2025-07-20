@@ -68,14 +68,14 @@ func (r *Registry) GetAvailableActions() []protocol.ActionFactory {
 	return actions
 }
 
-// // GetAvailableTriggers returns all available trigger types
-// func (r *Registry) GetAvailableTriggers() []string {
-// 	types := make([]string, 0, len(r.triggerFactories))
-// 	for triggerType := range r.triggerFactories {
-// 		types = append(types, triggerType)
-// 	}
-// 	return types
-// }
+// GetAvailableTriggers returns all available trigger types
+func (r *Registry) GetAvailableTriggers() []protocol.TriggerFactory {
+	triggers := make([]protocol.TriggerFactory, 0, len(r.triggerFactories))
+	for _, trigger := range r.triggerFactories {
+		triggers = append(triggers, trigger)
+	}
+	return triggers
+}
 
 // // GetComponent retrieves component metadata by type
 // func (r *Registry) GetComponent(componentType string) (*models.RegisteredComponent, bool) {

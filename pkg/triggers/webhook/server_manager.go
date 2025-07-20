@@ -141,7 +141,7 @@ func (sm *WebhookServerManager) handleWebhook(w http.ResponseWriter, r *http.Req
 		}
 	}()
 
-	var bodyData interface{}
+	var bodyData any
 	if len(body) > 0 {
 		if err := json.Unmarshal(body, &bodyData); err != nil {
 			handler.Logger.Warn("Failed to parse JSON body, using raw string", "error", err)
@@ -149,7 +149,7 @@ func (sm *WebhookServerManager) handleWebhook(w http.ResponseWriter, r *http.Req
 		}
 	}
 
-	headers := make(map[string]interface{})
+	headers := make(map[string]any)
 	for name, values := range r.Header {
 		if len(values) == 1 {
 			headers[name] = values[0]
@@ -158,7 +158,7 @@ func (sm *WebhookServerManager) handleWebhook(w http.ResponseWriter, r *http.Req
 		}
 	}
 
-	query := make(map[string]interface{})
+	query := make(map[string]any)
 	for name, values := range r.URL.Query() {
 		if len(values) == 1 {
 			query[name] = values[0]
@@ -167,7 +167,7 @@ func (sm *WebhookServerManager) handleWebhook(w http.ResponseWriter, r *http.Req
 		}
 	}
 
-	triggerData := map[string]interface{}{
+	triggerData := map[string]any{
 		"timestamp":   time.Now().UTC().Format(time.RFC3339),
 		"method":      r.Method,
 		"path":        r.URL.Path,
@@ -185,7 +185,7 @@ func (sm *WebhookServerManager) handleWebhook(w http.ResponseWriter, r *http.Req
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]any{
 		"status":  "success",
 		"message": "webhook received",
 	}); err != nil {

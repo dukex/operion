@@ -14,18 +14,17 @@ func TestNewQueueTrigger(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		config      map[string]interface{}
+		config      map[string]any
 		expectError bool
 		errorMsg    string
 	}{
 		{
 			name: "valid_redis_config",
-			config: map[string]interface{}{
-				"id":            "test-queue-trigger",
-				"provider":      "redis",
-				"queue":         "test_queue",
+			config: map[string]any{
+				"provider":       "redis",
+				"queue":          "test_queue",
 				"consumer_group": "test_group",
-				"connection": map[string]interface{}{
+				"connection": map[string]any{
 					"addr":     "localhost:6379",
 					"password": "",
 					"db":       "0",
@@ -35,26 +34,23 @@ func TestNewQueueTrigger(t *testing.T) {
 		},
 		{
 			name: "missing_queue",
-			config: map[string]interface{}{
-				"id":       "test-queue-trigger",
+			config: map[string]any{
 				"provider": "redis",
 			},
 			expectError: true,
 			errorMsg:    "queue trigger queue name is required",
 		},
 		{
-			name: "missing_id",
-			config: map[string]interface{}{
+			name: "without_id",
+			config: map[string]any{
 				"provider": "redis",
 				"queue":    "test_queue",
 			},
-			expectError: true,
-			errorMsg:    "queue trigger ID is required",
+			expectError: false,
 		},
 		{
 			name: "unsupported_provider",
-			config: map[string]interface{}{
-				"id":       "test-queue-trigger",
+			config: map[string]any{
 				"provider": "rabbitmq",
 				"queue":    "test_queue",
 			},
@@ -63,8 +59,7 @@ func TestNewQueueTrigger(t *testing.T) {
 		},
 		{
 			name: "default_provider",
-			config: map[string]interface{}{
-				"id":    "test-queue-trigger",
+			config: map[string]any{
 				"queue": "test_queue",
 			},
 			expectError: false,
@@ -82,9 +77,8 @@ func TestNewQueueTrigger(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				assert.NotNil(t, trigger)
-				assert.Equal(t, tt.config["id"], trigger.ID)
 				assert.Equal(t, tt.config["queue"], trigger.Queue)
-				
+
 				if tt.config["provider"] == nil {
 					assert.Equal(t, "redis", trigger.Provider)
 				} else {
@@ -97,15 +91,15 @@ func TestNewQueueTrigger(t *testing.T) {
 
 func TestQueueTriggerFactory(t *testing.T) {
 	factory := NewQueueTriggerFactory()
-	
+
 	assert.Equal(t, "queue", factory.ID())
-	
+
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	config := map[string]interface{}{
+	config := map[string]any{
 		"id":    "test-queue-trigger",
 		"queue": "test_queue",
 	}
-	
+
 	trigger, err := factory.Create(config, logger)
 	require.NoError(t, err)
 	assert.NotNil(t, trigger)
@@ -114,14 +108,15 @@ func TestQueueTriggerFactory(t *testing.T) {
 func TestQueueTriggerValidation(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	validConfig := map[string]interface{}{
+	validConfig := map[string]any{
 		"id":    "test-queue-trigger",
 		"queue": "test_queue",
 	}
-	
+
 	trigger, err := NewQueueTrigger(validConfig, logger)
 	require.NoError(t, err)
-	
+
 	err = trigger.Validate()
 	assert.NoError(t, err)
 }
+

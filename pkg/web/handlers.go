@@ -287,19 +287,20 @@ func (h *APIHandlers) GetWorkflow(c fiber.Ctx) error {
 // }
 
 type ActionResponse struct {
-	ID          string                 `json:"id"`
-	Type        string                 `json:"type"`
-	Name        string                 `json:"name"`
-	Description string                 `json:"description"`
+	ID          string         `json:"id"`
+	Type        string         `json:"type"`
+	Name        string         `json:"name"`
+	Description string         `json:"description"`
 	Schema      map[string]any `json:"schema"`
 }
 
-// type TriggerInfo struct {
-// 	Type         string                 `json:"type"`
-// 	Name         string                 `json:"name"`
-// 	Description  string                 `json:"description"`
-// 	ConfigSchema map[string]any `json:"config_schema"`
-// }
+type TriggerResponse struct {
+	ID          string         `json:"id"`
+	Type        string         `json:"type"`
+	Name        string         `json:"name"`
+	Description string         `json:"description"`
+	Schema      map[string]any `json:"schema"`
+}
 
 // // convertSchemaToMap converts a JSONSchema to a map for backward compatibility
 // func convertSchemaToMap(schema *domain.JSONSchema) map[string]any {
@@ -369,19 +370,24 @@ func (h *APIHandlers) GetAvailableActions(c fiber.Ctx) error {
 	return c.JSON(actions)
 }
 
-// func (h *APIHandlers) GetAvailableTriggers(c *fiber.Ctx) error {
-// 	components := h.triggerRegistry.GetRegisteredComponents()
+func (h *APIHandlers) GetAvailableTriggers(c fiber.Ctx) error {
+	components := h.registry.GetAvailableTriggers()
 
-// 	// Convert to the expected format for backward compatibility
-// 	triggers := make([]TriggerInfo, len(components))
-// 	for i, component := range components {
-// 		triggers[i] = TriggerInfo{
-// 			Type:         component.Type,
-// 			Name:         component.Name,
-// 			Description:  component.Description,
-// 			ConfigSchema: convertSchemaToMap(component.Schema),
-// 		}
-// 	}
+	// Convert to the expected format for backward compatibility
+	triggers := make([]TriggerResponse, len(components))
+	for i, component := range components {
+		triggers[i] = TriggerResponse{
+			ID:          component.ID(),
+			Type:        "trigger",
+			Name:        component.Name(),
+			Description: component.Description(),
+			Schema:      component.Schema(),
+		}
+	}
 
-// 	return c.JSON(triggers)
-// }
+	sort.Slice(triggers, func(i, j int) bool {
+		return triggers[i].ID < triggers[j].ID
+	})
+
+	return c.JSON(triggers)
+}
