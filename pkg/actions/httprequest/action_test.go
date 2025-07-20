@@ -118,7 +118,9 @@ func TestHTTPRequestAction_Execute_Success(t *testing.T) {
 			"data":   "test response",
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	}))
 	defer server.Close()
 
@@ -173,7 +175,9 @@ func TestHTTPRequestAction_Execute_POST_WithBody(t *testing.T) {
 			"id":      123,
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	}))
 	defer server.Close()
 
@@ -219,7 +223,9 @@ func TestHTTPRequestAction_Execute_WithRetry(t *testing.T) {
 		}
 		// Success on third attempt
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{"status": "success"})
+		if err := json.NewEncoder(w).Encode(map[string]string{"status": "success"}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	}))
 	defer server.Close()
 
@@ -257,7 +263,9 @@ func TestHTTPRequestAction_Execute_WithTemplating(t *testing.T) {
 		assert.Equal(t, "user123", body["user_id"])
 
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+		if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	}))
 	defer server.Close()
 
@@ -323,7 +331,9 @@ func TestHTTPRequestAction_Execute_NonJSONResponse(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("plain text response"))
+		if _, err := w.Write([]byte("plain text response")); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	}))
 	defer server.Close()
 

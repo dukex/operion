@@ -1,4 +1,5 @@
-package event_bus
+// Package eventbus provides event-driven communication infrastructure for workflow orchestration.
+package eventbus
 
 import (
 	"context"

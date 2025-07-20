@@ -106,7 +106,9 @@ func (sm *WebhookServerManager) Start(ctx context.Context) error {
 
 	go func() {
 		<-ctx.Done()
-		sm.Stop(context.Background())
+		if err := sm.Stop(context.Background()); err != nil {
+			sm.logger.Error("Failed to stop webhook server", "error", err)
+		}
 	}()
 
 	sm.started = true
@@ -133,7 +135,11 @@ func (sm *WebhookServerManager) handleWebhook(w http.ResponseWriter, r *http.Req
 		http.Error(w, "Failed to read request body", http.StatusBadRequest)
 		return
 	}
-	defer r.Body.Close()
+	defer func() {
+		if err := r.Body.Close(); err != nil {
+			handler.Logger.Error("Failed to close request body", "error", err)
+		}
+	}()
 
 	var bodyData interface{}
 	if len(body) > 0 {
@@ -179,10 +185,12 @@ func (sm *WebhookServerManager) handleWebhook(w http.ResponseWriter, r *http.Req
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"status":  "success",
 		"message": "webhook received",
-	})
+	}); err != nil {
+		handler.Logger.Error("Failed to encode response", "error", err)
+	}
 }
 
 func (sm *WebhookServerManager) Stop(ctx context.Context) error {

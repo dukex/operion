@@ -18,8 +18,14 @@ import (
 
 func TestHTTPRequestAction_EnhancedTemplating(t *testing.T) {
 	// Set up test environment variables
-	os.Setenv("TEST_API_TOKEN", "secret123")
-	defer os.Unsetenv("TEST_API_TOKEN")
+	if err := os.Setenv("TEST_API_TOKEN", "secret123"); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := os.Unsetenv("TEST_API_TOKEN"); err != nil {
+			t.Error(err)
+		}
+	}()
 
 	// Create a test HTTP server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -46,10 +52,12 @@ func TestHTTPRequestAction_EnhancedTemplating(t *testing.T) {
 		// Return success response
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
 			"success":  true,
 			"order_id": "ORD-456",
-		})
+		}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	}))
 	defer server.Close()
 
@@ -137,15 +145,23 @@ func TestHTTPRequestAction_EnhancedTemplating(t *testing.T) {
 
 func TestHTTPRequestAction_EnvironmentVariableAccess(t *testing.T) {
 	// Simple test just to verify env variable access without complex networking
-	os.Setenv("TEST_API_KEY", "test-key-123")
-	defer os.Unsetenv("TEST_API_KEY")
+	if err := os.Setenv("TEST_API_KEY", "test-key-123"); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := os.Unsetenv("TEST_API_KEY"); err != nil {
+			t.Error(err)
+		}
+	}()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Verify header was templated with environment variable
 		assert.Equal(t, "Bearer test-key-123", r.Header.Get("Authorization"))
 
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+		if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	}))
 	defer server.Close()
 

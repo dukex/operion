@@ -1,3 +1,4 @@
+// Package kafka provides Apache Kafka integration for event messaging.
 package kafka
 
 import (

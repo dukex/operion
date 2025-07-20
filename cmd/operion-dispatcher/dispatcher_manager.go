@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dukex/operion/pkg/event_bus"
+	"github.com/dukex/operion/pkg/eventbus"
 	"github.com/dukex/operion/pkg/events"
 	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/persistence"
@@ -22,7 +22,7 @@ import (
 
 type DispatcherManager struct {
 	id              string
-	eventBus        event_bus.EventBus
+	eventBus        eventbus.EventBus
 	runningTriggers map[string]protocol.Trigger
 	triggerMutex    sync.RWMutex
 	ctx             context.Context
@@ -39,7 +39,7 @@ type DispatcherManager struct {
 func NewDispatcherManager(
 	id string,
 	persistence persistence.Persistence,
-	eventBus event_bus.EventBus,
+	eventBus eventbus.EventBus,
 	logger *slog.Logger,
 	registry *registry.Registry,
 	webhookPort int,

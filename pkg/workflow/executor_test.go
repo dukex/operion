@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/dukex/operion/pkg/actions/http_request"
-	log_action "github.com/dukex/operion/pkg/actions/log"
+	"github.com/dukex/operion/pkg/actions/httprequest"
+	logaction "github.com/dukex/operion/pkg/actions/log"
 	"github.com/dukex/operion/pkg/actions/transform"
 	"github.com/dukex/operion/pkg/channels/gochannel"
-	"github.com/dukex/operion/pkg/event_bus"
+	"github.com/dukex/operion/pkg/eventbus"
 	"github.com/dukex/operion/pkg/events"
 	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/persistence/file"
@@ -397,7 +397,7 @@ func TestExecutor_IntegrationWithEventBus(t *testing.T) {
 	pub, sub, err := gochannel.CreateTestChannel(watermillLogger)
 	require.NoError(t, err)
 
-	eventBus := event_bus.NewWatermillEventBus(pub, sub)
+	eventBus := eventbus.NewWatermillEventBus(pub, sub)
 
 	// Create test components
 	persistence := file.NewFilePersistence("./test-data")
@@ -428,13 +428,13 @@ func TestExecutor_IntegrationWithEventBus(t *testing.T) {
 	require.NoError(t, err)
 
 	// Set up event handling
-	var receivedEvents []event_bus.Event
+	var receivedEvents []eventbus.Event
 	var eventsMutex sync.Mutex
 
 	err = eventBus.Handle(events.WorkflowStepAvailableEvent, func(ctx context.Context, event interface{}) error {
 		eventsMutex.Lock()
 		defer eventsMutex.Unlock()
-		receivedEvents = append(receivedEvents, event.(event_bus.Event))
+		receivedEvents = append(receivedEvents, event.(eventbus.Event))
 		return nil
 	})
 	require.NoError(t, err)
@@ -442,7 +442,7 @@ func TestExecutor_IntegrationWithEventBus(t *testing.T) {
 	err = eventBus.Handle(events.WorkflowStepFinishedEvent, func(ctx context.Context, event interface{}) error {
 		eventsMutex.Lock()
 		defer eventsMutex.Unlock()
-		receivedEvents = append(receivedEvents, event.(event_bus.Event))
+		receivedEvents = append(receivedEvents, event.(eventbus.Event))
 		return nil
 	})
 	require.NoError(t, err)
@@ -450,7 +450,7 @@ func TestExecutor_IntegrationWithEventBus(t *testing.T) {
 	err = eventBus.Handle(events.WorkflowFinishedEvent, func(ctx context.Context, event interface{}) error {
 		eventsMutex.Lock()
 		defer eventsMutex.Unlock()
-		receivedEvents = append(receivedEvents, event.(event_bus.Event))
+		receivedEvents = append(receivedEvents, event.(eventbus.Event))
 		return nil
 	})
 	require.NoError(t, err)
@@ -495,9 +495,9 @@ func createTestRegistry() *registry.Registry {
 	reg := registry.NewRegistry(logger)
 
 	// Register native actions
-	reg.RegisterAction(log_action.NewLogActionFactory())
+	reg.RegisterAction(logaction.NewLogActionFactory())
 	reg.RegisterAction(transform.NewTransformActionFactory())
-	reg.RegisterAction(http_request.NewHTTPRequestActionFactory())
+	reg.RegisterAction(httprequest.NewHTTPRequestActionFactory())
 
 	return reg
 }

@@ -1,3 +1,4 @@
+// Package schedule provides cron-based scheduling trigger implementation.
 package schedule
 
 import (

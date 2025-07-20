@@ -106,8 +106,14 @@ func TestRender_ErrorHandling(t *testing.T) {
 
 func TestRender_EnvironmentVariables(t *testing.T) {
 	// Set test environment variable
-	os.Setenv("TEST_VAR", "test_value")
-	defer os.Unsetenv("TEST_VAR")
+	if err := os.Setenv("TEST_VAR", "test_value"); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := os.Unsetenv("TEST_VAR"); err != nil {
+			t.Error(err)
+		}
+	}()
 
 	// Current implementation doesn't support env vars, but let's test what we expect
 	data := map[string]interface{}{

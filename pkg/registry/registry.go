@@ -1,3 +1,4 @@
+// Package registry provides plugin-based system for actions and triggers with dynamic loading capabilities.
 package registry
 
 import (
@@ -41,7 +42,7 @@ func (r *Registry) RegisterTrigger(triggerFactory protocol.TriggerFactory) {
 	r.triggerFactories[triggerFactory.ID()] = triggerFactory
 }
 
-func (r *Registry) CreateAction(actionType string, config map[string]interface{}) (protocol.Action, error) {
+func (r *Registry) CreateAction(actionType string, config map[string]any) (protocol.Action, error) {
 	factory, ok := r.actionFactories[actionType]
 	if !ok {
 		return nil, fmt.Errorf("action type '%s' not registered", actionType)
@@ -49,7 +50,7 @@ func (r *Registry) CreateAction(actionType string, config map[string]interface{}
 	return factory.Create(config)
 }
 
-func (r *Registry) CreateTrigger(triggerID string, config map[string]interface{}) (protocol.Trigger, error) {
+func (r *Registry) CreateTrigger(triggerID string, config map[string]any) (protocol.Trigger, error) {
 	factory, ok := r.triggerFactories[triggerID]
 	if !ok {
 		return nil, fmt.Errorf("trigger ID '%s' not registered", triggerID)
@@ -123,7 +124,7 @@ func (r *Registry) GetAvailableActions() []protocol.ActionFactory {
 // 	return exists
 // }
 
-func loadPlugin[T interface{}](logger *slog.Logger, pluginsPath string, symbolName string) ([]T, error) {
+func loadPlugin[T any](logger *slog.Logger, pluginsPath string, symbolName string) ([]T, error) {
 	rootPath := pluginsPath + "/" + strings.ToLower(symbolName) + "s"
 	root := os.DirFS(rootPath)
 	pluginPathList, err := fs.Glob(root, "**/*.so")

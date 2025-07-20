@@ -18,7 +18,7 @@ func (f *QueueTriggerFactory) ID() string {
 	return "queue"
 }
 
-func (f *QueueTriggerFactory) Create(config map[string]interface{}, logger *slog.Logger) (protocol.Trigger, error) {
+func (f *QueueTriggerFactory) Create(config map[string]any, logger *slog.Logger) (protocol.Trigger, error) {
 	if config == nil {
 		return nil, errors.New("config cannot be nil")
 	}
@@ -28,3 +28,4 @@ func (f *QueueTriggerFactory) Create(config map[string]interface{}, logger *slog
 	}
 	return trigger, nil
 }
+

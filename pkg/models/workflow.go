@@ -1,3 +1,4 @@
+// Package models defines the core domain models for workflow automation including workflows, steps, and execution context.
 package models
 
 import "time"

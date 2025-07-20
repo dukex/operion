@@ -410,32 +410,6 @@ func TestScheduleTrigger_ConcurrentStartStop(t *testing.T) {
 	}
 }
 
-// Mock callback to satisfy TriggerCallback interface
-type mockCallback struct {
-	called bool
-	data   map[string]interface{}
-	mu     sync.Mutex
-}
-
-func (m *mockCallback) Call(ctx context.Context, data map[string]interface{}) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.called = true
-	m.data = data
-	return nil
-}
-
-func (m *mockCallback) WasCalled() bool {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return m.called
-}
-
-func (m *mockCallback) GetData() map[string]interface{} {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return m.data
-}
 
 func TestScheduleTrigger_Interface(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))

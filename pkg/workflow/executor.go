@@ -1,3 +1,4 @@
+// Package workflow provides workflow execution engine and repository management.
 package workflow
 
 import (
@@ -6,7 +7,7 @@ import (
 	"log/slog"
 	"maps"
 
-	"github.com/dukex/operion/pkg/event_bus"
+	"github.com/dukex/operion/pkg/eventbus"
 	"github.com/dukex/operion/pkg/events"
 	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/persistence"
@@ -29,7 +30,7 @@ func NewExecutor(
 	}
 }
 
-func (s *Executor) Start(ctx context.Context, logger *slog.Logger, workflowID string, triggerData map[string]interface{}) ([]event_bus.Event, error) {
+func (s *Executor) Start(ctx context.Context, logger *slog.Logger, workflowID string, triggerData map[string]interface{}) ([]eventbus.Event, error) {
 	logger.Info("Starting execution of workflow")
 
 	workflowRepository := NewRepository(s.persistence)
@@ -56,7 +57,7 @@ func (s *Executor) Start(ctx context.Context, logger *slog.Logger, workflowID st
 		Metadata:    make(map[string]interface{}),
 	}
 
-	return []event_bus.Event{
+	return []eventbus.Event{
 		&events.WorkflowStepAvailable{
 			BaseEvent:        events.NewBaseEvent(events.WorkflowStepAvailableEvent, workflowID),
 			ExecutionID:      executionCtx.ID,
@@ -67,7 +68,7 @@ func (s *Executor) Start(ctx context.Context, logger *slog.Logger, workflowID st
 }
 
 func (s *Executor) ExecuteStep(ctx context.Context, logger *slog.Logger, workflow *models.Workflow, executionCtx *models.ExecutionContext, currentStepID string) (
-	[]event_bus.Event, error) {
+	[]eventbus.Event, error) {
 	step, found := s.findStepByID(workflow.Steps, currentStepID)
 	if !found {
 		return nil, fmt.Errorf("step %s not found in workflow %s", currentStepID, workflow.ID)
@@ -139,10 +140,10 @@ func (s *Executor) nextStep(
 	workflowId string,
 	executionCtx *models.ExecutionContext,
 	success bool,
-) []event_bus.Event {
+) []eventbus.Event {
 	nextStepID, found := s.getNextStepID(step, success)
 
-	eventsToDispatcher := make([]event_bus.Event, 0)
+	eventsToDispatcher := make([]eventbus.Event, 0)
 
 	if !found {
 		logger.Info("No next step defined, ending workflow execution")
