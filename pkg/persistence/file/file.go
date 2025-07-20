@@ -1,3 +1,4 @@
+// Package file provides file-based persistence implementation for workflows and triggers.
 package file
 
 import (

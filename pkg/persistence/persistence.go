@@ -1,3 +1,4 @@
+// Package persistence provides data storage abstraction layer for workflows and triggers.
 package persistence
 
 import "github.com/dukex/operion/pkg/models"

@@ -31,7 +31,11 @@ func TestFilePersistence_Close(t *testing.T) {
 
 func TestFilePersistence_SaveWorkflow(t *testing.T) {
 	testDir := "./test-persistence"
-	defer os.RemoveAll(testDir)
+	defer func() {
+		if err := os.RemoveAll(testDir); err != nil {
+			t.Error(err)
+		}
+	}()
 
 	persistence := NewFilePersistence(testDir)
 
@@ -69,7 +73,11 @@ func TestFilePersistence_SaveWorkflow(t *testing.T) {
 
 func TestFilePersistence_SaveWorkflow_UpdatesTimestamp(t *testing.T) {
 	testDir := "./test-persistence-update"
-	defer os.RemoveAll(testDir)
+	defer func() {
+		if err := os.RemoveAll(testDir); err != nil {
+			t.Error(err)
+		}
+	}()
 
 	persistence := NewFilePersistence(testDir)
 
@@ -90,7 +98,11 @@ func TestFilePersistence_SaveWorkflow_UpdatesTimestamp(t *testing.T) {
 
 func TestFilePersistence_WorkflowByID(t *testing.T) {
 	testDir := "./test-persistence-fetch"
-	defer os.RemoveAll(testDir)
+	defer func() {
+		if err := os.RemoveAll(testDir); err != nil {
+			t.Error(err)
+		}
+	}()
 
 	persistence := NewFilePersistence(testDir)
 
@@ -134,7 +146,11 @@ func TestFilePersistence_WorkflowByID(t *testing.T) {
 
 func TestFilePersistence_WorkflowByID_NotFound(t *testing.T) {
 	testDir := "./test-persistence-notfound"
-	defer os.RemoveAll(testDir)
+	defer func() {
+		if err := os.RemoveAll(testDir); err != nil {
+			t.Error(err)
+		}
+	}()
 
 	persistence := NewFilePersistence(testDir)
 
@@ -146,7 +162,11 @@ func TestFilePersistence_WorkflowByID_NotFound(t *testing.T) {
 
 func TestFilePersistence_Workflows(t *testing.T) {
 	testDir := "./test-persistence-list"
-	defer os.RemoveAll(testDir)
+	defer func() {
+		if err := os.RemoveAll(testDir); err != nil {
+			t.Error(err)
+		}
+	}()
 
 	persistence := NewFilePersistence(testDir)
 
@@ -193,7 +213,11 @@ func TestFilePersistence_Workflows(t *testing.T) {
 
 func TestFilePersistence_Workflows_EmptyDirectory(t *testing.T) {
 	testDir := "./test-persistence-empty"
-	defer os.RemoveAll(testDir)
+	defer func() {
+		if err := os.RemoveAll(testDir); err != nil {
+			t.Error(err)
+		}
+	}()
 
 	persistence := NewFilePersistence(testDir)
 
@@ -209,7 +233,11 @@ func TestFilePersistence_Workflows_EmptyDirectory(t *testing.T) {
 
 func TestFilePersistence_Workflows_NoDirectory(t *testing.T) {
 	testDir := "./test-persistence-nodir"
-	defer os.RemoveAll(testDir)
+	defer func() {
+		if err := os.RemoveAll(testDir); err != nil {
+			t.Error(err)
+		}
+	}()
 
 	persistence := NewFilePersistence(testDir)
 
@@ -222,7 +250,11 @@ func TestFilePersistence_Workflows_NoDirectory(t *testing.T) {
 
 func TestFilePersistence_DeleteWorkflow(t *testing.T) {
 	testDir := "./test-persistence-delete"
-	defer os.RemoveAll(testDir)
+	defer func() {
+		if err := os.RemoveAll(testDir); err != nil {
+			t.Error(err)
+		}
+	}()
 
 	persistence := NewFilePersistence(testDir)
 
@@ -250,7 +282,11 @@ func TestFilePersistence_DeleteWorkflow(t *testing.T) {
 
 func TestFilePersistence_DeleteWorkflow_NotFound(t *testing.T) {
 	testDir := "./test-persistence-delete-notfound"
-	defer os.RemoveAll(testDir)
+	defer func() {
+		if err := os.RemoveAll(testDir); err != nil {
+			t.Error(err)
+		}
+	}()
 
 	persistence := NewFilePersistence(testDir)
 

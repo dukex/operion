@@ -1,3 +1,4 @@
+// Package events defines event types and structures for workflow lifecycle notifications.
 package events
 
 import (

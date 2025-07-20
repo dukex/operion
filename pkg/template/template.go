@@ -1,3 +1,4 @@
+// Package template provides templating functionality for dynamic workflow configuration.
 package template
 
 import (

@@ -1,3 +1,4 @@
+// Package protocol defines the interfaces and contracts for pluggable actions and triggers.
 package protocol
 
 import (
@@ -12,13 +13,13 @@ type Action interface {
 	// GetType() string
 	Execute(ctx context.Context, executionCtx models.ExecutionContext, logger *slog.Logger) (interface{}, error)
 	// Validate() error
-	// GetConfig() map[string]interface{}
+	// GetConfig() map[string]any
 }
 
 type ActionFactory interface {
-	Create(config map[string]interface{}) (Action, error)
+	Create(config map[string]any) (Action, error)
 	ID() string
 	Name() string
 	Description() string
-	Schema() map[string]interface{}
+	Schema() map[string]any
 }

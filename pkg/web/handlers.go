@@ -1,3 +1,4 @@
+// Package web provides HTTP handlers and REST API endpoints for workflow management.
 package web
 
 import (
@@ -290,27 +291,27 @@ type ActionResponse struct {
 	Type        string                 `json:"type"`
 	Name        string                 `json:"name"`
 	Description string                 `json:"description"`
-	Schema      map[string]interface{} `json:"schema"`
+	Schema      map[string]any `json:"schema"`
 }
 
 // type TriggerInfo struct {
 // 	Type         string                 `json:"type"`
 // 	Name         string                 `json:"name"`
 // 	Description  string                 `json:"description"`
-// 	ConfigSchema map[string]interface{} `json:"config_schema"`
+// 	ConfigSchema map[string]any `json:"config_schema"`
 // }
 
 // // convertSchemaToMap converts a JSONSchema to a map for backward compatibility
-// func convertSchemaToMap(schema *domain.JSONSchema) map[string]interface{} {
+// func convertSchemaToMap(schema *domain.JSONSchema) map[string]any {
 // 	if schema == nil {
-// 		return map[string]interface{}{}
+// 		return map[string]any{}
 // 	}
 
-// 	result := make(map[string]interface{})
+// 	result := make(map[string]any)
 
 // 	// Convert properties
 // 	for propName, prop := range schema.Properties {
-// 		propMap := map[string]interface{}{
+// 		propMap := map[string]any{
 // 			"type":        prop.Type,
 // 			"description": prop.Description,
 // 		}

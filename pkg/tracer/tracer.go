@@ -1,3 +1,4 @@
+// Package tracer provides distributed tracing functionality for workflow monitoring.
 package tracer
 
 import (

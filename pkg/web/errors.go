@@ -13,13 +13,6 @@ func badRequest(c fiber.Ctx, detail string) error {
 	return c.Status(fiber.StatusBadRequest).JSON(problem)
 }
 
-func badRequestWithError(c fiber.Ctx, err error) error {
-	problem := problems.NewStatusProblem(400).
-		WithInstance(c.Path()).
-		WithType("validation_error").
-		WithError(err)
-	return c.Status(fiber.StatusBadRequest).JSON(problem)
-}
 
 func notFound(c fiber.Ctx, detail string) error {
 	problem := problems.NewStatusProblem(404).

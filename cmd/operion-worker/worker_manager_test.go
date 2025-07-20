@@ -7,7 +7,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/dukex/operion/pkg/event_bus"
+	"github.com/dukex/operion/pkg/eventbus"
 	"github.com/dukex/operion/pkg/events"
 	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/persistence/file"
@@ -21,11 +21,11 @@ type MockEventBus struct {
 	publishedEvents []interface{}
 }
 
-func (m *MockEventBus) Handle(eventType events.EventType, handler event_bus.EventHandler) error {
+func (m *MockEventBus) Handle(eventType events.EventType, handler eventbus.EventHandler) error {
 	return nil
 }
 
-func (m *MockEventBus) Publish(ctx context.Context, key string, event event_bus.Event) error {
+func (m *MockEventBus) Publish(ctx context.Context, key string, event eventbus.Event) error {
 	m.publishedEvents = append(m.publishedEvents, event)
 	return nil
 }

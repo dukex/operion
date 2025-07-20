@@ -1,10 +1,11 @@
+// Package cmd provides common initialization functions for command-line applications.
 package cmd
 
 import (
 	"log/slog"
 
-	"github.com/dukex/operion/pkg/actions/http_request"
-	log_action "github.com/dukex/operion/pkg/actions/log"
+	"github.com/dukex/operion/pkg/actions/httprequest"
+	logaction "github.com/dukex/operion/pkg/actions/log"
 	"github.com/dukex/operion/pkg/actions/transform"
 	"github.com/dukex/operion/pkg/registry"
 	"github.com/dukex/operion/pkg/triggers/queue"
@@ -34,9 +35,9 @@ func registreTriggerPlugins(reg *registry.Registry, pluginsPath string) {
 }
 
 func registerNativeActions(reg *registry.Registry) {
-	reg.RegisterAction(http_request.NewHTTPRequestActionFactory())
+	reg.RegisterAction(httprequest.NewHTTPRequestActionFactory())
 	reg.RegisterAction(transform.NewTransformActionFactory())
-	reg.RegisterAction(log_action.NewLogActionFactory())
+	reg.RegisterAction(logaction.NewLogActionFactory())
 }
 
 func registerNativeTriggers(reg *registry.Registry) {

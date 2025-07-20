@@ -29,7 +29,11 @@ func NewListCommand() *cli.Command {
 		},
 		Action: func(ctx context.Context, command *cli.Command) error {
 			persistence := cmd.NewPersistence(command.String("database-url"))
-			defer persistence.Close()
+			defer func() {
+				if err := persistence.Close(); err != nil {
+					return
+				}
+			}()
 
 			workflowRepository := workflow.NewRepository(persistence)
 

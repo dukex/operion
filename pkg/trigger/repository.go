@@ -1,3 +1,4 @@
+// Package trigger provides repository management for workflow triggers.
 package trigger
 
 import (

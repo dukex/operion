@@ -8,7 +8,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dukex/operion/pkg/event_bus"
+	"github.com/dukex/operion/pkg/eventbus"
 	"github.com/dukex/operion/pkg/events"
 	"github.com/dukex/operion/pkg/persistence"
 	"github.com/dukex/operion/pkg/registry"
@@ -20,13 +20,13 @@ type WorkerManager struct {
 	logger      *slog.Logger
 	persistence persistence.Persistence
 	registry    *registry.Registry
-	eventBus    event_bus.EventBus
+	eventBus    eventbus.EventBus
 }
 
 func NewWorkerManager(
 	id string,
 	persistence persistence.Persistence,
-	eventBus event_bus.EventBus,
+	eventBus eventbus.EventBus,
 	logger *slog.Logger,
 	registry *registry.Registry,
 ) *WorkerManager {
@@ -50,7 +50,10 @@ func (w *WorkerManager) Start(ctx context.Context) error {
 		return err
 	}
 
-	w.eventBus.Subscribe(ctx)
+	if err := w.eventBus.Subscribe(ctx); err != nil {
+		w.logger.Error("Failed to subscribe to event bus", "error", err)
+		return err
+	}
 
 	w.logger.Info("Worker started successfully")
 

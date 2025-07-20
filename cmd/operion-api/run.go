@@ -58,10 +58,18 @@ func RunAPICommand() *cli.Command {
 
 			registry := cmd.NewRegistry(logger, command.String("plugins-path"))
 			eventBus := cmd.NewEventBus(command.String("event-bus"), logger)
-			defer eventBus.Close()
+			defer func() {
+				if err := eventBus.Close(); err != nil {
+					logger.Error("Failed to close event bus", "error", err)
+				}
+			}()
 
 			persistence := cmd.NewPersistence(command.String("database-url"))
-			defer persistence.Close()
+			defer func() {
+				if err := persistence.Close(); err != nil {
+					logger.Error("Failed to close persistence", "error", err)
+				}
+			}()
 
 			api := NewAPI(
 				persistence,

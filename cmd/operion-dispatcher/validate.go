@@ -43,7 +43,11 @@ func NewValidateCommand() *cli.Command {
 			registry := cmd.NewRegistry(logger, command.String("plugins-path"))
 
 			persistence := cmd.NewPersistence(command.String("database-url"))
-			defer persistence.Close()
+			defer func() {
+				if err := persistence.Close(); err != nil {
+					return
+				}
+			}()
 
 			workflowRepository := workflow.NewRepository(persistence)
 

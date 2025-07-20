@@ -195,7 +195,9 @@ func (a *HTTPRequestAction) Execute(ctx context.Context, executionCtx models.Exe
 	if resp == nil {
 		return nil, fmt.Errorf("all retry attempts failed, last error: %w", lastErr)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {

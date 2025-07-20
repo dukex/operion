@@ -1,3 +1,4 @@
+// Package webhook provides HTTP webhook trigger implementation with centralized server management.
 package webhook
 
 import (

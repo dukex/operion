@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"strconv"
 
-	"github.com/dukex/operion/pkg/event_bus"
+	"github.com/dukex/operion/pkg/eventbus"
 	"github.com/dukex/operion/pkg/persistence"
 	"github.com/dukex/operion/pkg/registry"
 	"github.com/dukex/operion/pkg/web"
@@ -18,14 +18,14 @@ import (
 
 type API struct {
 	persistence persistence.Persistence
-	event_bus   event_bus.EventBus
+	event_bus   eventbus.EventBus
 	logger      *slog.Logger
 	registry    *registry.Registry
 }
 
 func NewAPI(
 	persistence persistence.Persistence,
-	event_bus event_bus.EventBus,
+	event_bus eventbus.EventBus,
 	logger *slog.Logger,
 	registry *registry.Registry,
 ) *API {

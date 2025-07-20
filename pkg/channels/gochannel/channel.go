@@ -1,3 +1,4 @@
+// Package gochannel provides in-memory channel implementation for testing and development.
 package gochannel
 
 import (
