@@ -1,8 +1,17 @@
 import { useParams } from "react-router";
-import type { Workflow, ApiErrorProblem } from "@/types/operion";
+import type {
+  Workflow,
+  ApiErrorProblem,
+  ActionRegistryItem,
+  TriggerRegistryItem,
+} from "@/types/operion";
 import { useCallback, useEffect, useState } from "react";
-import { getWorkflowById } from "@/lib/api-client";
-import { AlertTriangle } from "lucide-react";
+import {
+  getAvailableActions,
+  getAvailableTriggers,
+  getWorkflowById,
+} from "@/lib/api-client";
+import { AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import {
   ReactFlow,
@@ -23,6 +32,8 @@ import type { TriggerItem, WorkflowStep } from "@/types/operion";
 import TriggerNode from "@/components/flow/TriggerNode";
 import StepNode from "@/components/flow/StepNode";
 import dagre from "@dagrejs/dagre";
+import { Palette } from "@/components/flow/Pallete";
+import StepOrTriggerDialog from "@/components/flow/StepOrTriggerDialog";
 
 const nodeTypes = {
   trigger: TriggerNode,
@@ -103,6 +114,16 @@ export default function WorkflowsGet() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [editingStep, setEditingStep] = useState<
+    (WorkflowStep & { isNew?: boolean }) | null
+  >(null);
+  const [triggersRegistry, setTriggerRegistry] = useState<
+    TriggerRegistryItem[]
+  >([]);
+  const [actionsRegistry, setActionsRegistry] = useState<ActionRegistryItem[]>(
+    []
+  );
+
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
@@ -125,26 +146,55 @@ export default function WorkflowsGet() {
     [setEdges]
   );
 
+  const handleAddItem = (id: string) => {
+    // TODO: handle with item type, if it is a trigger or step
+    if (!workflow) return;
+    const action = actionsRegistry.find((a) => a.id === id);
+    if (!action) return;
+
+    const newStep: WorkflowStep & { isNew?: boolean } = {
+      id: new Date().getTime().toString(),
+      action_id: action.id,
+      configuration: {},
+      uid: `${action.id}_${workflow.steps.length + 1}`,
+      name: `${action.name} ${workflow.steps.length + 1}`,
+      conditional: { language: "simple", expression: "true" },
+      on_success: null,
+      enabled: true,
+      isNew: true,
+    };
+
+    setEditingStep(newStep);
+  };
+
   useEffect(() => {
     const fetchWorkflowData = async function fetchWorkflowData() {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const data = await getWorkflowById(id);
-        setWorkflow(data);
-        //   setSelectedItem({ type: "workflow", data });
-        //   setExplicitEntryStepId(null); // Reset on new workflow load
-      } catch (err) {
+      const data = await getWorkflowById(id);
+      setWorkflow(data);
+    };
+    const fetchRegistry = async function fetchRegistry() {
+      return Promise.all([getAvailableActions(), getAvailableTriggers()]).then(
+        ([actions, triggers]) => {
+          setActionsRegistry(actions);
+          setTriggerRegistry(triggers);
+          console.log("actions", actions);
+          console.log("triggers", triggers);
+        }
+      );
+    };
+
+    setIsLoading(true);
+    setError(null);
+
+    Promise.all([fetchWorkflowData(), fetchRegistry()])
+      .then(() => {
+        setIsLoading(false);
+      })
+      .catch((err) => {
         const apiError = err as ApiErrorProblem;
         console.error(`Failed to fetch workflow ${id}:`, apiError);
         setError(apiError.detail || "Failed to load workflow.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchWorkflowData();
-    // fetchRegistry();
+      });
   }, [id]);
 
   useEffect(() => {
@@ -232,6 +282,14 @@ export default function WorkflowsGet() {
 
   return (
     <>
+      {isLoading && (
+        <div className="flex-grow flex flex-col items-center justify-center p-8 text-center">
+          <Loader2 className="h-16 w-16 animate-spin text-primary" />
+          <p className="ml-4 text-lg text-muted-foreground">
+            Loading Workflow Editor...
+          </p>
+        </div>
+      )}
       {error && !isLoading && (
         <div className="flex-grow flex flex-col items-center justify-center p-8 text-center">
           <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
@@ -245,42 +303,67 @@ export default function WorkflowsGet() {
         </div>
       )}
       {!error && !isLoading && (
-        <div className="flex-grow w-1/2 xl:w-3/5 flex flex-col overflow-hidden h-[calc(100vh-64px)]">
-          <div className="flex-grow border rounded-lg shadow-sm bg-card w-full">
-            <ReactFlow
-              nodes={nodes}
-              edges={edges}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              onConnect={onConnect}
-              nodeTypes={nodeTypes}
-              nodeOrigin={[0.5, 0.5]}
-              // TODO get fitview playing nice with nodeOrigin
-              defaultViewport={{ x: 500, y: 0, zoom: 1 }}
-              defaultEdgeOptions={{
-                animated: true,
-                markerEnd: {
-                  type: MarkerType.ArrowClosed,
-                  width: 20,
-                  height: 20,
-                  color: "var(--color-green-500)",
-                },
-              }}
-              fitView
-            >
-              <Background
-                variant={BackgroundVariant.Dots}
-                gap={12}
-                size={1}
-                className="bg-amber-100"
+        <>
+          <aside className="w-1/4 min-w-[280px] max-w-[350px] flex flex-col h-auto space-y-4 p-4 overflow-y-auto bg-card">
+            <h3 className="text-2xl font-semibold leading-none tracking-tight">
+              Registry
+            </h3>
+            <div>
+              <Palette
+                items={[...triggersRegistry, ...actionsRegistry]}
+                onSelect={handleAddItem}
               />
-              {/* <Controls /> */}
+            </div>
+          </aside>
 
-              {/* <DevTools /> */}
-              <MiniMap />
-            </ReactFlow>
+          <div className="flex-grow w-3/4 lg:border-red-600 flex flex-col overflow-hidden h-[calc(100vh-64px)]">
+            <div className="flex-grow border rounded-lg shadow-sm bg-card w-full">
+              <ReactFlow
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                nodeTypes={nodeTypes}
+                nodeOrigin={[0.5, 0.5]}
+                // TODO get fitview playing nice with nodeOrigin
+                defaultViewport={{ x: 500, y: 0, zoom: 1 }}
+                defaultEdgeOptions={{
+                  animated: true,
+                  markerEnd: {
+                    type: MarkerType.ArrowClosed,
+                    width: 20,
+                    height: 20,
+                    color: "var(--color-green-500)",
+                  },
+                }}
+                fitView
+              >
+                <Background
+                  variant={BackgroundVariant.Dots}
+                  gap={12}
+                  size={1}
+                  className="bg-amber-100"
+                />
+                {/* <Controls /> */}
+
+                {/* <DevTools /> */}
+                <MiniMap />
+              </ReactFlow>
+            </div>
           </div>
-        </div>
+
+          {editingStep && (
+            <StepOrTriggerDialog
+              item={editingStep}
+              registry={actionsRegistry}
+              type="step"
+              onClose={() => setEditingStep(null)}
+              onSaveItem={() => {}}
+              currentWorkflow={workflow}
+            />
+          )}
+        </>
       )}
     </>
   );

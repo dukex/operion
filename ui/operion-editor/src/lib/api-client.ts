@@ -87,12 +87,12 @@ export async function getWorkflowById(id: string): Promise<Workflow> {
 //     return handleResponse<Workflow['steps']>(response);
 //   }
 
-//   export async function getAvailableActions(): Promise<ActionRegistryItem[]> {
-//     const response = await fetch(`${API_BASE_URL}/registry/actions`);
-//     return handleResponse<ActionRegistryItem[]>(response);
-//   }
+  export async function getAvailableActions(): Promise<ActionRegistryItem[]> {
+    const response = await fetch(`${API_BASE_URL}/registry/actions`);
+    return handleResponse<ActionRegistryItem[]>(response);
+  }
 
-//   export async function getAvailableTriggers(): Promise<TriggerRegistryItem[]> {
-//     const response = await fetch(`${API_BASE_URL}/registry/triggers`);
-//     return handleResponse<TriggerRegistryItem[]>(response);
-//   }
+  export async function getAvailableTriggers(): Promise<TriggerRegistryItem[]> {
+    const response = await fetch(`${API_BASE_URL}/registry/triggers`);
+    return handleResponse<TriggerRegistryItem[]>(response);
+  }

@@ -1,37 +1,35 @@
 export type WorkflowStatus = "active" | "inactive" | "paused" | "error";
 
-// export interface ConfigSchemaProperty {
-//   type: "string" | "number" | "boolean" | "object" | "array";
-//   required?: boolean;
-//   description?: string;
-//   enum?: string[];
-//   default?: any;
-//   items?: ConfigSchemaProperty; // For array type
-//   properties?: Record<string, ConfigSchemaProperty>; // For object type
-// }
+export interface JsonSchemaMinimal {
+  type: "string" | "number" | "object" | "integer";
+  required?: string[];
+  default?: unknown; // Default value for the field0
+  format?: string; // e.g., "date-time", "email", etc.
+  title?: string;
+  description?: string;
+  enum?: string[];
+  examples?: string[];
+  example?: string;
+  maximum?: number; // For numeric types
+  minimum?: number; // For numeric types
+  items?: JsonSchemaMinimal; // For array type
+  properties?: Record<string, JsonSchemaMinimal>; // For object type
+}
 
-// export interface ActionRegistryItem {
-//   type: string;
-//   name: string;
-//   description: string;
-//   config_schema: Record<string, ConfigSchemaProperty>;
-// }
-
-// export interface TriggerRegistryItem {
-//   type: string;
-//   name: string;
-//   description: string;
-//   config_schema: Record<string, ConfigSchemaProperty>;
-// }
-
-export interface TriggerItem {
+export interface ActionRegistryItem {
   id: string;
-  trigger_id: string;
-  configuration: {
-    cron?: string; // For schedule triggers
-    path?: string; // For webhook triggers
-    [key: string]: unknown; // Additional trigger-specific configuration
-  };
+  type: string;
+  name: string;
+  description: string;
+  schema: JsonSchemaMinimal;
+}
+
+export interface TriggerRegistryItem {
+  id: string;
+  type: string;
+  name: string;
+  description: string;
+  schema: JsonSchemaMinimal;
 }
 
 export interface ConditionalExpression {
@@ -44,12 +42,15 @@ export interface WorkflowStep {
   action_id: string;
   uid: string;
   name: string;
-  description: string;
   configuration: Record<string, unknown>;
   conditional?: ConditionalExpression;
   on_success?: string | null;
   on_failure?: string | null;
   enabled: boolean;
+}
+
+export interface TriggerItem {
+  id: string;
 }
 
 export interface Workflow {
