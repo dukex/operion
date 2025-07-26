@@ -14,8 +14,6 @@ GOFLAGS ?= -ldflags="-s -w"
 
 build: ./bin/operion-worker ./bin/operion-dispatcher ./bin/operion-api
 
-build-linux: build
-
 clean:
 	rm -rf ./bin
 
