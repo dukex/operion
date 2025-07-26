@@ -86,6 +86,8 @@ go mod tidy         # Clean up dependencies
 - **Schedule Trigger** (`pkg/triggers/schedule/`) - Cron-based scheduling with robfig/cron with complete JSON schema
 - **Webhook Trigger** (`pkg/triggers/webhook/`) - HTTP webhook endpoints with centralized server management and complete JSON schema
 - **Queue Trigger** (`pkg/triggers/queue/`) - Message queue-based triggering with complete JSON schema
+- **Kafka Trigger** (`pkg/triggers/kafka/`) - Kafka topic message consumption with consumer group support and complete JSON schema
+  - Trigger data includes: topic, partition, offset, timestamp, key, message, headers
 
 ### Available Actions
 - **HTTP Request** (`pkg/actions/http_request/`) - Make HTTP calls with retry logic and templating support

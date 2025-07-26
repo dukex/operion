@@ -1,0 +1,146 @@
+{
+  "id": "kafka-order-processor",
+  "name": "Kafka Order Processor",
+  "description": "Processes order events from Kafka topic and performs order validation and fulfillment",
+  "status": "active",
+  "workflow_triggers": [
+    {
+      "id": "orders-kafka-trigger",
+      "name": "Orders Kafka Trigger",
+      "description": "Trigger when order events are received from Kafka orders topic",
+      "trigger_id": "kafka",
+      "configuration": {
+        "topic": "orders",
+        "consumer_group": "operion-order-processor"
+      }
+    }
+  ],
+  "variables": {
+    "order_api_base": "https://api.example.com/orders",
+    "notification_webhook": "https://webhooks.example.com/order-notifications",
+    "timeout": 30
+  },
+  "steps": [
+    {
+      "id": "log-incoming-order",
+      "name": "Log Incoming Order",
+      "action_id": "log",
+      "uid": "logincomingorder",
+      "configuration": {
+        "message": "Processing order from Kafka - Topic: {{ trigger.topic }}, Partition: {{ trigger.partition }}, Offset: {{ trigger.offset }}, Order ID: {{ trigger.message_data.order_id }}",
+        "level": "info"
+      },
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
+      "enabled": true
+    },
+    {
+      "id": "validate-order-data",
+      "name": "Validate Order Data",
+      "action_id": "transform",
+      "uid": "validateorderdata",
+      "configuration": {
+        "expression": "{ \"order_id\": trigger.message_data.order_id, \"customer_id\": trigger.message_data.customer_id, \"total_amount\": trigger.message_data.total_amount, \"status\": trigger.message_data.status, \"timestamp\": trigger.timestamp, \"is_valid\": trigger.message_data.order_id != null and trigger.message_data.customer_id != null and trigger.message_data.total_amount > 0 }"
+      },
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
+      "enabled": true
+    },
+    {
+      "id": "process-valid-order",
+      "name": "Process Valid Order",
+      "action_id": "http_request",
+      "uid": "processvalidorder",
+      "configuration": {
+        "url": "{{ vars.order_api_base }}/{{ steps.validateorderdata.order_id }}/process",
+        "method": "POST",
+        "timeout": "{{ vars.timeout }}s",
+        "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer {{ env.ORDER_API_TOKEN }}"
+        },
+        "body": {
+          "order_id": "{{ steps.validateorderdata.order_id }}",
+          "customer_id": "{{ steps.validateorderdata.customer_id }}",
+          "amount": "{{ steps.validateorderdata.total_amount }}",
+          "kafka_metadata": {
+            "topic": "{{ trigger.topic }}",
+            "partition": "{{ trigger.partition }}",
+            "offset": "{{ trigger.offset }}",
+            "message_key": "{{ trigger.message_key }}"
+          }
+        }
+      },
+      "conditional": {
+        "language": "simple",
+        "expression": "{{ steps.validateorderdata.is_valid }} == true"
+      },
+      "enabled": true
+    },
+    {
+      "id": "send-order-notification",
+      "name": "Send Order Notification",
+      "action_id": "http_request",
+      "uid": "sendordernotification",
+      "configuration": {
+        "url": "{{ vars.notification_webhook }}",
+        "method": "POST",
+        "timeout": "{{ vars.timeout }}s",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "event": "order_processed",
+          "order_id": "{{ steps.validateorderdata.order_id }}",
+          "customer_id": "{{ steps.validateorderdata.customer_id }}",
+          "processing_status": "{{ steps.processvalidorder.status_code }}",
+          "kafka_source": {
+            "topic": "{{ trigger.topic }}",
+            "partition": "{{ trigger.partition }}",
+            "offset": "{{ trigger.offset }}"
+          },
+          "processed_at": "{{ steps.validateorderdata.timestamp }}"
+        }
+      },
+      "conditional": {
+        "language": "simple",
+        "expression": "{{ steps.processvalidorder.status_code }} >= 200 and {{ steps.processvalidorder.status_code }} < 300"
+      },
+      "enabled": true
+    },
+    {
+      "id": "log-invalid-order",
+      "name": "Log Invalid Order",
+      "action_id": "log",
+      "uid": "loginvalidorder",
+      "configuration": {
+        "message": "Invalid order received from Kafka - Order ID: {{ trigger.message_data.order_id }}, Reason: Missing required fields",
+        "level": "error"
+      },
+      "conditional": {
+        "language": "simple",
+        "expression": "{{ steps.validateorderdata.is_valid }} == false"
+      },
+      "enabled": true
+    },
+    {
+      "id": "log-completion",
+      "name": "Log Processing Completion",
+      "action_id": "log",
+      "uid": "logcompletion",
+      "configuration": {
+        "message": "Order processing completed - Order ID: {{ steps.validateorderdata.order_id }}, Valid: {{ steps.validateorderdata.is_valid }}, API Status: {{ steps.processvalidorder.status_code }}",
+        "level": "info"
+      },
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
+      "enabled": true
+    }
+  ]
+}

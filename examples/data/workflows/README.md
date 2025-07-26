@@ -72,6 +72,18 @@ This directory contains functional workflow examples that demonstrate Operion's 
   - Identifies top-rated and expensive products
 - **Variables**: Configure `health_threshold` and `sync_frequency`
 
+### 📦 Kafka Order Processor (`kafka-order-processor.json`)
+- **Trigger**: Kafka topic subscription
+- **Purpose**: Process order events from Kafka and handle order fulfillment
+- **Features**:
+  - Consumes messages from orders Kafka topic
+  - Validates order data structure
+  - Processes valid orders through API
+  - Sends notifications for processed orders
+  - Logs invalid orders for monitoring
+- **Setup**: Configure Kafka brokers and consumer group
+- **Variables**: Configure `order_api_base` and `notification_webhook`
+
 ## Legacy Examples (Basic Functionality)
 
 ### 💸 Bitcoin Price Tracker (`bitcoin-price.json`)

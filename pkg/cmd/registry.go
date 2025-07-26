@@ -8,6 +8,7 @@ import (
 	logaction "github.com/dukex/operion/pkg/actions/log"
 	"github.com/dukex/operion/pkg/actions/transform"
 	"github.com/dukex/operion/pkg/registry"
+	"github.com/dukex/operion/pkg/triggers/kafka"
 	"github.com/dukex/operion/pkg/triggers/queue"
 	"github.com/dukex/operion/pkg/triggers/schedule"
 	"github.com/dukex/operion/pkg/triggers/webhook"
@@ -49,6 +50,9 @@ func registerNativeTriggers(reg *registry.Registry) {
 
 	queueTrigger := queue.NewQueueTriggerFactory()
 	reg.RegisterTrigger(queueTrigger)
+
+	kafkaTrigger := kafka.NewKafkaTriggerFactory()
+	reg.RegisterTrigger(kafkaTrigger)
 }
 
 func NewRegistry(log *slog.Logger, pluginsPath string) *registry.Registry {

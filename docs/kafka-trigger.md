@@ -51,14 +51,12 @@ When a Kafka message is received, the following data is passed to the workflow:
 
 ```json
 {
-  "trigger_id": "kafka-trigger-1",
-  "trigger_type": "kafka",
   "topic": "user-events",
   "partition": 0,
   "offset": 12345,
-  "timestamp": "2024-06-18T05:09:00Z",
-  "message_key": "user-123",
-  "message_data": {
+  "timestamp": "2024-06-18T05:09:00Z",  
+  "key": "user-123",
+  "message": {
     "user_id": "123",
     "event_type": "login",
     "timestamp": "2024-06-18T05:09:00Z"
@@ -72,14 +70,12 @@ When a Kafka message is received, the following data is passed to the workflow:
 
 ### Data Fields
 
-- `trigger_id` - ID of the trigger that fired
-- `trigger_type` - Always "kafka"
 - `topic` - Kafka topic name
 - `partition` - Partition number the message came from
 - `offset` - Message offset within the partition
 - `timestamp` - When the trigger processed the message
-- `message_key` - Kafka message key (if present)
-- `message_data` - Parsed message payload (JSON if parseable, otherwise raw string)
+- `key` - Kafka message key (if present)
+- `message` - Parsed message payload (JSON if parseable, otherwise raw string)
 - `headers` - Kafka message headers as key-value pairs
 
 ## Consumer Groups
@@ -139,11 +135,11 @@ services:
 
 ### JSON Messages
 
-Messages that can be parsed as JSON will have their data available in `message_data`:
+Messages that can be parsed as JSON will have their data available in `message`:
 
 ```json
 {
-  "message_data": {
+  "message": {
     "user_id": "123",
     "action": "purchase",
     "amount": 99.99
@@ -157,7 +153,7 @@ Messages that cannot be parsed as JSON will be available as a raw string:
 
 ```json
 {
-  "message_data": {
+  "message": {
     "raw_message": "Plain text message content"
   }
 }
