@@ -1,3 +1,4 @@
 /bin/
 .claude
 *.so
+.serena/cache
