@@ -2,7 +2,9 @@
 package web
 
 import (
+	"net/http"
 	"sort"
+	"time"
 
 	"github.com/dukex/operion/pkg/registry"
 	"github.com/dukex/operion/pkg/workflow"
@@ -390,4 +392,29 @@ func (h *APIHandlers) GetAvailableTriggers(c fiber.Ctx) error {
 	})
 
 	return c.JSON(triggers)
+}
+
+func (h *APIHandlers) HealthCheck(c fiber.Ctx) error {
+	registryCheck, regOk := h.registry.HealthCheck()
+	repositoryCheck, repOk := h.repository.HealthCheck()
+
+	status := "unhealthy"
+	message := "Operion API is unhealthy"
+	httpStatus := http.StatusInternalServerError
+
+	if regOk && repOk {
+		status = "healthy"
+		message = "Operion API is healthy"
+		httpStatus = http.StatusOK
+	}
+
+	return c.Status(httpStatus).JSON(fiber.Map{
+		"status":  status,
+		"message": message,
+		"checkers": fiber.Map{
+			"registry":   registryCheck,
+			"repository": repositoryCheck,
+		},
+		"timestamp": time.Now().UTC(),
+	})
 }

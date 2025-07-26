@@ -19,6 +19,18 @@ func NewRepository(persistence persistence.Persistence) *Repository {
 	}
 }
 
+func (r *Repository) HealthCheck() (string, bool) {
+	if r.persistence == nil {
+		return "Persistence layer not initialized", false
+	}
+
+	if err := r.persistence.HealthCheck(); err != nil {
+		return "Persistence layer is unhealthy: " + err.Error(), false
+	}
+
+	return "Persistence layer is healthy", true
+}
+
 func (r *Repository) FetchAll() ([]*models.Workflow, error) {
 	workflows, err := r.persistence.Workflows()
 

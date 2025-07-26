@@ -27,6 +27,13 @@ func (fp *FilePersistence) Close() error {
 	return nil
 }
 
+func (fp *FilePersistence) HealthCheck() error {
+	if _, err := os.Stat(fp.root); os.IsNotExist(err) {
+		return os.ErrNotExist
+	}
+	return nil
+}
+
 func (fp *FilePersistence) Workflows() ([]*models.Workflow, error) {
 	root := os.DirFS(fp.root + "/workflows")
 	jsonFiles, err := fs.Glob(root, "*.json")

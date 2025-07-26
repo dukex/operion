@@ -26,6 +26,14 @@ func NewRegistry(log *slog.Logger) *Registry {
 	}
 }
 
+func (r *Registry) HealthCheck() (string, bool) {
+	if len(r.actionFactories) == 0 && len(r.triggerFactories) == 0 {
+		return "No plugins loaded", false
+	}
+
+	return "Plugins loaded successfully", true
+}
+
 func (r *Registry) LoadActionPlugins(pluginsPath string) ([]protocol.ActionFactory, error) {
 	return loadPlugin[protocol.ActionFactory](r.logger, pluginsPath, "Action")
 }
