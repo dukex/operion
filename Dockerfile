@@ -5,11 +5,12 @@ WORKDIR /app
 COPY go.* ./
 RUN go mod download
 
-COPY . ./
+COPY cmd ./cmd
+COPY pkg ./pkg
 
-RUN go build -v -o /app/bin/operion-dispatcher /app/cmd/operion-dispatcher
-RUN go build -v -o /app/bin/operion-worker /app/cmd/operion-worker
-RUN go build -v -o /app/bin/operion-api /app/cmd/operion-api
+RUN go build -ldflags="-s -w" -v -o /app/bin/operion-dispatcher /app/cmd/operion-dispatcher
+RUN go build -ldflags="-s -w" -v -o /app/bin/operion-worker /app/cmd/operion-worker
+RUN go build -ldflags="-s -w" -v -o /app/bin/operion-api /app/cmd/operion-api
 
 FROM debian:bookworm-slim
 RUN set -x && apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \

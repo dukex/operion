@@ -38,3 +38,26 @@ docs:
 mod-check:
 	go mod verify
 	go mod tidy
+
+examples-dispatcher:
+	cd examples/ && docker compose up dispatcher-kafka -d --build
+
+examples-workder:
+	cd examples/ && docker compose up worker-kafka -d --build
+
+examples-all: examples-stop examples-workder examples-dispatcher
+	cd examples/ && docker compose up akhq -d
+	open http://localhost:8080
+
+examples-stop:
+	cd examples/ && docker compose down
+
+release:
+	git tag ${tag} -m "Release ${tag}" -f
+	git push origin ${tag} -f
+	git push origin main
+	docker buildx build -t dukex/operion:${tag} .
+	docker tag dukex/operion:${tag} docker.io/dukex/operion:${tag}
+	docker push docker.io/dukex/operion:${tag}
+	docker tag dukex/operion:${tag} docker.io/dukex/operion:latest
+	docker push docker.io/dukex/operion:latest
