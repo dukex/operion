@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - 2025-07-26
+
+### Features
+
+- Add validation for triggers and steps
+- Add webhook trigger to editor (ui)
+- Add GET /registry/actions endpoint
+- Add GET /registry/triggers endpoint
+- Add GET /health endpoint
+- Add Kafka Trigger
+
+### Documentation
+
+- Getting Started: Installation
+
+### Miscellaneous Tasks
+
+- Create LICENSE
+
 ## [0.1.0] - 2025-07-14
 
 ### 🚀 Features
