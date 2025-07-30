@@ -1,0 +1,85 @@
+# Receiver Configuration for Operion
+# This file configures receivers that listen to external data sources
+# and publish standardized trigger events to the tp_trigger topic
+
+# Global configuration
+trigger_topic: "tp_trigger"
+
+# Receiver sources configuration
+sources:
+  # Kafka receivers
+  - type: "kafka"
+    name: "caju-events"
+    configuration:
+      brokers: "localhost:9092"
+      topics: ["tp_employee", "tp_allowance_order", "tp_expense"]
+      consumer_group: "operion-kafka-receiver"
+    schema:
+      description: "Caju business events from Kafka topics"
+      expected_fields: ["event", "data", "timestamp"]
+
+  # Webhook receivers  
+  - type: "webhook"
+    name: "jira-webhooks"
+    configuration:
+      port: 8080
+      endpoints:
+        - path: "/jira/task-created"
+          method: "POST"
+          expected_headers:
+            Content-Type: "application/json"
+        - path: "/jira/task-updated"
+          method: "POST"
+          expected_headers:
+            Content-Type: "application/json"
+    schema:
+      description: "JIRA webhook events"
+      expected_fields: ["issue", "user", "changelog"]
+
+  - type: "webhook" 
+    name: "github-webhooks"
+    configuration:
+      port: 8080
+      endpoints:
+        - path: "/github/push"
+          method: "POST"
+          expected_headers:
+            X-GitHub-Event: "push"
+        - path: "/github/pull-request"
+          method: "POST"
+          expected_headers:
+            X-GitHub-Event: "pull_request"
+    schema:
+      description: "GitHub webhook events"
+      expected_fields: ["repository", "sender", "action"]
+
+  # Schedule receivers
+  - type: "schedule"
+    name: "daily-reports"
+    configuration:
+      cron: "0 9 * * 1-5"  # 9 AM on weekdays
+      enabled: true
+      timezone: "UTC"
+    schema:
+      description: "Daily report generation schedule"
+      
+  - type: "schedule"
+    name: "hourly-sync"
+    configuration:
+      cron: "0 * * * *"    # Every hour
+      enabled: true
+      timezone: "UTC"
+    schema:
+      description: "Hourly data synchronization schedule"
+
+# Data transformers (optional)
+transformers:
+  - type: "json_path"
+    name: "extract_event"
+    config:
+      extract: "$.event"
+      
+  - type: "jira_transformer"
+    name: "jira_issue_extractor"
+    config:
+      extract_fields: ["issue.key", "issue.fields.summary", "user.displayName"]

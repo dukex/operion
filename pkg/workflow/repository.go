@@ -110,3 +110,46 @@ func (r *Repository) Delete(id string) error {
 
 	return r.persistence.DeleteWorkflow(id)
 }
+
+// FetchByTriggerCriteria fetches workflows that potentially match trigger criteria
+// This is a performance optimization for trigger matching - currently implemented as FetchAll
+// but can be optimized with database indexes in the future
+func (r *Repository) FetchByTriggerCriteria(triggerType, source string, triggerData map[string]interface{}) ([]*models.Workflow, error) {
+	// For now, return all active workflows - the trigger matcher will do the filtering
+	// In a production database implementation, this could use indexes on:
+	// - workflow.status = 'active'
+	// - workflow_triggers.trigger_id = triggerType
+	// - specific trigger configuration fields based on triggerData
+	
+	allWorkflows, err := r.FetchAll()
+	if err != nil {
+		return nil, err
+	}
+
+	// Filter to only active workflows to reduce matching overhead
+	activeWorkflows := make([]*models.Workflow, 0)
+	for _, workflow := range allWorkflows {
+		if workflow.Status == models.WorkflowStatusActive {
+			activeWorkflows = append(activeWorkflows, workflow)
+		}
+	}
+
+	return activeWorkflows, nil
+}
+
+// FetchActiveWorkflows returns only active workflows
+func (r *Repository) FetchActiveWorkflows() ([]*models.Workflow, error) {
+	allWorkflows, err := r.FetchAll()
+	if err != nil {
+		return nil, err
+	}
+
+	activeWorkflows := make([]*models.Workflow, 0)
+	for _, workflow := range allWorkflows {
+		if workflow.Status == models.WorkflowStatusActive {
+			activeWorkflows = append(activeWorkflows, workflow)
+		}
+	}
+
+	return activeWorkflows, nil
+}

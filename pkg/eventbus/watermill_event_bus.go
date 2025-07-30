@@ -69,6 +69,8 @@ func (eb *WatermillEventBus) Subscribe(ctx context.Context) error {
 				event = &events.WorkflowStepFinished{}
 			case events.WorkflowStepFailedEvent:
 				event = &events.WorkflowStepFailed{}
+			case events.TriggerDetectedEvent:
+				event = &events.TriggerEvent{}
 			default:
 				msg.Nack()
 				continue
