@@ -2,3 +2,4 @@
 .claude
 *.so
 .serena/cache
+*.local.md
