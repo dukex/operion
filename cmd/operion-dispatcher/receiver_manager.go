@@ -189,8 +189,8 @@ func (rm *ReceiverManager) subscribeTriggerEvents() error {
 		return err
 	}
 	
-	// Start event bus subscription
-	return rm.eventBus.Subscribe(rm.ctx)
+	// Start event bus subscription to the trigger topic
+	return rm.eventBus.Subscribe(rm.ctx, rm.config.TriggerTopic)
 }
 
 // handleTriggerEvent processes incoming trigger events
@@ -256,8 +256,8 @@ func (rm *ReceiverManager) publishWorkflowTriggered(ctx context.Context, trigger
 	}
 	workflowTriggeredEvent.ID = rm.eventBus.GenerateID()
 	
-	// Publish to event bus
-	if err := rm.eventBus.Publish(ctx, match.Workflow.ID, workflowTriggeredEvent); err != nil {
+	// Publish to event bus (operion.events topic)
+	if err := rm.eventBus.Publish(ctx, events.Topic, workflowTriggeredEvent); err != nil {
 		return err
 	}
 	

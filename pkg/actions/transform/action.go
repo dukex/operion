@@ -105,5 +105,17 @@ func (a *TransformAction) extract(executionCtx models.ExecutionContext) (interfa
 		return executionCtx.StepResults, nil
 	}
 
-	return template.Render(a.Input, executionCtx.StepResults)
+	// Create enhanced context with trigger data available
+	enhancedData := map[string]interface{}{
+		"steps":    executionCtx.StepResults,
+		"vars":     executionCtx.Variables,
+		"trigger":  executionCtx.TriggerData,
+		"metadata": executionCtx.Metadata,
+		"execution": map[string]interface{}{
+			"id":          executionCtx.ID,
+			"workflow_id": executionCtx.WorkflowID,
+		},
+	}
+
+	return template.Render(a.Input, enhancedData)
 }

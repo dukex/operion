@@ -12,12 +12,12 @@ type Event interface {
 }
 
 type EventPublisher interface {
-	Publish(ctx context.Context, key string, event Event) error
+	Publish(ctx context.Context, topic string, event Event) error
 }
 
 type EventSubscriber interface {
 	Handle(eventType events.EventType, handler EventHandler) error
-	Subscribe(ctx context.Context) error
+	Subscribe(ctx context.Context, topics ...string) error
 }
 
 type EventHandler func(ctx context.Context, event interface{}) error
