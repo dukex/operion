@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"log/slog"
 
 	"github.com/dukex/operion/pkg/models"
@@ -13,10 +14,15 @@ type LogAction struct {
 }
 
 func (l *LogAction) Execute(ctx context.Context, ectx models.ExecutionContext, logger *slog.Logger) (interface{}, error) {
-	panic("unimplemented")
+	log.Default().Println("Executing custom log action")
+	return nil, nil
 }
 
 type LogActionFactory struct{}
+
+func (l LogActionFactory) Schema() map[string]any {
+	return map[string]any{}
+}
 
 func (l LogActionFactory) ID() string {
 	return "custom-log"
