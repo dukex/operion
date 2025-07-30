@@ -11,7 +11,7 @@ services:
       - ..:/app
       - $GOPATH/pkg/mod:/go/pkg/mod
     working_dir: /app
-    command: /bin/operion-api run --port 8099 --database-url file:///app/examples/data --event-bus kafka
+    command: /bin/operion-api run --port 8099 --database-url file:///app/examples/data
     ports:
       - 8099:8099
     environment:

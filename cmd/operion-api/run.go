@@ -28,12 +28,6 @@ func RunAPICommand() *cli.Command {
 				Sources:  cli.EnvVars("DATABASE_URL"),
 			},
 			&cli.StringFlag{
-				Name:     "event-bus",
-				Usage:    "Event bus type (kafka, rabbitmq, etc.)",
-				Required: true,
-				Sources:  cli.EnvVars("EVENT_BUS_TYPE"),
-			},
-			&cli.StringFlag{
 				Name:     "plugins-path",
 				Usage:    "Path to the directory containing action plugins",
 				Value:    "./plugins",
@@ -65,12 +59,6 @@ func RunAPICommand() *cli.Command {
 			logger.Info("Initializing Operion API")
 
 			registry := cmd.NewRegistry(logger, command.String("plugins-path"))
-			eventBus := cmd.NewEventBus(command.String("event-bus"), logger)
-			defer func() {
-				if err := eventBus.Close(); err != nil {
-					logger.Error("Failed to close event bus", "error", err)
-				}
-			}()
 
 			persistence := cmd.NewPersistence(command.String("database-url"))
 			defer func() {
@@ -81,7 +69,6 @@ func RunAPICommand() *cli.Command {
 
 			api := NewAPI(
 				persistence,
-				eventBus,
 				logger,
 				registry,
 			)

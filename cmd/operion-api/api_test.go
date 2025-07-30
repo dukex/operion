@@ -22,7 +22,6 @@ func setupTestApp(tempDir string) *fiber.App {
 
 	app := NewAPI(
 		persistence,
-		nil, // No event bus for tests
 		slog.Default(),
 		registry.NewRegistry(slog.Default()),
 	)
