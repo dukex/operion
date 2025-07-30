@@ -468,7 +468,7 @@ func TestExecutor_IntegrationWithEventBus(t *testing.T) {
 
 	// Publish the initial event
 	for _, event := range eventList {
-		err = eventBus.Publish(ctx, "integration-workflow", event)
+		err = eventBus.Publish(ctx, events.Topic, event)
 		require.NoError(t, err)
 	}
 

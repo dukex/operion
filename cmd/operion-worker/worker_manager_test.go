@@ -25,12 +25,12 @@ func (m *MockEventBus) Handle(eventType events.EventType, handler eventbus.Event
 	return nil
 }
 
-func (m *MockEventBus) Publish(ctx context.Context, key string, event eventbus.Event) error {
+func (m *MockEventBus) Publish(ctx context.Context, topic string, event eventbus.Event) error {
 	m.publishedEvents = append(m.publishedEvents, event)
 	return nil
 }
 
-func (m *MockEventBus) Subscribe(ctx context.Context) error {
+func (m *MockEventBus) Subscribe(ctx context.Context, topics ...string) error {
 	return nil
 }
 
