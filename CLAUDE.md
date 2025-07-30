@@ -51,6 +51,36 @@ air                 # Start development server with live reload (proxy on port 3
 ./bin/api           # Run built API server directly
 ```
 
+### Environment Variables
+
+#### API Server (operion-api)
+```bash
+PORT=9091              # API server port (default: 9091)
+DATABASE_URL           # Database connection URL (required)
+EVENT_BUS_TYPE         # Event bus type (kafka, rabbitmq, etc.) (required)
+PLUGINS_PATH=./plugins # Path to action plugins directory (default: ./plugins)
+LOG_LEVEL=info         # Log level: debug, info, warn, error (default: info)
+```
+
+#### Worker Service (operion-worker)
+```bash
+WORKER_ID              # Custom worker ID (auto-generated if not provided)
+DATABASE_URL           # Database connection URL (required)
+EVENT_BUS_TYPE         # Event bus type (kafka, rabbitmq, etc.) (required)
+PLUGINS_PATH=./plugins # Path to action plugins directory (default: ./plugins)
+LOG_LEVEL=info         # Log level: debug, info, warn, error (default: info)
+```
+
+#### Dispatcher Service (operion-dispatcher)
+```bash
+DISPATCHER_ID          # Custom dispatcher ID (auto-generated if not provided)
+DATABASE_URL           # Database connection URL (required)
+EVENT_BUS_TYPE         # Event bus type (kafka, rabbitmq, etc.) (required)
+PLUGINS_PATH=./plugins # Path to action plugins directory (default: ./plugins)
+WEBHOOK_PORT=8085      # Port for webhook HTTP server (default: 8085)
+LOG_LEVEL=info         # Log level: debug, info, warn, error (default: info)
+```
+
 ### Visual Editor Development
 ```bash
 cd ui/operion-editor    # Navigate to UI directory
