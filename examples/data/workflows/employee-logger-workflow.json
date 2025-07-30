@@ -1,0 +1,57 @@
+{
+  "id": "employee-logger-workflow",
+  "name": "Employee Event Logger",
+  "description": "Logs employee name when receiving employee events from Kafka",
+  "workflow_triggers": [
+    {
+      "id": "employee-kafka-trigger",
+      "name": "Employee Kafka Trigger",
+      "description": "Listens for employee events from tp_employee topic",
+      "trigger_id": "kafka",
+      "configuration": {
+        "topic": "tp_employee",
+        "consumer_group": "employee-logger-group",
+        "brokers": "localhost:9092"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "id": "extract-employee-data",
+      "uid": "extractemployeedata",
+      "name": "Extract Employee Data",
+      "description": "Extract employee information from the Kafka message",
+      "action_id": "transform",
+      "configuration": {
+        "expression": "$",
+        "input": "$.trigger.message",
+        "id": "employee_data"
+      },
+      "conditionals": [],
+      "enabled": true,
+      "on_success": "log-employee-name"
+    },
+    {
+      "id": "log-employee-name",
+      "uid": "logemployeename",
+      "name": "Log Employee Name",
+      "description": "Log the employee name to the console",
+      "action_id": "log",
+      "configuration": {
+        "message": "\"Employee event received: \" & steps.extractemployeedata.name & \" (ID: \" & steps.extractemployeedata.id & \")\"",
+        "level": "info"
+      },
+      "conditionals": [],
+      "enabled": true
+    }
+  ],
+  "variables": {},
+  "status": "active",
+  "metadata": {
+    "created_by": "system",
+    "version": "1.0"
+  },
+  "owner": "system",
+  "created_at": "2025-07-30T10:00:00Z",
+  "updated_at": "2025-07-30T10:00:00Z"
+}

@@ -44,9 +44,18 @@ The project includes example data and workflows in the `examples/` directory whi
 
 ### 5. Set Up Kafka (Required for Event Bus)
 
-Since the services use Kafka as the event bus, you need to start Kafka first:
+Since the services use Kafka as the event bus, you can start Kafka using the provided Docker Compose configuration:
 
-**Using Docker:**
+**Using Docker Compose (Recommended):**
+```bash
+# Start Kafka and create required topics automatically
+docker-compose up -d
+
+# Check that topics were created successfully
+docker-compose logs kafka-setup
+```
+
+**Alternative - Using Docker directly:**
 ```bash
 # Start Kafka in KRaft mode (no Zookeeper required)
 docker run -d --name kafka -p 9092:9092 \
@@ -65,11 +74,17 @@ docker run -d --name kafka -p 9092:9092 \
   -e CLUSTER_ID=operion-dev-cluster \
   confluentinc/cp-kafka:latest
 
-# Wait for Kafka to start, then create the required topic
+# Wait for Kafka to start, then create the required topics
 sleep 15
 docker exec kafka kafka-topics --create \
   --bootstrap-server localhost:9092 \
   --topic operion.events \
+  --partitions 3 \
+  --replication-factor 1
+
+docker exec kafka kafka-topics --create \
+  --bootstrap-server localhost:9092 \
+  --topic operion.trigger \
   --partitions 3 \
   --replication-factor 1
 ```
@@ -88,9 +103,9 @@ The API server will start on port 8099 as specified.
 **Terminal 2 - Dispatcher Service:**
 ```bash
 export KAFKA_BROKERS=localhost:9092
-./bin/operion-dispatcher run --database-url file://./examples/data --event-bus kafka
+./bin/operion-dispatcher run --database-url file://./examples/data --event-bus kafka --receiver-config ./configs/receivers.yaml
 ```
-This service listens for triggers and publishes events to the `operion.events` Kafka topic.
+This service runs receivers that listen for external triggers and publishes events to the `operion.trigger` and `operion.events` Kafka topics.
 
 **Terminal 3 - Worker Service:**
 ```bash
@@ -138,12 +153,14 @@ operion/
 │   ├── operion-api
 │   ├── operion-worker
 │   └── operion-dispatcher
-├── config/                 # Configuration files
+├── configs/                # Configuration files
+│   └── receivers.yaml     # Receiver configuration
 ├── data/
 │   └── workflows/          # Workflow storage
 ├── plugins/                # Plugin .so files
 ├── ui/operion-editor/      # React frontend
-└── examples/               # Example workflows
+├── examples/               # Example workflows
+└── docker-compose.yml     # Kafka development setup
 ```
 
 ## Next Steps
@@ -181,6 +198,10 @@ ps aux | grep kafka
 
 # Test Kafka connectivity
 docker exec kafka kafka-topics --list --bootstrap-server localhost:9092
+
+# If using Docker Compose
+docker-compose ps
+docker-compose logs kafka
 ```
 
 **Error: `no such file or directory`**

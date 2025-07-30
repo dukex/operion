@@ -41,14 +41,28 @@ The project follows a clean, layered architecture with clear separation of conce
 ### Prerequisites
 
 - Go 1.24 or higher
+- Docker and Docker Compose (for Kafka setup)
 
-### Build from Source
+### Quick Start with Docker
 
 ```bash
 # Clone the repository
 git clone https://github.com/dukex/operion.git
 cd operion
 
+# Start Kafka and AKHQ UI
+docker-compose up -d
+
+# Build all components
+make build
+
+# Start all services
+./run-services.sh
+```
+
+### Build from Source
+
+```bash
 # Download dependencies
 go mod download
 
@@ -58,10 +72,10 @@ make build
 
 ### Configuration
 
-Set the port via environment variable (defaults to 3000):
+Set the API port via environment variable (defaults to 8099):
 
 ```bash
-PORT=3000
+PORT=8099
 ```
 
 ## Usage
@@ -73,10 +87,10 @@ PORT=3000
 air
 
 # Or run the built binary
-./bin/api
+./bin/operion-api run --port 8099 --database-url file://./examples/data --event-bus kafka
 ```
 
-The API will be available at `http://localhost:3000`
+The API will be available at `http://localhost:8099`
 
 ### Start the Visual Editor
 
@@ -95,64 +109,60 @@ The visual workflow editor will be available at `http://localhost:5173`
 
 ### Start Services
 
-#### Dispatcher Service (Event Publishers)
+#### All Services (Recommended)
 
 ```bash
-# Start dispatcher service to listen for triggers and publish events
-./bin/operion-dispatcher run --database-url ./data/workflows --event-bus gochannel
-
-# Start with custom dispatcher ID and plugins
-./bin/operion-dispatcher run --dispatcher-id my-dispatcher --database-url ./data/workflows --event-bus kafka --plugins-path ./plugins
-
-# List all available triggers
-./bin/operion-dispatcher list
-
-# Validate trigger configurations
-./bin/operion-dispatcher validate
+# Start all services with proper configuration
+./run-services.sh
 ```
 
-#### Worker Service (Workflow Execution)
+#### Individual Services
 
+**Dispatcher Service (Trigger Processing)**
 ```bash
-# Start workers to execute workflows
-./bin/operion-worker run
+./bin/operion-dispatcher run --database-url file://./examples/data --event-bus kafka --webhook-port 8085 --receiver-config ./configs/receivers.yaml
+```
 
-# Start workers with custom worker ID
-./bin/operion-worker run --worker-id my-worker
+**Worker Service (Workflow Execution)**
+```bash
+./bin/operion-worker run --database-url file://./examples/data --event-bus kafka
 ```
 
 #### Event-Driven Architecture
 
-The system uses an event-driven architecture where:
+The system uses a receiver pattern architecture with multi-topic event routing:
 
-1. **Dispatcher Service** loads trigger plugins, listens for trigger conditions and publishes `WorkflowTriggered` events
-2. **Worker Service** handles workflow events and executes steps individually:
-   - Receives `WorkflowTriggered` events and starts workflow execution
-   - Processes `WorkflowStepAvailable` events for step-by-step execution
-   - Publishes granular events: `WorkflowStepFinished`, `WorkflowStepFailed`, `WorkflowFinished`
-3. **Event Bus** decouples trigger detection from workflow execution (supports GoChannel and Kafka)
-4. **Native Actions** - Core actions built into binary for better performance
-5. **Plugin System** enables dynamic loading of .so files for extensible triggers and custom actions
+1. **Receivers** consume from external sources (Kafka topics, webhooks, schedules) → publish `TriggerEvent` to `operion.trigger`
+2. **Dispatcher Service** subscribes to `operion.trigger` → matches triggers to workflows → publishes `WorkflowTriggered` to `operion.events`  
+3. **Worker Service** subscribes to `operion.events` → executes workflow steps → publishes step events back to `operion.events`
+4. **Event Bus** supports multiple Kafka topics for proper event routing and isolation
+5. **Monitoring** via AKHQ UI at `http://localhost:8080` to view Kafka topics and messages
 
 ### API Endpoints
 
 ```bash
 # List all workflows
-curl http://localhost:3000/workflows
+curl http://localhost:8099/workflows
+
+# List available actions with schemas
+curl http://localhost:8099/registry/actions
+
+# List available triggers with schemas  
+curl http://localhost:8099/registry/triggers
 
 # Health check
-curl http://localhost:3000/
+curl http://localhost:8099/
 ```
 
 ### Example Workflow
 
-See `./examples/data/workflows/bitcoin-price.json` for a complete workflow example that:
+See `./examples/data/workflows/employee-logger-workflow.json` for a working example that:
 
-- Triggers every minute via cron schedule (`schedule` trigger)
-- Fetches Bitcoin price data from CoinPaprika API (`http_request` action)
-- Processes the data using JSONata transformation (`transform` action)
-- Posts processed data to webhook endpoint (`http_request` action)
-- Logs errors if any step fails (`log` action)
+- Triggers on Kafka messages from `tp_employee` topic
+- Extracts employee data using JSONata (`transform` action)  
+- Logs employee information (`log` action)
+- Demonstrates proper step linking with `on_success` fields
+- Shows correct JSONata syntax for accessing trigger and step data
 
 #### New Action Contract
 

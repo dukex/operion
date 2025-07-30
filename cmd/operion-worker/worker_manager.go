@@ -97,7 +97,7 @@ func (w *WorkerManager) handleWorkflowTriggered(ctx context.Context, event inter
 		}
 		failedEvent.WorkerID = triggeredEvent.WorkerID
 
-		if publishErr := w.eventBus.Publish(ctx, triggeredEvent.WorkflowID, failedEvent); publishErr != nil {
+		if publishErr := w.eventBus.Publish(ctx, events.Topic, failedEvent); publishErr != nil {
 			w.logger.Error("Failed to publish workflow failed event", "error", publishErr)
 		}
 
@@ -105,7 +105,7 @@ func (w *WorkerManager) handleWorkflowTriggered(ctx context.Context, event inter
 	}
 
 	for _, event := range eventsToDispatcher {
-		if publishErr := w.eventBus.Publish(ctx, triggeredEvent.WorkflowID, event); publishErr != nil {
+		if publishErr := w.eventBus.Publish(ctx, events.Topic, event); publishErr != nil {
 			w.logger.Error("Failed to publish workflow event", "error", publishErr, "event", event)
 			return publishErr
 		}
@@ -157,7 +157,7 @@ func (w *WorkerManager) handleWorkflowStepAvailable(ctx context.Context, event i
 	}
 
 	for _, event := range eventsToDispatcher {
-		if publishErr := w.eventBus.Publish(ctx, workflowStepEvent.WorkflowID, event); publishErr != nil {
+		if publishErr := w.eventBus.Publish(ctx, events.Topic, event); publishErr != nil {
 			w.logger.Error("Failed to publish workflow event", "error", publishErr, "event", event)
 			return publishErr
 		}

@@ -11,7 +11,7 @@ import (
 func main() {
 	cmd := &cli.Command{
 		Name:                  "operion-dispatcher",
-		Usage:                 "Manage workflow triggers and publish trigger events",
+		Usage:                 "Manage receivers, process trigger events, and dispatch workflows",
 		EnableShellCompletion: true,
 		Commands: []*cli.Command{
 			NewRunCommand(),
