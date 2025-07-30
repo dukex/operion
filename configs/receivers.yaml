@@ -1,9 +1,9 @@
 # Receiver Configuration for Operion
 # This file configures receivers that listen to external data sources
-# and publish standardized trigger events to the tp_trigger topic
+# and publish standardized trigger events to the operion.trigger topic
 
 # Global configuration
-trigger_topic: "tp_trigger"
+trigger_topic: "operion.trigger"
 
 # Receiver sources configuration
 sources:

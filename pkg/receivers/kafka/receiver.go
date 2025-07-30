@@ -17,7 +17,7 @@ import (
 	"github.com/dukex/operion/pkg/protocol"
 )
 
-const TriggerTopic = "tp_trigger"
+const TriggerTopic = "operion.trigger"
 
 type KafkaReceiver struct {
 	sources   []protocol.SourceConfig

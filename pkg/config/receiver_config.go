@@ -45,7 +45,7 @@ func LoadReceiverConfig(filepath string) (protocol.ReceiverConfig, error) {
 
 	// Set default trigger topic if not specified
 	if config.TriggerTopic == "" {
-		config.TriggerTopic = "tp_trigger"
+		config.TriggerTopic = "operion.trigger"
 	}
 
 	// Convert sources
@@ -68,7 +68,7 @@ func LoadReceiverConfigOrDefault(filepath string) protocol.ReceiverConfig {
 	if err != nil {
 		// Return a minimal default configuration
 		return protocol.ReceiverConfig{
-			TriggerTopic: "tp_trigger",
+			TriggerTopic: "operion.trigger",
 			Sources:      []protocol.SourceConfig{},
 			Transformers: []protocol.TransformerConfig{},
 		}

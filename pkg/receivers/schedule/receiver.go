@@ -15,7 +15,7 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
-const TriggerTopic = "tp_trigger"
+const TriggerTopic = "operion.trigger"
 
 type ScheduleReceiver struct {
 	sources  []protocol.SourceConfig

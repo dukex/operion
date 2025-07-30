@@ -13,7 +13,7 @@ import (
 	existing_webhook "github.com/dukex/operion/pkg/triggers/webhook"
 )
 
-const TriggerTopic = "tp_trigger"
+const TriggerTopic = "operion.trigger"
 
 type WebhookReceiver struct {
 	sources       []protocol.SourceConfig

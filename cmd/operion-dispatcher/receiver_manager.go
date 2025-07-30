@@ -83,7 +83,7 @@ func (rm *ReceiverManager) Configure(config protocol.ReceiverConfig) error {
 	rm.config = config
 	
 	if rm.config.TriggerTopic == "" {
-		rm.config.TriggerTopic = "tp_trigger"
+		rm.config.TriggerTopic = "operion.trigger"
 	}
 	
 	rm.logger.Info("Configured receiver manager", 
