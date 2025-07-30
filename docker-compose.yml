@@ -10,10 +10,11 @@ services:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,INTERNAL://0.0.0.0:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,INTERNAL://kafka:9094
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
@@ -21,11 +22,11 @@ services:
       KAFKA_NUM_PARTITIONS: 3
       CLUSTER_ID: operion-dev-cluster
     healthcheck:
-      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list"]
-      interval: 30s
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list || exit 1"]
+      interval: 15s
       timeout: 10s
-      retries: 5
-      start_period: 40s
+      retries: 10
+      start_period: 30s
 
   kafka-setup:
     image: confluentinc/cp-kafka:latest
@@ -35,13 +36,38 @@ services:
         condition: service_healthy
     command: |
       bash -c "
+        echo 'Waiting for Kafka to be ready...'
+        sleep 10
         echo 'Creating Kafka topics...'
-        kafka-topics --create --bootstrap-server kafka:9092 --topic operion.events --partitions 3 --replication-factor 1 --if-not-exists
-        kafka-topics --create --bootstrap-server kafka:9092 --topic operion.trigger --partitions 3 --replication-factor 1 --if-not-exists
+        kafka-topics --create --bootstrap-server kafka:9094 --topic operion.events --partitions 3 --replication-factor 1 --if-not-exists
+        kafka-topics --create --bootstrap-server kafka:9094 --topic operion.trigger --partitions 3 --replication-factor 1 --if-not-exists
         echo 'Kafka topics created successfully!'
-        kafka-topics --list --bootstrap-server kafka:9092
+        kafka-topics --list --bootstrap-server kafka:9094
       "
     restart: "no"
+
+  akhq:
+    image: tchiotludo/akhq:latest
+    container_name: akhq
+    ports:
+      - "8080:8080"
+    environment:
+      AKHQ_CONFIGURATION: |
+        akhq:
+          connections:
+            docker-kafka-server:
+              properties:
+                bootstrap.servers: "kafka:9094"
+              schema-registry:
+                url: "http://schema-registry:8081"
+                type: "confluent"
+              connect:
+                - name: "connect"
+                  url: "http://connect:8083"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: unless-stopped
 
 networks:
   default:
