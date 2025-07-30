@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/dukex/operion/pkg/cmd"
+	"github.com/dukex/operion/pkg/log"
 	trc "github.com/dukex/operion/pkg/tracer"
 	"github.com/google/uuid"
 	"github.com/urfave/cli/v3"
@@ -22,31 +23,44 @@ func NewRunCommand() *cli.Command {
 				Aliases: []string{"id"},
 				Usage:   "Custom dispatcher ID (auto-generated if not provided)",
 				Value:   "",
+				Sources: cli.EnvVars("DISPATCHER_ID"),
 			},
 			&cli.StringFlag{
 				Name:     "database-url",
 				Usage:    "Database connection URL for persistence",
 				Required: true,
+				Sources:  cli.EnvVars("DATABASE_URL"),
 			},
 			&cli.StringFlag{
 				Name:     "event-bus",
 				Usage:    "Event bus type (kafka, rabbitmq, etc.)",
 				Required: true,
+				Sources:  cli.EnvVars("EVENT_BUS_TYPE"),
 			},
 			&cli.StringFlag{
 				Name:     "plugins-path",
 				Usage:    "Path to the directory containing action plugins",
 				Value:    "./plugins",
 				Required: false,
+				Sources:  cli.EnvVars("PLUGINS_PATH"),
 			},
 			&cli.IntFlag{
 				Name:     "webhook-port",
 				Usage:    "Port for webhook HTTP server",
 				Value:    8085,
 				Required: false,
+				Sources:  cli.EnvVars("WEBHOOK_PORT"),
+			},
+			&cli.StringFlag{
+				Name:    "log-level",
+				Usage:   "Log level (debug, info, warn, error)",
+				Value:   "info",
+				Sources: cli.EnvVars("LOG_LEVEL"),
 			},
 		},
 		Action: func(ctx context.Context, command *cli.Command) error {
+			log.Setup(command.String("log-level"))
+
 			tracerProvider, err := trc.InitTracer(ctx, "operion-trigger")
 			if err != nil {
 				return fmt.Errorf("failed to initialize tracer: %w", err)
@@ -62,10 +76,7 @@ func NewRunCommand() *cli.Command {
 				dispatcherID = fmt.Sprintf("dispatcher-%s", uuid.New().String()[:8])
 			}
 
-			logger := slog.With(
-				"module", "operion-dispatcher",
-				"dispatcher_id", dispatcherID,
-			)
+			logger := log.WithModule("operion-dispatcher").With("dispatcher_id", dispatcherID)
 
 			logger.Info("Initializing Operion Dispatcher", "dispatcher_id", dispatcherID)
 
