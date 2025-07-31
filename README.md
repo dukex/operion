@@ -99,13 +99,10 @@ The visual workflow editor will be available at `http://localhost:5173`
 
 ```bash
 # Start dispatcher service to listen for triggers and publish events
-./bin/operion-dispatcher run --database-url ./data/workflows --event-bus gochannel
+./bin/operion-dispatcher --database-url ./data/workflows --event-bus gochannel
 
 # Start with custom dispatcher ID and plugins
-./bin/operion-dispatcher run --dispatcher-id my-dispatcher --database-url ./data/workflows --event-bus kafka --plugins-path ./plugins
-
-# List all available triggers
-./bin/operion-dispatcher list
+./bin/operion-dispatcher --dispatcher-id my-dispatcher --database-url ./data/workflows --event-bus kafka --plugins-path ./plugins
 
 # Validate trigger configurations
 ./bin/operion-dispatcher validate
@@ -115,10 +112,10 @@ The visual workflow editor will be available at `http://localhost:5173`
 
 ```bash
 # Start workers to execute workflows
-./bin/operion-worker run
+./bin/operion-worker
 
 # Start workers with custom worker ID
-./bin/operion-worker run --worker-id my-worker
+./bin/operion-worker --worker-id my-worker
 ```
 
 #### Event-Driven Architecture

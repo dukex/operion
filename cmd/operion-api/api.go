@@ -16,14 +16,14 @@ import (
 )
 
 type API struct {
-	persistence persistence.Persistence
 	logger      *slog.Logger
+	persistence persistence.Persistence
 	registry    *registry.Registry
 }
 
 func NewAPI(
-	persistence persistence.Persistence,
 	logger *slog.Logger,
+	persistence persistence.Persistence,
 	registry *registry.Registry,
 ) *API {
 	return &API{

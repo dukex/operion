@@ -41,8 +41,8 @@ func NewValidateCommand() *cli.Command {
 			)
 
 			registry := cmd.NewRegistry(logger, command.String("plugins-path"))
+			persistence := cmd.NewPersistence(logger, command.String("database-url"))
 
-			persistence := cmd.NewPersistence(command.String("database-url"))
 			defer func() {
 				if err := persistence.Close(); err != nil {
 					return

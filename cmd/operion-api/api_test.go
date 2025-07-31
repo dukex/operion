@@ -21,8 +21,8 @@ func setupTestApp(tempDir string) *fiber.App {
 	persistence := file.NewFilePersistence(tempDir)
 
 	app := NewAPI(
-		persistence,
 		slog.Default(),
+		persistence,
 		registry.NewRegistry(slog.Default()),
 	)
 

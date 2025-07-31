@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"log/slog"
 	"strings"
 
 	"github.com/dukex/operion/pkg/persistence"
@@ -9,7 +10,7 @@ import (
 
 var supportedPersistenceProviders = []string{"file", "mysql", "postgresql", "mongodb", "redis"}
 
-func NewPersistence(databaseUrl string) persistence.Persistence {
+func NewPersistence(logger *slog.Logger, databaseUrl string) persistence.Persistence {
 	provider := parsePersistenceProvider(databaseUrl)
 
 	switch provider {
