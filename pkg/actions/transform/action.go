@@ -73,7 +73,7 @@ func (a *TransformAction) Execute(ctx context.Context, executionCtx models.Execu
 	)
 	logger.Info("Executing TransformAction")
 
-	result, err := template.Render(a.Expression, executionCtx.StepResults)
+	result, err := template.RenderWithContext(a.Expression, &executionCtx)
 	if err != nil {
 		return nil, fmt.Errorf("transformation failed: %w", err)
 	}

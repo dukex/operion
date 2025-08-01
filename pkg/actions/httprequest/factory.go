@@ -36,7 +36,7 @@ func (h *HTTPRequestActionFactory) Schema() map[string]any {
 				"description": "The URL to send the HTTP request to. Supports templating with step results.",
 				"examples": []string{
 					"https://api.example.com/users",
-					"https://api.example.com/users/{{steps.get_user_id.user_id}}",
+					"https://api.example.com/users/{{step_results.get_user_id.user_id}}",
 					"{{trigger.webhook.url}}/callback",
 				},
 			},
@@ -59,8 +59,8 @@ func (h *HTTPRequestActionFactory) Schema() map[string]any {
 					},
 					{
 						"Content-Type":  "application/json",
-						"Authorization": "Bearer {{steps.auth.token}}",
-						"X-User-ID":     "{{trigger.webhook.user_id}}",
+						"Authorization": "Bearer {{.step_results.auth.token}}",
+						"X-User-ID":     "{{.trigger_data.webhook.user_id}}",
 					},
 				},
 			},
@@ -70,8 +70,8 @@ func (h *HTTPRequestActionFactory) Schema() map[string]any {
 				"description": "Request body content. Supports templating for dynamic JSON or text content.",
 				"examples": []string{
 					`{"name": "John Doe", "email": "john@example.com"}`,
-					`{"user_id": "{{steps.create_user.id}}", "status": "active"}`,
-					`{"message": "Hello {{trigger.webhook.name}}", "timestamp": "{{now}}"}`,
+					`{"user_id": "{{.step_results.create_user.id}}", "status": "active"}`,
+					`{"message": "Hello {{.trigger_data.webhook.name}}", "timestamp": "{{now}}"}`,
 				},
 			},
 			"retries": map[string]any{

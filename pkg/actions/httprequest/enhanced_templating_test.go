@@ -76,7 +76,7 @@ func TestHTTPRequestAction_EnhancedTemplating(t *testing.T) {
 			"user_id": "{{ .vars.user_id }}",
 			"workflow_id": "{{ .execution.workflow_id }}",
 			"api_endpoint": "{{ .vars.config.api_endpoint }}",
-			"order_total": {{ .steps.price_calculation.total }}
+			"order_total": {{ .step_results.price_calculation.total }}
 		}`,
 		Timeout: 10 * time.Second, // Increase timeout
 		Retry: RetryConfig{

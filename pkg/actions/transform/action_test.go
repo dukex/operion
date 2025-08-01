@@ -59,7 +59,7 @@ func TestNewTransformAction(t *testing.T) {
 		{
 			name: "basic transform",
 			config: map[string]any{
-				"id": "test-1",
+				"id":         "test-1",
 				"expression": "{{ .field }}",
 			},
 			expected: &TransformAction{

@@ -39,9 +39,9 @@ func (f *LogActionFactory) Schema() map[string]any {
 				"description": "The message to log. Supports templating for dynamic content.",
 				"examples": []string{
 					"Workflow step completed successfully",
-					"Processing user: {{trigger.webhook.user_name}}",
-					"HTTP request to {{steps.api_call.url}} returned status {{steps.api_call.status}}",
-					"Received {{steps.fetch_data.count}} records at {{now}}",
+					"Processing user: {{.trigger_data.webhook.user_name}}",
+					"HTTP request to {{.step_results.api_call.url}} returned status {{.step_results.api_call.status}}",
+					"Received {{.step_results.fetch_data.count}} records at {{now}}",
 				},
 			},
 			"level": map[string]any{

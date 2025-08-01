@@ -299,7 +299,7 @@ func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
 				ActionID: "transform",
 				UID:      "transform_response",
 				Configuration: map[string]any{
-					"expression": "{ \"processed\": true, \"original\": steps.api_call.body }",
+					"expression": "{ \"processed\": true, \"original\": \"{{.step_results.api_call.body}}\" }",
 				},
 				OnSuccess: stringPtr("step5"),
 				Enabled:   true,

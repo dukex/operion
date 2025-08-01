@@ -275,7 +275,7 @@ func TestHTTPRequestAction_Execute_WithTemplating(t *testing.T) {
 		Host:     strings.Split(server.URL, "://")[1],
 		Protocol: strings.Split(server.URL, "://")[0],
 		Path:     "/",
-		Body:     `{"user_id": "{{ .steps.previous_step.user_id}}" }`,
+		Body:     `{"user_id": "{{ .step_results.previous_step.user_id}}" }`,
 		Headers: map[string]string{
 			"Content-Type": "application/json",
 		},

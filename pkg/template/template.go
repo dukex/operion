@@ -2,23 +2,25 @@
 package template
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/dukex/operion/pkg/models"
 )
 
 func RenderWithContext(input string, executionCtx *models.ExecutionContext) (any, error) {
 	enhancedData := map[string]any{
-		"steps":    executionCtx.StepResults,
-		"vars":     executionCtx.Variables,
-		"trigger":  executionCtx.TriggerData,
-		"metadata": executionCtx.Metadata,
-		"env":      getEnvVars(),
+		"step_results": executionCtx.StepResults,
+		"variables":    executionCtx.Variables,
+		"trigger_data": executionCtx.TriggerData,
+		"metadata":     executionCtx.Metadata,
+		"env":          getEnvVars(),
 		"execution": map[string]any{
 			"id":          executionCtx.ID,
 			"workflow_id": executionCtx.WorkflowID,
