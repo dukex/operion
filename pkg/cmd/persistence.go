@@ -7,9 +7,15 @@ import (
 
 	"github.com/dukex/operion/pkg/persistence"
 	"github.com/dukex/operion/pkg/persistence/file"
+	"github.com/dukex/operion/pkg/persistence/postgresql"
 )
 
-var supportedPersistenceProviders = []string{"file", "mysql", "postgresql", "mongodb", "redis"}
+type Provider int
+
+const (
+	FileProvider Provider = iota
+	PostgresqlProvider
+)
 
 // NewPersistence creates a new persistence layer based on the provided database URL.
 func NewPersistence(ctx context.Context, logger *slog.Logger, databaseURL string) persistence.Persistence {
@@ -18,28 +24,28 @@ func NewPersistence(ctx context.Context, logger *slog.Logger, databaseURL string
 	logger.InfoContext(ctx, "Using persistence provider", "provider", provider)
 
 	switch provider {
-	// case "mysql":
-	// 	return persistence.NewMySQLPersistence(databaseURL)
-	// case "postgresql":
-	// 	return persistence.NewPostgreSQLPersistence(databaseURL)
-	// case "mongodb":
-	// 	return persistence.NewMongoDBPersistence(databaseURL)
-	// case "redis":
-	// 	return persistence.NewRedisPersistence(databaseURL)
+	case PostgresqlProvider:
+		persistence, err := postgresql.NewPersistence(ctx, logger, databaseURL)
+		if err != nil {
+			logger.ErrorContext(ctx, "Failed to create PostgreSQL persistence", "error", err)
+			panic("Failed to create PostgreSQL persistence")
+		}
+
+		return persistence
 	default:
 		return file.NewFilePersistence(databaseURL)
 	}
 }
 
-func parsePersistenceProvider(databaseURL string) string {
+func parsePersistenceProvider(databaseURL string) Provider {
 	parts := strings.Split(databaseURL, "://")
 
 	provider := parts[0]
-	for _, supported := range supportedPersistenceProviders {
-		if provider == supported {
-			return provider
-		}
-	}
 
-	return "file"
+	switch provider {
+	case "postgres", "postgresql":
+		return PostgresqlProvider
+	default:
+		return FileProvider
+	}
 }

@@ -62,6 +62,10 @@ PLUGINS_PATH=./plugins # Path to action plugins directory (default: ./plugins)
 LOG_LEVEL=info         # Log level: debug, info, warn, error (default: info)
 ```
 
+**Database URL Examples:**
+- File: `file:///path/to/data/directory`
+- PostgreSQL: `postgres://user:password@localhost:5432/operion?sslmode=disable`
+
 #### Worker Service (operion-worker)
 ```bash
 WORKER_ID              # Custom worker ID (auto-generated if not provided)
@@ -144,6 +148,7 @@ The project uses GitHub Actions for continuous integration and quality assurance
 - **Event System** (`pkg/event_bus/`, `pkg/events/`) - Event-driven communication
 - **Plugin Registry** (`pkg/registry/`) - Plugin-based system for actions and triggers with .so file loading
 - **File Persistence** (`pkg/persistence/file/`) - JSON file storage
+- **PostgreSQL Persistence** (`pkg/persistence/postgresql/`) - PostgreSQL database storage with automated migrations
 
 ### Available Triggers
 - **Schedule Trigger** (`pkg/triggers/schedule/`) - Cron-based scheduling with robfig/cron with complete JSON schema
@@ -162,7 +167,40 @@ The project uses GitHub Actions for continuous integration and quality assurance
   - Go template examples: `{{.name}}`, `{ "fullName": "{{.firstName}} {{.lastName}}" }`, `{{len .items}}`
 - **Log** (`pkg/actions/log/`) - Output log messages for debugging and monitoring
   - Schema includes: message (required), level
-  - Templating examples: `Processing user: {{.trigger_data.webhook.user_name}}`, `{{step_results.api_call.status}}`
+  - Templating examples: `Processing user: {{.trigger_data.webhook.user_name}}`, `{{.step_results.api_call.status}}`
+
+### Database Persistence
+
+#### PostgreSQL Implementation
+- **Normalized Schema** - Separate tables for workflows, workflow_triggers, and workflow_steps
+- **Automatic Migrations** - Database schema is automatically created and updated on startup via `MigrationManager`
+- **Schema Versioning** - Uses `schema_migrations` table to track applied migrations
+- **Soft Deletes** - Workflows are soft deleted using `deleted_at` timestamp
+- **JSONB Storage** - Complex configuration data stored as JSONB, structured data in normalized tables
+- **Transaction Safety** - All migrations and workflow operations run within database transactions
+- **Connection Testing** - Health check endpoint verifies database connectivity
+- **Modular Architecture** - Separated into `migration.go`, `workflow.go`, and main `postgres.go` files
+
+#### Schema Structure
+- **workflows** table stores core workflow data (id, name, description, variables, metadata, status, timestamps)
+- **workflow_triggers** table stores trigger definitions with foreign key to workflows
+- **workflow_steps** table stores step definitions with foreign key to workflows and unique constraint on workflow_id + uid
+- **schema_migrations** table tracks migration versions and timestamps
+- Comprehensive indexes on foreign keys, status, owner, creation time, and deletion timestamp for performance
+- Cascade deletes ensure referential integrity when workflows are deleted
+
+#### Migration System
+- **MigrationManager** class handles all database schema operations
+- Version-based migrations with automatic rollback on failure
+- New migration versions can be added to `getMigrations()` map in `migration.go`
+- Each migration runs in a transaction with proper error handling
+- Migration history is preserved for audit and debugging
+
+#### Repository Pattern
+- **WorkflowRepository** handles all workflow CRUD operations
+- Supports complex operations with triggers and steps in single transactions
+- Automatic loading of related triggers and steps when retrieving workflows
+- Efficient bulk operations for saving/updating workflow components
 
 ## Development Memories
 
