@@ -12,6 +12,7 @@ import (
 	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/persistence"
 	"github.com/dukex/operion/pkg/registry"
+	"github.com/dukex/operion/pkg/template"
 	"github.com/google/uuid"
 )
 
@@ -87,18 +88,53 @@ func (s *Executor) ExecuteStep(ctx context.Context, logger *slog.Logger, workflo
 
 	logger.Info("Executing step action")
 
-	// TODO: Handle conditionals
-	// 	shouldExecute, err := s.evaluateConditional(step.Conditional, executionCtx)
-	// 	if err != nil {
-	// 		log.Printf("Error evaluating conditional for step %s: %v", step.ID, err)
-	// 		return fmt.Errorf("error evaluating conditional for step %s: %w", step.ID, err)
-	// 	}
+	if step.Conditional.Expression != "" || step.Conditional.Language != "" {
+		templateExpression, err := template.RenderWithContext(step.Conditional.Expression, executionCtx)
 
-	// 	if !shouldExecute {
-	// 		log.Printf("Conditional evaluated to false for step %s, skipping", step.ID)
-	// 		currentStepID = s.getNextStepID(step, true) // Treat as success
-	// 		continue
-	// 	}
+		if err != nil {
+			logger.Error("Error rendering conditional template for step", "step_id", step.ID, "error", err)
+			return append(s.nextStep(step, logger, workflow.ID, executionCtx, false),
+				&events.WorkflowStepFailed{
+					BaseEvent:   events.NewBaseEvent(events.WorkflowStepFailedEvent, workflow.ID),
+					ExecutionID: executionCtx.ID,
+					StepID:      step.ID,
+					ActionID:    step.ActionID,
+					Error:       fmt.Sprintf("conditional template rendering failed: %s", err.Error()),
+					Duration:    0,
+				},
+			), fmt.Errorf("error rendering conditional template for step %s: %w", step.ID, err)
+		}
+
+		shouldExecute, err := models.GetConditional(step.Conditional).Evaluate(templateExpression)
+
+		if err != nil {
+			logger.Error("Error evaluating conditional for step", "step_id", step.ID, "error", err)
+			return append(s.nextStep(step, logger, workflow.ID, executionCtx, false),
+				&events.WorkflowStepFailed{
+					BaseEvent:   events.NewBaseEvent(events.WorkflowStepFailedEvent, workflow.ID),
+					ExecutionID: executionCtx.ID,
+					StepID:      step.ID,
+					ActionID:    step.ActionID,
+					Error:       fmt.Sprintf("conditional evaluation failed: %s", err.Error()),
+					Duration:    0,
+				},
+			), fmt.Errorf("error evaluating conditional for step %s: %w", step.ID, err)
+		}
+
+		if !shouldExecute {
+			logger.Info("Conditional evaluated to false, routing to error pipeline", "step_id", step.ID)
+			return append(s.nextStep(step, logger, workflow.ID, executionCtx, false),
+				&events.WorkflowStepFailed{
+					BaseEvent:   events.NewBaseEvent(events.WorkflowStepFailedEvent, workflow.ID),
+					ExecutionID: executionCtx.ID,
+					StepID:      step.ID,
+					ActionID:    step.ActionID,
+					Error:       "conditional expression evaluated to false",
+					Duration:    0,
+				},
+			), nil
+		}
+	}
 
 	result, err := s.executeAction(ctx, logger, step, executionCtx)
 	if err != nil {
@@ -192,23 +228,6 @@ func (s *Executor) findStepByID(steps []*models.WorkflowStep, stepID string) (*m
 	}
 	return nil, false
 }
-
-// func (s *Executor) evaluateConditional(conditional models.ConditionalExpression, ctx models.ExecutionContext) (bool, error) {
-// 	if conditional.Expression == "" && conditional.Language == "" {
-// 		return true, nil
-// 	}
-
-// 	switch conditional.Language {
-// 	case "simple", "":
-// 		if conditional.Expression == "true" || conditional.Expression == "" {
-// 			return true, nil
-// 		}
-// 		return false, nil
-// 	default:
-// 		// ctx.Logger.Errorf("Unsupported conditional language: %s, defaulting to true", conditional.Language)
-// 		return true, nil
-// 	}
-// }
 
 func (s *Executor) executeAction(ctx context.Context, logger *slog.Logger, step *models.WorkflowStep, executionCtx *models.ExecutionContext) (any, error) {
 	if s.registry == nil {
