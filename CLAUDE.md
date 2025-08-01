@@ -122,21 +122,15 @@ go mod tidy         # Clean up dependencies
 ### Available Actions
 - **HTTP Request** (`pkg/actions/http_request/`) - Make HTTP calls with retry logic and templating support
   - Schema includes: url (required), method, headers, body, retries (object with attempts/delay)
-  - Templating examples: `{{steps.get_user_id.user_id}}`, `{{trigger.webhook.url}}/callback`
+  - Templating examples: `{{.step_results.get_user_id.user_id}}`, `{{.trigger_data.webhook.url}}/callback`
   - Retry config: `{"attempts": 3, "delay": 1000}` (attempts: 0-5, delay: 100-30000ms)
 - **Transform** (`pkg/actions/transform/`) - Process data using Go templates
   - Schema includes: expression (required), id
   - Go template examples: `{{.name}}`, `{ "fullName": "{{.firstName}} {{.lastName}}" }`, `{{len .items}}`
 - **Log** (`pkg/actions/log/`) - Output log messages for debugging and monitoring
   - Schema includes: message (required), level
-  - Templating examples: `Processing user: {{trigger.webhook.user_name}}`, `{{steps.api_call.status}}`
-
-### Incomplete/Placeholder Components
-- **Dashboard** (`cmd/dashboard/`) - Directory exists but not implemented (replaced by React-based UI)
-- **Visual Editor Editing** - Current UI is read-only, workflow creation/editing features need implementation
+  - Templating examples: `Processing user: {{.trigger_data.webhook.user_name}}`, `{{step_results.api_call.status}}`
 
 ## Development Memories
 
 - **TODO Tracking**: Check the TODO.md file to see if the implementation was described
-
-(rest of the file content remains the same)
