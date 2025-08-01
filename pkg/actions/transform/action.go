@@ -1,10 +1,11 @@
-// Package transform provides data transformation action implementation using JSONata expressions.
+// Package transform provides data transformation action implementation using golang template expressions.
 package transform
 
 import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/protocol"
@@ -49,15 +50,15 @@ func (h *TransformActionFactory) Schema() map[string]any {
 			},
 			"expression": map[string]any{
 				"type":        "string",
-				"format":      "code",
-				"description": "JSONata expression to transform the input data. Use JSONata syntax for powerful data transformations.",
+				"format":      "template",
+				"description": "Go template expression to transform the input data. Use Go template syntax with {{}} delimiters.",
 				"examples": []string{
-					"$.name",
-					"$.users[0].email",
-					"{ \"fullName\": $.firstName & \" \" & $.lastName, \"isActive\": $.status = \"active\" }",
-					"$.data.users.{ \"user_id\": id, \"display_name\": name, \"created\": $now() }",
-					"$count($.items)",
-					"$.orders[total > 100]",
+					"{{.name}}",
+					"{{.users.0.email}}",
+					"{\"fullName\": \"{{.firstName}} {{.lastName}}\", \"isActive\": {{eq .status \"active\"}}}",
+					"{{range .data.users}}{\"user_id\": {{.id}}, \"display_name\": \"{{.name}}\"}{{end}}",
+					"{{len .items}}",
+					"{{with .orders}}{{range .}}{{if gt .total 100.0}}{{.}}{{end}}{{end}}{{end}}",
 				},
 			},
 		},
@@ -105,5 +106,22 @@ func (a *TransformAction) extract(executionCtx models.ExecutionContext) (any, er
 		return executionCtx.StepResults, nil
 	}
 
-	return template.Render(a.Input, executionCtx.StepResults)
+	// Simple dot-notation path extraction
+	parts := strings.Split(a.Input, ".")
+	current := any(executionCtx.StepResults)
+
+	for _, part := range parts {
+		switch v := current.(type) {
+		case map[string]any:
+			if val, exists := v[part]; exists {
+				current = val
+			} else {
+				return nil, fmt.Errorf("path not found: %s", a.Input)
+			}
+		default:
+			return nil, fmt.Errorf("cannot navigate path %s: expected map but got %T", a.Input, current)
+		}
+	}
+
+	return current, nil
 }

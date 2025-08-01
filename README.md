@@ -147,7 +147,7 @@ See `./examples/data/workflows/bitcoin-price.json` for a complete workflow examp
 
 - Triggers every minute via cron schedule (`schedule` trigger)
 - Fetches Bitcoin price data from CoinPaprika API (`http_request` action)
-- Processes the data using JSONata transformation (`transform` action)
+- Processes the data using Go template transformation (`transform` action)
 - Posts processed data to webhook endpoint (`http_request` action)
 - Logs errors if any step fails (`log` action)
 
@@ -157,7 +157,7 @@ Actions now use a standardized contract with:
 
 - **Factory Pattern**: Actions created via `ActionFactory.Create(config)`
 - **Execution Context**: Access to previous step results via `ExecutionContext.StepResults`
-- **Template Support**: JSONata templating for dynamic configuration
+- **Template Support**: Go template system for dynamic configuration
 - **Structured Logging**: Each action receives a structured logger
 - **Result Mapping**: Step results stored by `uid` for cross-step references
 
@@ -173,7 +173,7 @@ Actions now use a standardized contract with:
 ### Available Actions
 
 - **HTTP Request** (`pkg/actions/http_request/`) - Make HTTP calls with retry logic, templating, and JSON/string response handling
-- **Transform** (`pkg/actions/transform/`) - Process data using JSONata expressions with input extraction and templating
+- **Transform** (`pkg/actions/transform/`) - Process data using Go templates with input extraction and templating
 - **Log** (`pkg/actions/log/`) - Output structured log messages for debugging and monitoring
 - **Plugin Actions**: Custom actions via .so plugins (example in `examples/plugins/actions/log/`)
 
@@ -192,7 +192,7 @@ The executor now operates on an event-driven, step-by-step model:
 - **Execution Context**: Maintains state across steps with `ExecutionContext.StepResults`
 - **Step Isolation**: Each step processed as individual event for scalability
 - **Event Publishing**: Granular events published for monitoring and debugging
-- **State Management**: Step results stored by `uid` and accessible via JSONata templates
+- **State Management**: Step results stored by `uid` and accessible via Go templates
 - **Error Handling**: Failed steps can route to different next steps via `on_failure`
 
 ## Development

@@ -46,7 +46,7 @@ func TestHTTPRequestAction_EnhancedTemplating(t *testing.T) {
 			assert.Equal(t, "123", body["user_id"])
 			assert.Equal(t, "test-workflow", body["workflow_id"])
 			assert.Equal(t, "api.example.com", body["api_endpoint"])
-			assert.Equal(t, float64(100), body["order_total"])
+			assert.Equal(t, 100.0, body["order_total"])
 		}
 
 		// Return success response
@@ -66,17 +66,17 @@ func TestHTTPRequestAction_EnhancedTemplating(t *testing.T) {
 		Method:   "POST",
 		Host:     strings.Split(server.URL, "://")[1], // Extract host from URL
 		Protocol: strings.Split(server.URL, "://")[0], // Extract protocol from URL
-		Path:     "$join([\"/users/\", $string(vars.user_id), \"/orders\"])",
+		Path:     "/users/{{ .vars.user_id }}/orders",
 		Headers: map[string]string{
-			"Authorization": "\"Bearer \" & env.TEST_API_TOKEN",
+			"Authorization": "Bearer {{ .env.TEST_API_TOKEN }}",
 			"Content-Type":  "application/json",
-			"X-Workflow-ID": "execution.workflow_id",
+			"X-Workflow-ID": "{{ .execution.workflow_id }}",
 		},
 		Body: `{
-			"user_id": $string(vars.user_id),
-			"workflow_id": execution.workflow_id,
-			"api_endpoint": vars.config.api_endpoint,
-			"order_total": steps.price_calculation.total
+			"user_id": "{{ .vars.user_id }}",
+			"workflow_id": "{{ .execution.workflow_id }}",
+			"api_endpoint": "{{ .vars.config.api_endpoint }}",
+			"order_total": {{ .steps.price_calculation.total }}
 		}`,
 		Timeout: 10 * time.Second, // Increase timeout
 		Retry: RetryConfig{
@@ -171,7 +171,7 @@ func TestHTTPRequestAction_EnvironmentVariableAccess(t *testing.T) {
 		Protocol: strings.Split(server.URL, "://")[0], // Extract protocol from URL
 		Path:     "/",
 		Headers: map[string]string{
-			"Authorization": "\"Bearer \" & env.TEST_API_KEY",
+			"Authorization": "Bearer {{ .env.TEST_API_KEY }}",
 		},
 		Timeout: 10 * time.Second,
 		Retry: RetryConfig{

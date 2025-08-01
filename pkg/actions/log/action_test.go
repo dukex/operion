@@ -138,7 +138,7 @@ func TestLogAction_Execute(t *testing.T) {
 		{
 			name: "message with templating",
 			config: map[string]any{
-				"message": "\"Processing workflow: \" & steps.step1.status",
+				"message": "Processing workflow: {{.steps.step1.status}}",
 				"level":   "info",
 			},
 			execCtx: models.ExecutionContext{

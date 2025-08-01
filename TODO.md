@@ -207,7 +207,7 @@ type DatabaseAction struct {
 ```go
 // pkg/actions/conditional/
 type ConditionalAction struct {
-    Condition    string                 `json:"condition"`      // JSONata expression
+    Condition    string                 `json:"condition"`      // Go template expression
     TrueAction   *WorkflowStep         `json:"true_action,omitempty"`
     FalseAction  *WorkflowStep         `json:"false_action,omitempty"`
     Cases        []ConditionalCase     `json:"cases,omitempty"`    // Switch-like behavior
@@ -293,7 +293,7 @@ type AggregateAction struct {
     DataSource   string                 `json:"data_source"`   // Step result reference
     Operations   []AggregateOperation   `json:"operations"`
     GroupBy      []string               `json:"group_by"`
-    Filters      []string               `json:"filters"`       // JSONata expressions
+    Filters      []string               `json:"filters"`       // Go template expressions
     OutputFormat string                 `json:"output_format"` // "json", "csv"
 }
 
@@ -402,7 +402,7 @@ type AggregateOperation struct {
 - Cloud provider integrations should support multiple authentication methods
 - Configuration should be externalized (env vars, config maps)
 - Error handling must be robust with proper retry logic
-- All actions should support template/JSONata expressions
+- All actions should support Go template expressions
 - Implement graceful shutdown for all components
 
 ### Removed Non-Cloud-Native Items

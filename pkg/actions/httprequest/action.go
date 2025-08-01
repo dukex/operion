@@ -109,15 +109,10 @@ func (a *HTTPRequestAction) Execute(ctx context.Context, executionCtx models.Exe
 
 		var bodyReader io.Reader
 		if a.Body != "" {
-			var body any = a.Body
-			var err error
-			// Only render if it contains template expressions
-			if template.NeedsTemplating(a.Body) {
-				body, err = template.RenderWithContext(a.Body, &executionCtx)
-				if err != nil {
-					cancel()
-					return nil, fmt.Errorf("failed to render body template: %w", err)
-				}
+			body, err := template.RenderWithContext(a.Body, &executionCtx)
+			if err != nil {
+				cancel()
+				return nil, fmt.Errorf("failed to render body template: %w", err)
 			}
 
 			var bodyBytes []byte
@@ -135,15 +130,13 @@ func (a *HTTPRequestAction) Execute(ctx context.Context, executionCtx models.Exe
 		}
 
 		// Only render path if it contains template expressions
-		path := a.Path
-		if template.NeedsTemplating(a.Path) {
-			pathResult, err := template.RenderWithContext(a.Path, &executionCtx)
-			if err != nil {
-				cancel()
-				return nil, fmt.Errorf("failed to render path template: %w", err)
-			}
-			path = fmt.Sprintf("%v", pathResult)
+		pathResult, err := template.RenderWithContext(a.Path, &executionCtx)
+		if err != nil {
+			cancel()
+			return nil, fmt.Errorf("failed to render path template: %w", err)
 		}
+		path := fmt.Sprintf("%v", pathResult)
+
 		url := fmt.Sprintf("%s://%s%s", a.Protocol, a.Host, path)
 
 		logger.Debug("Creating HTTP request: %s %s", "method", a.Method, "url", url)
@@ -156,17 +149,14 @@ func (a *HTTPRequestAction) Execute(ctx context.Context, executionCtx models.Exe
 		}
 
 		for key, value := range a.Headers {
-			headerValue := value
-			// Only render if it contains template expressions
-			if template.NeedsTemplating(value) {
-				headerResult, err := template.RenderWithContext(value, &executionCtx)
-				if err != nil {
-					cancel()
-					lastErr = fmt.Errorf("failed to render header '%s' template: %w", key, err)
-					continue
-				}
-				headerValue = fmt.Sprintf("%v", headerResult)
+			headerResult, err := template.RenderWithContext(value, &executionCtx)
+			if err != nil {
+				cancel()
+				lastErr = fmt.Errorf("failed to render header '%s' template: %w", key, err)
+				continue
 			}
+			headerValue := fmt.Sprintf("%v", headerResult)
+
 			req.Header.Set(key, headerValue)
 		}
 

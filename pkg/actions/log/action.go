@@ -34,14 +34,11 @@ func (a *LogAction) Execute(ctx context.Context, executionCtx models.ExecutionCo
 	logger = logger.With("action_type", "log")
 
 	// Render the message with templating if needed
-	message := a.Message
-	if template.NeedsTemplating(a.Message) {
-		renderedMessage, err := template.RenderWithContext(a.Message, &executionCtx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to render log message template: %w", err)
-		}
-		message = fmt.Sprintf("%v", renderedMessage)
+	renderedMessage, err := template.RenderWithContext(a.Message, &executionCtx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to render log message template: %w", err)
 	}
+	message := fmt.Sprintf("%v", renderedMessage)
 
 	// Log the message at the specified level
 	switch a.Level {

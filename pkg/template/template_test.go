@@ -10,19 +10,25 @@ import (
 
 func TestRender_SimpleExpression(t *testing.T) {
 	data := map[string]any{
-		"name": "John",
-		"age":  30,
+		"name":  "John",
+		"age":   30,
+		"isNew": true,
 	}
 
 	// Test simple field access
-	result, err := Render("name", data)
+	result, err := Render("{{ .name }}", data)
 	require.NoError(t, err)
 	assert.Equal(t, "John", result)
 
-	// Test number field
-	result, err = Render("age", data)
+	// Test boolean expression
+	result, err = Render("{{ .isNew }}", data)
 	require.NoError(t, err)
-	assert.Equal(t, 30, result)
+	assert.Equal(t, true, result)
+
+	// Test number field - always map to float
+	result, err = Render("{{ .age }}", data)
+	require.NoError(t, err)
+	assert.Equal(t, 30.0, result)
 }
 
 func TestRender_ComplexExpression(t *testing.T) {
@@ -38,28 +44,23 @@ func TestRender_ComplexExpression(t *testing.T) {
 	}
 
 	// Test nested field access
-	result, err := Render("user.name", data)
+	result, err := Render("{{ .user.name }}", data)
 	require.NoError(t, err)
 	assert.Equal(t, "Alice", result)
 
-	// Test array operations
-	result, err = Render("$sum(orders.total)", data)
-	require.NoError(t, err)
-	assert.Equal(t, 175.75, result)
-
 	// Test object construction
 	result, err = Render(`{
-		"user_name": user.name,
-		"total_orders": $count(orders),
-		"total_value": $sum(orders.total)
+		"user_name": "{{ .user.name }}",
+		"total_orders": {{ len .orders }}
 	}`, data)
 	require.NoError(t, err)
 
 	resultMap, ok := result.(map[string]any)
+
 	require.True(t, ok)
 	assert.Equal(t, "Alice", resultMap["user_name"])
-	assert.Equal(t, 2, resultMap["total_orders"])
-	assert.Equal(t, 175.75, resultMap["total_value"])
+	assert.Equal(t, 2.0, resultMap["total_orders"])
+
 }
 
 func TestRender_WithStepResults(t *testing.T) {
@@ -79,12 +80,12 @@ func TestRender_WithStepResults(t *testing.T) {
 	}
 
 	// Test accessing step results
-	result, err := Render("api_call.body.username", data)
+	result, err := Render("{{ .api_call.body.username }}", data)
 	require.NoError(t, err)
 	assert.Equal(t, "testuser", result)
 
 	// Test conditional expression
-	result, err = Render("api_call.status = 200 ? 'success' : 'failed'", data)
+	result, err = Render("{{ if eq .api_call.status 200 }}success{{ else }}failed{{ end }}", data)
 	require.NoError(t, err)
 	assert.Equal(t, "success", result)
 }
@@ -94,14 +95,15 @@ func TestRender_ErrorHandling(t *testing.T) {
 		"test": "value",
 	}
 
-	// Test invalid JSONata expression
-	_, err := Render("invalid..expression", data)
+	// Test invalid template expression
+	_, err := Render("{ invalid..expression }}", data)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to compile input expression")
+	assert.Contains(t, err.Error(), "failed to parse json")
 
-	// Test reference to non-existent field (actually errors in JSONata)
-	_, err = Render("nonexistent.field", data)
-	assert.Error(t, err) // JSONata returns "no results found" error
+	// Test reference to non-existent field (actually errors in template)
+	_, err = Render("{{ nonexistent.field }}", data)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "function \"nonexistent\" not defined")
 }
 
 func TestRender_EnvironmentVariables(t *testing.T) {
@@ -121,7 +123,7 @@ func TestRender_EnvironmentVariables(t *testing.T) {
 	}
 
 	// This should fail with current implementation since env vars aren't supported
-	_, err := Render("env.TEST_VAR", data)
+	_, err := Render("{{ env.TEST_VAR }}", data)
 	assert.Error(t, err) // Expected to fail with current implementation
 }
 
@@ -141,7 +143,7 @@ func TestRender_WorkflowVariables(t *testing.T) {
 	}
 
 	// Test accessing what should be workflow variables
-	result, err := Render("workflow_vars.api_endpoint", data)
+	result, err := Render("{{ .workflow_vars.api_endpoint }}", data)
 	require.NoError(t, err)
 	assert.Equal(t, "https://api.example.com", result)
 }
@@ -155,13 +157,13 @@ func TestRender_StringInterpolation(t *testing.T) {
 		"action": "login",
 	}
 
-	// Test string construction (JSONata way, not {{ }} syntax)
-	result, err := Render(`"User " & user.name & " performed " & action`, data)
+	// Test string construction
+	result, err := Render("User {{.user.name}} performed {{.action}}", data)
 	require.NoError(t, err)
 	assert.Equal(t, "User John performed login", result)
 
 	// Test URL construction
-	result, err = Render(`"https://api.example.com/users/" & $string(user.id)`, data)
+	result, err = Render("https://api.example.com/users/{{.user.id}}", data)
 	require.NoError(t, err)
 	assert.Equal(t, "https://api.example.com/users/123", result)
 }

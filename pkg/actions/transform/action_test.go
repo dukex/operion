@@ -107,7 +107,7 @@ func TestNewTransformAction(t *testing.T) {
 func TestTransformAction_Execute_SimpleTransform(t *testing.T) {
 	action := &TransformAction{
 		Input:      "",
-		Expression: "$.user.name",
+		Expression: "{{.user.name}}",
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -128,8 +128,8 @@ func TestTransformAction_Execute_SimpleTransform(t *testing.T) {
 
 func TestTransformAction_Execute_WithInput(t *testing.T) {
 	action := &TransformAction{
-		Input:      "$.step1.data",
-		Expression: "$.temperature",
+		Input:      "step1.data",
+		Expression: "{{.temperature}}",
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -153,7 +153,7 @@ func TestTransformAction_Execute_WithInput(t *testing.T) {
 func TestTransformAction_Execute_ObjectConstruction(t *testing.T) {
 	action := &TransformAction{
 		Input:      "",
-		Expression: `{ "name": $.user.name, "status": "active", "age": $.user.age }`,
+		Expression: `{ "name": "{{.user.name}}", "status": "active", "age": {{.user.age}} }`,
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -172,13 +172,13 @@ func TestTransformAction_Execute_ObjectConstruction(t *testing.T) {
 	resultMap := result.(map[string]any)
 	assert.Equal(t, "Alice", resultMap["name"])
 	assert.Equal(t, "active", resultMap["status"])
-	assert.Equal(t, 25, resultMap["age"])
+	assert.Equal(t, float64(25), resultMap["age"]) // JSON numbers are parsed as float64
 }
 
 func TestTransformAction_Execute_ArrayTransform(t *testing.T) {
 	action := &TransformAction{
 		Input:      "",
-		Expression: "$.users[0].name",
+		Expression: "{{index .users 0 \"name\"}}",
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -205,8 +205,8 @@ func TestTransformAction_Execute_ArrayTransform(t *testing.T) {
 
 func TestTransformAction_Execute_ComplexTransform(t *testing.T) {
 	action := &TransformAction{
-		Input:      "$.api_response",
-		Expression: `{ "price": $.close ? $.close : $.open, "currency": "USD", "timestamp": $.time }`,
+		Input:      "api_response",
+		Expression: `{ "price": {{if .close}}{{.close}}{{else}}{{.open}}{{end}}, "currency": "USD", "timestamp": "{{.time}}" }`,
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -226,7 +226,7 @@ func TestTransformAction_Execute_ComplexTransform(t *testing.T) {
 
 	require.NoError(t, err)
 	resultMap := result.(map[string]any)
-	assert.Equal(t, 46000.0, resultMap["price"])
+	assert.Equal(t, float64(46000), resultMap["price"]) // JSON numbers are parsed as float64
 	assert.Equal(t, "USD", resultMap["currency"])
 	assert.Equal(t, "2023-10-01T10:00:00Z", resultMap["timestamp"])
 }
@@ -244,17 +244,17 @@ func TestTransformAction_Execute_EmptyExpression(t *testing.T) {
 		},
 	}
 
-	_, err := action.Execute(context.Background(), execCtx, logger)
+	result, err := action.Execute(context.Background(), execCtx, logger)
 
-	// Empty expression should fail
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "transformation failed")
+	// Empty expression should return empty string
+	require.NoError(t, err)
+	assert.Equal(t, "", result)
 }
 
 func TestTransformAction_Execute_InvalidExpression(t *testing.T) {
 	action := &TransformAction{
 		Input:      "",
-		Expression: "$.invalid..syntax",
+		Expression: "{{.invalid..syntax}}",
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -292,7 +292,7 @@ func TestTransformAction_Execute_InputNotFound(t *testing.T) {
 func TestTransformAction_Execute_WithCancel(t *testing.T) {
 	action := &TransformAction{
 		Input:      "",
-		Expression: "$.data",
+		Expression: "{{.data}}",
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -331,7 +331,7 @@ func TestTransformAction_Extract(t *testing.T) {
 	assert.Equal(t, execCtx.StepResults, result)
 
 	// Test with specific input
-	action.Input = "$.step1"
+	action.Input = "step1"
 	result, err = action.extract(execCtx)
 	require.NoError(t, err)
 	assert.Equal(t, "value1", result)
