@@ -10,6 +10,7 @@ require (
 	github.com/ThreeDotsLabs/watermill-kafka/v3 v3.0.6
 	github.com/go-playground/validator/v10 v10.27.0
 	github.com/gofiber/fiber/v3 v3.0.0-beta.4
+	github.com/lib/pq v1.10.9
 	github.com/moogar0880/problems v1.0.1
 	github.com/redis/go-redis/v9 v9.11.0
 	github.com/robfig/cron/v3 v3.0.1

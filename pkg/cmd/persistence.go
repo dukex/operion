@@ -6,18 +6,26 @@ import (
 
 	"github.com/dukex/operion/pkg/persistence"
 	"github.com/dukex/operion/pkg/persistence/file"
+	"github.com/dukex/operion/pkg/persistence/postgresql"
 )
 
-var supportedPersistenceProviders = []string{"file", "mysql", "postgresql", "mongodb", "redis"}
+var supportedPersistenceProviders = []string{"file", "mysql", "postgres", "mongodb", "redis"}
 
 func NewPersistence(logger *slog.Logger, databaseUrl string) persistence.Persistence {
 	provider := parsePersistenceProvider(databaseUrl)
 
+	println("Using persistence provider:", provider)
+
 	switch provider {
 	// case "mysql":
 	// 	return persistence.NewMySQLPersistence(databaseUrl)
-	// case "postgresql":
-	// 	return persistence.NewPostgreSQLPersistence(databaseUrl)
+	case "postgres":
+		pers, err := postgresql.NewPostgreSQLPersistence(logger, databaseUrl)
+		if err != nil {
+			logger.Error("Failed to create PostgreSQL persistence", "error", err)
+			panic("Failed to create PostgreSQL persistence")
+		}
+		return pers
 	// case "mongodb":
 	// 	return persistence.NewMongoDBPersistence(databaseUrl)
 	// case "redis":
