@@ -33,7 +33,22 @@ func RenderWithContext(input string, executionCtx *models.ExecutionContext) (any
 func Render(templateStr string, data any) (any, error) {
 	tmpl, err := template.
 		New("transform").
-		Parse(templateStr)
+		Funcs(template.FuncMap{
+			"now": func() string {
+				return time.Now().UTC().Format(time.RFC3339)
+			},
+			"rand": func(max int) int {
+				if max <= 0 {
+					return 0
+				}
+				num := make([]byte, 1)
+				_, err := rand.Read(num)
+				if err != nil {
+					return 0
+				}
+				return int(num[0]) % max
+			},
+		}).Parse(templateStr)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse template '%s': %w", templateStr, err)
