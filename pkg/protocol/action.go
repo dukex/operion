@@ -11,7 +11,7 @@ import (
 type Action interface {
 	// GetID() string
 	// GetType() string
-	Execute(ctx context.Context, executionCtx models.ExecutionContext, logger *slog.Logger) (interface{}, error)
+	Execute(ctx context.Context, executionCtx models.ExecutionContext, logger *slog.Logger) (any, error)
 	// Validate() error
 	// GetConfig() map[string]any
 }

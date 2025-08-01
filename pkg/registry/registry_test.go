@@ -18,7 +18,7 @@ type mockAction struct {
 	config map[string]any
 }
 
-func (m *mockAction) Execute(ctx context.Context, execCtx models.ExecutionContext, logger *slog.Logger) (interface{}, error) {
+func (m *mockAction) Execute(ctx context.Context, execCtx models.ExecutionContext, logger *slog.Logger) (any, error) {
 	return map[string]any{
 		"id":     m.id,
 		"config": m.config,

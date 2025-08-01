@@ -30,7 +30,7 @@ func NewExecutor(
 	}
 }
 
-func (s *Executor) Start(ctx context.Context, logger *slog.Logger, workflowID string, triggerData map[string]interface{}) ([]eventbus.Event, error) {
+func (s *Executor) Start(ctx context.Context, logger *slog.Logger, workflowID string, triggerData map[string]any) ([]eventbus.Event, error) {
 	logger.Info("Starting execution of workflow")
 
 	workflowRepository := NewRepository(s.persistence)
@@ -53,8 +53,8 @@ func (s *Executor) Start(ctx context.Context, logger *slog.Logger, workflowID st
 		ID:          generateExecutionID(),
 		WorkflowID:  workflowID,
 		TriggerData: triggerData,
-		StepResults: make(map[string]interface{}),
-		Metadata:    make(map[string]interface{}),
+		StepResults: make(map[string]any),
+		Metadata:    make(map[string]any),
 	}
 
 	return []eventbus.Event{
@@ -117,7 +117,7 @@ func (s *Executor) ExecuteStep(ctx context.Context, logger *slog.Logger, workflo
 	}
 
 	if executionCtx.StepResults == nil {
-		executionCtx.StepResults = make(map[string]interface{})
+		executionCtx.StepResults = make(map[string]any)
 	}
 	executionCtx.StepResults[step.UID] = result
 	logger.Info("Step executed successfully", "result", result)
@@ -210,13 +210,13 @@ func (s *Executor) findStepByID(steps []*models.WorkflowStep, stepID string) (*m
 // 	}
 // }
 
-func (s *Executor) executeAction(ctx context.Context, logger *slog.Logger, step *models.WorkflowStep, executionCtx *models.ExecutionContext) (interface{}, error) {
+func (s *Executor) executeAction(ctx context.Context, logger *slog.Logger, step *models.WorkflowStep, executionCtx *models.ExecutionContext) (any, error) {
 	if s.registry == nil {
 		// executionCtx.Logger.Infof("Registry not initialized, skipping action %s", actionItem.ID)
 		return nil, nil
 	}
 
-	config := make(map[string]interface{})
+	config := make(map[string]any)
 	maps.Copy(config, step.Configuration)
 	config["id"] = step.ActionID
 

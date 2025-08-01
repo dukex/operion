@@ -31,7 +31,7 @@ Uses plugin-based system for extensibility:
 - Dynamic loading of `.so` plugin files from filesystem
 - Factory pattern with `ActionFactory` and `TriggerFactory` interfaces
 - Protocol-based interfaces in `pkg/protocol/` for actions and triggers
-- Runtime configuration from `map[string]interface{}`
+- Runtime configuration from `map[string]any`
 - **Schema Support** - All ActionFactory and TriggerFactory implementations include Schema() method returning JSON Schema for configuration validation
 - **Templating Examples** - All action schemas include comprehensive examples showing how to use templating with step results, trigger data, and built-in functions
 - **Trigger Factory Interface** - All TriggerFactory implementations include ID(), Name(), Description(), and Schema() methods for consistent trigger registration and documentation

@@ -119,4 +119,3 @@ func TestQueueTriggerValidation(t *testing.T) {
 	err = trigger.Validate()
 	assert.NoError(t, err)
 }
-

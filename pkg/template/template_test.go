@@ -9,7 +9,7 @@ import (
 )
 
 func TestRender_SimpleExpression(t *testing.T) {
-	data := map[string]interface{}{
+	data := map[string]any{
 		"name": "John",
 		"age":  30,
 	}
@@ -26,14 +26,14 @@ func TestRender_SimpleExpression(t *testing.T) {
 }
 
 func TestRender_ComplexExpression(t *testing.T) {
-	data := map[string]interface{}{
-		"user": map[string]interface{}{
+	data := map[string]any{
+		"user": map[string]any{
 			"name":  "Alice",
 			"email": "alice@example.com",
 		},
-		"orders": []interface{}{
-			map[string]interface{}{"id": 1, "total": 100.50},
-			map[string]interface{}{"id": 2, "total": 75.25},
+		"orders": []any{
+			map[string]any{"id": 1, "total": 100.50},
+			map[string]any{"id": 2, "total": 75.25},
 		},
 	}
 
@@ -55,7 +55,7 @@ func TestRender_ComplexExpression(t *testing.T) {
 	}`, data)
 	require.NoError(t, err)
 
-	resultMap, ok := result.(map[string]interface{})
+	resultMap, ok := result.(map[string]any)
 	require.True(t, ok)
 	assert.Equal(t, "Alice", resultMap["user_name"])
 	assert.Equal(t, 2, resultMap["total_orders"])
@@ -64,17 +64,17 @@ func TestRender_ComplexExpression(t *testing.T) {
 
 func TestRender_WithStepResults(t *testing.T) {
 	// Simulate execution context step results
-	data := map[string]interface{}{
-		"api_call": map[string]interface{}{
+	data := map[string]any{
+		"api_call": map[string]any{
 			"status": 200,
-			"body": map[string]interface{}{
+			"body": map[string]any{
 				"user_id":  123,
 				"username": "testuser",
 			},
 		},
-		"validation": map[string]interface{}{
+		"validation": map[string]any{
 			"valid":  true,
-			"errors": []interface{}{},
+			"errors": []any{},
 		},
 	}
 
@@ -90,7 +90,7 @@ func TestRender_WithStepResults(t *testing.T) {
 }
 
 func TestRender_ErrorHandling(t *testing.T) {
-	data := map[string]interface{}{
+	data := map[string]any{
 		"test": "value",
 	}
 
@@ -116,7 +116,7 @@ func TestRender_EnvironmentVariables(t *testing.T) {
 	}()
 
 	// Current implementation doesn't support env vars, but let's test what we expect
-	data := map[string]interface{}{
+	data := map[string]any{
 		"step_result": "some_value",
 	}
 
@@ -128,13 +128,13 @@ func TestRender_EnvironmentVariables(t *testing.T) {
 // Test for workflow variables integration
 func TestRender_WorkflowVariables(t *testing.T) {
 	// Simulate complete execution context with variables
-	data := map[string]interface{}{
+	data := map[string]any{
 		// Step results
-		"api_response": map[string]interface{}{
+		"api_response": map[string]any{
 			"data": "response_data",
 		},
 		// Workflow variables should be accessible but currently aren't in HTTP action
-		"workflow_vars": map[string]interface{}{
+		"workflow_vars": map[string]any{
 			"api_endpoint": "https://api.example.com",
 			"timeout":      30,
 		},
@@ -147,8 +147,8 @@ func TestRender_WorkflowVariables(t *testing.T) {
 }
 
 func TestRender_StringInterpolation(t *testing.T) {
-	data := map[string]interface{}{
-		"user": map[string]interface{}{
+	data := map[string]any{
+		"user": map[string]any{
 			"name": "John",
 			"id":   123,
 		},

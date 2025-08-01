@@ -14,7 +14,7 @@ var validate *validator.Validate
 
 func main() {
 	logger := log.WithModule("api")
-				
+
 	cmd := &cli.Command{
 		Name:                  "operion-api",
 		Usage:                 "Create and manage workflows",

@@ -18,8 +18,8 @@ type JSONSchema struct {
 type Property struct {
 	Type        string               `json:"type"`
 	Description string               `json:"description,omitempty"`
-	Enum        []interface{}        `json:"enum,omitempty"`
-	Default     interface{}          `json:"default,omitempty"`
+	Enum        []any                `json:"enum,omitempty"`
+	Default     any                  `json:"default,omitempty"`
 	Format      string               `json:"format,omitempty"`
 	MinLength   *int                 `json:"minLength,omitempty"`
 	MaxLength   *int                 `json:"maxLength,omitempty"`

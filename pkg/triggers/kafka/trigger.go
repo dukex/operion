@@ -240,4 +240,3 @@ func (h *consumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession,
 
 	return nil
 }
-

@@ -89,4 +89,3 @@ func (f *KafkaTriggerFactory) Create(config map[string]any, logger *slog.Logger)
 	}
 	return trigger, nil
 }
-

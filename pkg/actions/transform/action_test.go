@@ -22,7 +22,7 @@ func TestTransformActionFactory_Create(t *testing.T) {
 
 	tests := []struct {
 		name   string
-		config map[string]interface{}
+		config map[string]any
 	}{
 		{
 			name:   "nil config",
@@ -30,17 +30,17 @@ func TestTransformActionFactory_Create(t *testing.T) {
 		},
 		{
 			name:   "empty config",
-			config: map[string]interface{}{},
+			config: map[string]any{},
 		},
 		{
 			name: "config with expression",
-			config: map[string]interface{}{
+			config: map[string]any{
 				"expression": "$.name",
 			},
 		},
 		{
 			name: "config with input and expression",
-			config: map[string]interface{}{
+			config: map[string]any{
 				"input":      "$.data",
 				"expression": "$.field",
 			},
@@ -60,12 +60,12 @@ func TestTransformActionFactory_Create(t *testing.T) {
 func TestNewTransformAction(t *testing.T) {
 	tests := []struct {
 		name     string
-		config   map[string]interface{}
+		config   map[string]any
 		expected *TransformAction
 	}{
 		{
 			name: "basic transform",
-			config: map[string]interface{}{
+			config: map[string]any{
 				"id":         "test-1",
 				"input":      "$.data",
 				"expression": "$.field",
@@ -77,19 +77,19 @@ func TestNewTransformAction(t *testing.T) {
 		},
 		{
 			name:   "empty config",
-			config: map[string]interface{}{},
+			config: map[string]any{},
 			expected: &TransformAction{
-					Input:      "",
+				Input:      "",
 				Expression: "",
 			},
 		},
 		{
 			name: "partial config",
-			config: map[string]interface{}{
+			config: map[string]any{
 				"expression": "{ \"name\": $.name, \"age\": $.age }",
 			},
 			expected: &TransformAction{
-					Input:      "",
+				Input:      "",
 				Expression: "{ \"name\": $.name, \"age\": $.age }",
 			},
 		},
@@ -112,8 +112,8 @@ func TestTransformAction_Execute_SimpleTransform(t *testing.T) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
-		StepResults: map[string]interface{}{
-			"user": map[string]interface{}{
+		StepResults: map[string]any{
+			"user": map[string]any{
 				"name": "John Doe",
 				"age":  30,
 			},
@@ -134,9 +134,9 @@ func TestTransformAction_Execute_WithInput(t *testing.T) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
-		StepResults: map[string]interface{}{
-			"step1": map[string]interface{}{
-				"data": map[string]interface{}{
+		StepResults: map[string]any{
+			"step1": map[string]any{
+				"data": map[string]any{
 					"temperature": 25.5,
 					"humidity":    60,
 				},
@@ -158,8 +158,8 @@ func TestTransformAction_Execute_ObjectConstruction(t *testing.T) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
-		StepResults: map[string]interface{}{
-			"user": map[string]interface{}{
+		StepResults: map[string]any{
+			"user": map[string]any{
 				"name": "Alice",
 				"age":  25,
 			},
@@ -169,7 +169,7 @@ func TestTransformAction_Execute_ObjectConstruction(t *testing.T) {
 	result, err := action.Execute(context.Background(), execCtx, logger)
 
 	require.NoError(t, err)
-	resultMap := result.(map[string]interface{})
+	resultMap := result.(map[string]any)
 	assert.Equal(t, "Alice", resultMap["name"])
 	assert.Equal(t, "active", resultMap["status"])
 	assert.Equal(t, 25, resultMap["age"])
@@ -183,13 +183,13 @@ func TestTransformAction_Execute_ArrayTransform(t *testing.T) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
-		StepResults: map[string]interface{}{
-			"users": []interface{}{
-				map[string]interface{}{
+		StepResults: map[string]any{
+			"users": []any{
+				map[string]any{
 					"name": "First User",
 					"id":   1,
 				},
-				map[string]interface{}{
+				map[string]any{
 					"name": "Second User",
 					"id":   2,
 				},
@@ -211,8 +211,8 @@ func TestTransformAction_Execute_ComplexTransform(t *testing.T) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
-		StepResults: map[string]interface{}{
-			"api_response": map[string]interface{}{
+		StepResults: map[string]any{
+			"api_response": map[string]any{
 				"open":  45000.0,
 				"close": 46000.0,
 				"high":  47000.0,
@@ -225,7 +225,7 @@ func TestTransformAction_Execute_ComplexTransform(t *testing.T) {
 	result, err := action.Execute(context.Background(), execCtx, logger)
 
 	require.NoError(t, err)
-	resultMap := result.(map[string]interface{})
+	resultMap := result.(map[string]any)
 	assert.Equal(t, 46000.0, resultMap["price"])
 	assert.Equal(t, "USD", resultMap["currency"])
 	assert.Equal(t, "2023-10-01T10:00:00Z", resultMap["timestamp"])
@@ -239,7 +239,7 @@ func TestTransformAction_Execute_EmptyExpression(t *testing.T) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
-		StepResults: map[string]interface{}{
+		StepResults: map[string]any{
 			"data": "test",
 		},
 	}
@@ -259,7 +259,7 @@ func TestTransformAction_Execute_InvalidExpression(t *testing.T) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
-		StepResults: map[string]interface{}{
+		StepResults: map[string]any{
 			"data": "test",
 		},
 	}
@@ -278,7 +278,7 @@ func TestTransformAction_Execute_InputNotFound(t *testing.T) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
-		StepResults: map[string]interface{}{
+		StepResults: map[string]any{
 			"data": "test",
 		},
 	}
@@ -300,7 +300,7 @@ func TestTransformAction_Execute_WithCancel(t *testing.T) {
 	cancel() // Cancel immediately
 
 	execCtx := models.ExecutionContext{
-		StepResults: map[string]interface{}{
+		StepResults: map[string]any{
 			"data": "test value",
 		},
 	}
@@ -319,7 +319,7 @@ func TestTransformAction_Extract(t *testing.T) {
 	}
 
 	execCtx := models.ExecutionContext{
-		StepResults: map[string]interface{}{
+		StepResults: map[string]any{
 			"step1": "value1",
 			"step2": "value2",
 		},

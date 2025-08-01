@@ -91,13 +91,13 @@ func TestAPI_GetWorkflows_WithData(t *testing.T) {
 				Name:     "Log Step",
 				ActionID: "log",
 				UID:      "log_step",
-				Configuration: map[string]interface{}{
+				Configuration: map[string]any{
 					"message": "Test message",
 				},
 				Enabled: true,
 			},
 		},
-		Variables: map[string]interface{}{
+		Variables: map[string]any{
 			"test_var": "test_value",
 		},
 	}
@@ -112,13 +112,13 @@ func TestAPI_GetWorkflows_WithData(t *testing.T) {
 				Name:     "Transform Step",
 				ActionID: "transform",
 				UID:      "transform_step",
-				Configuration: map[string]interface{}{
+				Configuration: map[string]any{
 					"expression": "{ \"result\": \"transformed\" }",
 				},
 				Enabled: true,
 			},
 		},
-		Variables: map[string]interface{}{},
+		Variables: map[string]any{},
 	}
 
 	// Save workflows
@@ -163,7 +163,7 @@ func TestAPI_GetWorkflow_Success(t *testing.T) {
 				Name:     "HTTP Request Step",
 				ActionID: "http_request",
 				UID:      "http_step",
-				Configuration: map[string]interface{}{
+				Configuration: map[string]any{
 					"protocol": "https",
 					"host":     "api.example.com",
 					"path":     "/data",
@@ -172,7 +172,7 @@ func TestAPI_GetWorkflow_Success(t *testing.T) {
 				Enabled: true,
 			},
 		},
-		Variables: map[string]interface{}{
+		Variables: map[string]any{
 			"api_key": "test-key",
 		},
 	}
@@ -271,7 +271,7 @@ func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
 				Name:     "Log Initial Message",
 				ActionID: "log",
 				UID:      "initial_log",
-				Configuration: map[string]interface{}{
+				Configuration: map[string]any{
 					"message": "Starting integration test workflow",
 				},
 				OnSuccess: stringPtr("step2"),
@@ -282,7 +282,7 @@ func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
 				Name:     "HTTP API Call",
 				ActionID: "http_request",
 				UID:      "api_call",
-				Configuration: map[string]interface{}{
+				Configuration: map[string]any{
 					"protocol": "https",
 					"host":     "httpbin.org",
 					"path":     "/json",
@@ -298,7 +298,7 @@ func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
 				Name:     "Transform Response",
 				ActionID: "transform",
 				UID:      "transform_response",
-				Configuration: map[string]interface{}{
+				Configuration: map[string]any{
 					"expression": "{ \"processed\": true, \"original\": steps.api_call.body }",
 				},
 				OnSuccess: stringPtr("step5"),
@@ -309,7 +309,7 @@ func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
 				Name:     "Log Error",
 				ActionID: "log",
 				UID:      "error_log",
-				Configuration: map[string]interface{}{
+				Configuration: map[string]any{
 					"message": "API call failed",
 				},
 				Enabled: true,
@@ -319,16 +319,16 @@ func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
 				Name:     "Final Log",
 				ActionID: "log",
 				UID:      "final_log",
-				Configuration: map[string]interface{}{
+				Configuration: map[string]any{
 					"message": "Integration test completed successfully",
 				},
 				Enabled: true,
 			},
 		},
-		Variables: map[string]interface{}{
+		Variables: map[string]any{
 			"environment": "test",
 			"version":     "1.0.0",
-			"config": map[string]interface{}{
+			"config": map[string]any{
 				"retry_attempts": 3,
 				"timeout":        30,
 			},
@@ -338,7 +338,7 @@ func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
 				ID:        "integration-test-trigger",
 				Name:      "Integration Test Trigger",
 				TriggerID: "schedule",
-				Configuration: map[string]interface{}{
+				Configuration: map[string]any{
 					"schedule": "0 0 * * *",
 				},
 			},
@@ -398,7 +398,7 @@ func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
 	assert.Equal(t, "test", fetchedWorkflow.Variables["environment"])
 	assert.Equal(t, "1.0.0", fetchedWorkflow.Variables["version"])
 
-	config, ok := fetchedWorkflow.Variables["config"].(map[string]interface{})
+	config, ok := fetchedWorkflow.Variables["config"].(map[string]any)
 	require.True(t, ok)
 	assert.Equal(t, float64(3), config["retry_attempts"])
 

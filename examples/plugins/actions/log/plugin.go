@@ -10,10 +10,10 @@ import (
 )
 
 type LogAction struct {
-	config map[string]interface{}
+	config map[string]any
 }
 
-func (l *LogAction) Execute(ctx context.Context, ectx models.ExecutionContext, logger *slog.Logger) (interface{}, error) {
+func (l *LogAction) Execute(ctx context.Context, ectx models.ExecutionContext, logger *slog.Logger) (any, error) {
 	log.Default().Println("Executing custom log action")
 	return nil, nil
 }
@@ -36,7 +36,7 @@ func (l LogActionFactory) Description() string {
 	return "Logs a message to the console or a file based on the configuration provided."
 }
 
-func (l LogActionFactory) Create(config map[string]interface{}) (protocol.Action, error) {
+func (l LogActionFactory) Create(config map[string]any) (protocol.Action, error) {
 	return &LogAction{
 		config: config,
 	}, nil

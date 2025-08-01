@@ -39,7 +39,7 @@ func TestHTTPRequestAction_EnhancedTemplating(t *testing.T) {
 
 		// Verify body was templated correctly
 		if r.Method == "POST" {
-			var body map[string]interface{}
+			var body map[string]any
 			err := json.NewDecoder(r.Body).Decode(&body)
 			require.NoError(t, err)
 
@@ -52,7 +52,7 @@ func TestHTTPRequestAction_EnhancedTemplating(t *testing.T) {
 		// Return success response
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		if err := json.NewEncoder(w).Encode(map[string]interface{}{
+		if err := json.NewEncoder(w).Encode(map[string]any{
 			"success":  true,
 			"order_id": "ORD-456",
 		}); err != nil {
@@ -89,28 +89,28 @@ func TestHTTPRequestAction_EnhancedTemplating(t *testing.T) {
 	executionCtx := models.ExecutionContext{
 		ID:         "exec-789",
 		WorkflowID: "test-workflow",
-		Variables: map[string]interface{}{
+		Variables: map[string]any{
 			"user_id": 123,
-			"config": map[string]interface{}{
+			"config": map[string]any{
 				"api_endpoint": "api.example.com",
 				"version":      "v1",
 			},
 		},
-		StepResults: map[string]interface{}{
-			"price_calculation": map[string]interface{}{
+		StepResults: map[string]any{
+			"price_calculation": map[string]any{
 				"total":    100.0,
 				"currency": "USD",
 			},
-			"user_lookup": map[string]interface{}{
+			"user_lookup": map[string]any{
 				"name":   "john_doe",
 				"active": true,
 			},
 		},
-		TriggerData: map[string]interface{}{
+		TriggerData: map[string]any{
 			"source": "webhook",
 			"event":  "order_created",
 		},
-		Metadata: map[string]interface{}{
+		Metadata: map[string]any{
 			"version":   "1.0",
 			"timestamp": "2023-12-01T10:00:00Z",
 		},
@@ -127,14 +127,14 @@ func TestHTTPRequestAction_EnhancedTemplating(t *testing.T) {
 	require.NotNil(t, result)
 
 	// Verify response data
-	resultMap, ok := result.(map[string]interface{})
+	resultMap, ok := result.(map[string]any)
 	require.True(t, ok)
 
 	// Check if body was parsed as JSON
 	body, bodyExists := resultMap["body"]
 	require.True(t, bodyExists, "Response body should exist")
 
-	if bodyMap, ok := body.(map[string]interface{}); ok {
+	if bodyMap, ok := body.(map[string]any); ok {
 		assert.Equal(t, true, bodyMap["success"])
 		assert.Equal(t, "ORD-456", bodyMap["order_id"])
 	} else {
@@ -193,14 +193,14 @@ func TestHTTPRequestAction_EnvironmentVariableAccess(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
-	resultMap, ok := result.(map[string]interface{})
+	resultMap, ok := result.(map[string]any)
 	require.True(t, ok)
 
 	// Check if body was parsed as JSON
 	body, bodyExists := resultMap["body"]
 	require.True(t, bodyExists, "Response body should exist")
 
-	if bodyMap, ok := body.(map[string]interface{}); ok {
+	if bodyMap, ok := body.(map[string]any); ok {
 		assert.Equal(t, "ok", bodyMap["status"])
 	} else {
 		t.Logf("Body is not a map, got: %T %+v", body, body)

@@ -24,18 +24,18 @@ const (
 )
 
 type BaseEvent struct {
-	ID         string                 `json:"id"`
-	Type       EventType              `json:"type"`
-	Timestamp  time.Time              `json:"timestamp"`
-	WorkflowID string                 `json:"workflow_id"`
-	WorkerID   string                 `json:"worker_id,omitempty"`
-	Metadata   map[string]interface{} `json:"metadata,omitempty"`
+	ID         string         `json:"id"`
+	Type       EventType      `json:"type"`
+	Timestamp  time.Time      `json:"timestamp"`
+	WorkflowID string         `json:"workflow_id"`
+	WorkerID   string         `json:"worker_id,omitempty"`
+	Metadata   map[string]any `json:"metadata,omitempty"`
 }
 
 type WorkflowTriggered struct {
 	BaseEvent
-	TriggerID   string                 `json:"trigger_id"`
-	TriggerData map[string]interface{} `json:"trigger_data,omitempty"`
+	TriggerID   string         `json:"trigger_id"`
+	TriggerData map[string]any `json:"trigger_data,omitempty"`
 }
 
 func (w WorkflowTriggered) GetType() EventType {
@@ -44,9 +44,9 @@ func (w WorkflowTriggered) GetType() EventType {
 
 type WorkflowFinished struct {
 	BaseEvent
-	ExecutionID string                 `json:"execution_id"`
-	Result      map[string]interface{} `json:"result,omitempty"`
-	Duration    time.Duration          `json:"duration"`
+	ExecutionID string         `json:"execution_id"`
+	Result      map[string]any `json:"result,omitempty"`
+	Duration    time.Duration  `json:"duration"`
 }
 
 func (w WorkflowFinished) GetType() EventType {
@@ -80,7 +80,7 @@ type WorkflowStepFinished struct {
 	ExecutionID string        `json:"execution_id"`
 	StepID      string        `json:"step_id"`
 	ActionID    string        `json:"action_id"`
-	Result      interface{}   `json:"result,omitempty"`
+	Result      any           `json:"result,omitempty"`
 	Duration    time.Duration `json:"duration"`
 }
 
@@ -107,6 +107,6 @@ func NewBaseEvent(eventType EventType, workflowID string) BaseEvent {
 		Type:       eventType,
 		Timestamp:  time.Now(),
 		WorkflowID: workflowID,
-		Metadata:   make(map[string]interface{}),
+		Metadata:   make(map[string]any),
 	}
 }

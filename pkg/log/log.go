@@ -28,4 +28,3 @@ func Setup(logLevel string) {
 func WithModule(module string) *slog.Logger {
 	return slog.With("module", module)
 }
-

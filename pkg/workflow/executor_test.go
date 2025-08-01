@@ -54,7 +54,7 @@ func TestExecutor_Start_EmptyWorkflow(t *testing.T) {
 	require.NoError(t, err)
 
 	// Start execution
-	events, err := executor.Start(ctx, logger, "empty-workflow", map[string]interface{}{})
+	events, err := executor.Start(ctx, logger, "empty-workflow", map[string]any{})
 
 	assert.Error(t, err)
 	assert.Nil(t, events)
@@ -83,7 +83,7 @@ func TestExecutor_Start_Success(t *testing.T) {
 				Name:     "Log Step",
 				ActionID: "log",
 				UID:      "log_step",
-				Configuration: map[string]interface{}{
+				Configuration: map[string]any{
 					"message": "Test message",
 				},
 				Enabled: true,
@@ -97,7 +97,7 @@ func TestExecutor_Start_Success(t *testing.T) {
 	require.NoError(t, err)
 
 	// Start execution
-	eventList, err := executor.Start(ctx, logger, "single-step-workflow", map[string]interface{}{
+	eventList, err := executor.Start(ctx, logger, "single-step-workflow", map[string]any{
 		"trigger": "test",
 	})
 
@@ -135,7 +135,7 @@ func TestExecutor_ExecuteStep_LogAction(t *testing.T) {
 				Name:          "Log Action",
 				ActionID:      "log",
 				UID:           "log_action",
-				Configuration: map[string]interface{}{},
+				Configuration: map[string]any{},
 				Enabled:       true,
 			},
 		},
@@ -145,9 +145,9 @@ func TestExecutor_ExecuteStep_LogAction(t *testing.T) {
 	execCtx := &models.ExecutionContext{
 		ID:          "exec-123",
 		WorkflowID:  "log-workflow",
-		TriggerData: map[string]interface{}{"test": "data"},
-		StepResults: make(map[string]interface{}),
-		Metadata:    make(map[string]interface{}),
+		TriggerData: map[string]any{"test": "data"},
+		StepResults: make(map[string]any),
+		Metadata:    make(map[string]any),
 	}
 
 	// Execute step
@@ -206,7 +206,7 @@ func TestExecutor_ExecuteStep_WithNextStep(t *testing.T) {
 				ActionID:      "log",
 				UID:           "first_step",
 				OnSuccess:     &nextStepID,
-				Configuration: map[string]interface{}{},
+				Configuration: map[string]any{},
 				Enabled:       true,
 			},
 			{
@@ -214,7 +214,7 @@ func TestExecutor_ExecuteStep_WithNextStep(t *testing.T) {
 				Name:          "Second Step",
 				ActionID:      "log",
 				UID:           "second_step",
-				Configuration: map[string]interface{}{},
+				Configuration: map[string]any{},
 				Enabled:       true,
 			},
 		},
@@ -224,9 +224,9 @@ func TestExecutor_ExecuteStep_WithNextStep(t *testing.T) {
 	execCtx := &models.ExecutionContext{
 		ID:          "exec-456",
 		WorkflowID:  "two-step-workflow",
-		TriggerData: map[string]interface{}{},
-		StepResults: make(map[string]interface{}),
-		Metadata:    make(map[string]interface{}),
+		TriggerData: map[string]any{},
+		StepResults: make(map[string]any),
+		Metadata:    make(map[string]any),
 	}
 
 	// Execute first step
@@ -276,7 +276,7 @@ func TestExecutor_ExecuteStep_DisabledStep(t *testing.T) {
 				Name:          "Disabled Step",
 				ActionID:      "log",
 				UID:           "disabled_step",
-				Configuration: map[string]interface{}{},
+				Configuration: map[string]any{},
 				Enabled:       false, // Disabled
 			},
 		},
@@ -285,9 +285,9 @@ func TestExecutor_ExecuteStep_DisabledStep(t *testing.T) {
 	execCtx := &models.ExecutionContext{
 		ID:          "exec-disabled",
 		WorkflowID:  "disabled-step-workflow",
-		TriggerData: map[string]interface{}{},
-		StepResults: make(map[string]interface{}),
-		Metadata:    make(map[string]interface{}),
+		TriggerData: map[string]any{},
+		StepResults: make(map[string]any),
+		Metadata:    make(map[string]any),
 	}
 
 	// Execute disabled step
@@ -318,9 +318,9 @@ func TestExecutor_ExecuteStep_StepNotFound(t *testing.T) {
 	execCtx := &models.ExecutionContext{
 		ID:          "exec-not-found",
 		WorkflowID:  "test-workflow",
-		TriggerData: map[string]interface{}{},
-		StepResults: make(map[string]interface{}),
-		Metadata:    make(map[string]interface{}),
+		TriggerData: map[string]any{},
+		StepResults: make(map[string]any),
+		Metadata:    make(map[string]any),
 	}
 
 	// Execute non-existent step
@@ -348,7 +348,7 @@ func TestExecutor_ExecuteStep_Action_failure(t *testing.T) {
 				Name:          "Failing Step",
 				ActionID:      "non-existent-action", // This will fail
 				UID:           "failing_step",
-				Configuration: map[string]interface{}{},
+				Configuration: map[string]any{},
 				Enabled:       true,
 			},
 		},
@@ -357,9 +357,9 @@ func TestExecutor_ExecuteStep_Action_failure(t *testing.T) {
 	execCtx := &models.ExecutionContext{
 		ID:          "exec-fail",
 		WorkflowID:  "failing-workflow",
-		TriggerData: map[string]interface{}{},
-		StepResults: make(map[string]interface{}),
-		Metadata:    make(map[string]interface{}),
+		TriggerData: map[string]any{},
+		StepResults: make(map[string]any),
+		Metadata:    make(map[string]any),
 	}
 
 	// Execute failing step
@@ -414,7 +414,7 @@ func TestExecutor_IntegrationWithEventBus(t *testing.T) {
 				Name:     "First Step",
 				ActionID: "log",
 				UID:      "first_step",
-				Configuration: map[string]interface{}{
+				Configuration: map[string]any{
 					"message": "Integration test",
 				},
 				Enabled: true,
@@ -431,7 +431,7 @@ func TestExecutor_IntegrationWithEventBus(t *testing.T) {
 	var receivedEvents []eventbus.Event
 	var eventsMutex sync.Mutex
 
-	err = eventBus.Handle(events.WorkflowStepAvailableEvent, func(ctx context.Context, event interface{}) error {
+	err = eventBus.Handle(events.WorkflowStepAvailableEvent, func(ctx context.Context, event any) error {
 		eventsMutex.Lock()
 		defer eventsMutex.Unlock()
 		receivedEvents = append(receivedEvents, event.(eventbus.Event))
@@ -439,7 +439,7 @@ func TestExecutor_IntegrationWithEventBus(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	err = eventBus.Handle(events.WorkflowStepFinishedEvent, func(ctx context.Context, event interface{}) error {
+	err = eventBus.Handle(events.WorkflowStepFinishedEvent, func(ctx context.Context, event any) error {
 		eventsMutex.Lock()
 		defer eventsMutex.Unlock()
 		receivedEvents = append(receivedEvents, event.(eventbus.Event))
@@ -447,7 +447,7 @@ func TestExecutor_IntegrationWithEventBus(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	err = eventBus.Handle(events.WorkflowFinishedEvent, func(ctx context.Context, event interface{}) error {
+	err = eventBus.Handle(events.WorkflowFinishedEvent, func(ctx context.Context, event any) error {
 		eventsMutex.Lock()
 		defer eventsMutex.Unlock()
 		receivedEvents = append(receivedEvents, event.(eventbus.Event))
@@ -460,7 +460,7 @@ func TestExecutor_IntegrationWithEventBus(t *testing.T) {
 	require.NoError(t, err)
 
 	// Start workflow execution
-	eventList, err := executor.Start(ctx, logger, "integration-workflow", map[string]interface{}{
+	eventList, err := executor.Start(ctx, logger, "integration-workflow", map[string]any{
 		"integration": "test",
 	})
 	require.NoError(t, err)
@@ -501,4 +501,3 @@ func createTestRegistry() *registry.Registry {
 
 	return reg
 }
-

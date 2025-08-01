@@ -34,7 +34,7 @@ func NewValidateCommand() *cli.Command {
 		},
 		Action: func(ctx context.Context, command *cli.Command) error {
 			validate = validator.New(validator.WithRequiredStructEnabled())
-			
+
 			logger := slog.With(
 				"module", "operion-dispatcher",
 				"action", "validate",
@@ -66,7 +66,6 @@ func NewValidateCommand() *cli.Command {
 			validSteps := 0
 			invalidSteps := 0
 
-
 			for _, workflow := range workflows {
 				fmt.Printf("\nWorkflow: %s (%s)\n", workflow.Name, workflow.ID)
 				if len(workflow.WorkflowTriggers) == 0 {
@@ -78,7 +77,7 @@ func NewValidateCommand() *cli.Command {
 				for _, workflowTrigger := range workflow.WorkflowTriggers {
 					fmt.Printf("  WorkflowTrigger: %s (%s)\n", workflowTrigger.ID, workflowTrigger.TriggerID)
 
-					config := make(map[string]interface{})
+					config := make(map[string]any)
 					maps.Copy(config, workflowTrigger.Configuration)
 					config["workflow_id"] = workflow.ID
 					config["trigger_id"] = workflowTrigger.ID
@@ -92,7 +91,7 @@ func NewValidateCommand() *cli.Command {
 
 					err = validate.Struct(workflowTrigger)
 					if err != nil {
-validationErrors := err.(validator.ValidationErrors)
+						validationErrors := err.(validator.ValidationErrors)
 						fmt.Printf("    ❌ INVALID: %v\n", validationErrors)
 						invalidTriggers++
 						continue
@@ -113,7 +112,6 @@ validationErrors := err.(validator.ValidationErrors)
 					fmt.Printf("  Step: %s\n", step.Name)
 
 					err = validate.Struct(step)
-			
 
 					if err != nil {
 						validationErrors := err.(validator.ValidationErrors)
@@ -128,10 +126,10 @@ validationErrors := err.(validator.ValidationErrors)
 			}
 
 			fmt.Printf("\nValidation Summary:\n")
-			fmt.Printf("  Total triggers: %d\n", invalidTriggers + validTriggers)
+			fmt.Printf("  Total triggers: %d\n", invalidTriggers+validTriggers)
 			fmt.Printf("  Valid triggers: %d\n", validTriggers)
 			fmt.Printf("  Invalid triggers: %d\n", invalidTriggers)
-			fmt.Printf("  Total steps: %d\n", invalidSteps + validSteps)
+			fmt.Printf("  Total steps: %d\n", invalidSteps+validSteps)
 			fmt.Printf("  Valid steps: %d\n", validSteps)
 			fmt.Printf("  Invalid steps: %d\n", invalidSteps)
 

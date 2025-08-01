@@ -105,7 +105,7 @@ func (h *HTTPRequestActionFactory) Schema() map[string]any {
 				},
 			},
 		},
-		"required": []string{"url", "method"},
+		"required":             []string{"url", "method"},
 		"additionalProperties": false,
 	}
 }

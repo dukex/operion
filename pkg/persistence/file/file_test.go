@@ -50,7 +50,7 @@ func TestFilePersistence_SaveWorkflow(t *testing.T) {
 				Name:     "Test Step",
 				ActionID: "log",
 				UID:      "test_step",
-				Configuration: map[string]interface{}{
+				Configuration: map[string]any{
 					"message": "test",
 				},
 				Enabled: true,
@@ -118,7 +118,7 @@ func TestFilePersistence_WorkflowByID(t *testing.T) {
 				Name:     "Test Step",
 				ActionID: "log",
 				UID:      "test_step",
-				Configuration: map[string]interface{}{
+				Configuration: map[string]any{
 					"message": "test",
 				},
 				Enabled: true,

@@ -148,7 +148,7 @@ func (dm *DispatcherManager) startWorkflowTriggers(workflow *models.Workflow) er
 	for _, workflowTrigger := range workflow.WorkflowTriggers {
 		wtLogger := logger.With("trigger_id", workflowTrigger.ID)
 
-		config := make(map[string]interface{})
+		config := make(map[string]any)
 		maps.Copy(config, workflowTrigger.Configuration)
 		config["workflow_id"] = workflow.ID
 		config["workflow_trigger_id"] = workflowTrigger.ID
@@ -183,7 +183,7 @@ func (dm *DispatcherManager) startWorkflowTriggers(workflow *models.Workflow) er
 }
 
 func (tm *DispatcherManager) createTriggerCallback(workflowID, triggerID string) protocol.TriggerCallback {
-	return func(ctx context.Context, data map[string]interface{}) error {
+	return func(ctx context.Context, data map[string]any) error {
 		logger := tm.logger.With("workflow_id", workflowID, "trigger_id", triggerID)
 		logger.Info("Trigger fired, publishing event")
 

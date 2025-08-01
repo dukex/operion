@@ -47,7 +47,7 @@ func (eb *WatermillEventBus) Subscribe(ctx context.Context) error {
 
 	go func() {
 		for msg := range messages {
-			var event interface{}
+			var event any
 
 			eventType := events.EventType(msg.Metadata.Get(events.EventTypeMetadataKey))
 			handler, exists := eb.subscriptions[eventType]

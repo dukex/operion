@@ -80,7 +80,7 @@ func NewTransformAction(config map[string]any) (*TransformAction, error) {
 	}, nil
 }
 
-func (a *TransformAction) Execute(ctx context.Context, executionCtx models.ExecutionContext, logger *slog.Logger) (interface{}, error) {
+func (a *TransformAction) Execute(ctx context.Context, executionCtx models.ExecutionContext, logger *slog.Logger) (any, error) {
 	logger = logger.With(
 		"module", "http_request_action",
 	)
@@ -100,7 +100,7 @@ func (a *TransformAction) Execute(ctx context.Context, executionCtx models.Execu
 	return result, nil
 }
 
-func (a *TransformAction) extract(executionCtx models.ExecutionContext) (interface{}, error) {
+func (a *TransformAction) extract(executionCtx models.ExecutionContext) (any, error) {
 	if a.Input == "" {
 		return executionCtx.StepResults, nil
 	}

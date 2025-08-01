@@ -7,7 +7,7 @@ import (
 	jsonata "github.com/xiatechs/jsonata-go"
 )
 
-func Render(input string, data interface{}) (interface{}, error) {
+func Render(input string, data any) (any, error) {
 	e, err := jsonata.Compile(input)
 
 	if err != nil {

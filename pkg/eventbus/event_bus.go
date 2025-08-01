@@ -20,7 +20,7 @@ type EventSubscriber interface {
 	Subscribe(ctx context.Context) error
 }
 
-type EventHandler func(ctx context.Context, event interface{}) error
+type EventHandler func(ctx context.Context, event any) error
 
 type EventBus interface {
 	EventPublisher

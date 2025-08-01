@@ -30,7 +30,7 @@ func NewLogAction(config map[string]any) *LogAction {
 	}
 }
 
-func (a *LogAction) Execute(ctx context.Context, executionCtx models.ExecutionContext, logger *slog.Logger) (interface{}, error) {
+func (a *LogAction) Execute(ctx context.Context, executionCtx models.ExecutionContext, logger *slog.Logger) (any, error) {
 	logger = logger.With("action_type", "log")
 
 	// Render the message with templating if needed

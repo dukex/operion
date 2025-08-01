@@ -15,7 +15,7 @@ func TestHTTPRequestActionFactory_ID(t *testing.T) {
 func TestHTTPRequestActionFactory_Create(t *testing.T) {
 	factory := NewHTTPRequestActionFactory()
 
-	config := map[string]interface{}{
+	config := map[string]any{
 		"protocol": "https",
 		"host":     "api.example.com",
 		"path":     "/test",
@@ -37,7 +37,7 @@ func TestHTTPRequestActionFactory_Create(t *testing.T) {
 func TestHTTPRequestActionFactory_Create_MissingHost(t *testing.T) {
 	factory := NewHTTPRequestActionFactory()
 
-	config := map[string]interface{}{
+	config := map[string]any{
 		"method": "GET",
 	}
 
@@ -50,7 +50,7 @@ func TestHTTPRequestActionFactory_Create_EmptyConfig(t *testing.T) {
 	factory := NewHTTPRequestActionFactory()
 
 	// Test with empty configuration - should fail due to missing host
-	config := map[string]interface{}{}
+	config := map[string]any{}
 
 	_, err := factory.Create(config)
 	require.Error(t, err)

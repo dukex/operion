@@ -74,7 +74,7 @@ func (suite *APITestSuite) setupRoutes() {
 	registry.Get("/triggers", suite.handlers.GetAvailableTriggers)
 }
 
-func (suite *APITestSuite) makeRequest(method, url string, body interface{}) (*http.Response, []byte) {
+func (suite *APITestSuite) makeRequest(method, url string, body any) (*http.Response, []byte) {
 	var reqBody []byte
 	if body != nil {
 		reqBody, _ = json.Marshal(body)
@@ -102,7 +102,7 @@ func (suite *APITestSuite) TestHealthCheck() {
 }
 
 func (suite *APITestSuite) TestCreateWorkflow() {
-	workflow := map[string]interface{}{
+	workflow := map[string]any{
 		"name":        "Test Workflow",
 		"description": "A test workflow",
 		"owner":       "test-user",
@@ -125,7 +125,7 @@ func (suite *APITestSuite) TestCreateWorkflow() {
 }
 
 func (suite *APITestSuite) TestCreateWorkflowValidation() {
-	workflow := map[string]interface{}{
+	workflow := map[string]any{
 		"name":   "ab", // too short
 		"status": "inactive",
 	}
@@ -180,10 +180,10 @@ func (suite *APITestSuite) TestGetWorkflowNotFound() {
 func (suite *APITestSuite) TestPatchWorkflow() {
 	workflow := suite.createTestWorkflow("Original Name", "Original description")
 
-	patch := map[string]interface{}{
+	patch := map[string]any{
 		"name":   "Updated Name",
 		"status": "active",
-		"variables": map[string]interface{}{
+		"variables": map[string]any{
 			"key1": "value1",
 			"key2": 42,
 		},
@@ -207,15 +207,15 @@ func (suite *APITestSuite) TestPatchWorkflow() {
 func (suite *APITestSuite) TestPatchWorkflowWithSteps() {
 	workflow := suite.createTestWorkflow("Test Workflow", "Test description")
 
-	patch := map[string]interface{}{
-		"steps": []map[string]interface{}{
+	patch := map[string]any{
+		"steps": []map[string]any{
 			{
 				"name": "log_step",
-				"action": map[string]interface{}{
+				"action": map[string]any{
 					"type":        "log",
 					"name":        "Log Action",
 					"description": "Log a message",
-					"configuration": map[string]interface{}{
+					"configuration": map[string]any{
 						"level":   "info",
 						"message": "Hello World",
 					},
@@ -243,15 +243,15 @@ func (suite *APITestSuite) TestPatchWorkflowWithSteps() {
 func (suite *APITestSuite) TestPatchWorkflowInvalidActionType() {
 	workflow := suite.createTestWorkflow("Test Workflow", "Test description")
 
-	patch := map[string]interface{}{
-		"steps": []map[string]interface{}{
+	patch := map[string]any{
+		"steps": []map[string]any{
 			{
 				"name": "invalid_step",
-				"action": map[string]interface{}{
+				"action": map[string]any{
 					"type":          "invalid_action_type",
 					"name":          "Invalid Action",
 					"description":   "Invalid action",
-					"configuration": map[string]interface{}{},
+					"configuration": map[string]any{},
 				},
 				"enabled": true,
 			},
@@ -268,14 +268,14 @@ func (suite *APITestSuite) TestPatchWorkflowInvalidActionType() {
 func (suite *APITestSuite) TestPatchWorkflowSteps() {
 	workflow := suite.createTestWorkflow("Test Workflow", "Test description")
 
-	steps := []map[string]interface{}{
+	steps := []map[string]any{
 		{
 			"name": "log_step",
-			"action": map[string]interface{}{
+			"action": map[string]any{
 				"type":        "log",
 				"name":        "Log Action",
 				"description": "Log a message",
-				"configuration": map[string]interface{}{
+				"configuration": map[string]any{
 					"level":   "info",
 					"message": "Hello from steps",
 				},
@@ -284,11 +284,11 @@ func (suite *APITestSuite) TestPatchWorkflowSteps() {
 		},
 		{
 			"name": "http_step",
-			"action": map[string]interface{}{
+			"action": map[string]any{
 				"type":        "http_request",
 				"name":        "HTTP Action",
 				"description": "Make HTTP request",
-				"configuration": map[string]interface{}{
+				"configuration": map[string]any{
 					"url":    "https://api.example.com",
 					"method": "GET",
 				},
@@ -321,14 +321,14 @@ func (suite *APITestSuite) TestPatchWorkflowSteps() {
 func (suite *APITestSuite) TestPatchWorkflowStepsInvalidAction() {
 	workflow := suite.createTestWorkflow("Test Workflow", "Test description")
 
-	steps := []map[string]interface{}{
+	steps := []map[string]any{
 		{
 			"name": "invalid_step_name",
-			"action": map[string]interface{}{
+			"action": map[string]any{
 				"type":          "invalid_action_type",
 				"name":          "Invalid Action",
 				"description":   "Invalid action",
-				"configuration": map[string]interface{}{},
+				"configuration": map[string]any{},
 			},
 			"enabled": true,
 		},
@@ -343,14 +343,14 @@ func (suite *APITestSuite) TestPatchWorkflowStepsInvalidAction() {
 func (suite *APITestSuite) TestPatchWorkflowStepsInvalidStepName() {
 	workflow := suite.createTestWorkflow("Test Workflow", "Test description")
 
-	steps := []map[string]interface{}{
+	steps := []map[string]any{
 		{
 			"name": "Invalid Step Name", // Should be lowercase with underscores
-			"action": map[string]interface{}{
+			"action": map[string]any{
 				"type":        "log",
 				"name":        "Log Action",
 				"description": "Log action",
-				"configuration": map[string]interface{}{
+				"configuration": map[string]any{
 					"level":   "info",
 					"message": "test",
 				},
@@ -436,7 +436,7 @@ func (suite *APITestSuite) TestGetAvailableTriggers() {
 }
 
 func (suite *APITestSuite) createTestWorkflow(name, description string) *domain.Workflow {
-	workflow := map[string]interface{}{
+	workflow := map[string]any{
 		"name":        name,
 		"description": description,
 		"owner":       "test-user",

@@ -18,7 +18,7 @@ import (
 
 // Mock event bus for testing
 type MockEventBus struct {
-	publishedEvents []interface{}
+	publishedEvents []any
 }
 
 func (m *MockEventBus) Handle(eventType events.EventType, handler eventbus.EventHandler) error {
@@ -99,7 +99,7 @@ func TestWorkerManager_HandleWorkflowTriggered_WorkflowNotFound(t *testing.T) {
 	mockEvent := &events.WorkflowTriggered{
 		BaseEvent:   baseEvent,
 		TriggerID:   "test-trigger",
-		TriggerData: map[string]interface{}{},
+		TriggerData: map[string]any{},
 	}
 
 	// Handle the event
@@ -144,10 +144,10 @@ func TestWorkerManager_HandleWorkflowStepAvailable_WorkflowNotFound(t *testing.T
 	executionCtx := models.ExecutionContext{
 		ID:          "exec-123",
 		WorkflowID:  "non-existent-workflow",
-		Variables:   make(map[string]interface{}),
-		StepResults: make(map[string]interface{}),
-		TriggerData: map[string]interface{}{},
-		Metadata:    map[string]interface{}{},
+		Variables:   make(map[string]any),
+		StepResults: make(map[string]any),
+		TriggerData: map[string]any{},
+		Metadata:    map[string]any{},
 	}
 
 	// Create a mock workflow step available event
@@ -185,13 +185,13 @@ func TestWorkerManager_BasicWorkflowExecution(t *testing.T) {
 				Name:     "Log Step",
 				ActionID: "log",
 				UID:      "log_step",
-				Configuration: map[string]interface{}{
+				Configuration: map[string]any{
 					"message": "Test message",
 				},
 				Enabled: true,
 			},
 		},
-		Variables: map[string]interface{}{
+		Variables: map[string]any{
 			"test_var": "test_value",
 		},
 	}
@@ -210,7 +210,7 @@ func TestWorkerManager_BasicWorkflowExecution(t *testing.T) {
 	mockEvent := &events.WorkflowTriggered{
 		BaseEvent:   baseEvent,
 		TriggerID:   "basic-test-trigger",
-		TriggerData: map[string]interface{}{"source": "basic_test"},
+		TriggerData: map[string]any{"source": "basic_test"},
 	}
 
 	// Execute workflow triggered event
@@ -230,7 +230,7 @@ type MockWorkflowRepository struct {
 	workflows map[string]*models.Workflow
 }
 
-func NewWorkflowRepository(persistence interface{}) *MockWorkflowRepository {
+func NewWorkflowRepository(persistence any) *MockWorkflowRepository {
 	return &MockWorkflowRepository{
 		workflows: make(map[string]*models.Workflow),
 	}

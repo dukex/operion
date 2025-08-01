@@ -58,24 +58,24 @@ func TestNewKafkaTrigger(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			trigger, err := NewKafkaTrigger(tt.config, logger)
-			
+
 			if tt.wantError {
 				if err == nil {
 					t.Errorf("NewKafkaTrigger() expected error but got none")
 				}
 				return
 			}
-			
+
 			if err != nil {
 				t.Errorf("NewKafkaTrigger() unexpected error: %v", err)
 				return
 			}
-			
+
 			if trigger == nil {
 				t.Errorf("NewKafkaTrigger() returned nil trigger")
 				return
 			}
-			
+
 			// Verify basic properties
 			if trigger.Topic != tt.config["topic"].(string) {
 				t.Errorf("NewKafkaTrigger() topic = %v, want %v", trigger.Topic, tt.config["topic"])
@@ -124,11 +124,11 @@ func TestKafkaTriggerValidate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.trigger.Validate()
-			
+
 			if tt.wantError && err == nil {
 				t.Errorf("Validate() expected error but got none")
 			}
-			
+
 			if !tt.wantError && err != nil {
 				t.Errorf("Validate() unexpected error: %v", err)
 			}
@@ -191,7 +191,7 @@ func TestKafkaTriggerConsumerGroupGeneration(t *testing.T) {
 
 func TestKafkaTriggerStopWithoutStart(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	
+
 	config := map[string]any{
 		"topic": "test-topic",
 	}
@@ -219,7 +219,7 @@ func mockCallback(ctx context.Context, data map[string]any) error {
 func TestKafkaTriggerCallbackInterface(t *testing.T) {
 	// Test that our mock callback implements the protocol.TriggerCallback interface
 	var callback protocol.TriggerCallback = mockCallback
-	
+
 	// This should compile without errors
 	_ = callback
 }

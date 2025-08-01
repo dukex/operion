@@ -31,7 +31,7 @@ func TestRepository_Create(t *testing.T) {
 				Name:     "Test Step",
 				ActionID: "log",
 				UID:      "test_step",
-				Configuration: map[string]interface{}{
+				Configuration: map[string]any{
 					"message": "test",
 				},
 				Enabled: true,

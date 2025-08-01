@@ -7,14 +7,14 @@ import (
 	"github.com/dukex/operion/pkg/models"
 )
 
-func RenderWithContext(input string, executionCtx *models.ExecutionContext) (interface{}, error) {
-	enhancedData := map[string]interface{}{
+func RenderWithContext(input string, executionCtx *models.ExecutionContext) (any, error) {
+	enhancedData := map[string]any{
 		"steps":    executionCtx.StepResults,
 		"vars":     executionCtx.Variables,
 		"trigger":  executionCtx.TriggerData,
 		"metadata": executionCtx.Metadata,
 		"env":      getEnvVars(),
-		"execution": map[string]interface{}{
+		"execution": map[string]any{
 			"id":          executionCtx.ID,
 			"workflow_id": executionCtx.WorkflowID,
 		},
@@ -37,8 +37,8 @@ func NeedsTemplating(input string) bool {
 		strings.Contains(input, "&") // JSONata string concatenation
 }
 
-func getEnvVars() map[string]interface{} {
-	envMap := make(map[string]interface{})
+func getEnvVars() map[string]any {
+	envMap := make(map[string]any)
 
 	for _, env := range os.Environ() {
 		parts := strings.SplitN(env, "=", 2)

@@ -183,8 +183,8 @@ type DatabaseAction struct {
     Driver          string                 `json:"driver"`        // "postgres", "mysql", "mongodb"
     Operation       string                 `json:"operation"`     // "insert", "update", "delete", "select"
     Table           string                 `json:"table"`
-    Data            map[string]interface{} `json:"data,omitempty"`
-    Conditions      map[string]interface{} `json:"conditions,omitempty"`
+    Data            map[string]any `json:"data,omitempty"`
+    Conditions      map[string]any `json:"conditions,omitempty"`
     Query           string                 `json:"query,omitempty"`     // Raw SQL/Query
     Timeout         string                 `json:"timeout"`
     TLS             *TLSConfig            `json:"tls,omitempty"`
@@ -237,14 +237,14 @@ type ConditionalCase struct {
 type TemplateAction struct {
     TemplateType   string                 `json:"template_type"`   // "html", "json", "yaml", "text"
     Template       string                 `json:"template"`        // Template content or URL
-    Data           map[string]interface{} `json:"data"`
+    Data           map[string]any `json:"data"`
     OutputFormat   string                 `json:"output_format"`   // "json", "html", "pdf"
     OutputTarget   OutputTarget           `json:"output_target"`
 }
 
 type OutputTarget struct {
     Type   string `json:"type"`     // "http", "s3", "gcs", "response"
-    Config map[string]interface{} `json:"config"`
+    Config map[string]any `json:"config"`
 }
 ```
 

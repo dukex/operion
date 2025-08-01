@@ -22,7 +22,7 @@ func TestLogActionFactory_Create(t *testing.T) {
 
 	tests := []struct {
 		name   string
-		config map[string]interface{}
+		config map[string]any
 	}{
 		{
 			name:   "nil config",
@@ -30,11 +30,11 @@ func TestLogActionFactory_Create(t *testing.T) {
 		},
 		{
 			name:   "empty config",
-			config: map[string]interface{}{},
+			config: map[string]any{},
 		},
 		{
 			name: "config with values",
-			config: map[string]interface{}{
+			config: map[string]any{
 				"message": "test message",
 				"level":   "info",
 			},
@@ -54,7 +54,7 @@ func TestLogActionFactory_Create(t *testing.T) {
 func TestNewLogAction(t *testing.T) {
 	tests := []struct {
 		name          string
-		config        map[string]interface{}
+		config        map[string]any
 		expectedMsg   string
 		expectedLevel string
 	}{
@@ -66,13 +66,13 @@ func TestNewLogAction(t *testing.T) {
 		},
 		{
 			name:          "empty config",
-			config:        map[string]interface{}{},
+			config:        map[string]any{},
 			expectedMsg:   "",
 			expectedLevel: "info",
 		},
 		{
 			name: "config with message only",
-			config: map[string]interface{}{
+			config: map[string]any{
 				"message": "test message",
 			},
 			expectedMsg:   "test message",
@@ -80,7 +80,7 @@ func TestNewLogAction(t *testing.T) {
 		},
 		{
 			name: "config with message and level",
-			config: map[string]interface{}{
+			config: map[string]any{
 				"message": "debug message",
 				"level":   "debug",
 			},
@@ -104,7 +104,7 @@ func TestLogAction_Execute(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		config        map[string]interface{}
+		config        map[string]any
 		execCtx       models.ExecutionContext
 		expectedMsg   string
 		expectedLevel string
@@ -112,11 +112,11 @@ func TestLogAction_Execute(t *testing.T) {
 	}{
 		{
 			name: "simple message",
-			config: map[string]interface{}{
+			config: map[string]any{
 				"message": "Hello, World!",
 			},
 			execCtx: models.ExecutionContext{
-				StepResults: make(map[string]interface{}),
+				StepResults: make(map[string]any),
 			},
 			expectedMsg:   "Hello, World!",
 			expectedLevel: "info",
@@ -124,12 +124,12 @@ func TestLogAction_Execute(t *testing.T) {
 		},
 		{
 			name: "message with debug level",
-			config: map[string]interface{}{
+			config: map[string]any{
 				"message": "Debug message",
 				"level":   "debug",
 			},
 			execCtx: models.ExecutionContext{
-				StepResults: make(map[string]interface{}),
+				StepResults: make(map[string]any),
 			},
 			expectedMsg:   "Debug message",
 			expectedLevel: "debug",
@@ -137,15 +137,15 @@ func TestLogAction_Execute(t *testing.T) {
 		},
 		{
 			name: "message with templating",
-			config: map[string]interface{}{
+			config: map[string]any{
 				"message": "\"Processing workflow: \" & steps.step1.status",
 				"level":   "info",
 			},
 			execCtx: models.ExecutionContext{
 				ID:         "exec-123",
 				WorkflowID: "workflow-456",
-				StepResults: map[string]interface{}{
-					"step1": map[string]interface{}{
+				StepResults: map[string]any{
+					"step1": map[string]any{
 						"status": "success",
 					},
 				},
@@ -156,9 +156,9 @@ func TestLogAction_Execute(t *testing.T) {
 		},
 		{
 			name:   "empty message",
-			config: map[string]interface{}{},
+			config: map[string]any{},
 			execCtx: models.ExecutionContext{
-				StepResults: make(map[string]interface{}),
+				StepResults: make(map[string]any),
 			},
 			expectedMsg:   "",
 			expectedLevel: "info",
@@ -178,7 +178,7 @@ func TestLogAction_Execute(t *testing.T) {
 				assert.NotNil(t, result)
 
 				// Verify result contains message and level
-				resultMap, ok := result.(map[string]interface{})
+				resultMap, ok := result.(map[string]any)
 				assert.True(t, ok)
 				assert.Equal(t, tt.expectedMsg, resultMap["message"])
 				assert.Equal(t, tt.expectedLevel, resultMap["level"])
@@ -188,7 +188,7 @@ func TestLogAction_Execute(t *testing.T) {
 }
 
 func TestLogAction_Execute_WithCancel(t *testing.T) {
-	action := NewLogAction(map[string]interface{}{
+	action := NewLogAction(map[string]any{
 		"message": "Test message",
 	})
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -197,7 +197,7 @@ func TestLogAction_Execute_WithCancel(t *testing.T) {
 	cancel() // Cancel immediately
 
 	execCtx := models.ExecutionContext{
-		StepResults: map[string]interface{}{
+		StepResults: map[string]any{
 			"test": "data",
 		},
 	}
@@ -208,23 +208,23 @@ func TestLogAction_Execute_WithCancel(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
 
-	resultMap := result.(map[string]interface{})
+	resultMap := result.(map[string]any)
 	assert.Equal(t, "Test message", resultMap["message"])
 	assert.Equal(t, "info", resultMap["level"])
 }
 
 func TestLogAction_Execute_LargeStepResults(t *testing.T) {
-	action := NewLogAction(map[string]interface{}{})
+	action := NewLogAction(map[string]any{})
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	// Create large step results to test logging performance
-	largeData := make(map[string]interface{})
+	largeData := make(map[string]any)
 	for i := 0; i < 1000; i++ {
-		largeData[string(rune('A'+i%26))+string(rune('a'+i%26))] = map[string]interface{}{
+		largeData[string(rune('A'+i%26))+string(rune('a'+i%26))] = map[string]any{
 			"index": i,
 			"value": "test data " + string(rune('0'+i%10)),
-			"nested": map[string]interface{}{
-				"level1": map[string]interface{}{
+			"nested": map[string]any{
+				"level1": map[string]any{
 					"level2": "deep value",
 				},
 			},
@@ -242,7 +242,7 @@ func TestLogAction_Execute_LargeStepResults(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
 
-	resultMap := result.(map[string]interface{})
+	resultMap := result.(map[string]any)
 	assert.Equal(t, "", resultMap["message"])
 	assert.Equal(t, "info", resultMap["level"])
 }

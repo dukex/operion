@@ -19,12 +19,12 @@ import (
 func TestNewHTTPRequestAction(t *testing.T) {
 	tests := []struct {
 		name     string
-		config   map[string]interface{}
+		config   map[string]any
 		expected *HTTPRequestAction
 	}{
 		{
 			name: "basic GET request",
-			config: map[string]interface{}{
+			config: map[string]any{
 				"id":       "test-1",
 				"method":   "GET",
 				"host":     "api.example.com",
@@ -45,18 +45,18 @@ func TestNewHTTPRequestAction(t *testing.T) {
 		},
 		{
 			name: "POST request with headers and body",
-			config: map[string]interface{}{
+			config: map[string]any{
 				"id":       "test-2",
 				"method":   "post",
 				"host":     "api.example.com",
 				"path":     "/create",
 				"protocol": "https",
 				"body":     `{"key": "value"}`,
-				"headers": map[string]interface{}{
+				"headers": map[string]any{
 					"Content-Type":  "application/json",
 					"Authorization": "Bearer token123",
 				},
-				"retry": map[string]interface{}{
+				"retry": map[string]any{
 					"attempts": 3.0,
 					"delay":    5.0,
 				},
@@ -78,7 +78,7 @@ func TestNewHTTPRequestAction(t *testing.T) {
 		},
 		{
 			name: "default method is GET",
-			config: map[string]interface{}{
+			config: map[string]any{
 				"id":       "test-3",
 				"host":     "api.example.com",
 				"path":     "/default",
@@ -113,7 +113,7 @@ func TestHTTPRequestAction_Execute_Success(t *testing.T) {
 		assert.Equal(t, "GET", r.Method)
 		assert.Equal(t, "application/json", r.Header.Get("Accept"))
 
-		response := map[string]interface{}{
+		response := map[string]any{
 			"status": "success",
 			"data":   "test response",
 		}
@@ -139,7 +139,7 @@ func TestHTTPRequestAction_Execute_Success(t *testing.T) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
-		StepResults: make(map[string]interface{}),
+		StepResults: make(map[string]any),
 	}
 
 	result, err := action.Execute(context.Background(), execCtx, logger)
@@ -147,13 +147,13 @@ func TestHTTPRequestAction_Execute_Success(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
-	resultMap := result.(map[string]interface{})
+	resultMap := result.(map[string]any)
 	assert.Equal(t, 200, resultMap["status_code"])
 	assert.NotNil(t, resultMap["body"])
 	assert.NotNil(t, resultMap["headers"])
 
 	// Check the parsed JSON body
-	body := resultMap["body"].(map[string]interface{})
+	body := resultMap["body"].(map[string]any)
 	assert.Equal(t, "success", body["status"])
 	assert.Equal(t, "test response", body["data"])
 }
@@ -165,12 +165,12 @@ func TestHTTPRequestAction_Execute_POST_WithBody(t *testing.T) {
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
 
 		// Read and verify body
-		var body map[string]interface{}
+		var body map[string]any
 		err := json.NewDecoder(r.Body).Decode(&body)
 		require.NoError(t, err)
 		assert.Equal(t, "test value", body["key"])
 
-		response := map[string]interface{}{
+		response := map[string]any{
 			"created": true,
 			"id":      123,
 		}
@@ -197,7 +197,7 @@ func TestHTTPRequestAction_Execute_POST_WithBody(t *testing.T) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
-		StepResults: make(map[string]interface{}),
+		StepResults: make(map[string]any),
 	}
 
 	result, err := action.Execute(context.Background(), execCtx, logger)
@@ -205,10 +205,10 @@ func TestHTTPRequestAction_Execute_POST_WithBody(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
-	resultMap := result.(map[string]interface{})
+	resultMap := result.(map[string]any)
 	assert.Equal(t, 200, resultMap["status_code"])
 
-	body := resultMap["body"].(map[string]interface{})
+	body := resultMap["body"].(map[string]any)
 	assert.Equal(t, true, body["created"])
 	assert.Equal(t, float64(123), body["id"])
 }
@@ -241,7 +241,7 @@ func TestHTTPRequestAction_Execute_WithRetry(t *testing.T) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
-		StepResults: make(map[string]interface{}),
+		StepResults: make(map[string]any),
 	}
 
 	result, err := action.Execute(context.Background(), execCtx, logger)
@@ -249,13 +249,13 @@ func TestHTTPRequestAction_Execute_WithRetry(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 3, attempts)
 
-	resultMap := result.(map[string]interface{})
+	resultMap := result.(map[string]any)
 	assert.Equal(t, 200, resultMap["status_code"])
 }
 
 func TestHTTPRequestAction_Execute_WithTemplating(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var body map[string]interface{}
+		var body map[string]any
 		err := json.NewDecoder(r.Body).Decode(&body)
 		require.NoError(t, err)
 
@@ -285,8 +285,8 @@ func TestHTTPRequestAction_Execute_WithTemplating(t *testing.T) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
-		StepResults: map[string]interface{}{
-			"previous_step": map[string]interface{}{
+		StepResults: map[string]any{
+			"previous_step": map[string]any{
 				"user_id": "user123",
 			},
 		},
@@ -295,7 +295,7 @@ func TestHTTPRequestAction_Execute_WithTemplating(t *testing.T) {
 	result, err := action.Execute(context.Background(), execCtx, logger)
 
 	require.NoError(t, err)
-	resultMap := result.(map[string]interface{})
+	resultMap := result.(map[string]any)
 	assert.Equal(t, 200, resultMap["status_code"])
 }
 
@@ -319,7 +319,7 @@ func TestHTTPRequestAction_Execute_Timeout(t *testing.T) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
-		StepResults: make(map[string]interface{}),
+		StepResults: make(map[string]any),
 	}
 
 	_, err := action.Execute(context.Background(), execCtx, logger)
@@ -349,13 +349,13 @@ func TestHTTPRequestAction_Execute_NonJSONResponse(t *testing.T) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
-		StepResults: make(map[string]interface{}),
+		StepResults: make(map[string]any),
 	}
 
 	result, err := action.Execute(context.Background(), execCtx, logger)
 
 	require.NoError(t, err)
-	resultMap := result.(map[string]interface{})
+	resultMap := result.(map[string]any)
 	assert.Equal(t, 200, resultMap["status_code"])
 	assert.Equal(t, "plain text response", resultMap["body"])
 }

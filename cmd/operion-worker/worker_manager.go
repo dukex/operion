@@ -66,7 +66,7 @@ func (w *WorkerManager) Start(ctx context.Context) error {
 	return nil
 }
 
-func (w *WorkerManager) handleWorkflowTriggered(ctx context.Context, event interface{}) error {
+func (w *WorkerManager) handleWorkflowTriggered(ctx context.Context, event any) error {
 	triggeredEvent, ok := event.(*events.WorkflowTriggered)
 	if !ok {
 		w.logger.Error("Invalid event type for WorkflowTriggered")
@@ -80,7 +80,7 @@ func (w *WorkerManager) handleWorkflowTriggered(ctx context.Context, event inter
 	)
 	logger.Info("Processing workflow triggered event")
 
-	triggerData := make(map[string]interface{})
+	triggerData := make(map[string]any)
 	if triggeredEvent.TriggerData != nil {
 		triggerData = triggeredEvent.TriggerData
 	}
@@ -114,7 +114,7 @@ func (w *WorkerManager) handleWorkflowTriggered(ctx context.Context, event inter
 	return nil
 }
 
-func (w *WorkerManager) handleWorkflowStepAvailable(ctx context.Context, event interface{}) error {
+func (w *WorkerManager) handleWorkflowStepAvailable(ctx context.Context, event any) error {
 	workflowExecutor := workflow.NewExecutor(w.persistence, w.registry)
 	workflowStepEvent, ok := event.(*events.WorkflowStepAvailable)
 
@@ -166,7 +166,7 @@ func (w *WorkerManager) handleWorkflowStepAvailable(ctx context.Context, event i
 	// finishedEvent := events.WorkflowFinished{
 	// 	BaseEvent:   events.NewBaseEvent(events.WorkflowFinishedEvent, triggeredEvent.WorkflowID),
 	// 	ExecutionID: triggeredEvent.ID,
-	// 	Result:      make(map[string]interface{}),
+	// 	Result:      make(map[string]any),
 	// }
 	// finishedEvent.WorkerID = w.id
 
