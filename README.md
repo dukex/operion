@@ -173,7 +173,7 @@ Actions now use a standardized contract with:
 ### Available Actions
 
 - **HTTP Request** (`pkg/actions/http_request/`) - Make HTTP calls with retry logic, templating, and JSON/string response handling
-- **Transform** (`pkg/actions/transform/`) - Process data using Go templates with input extraction and templating
+- **Transform** (`pkg/actions/transform/`) - Process data using Go templates with templating
 - **Log** (`pkg/actions/log/`) - Output structured log messages for debugging and monitoring
 - **Plugin Actions**: Custom actions via .so plugins (example in `examples/plugins/actions/log/`)
 

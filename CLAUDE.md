@@ -124,8 +124,8 @@ go mod tidy         # Clean up dependencies
   - Schema includes: url (required), method, headers, body, retries (object with attempts/delay)
   - Templating examples: `{{steps.get_user_id.user_id}}`, `{{trigger.webhook.url}}/callback`
   - Retry config: `{"attempts": 3, "delay": 1000}` (attempts: 0-5, delay: 100-30000ms)
-- **Transform** (`pkg/actions/transform/`) - Process data using Go templates with input extraction
-  - Schema includes: expression (required), input, id
+- **Transform** (`pkg/actions/transform/`) - Process data using Go templates
+  - Schema includes: expression (required), id
   - Go template examples: `{{.name}}`, `{ "fullName": "{{.firstName}} {{.lastName}}" }`, `{{len .items}}`
 - **Log** (`pkg/actions/log/`) - Output log messages for debugging and monitoring
   - Schema includes: message (required), level
