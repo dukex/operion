@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"strings"
 
 	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/protocol"
@@ -31,27 +30,17 @@ func (h *TransformActionFactory) Name() string {
 }
 
 func (h *TransformActionFactory) Description() string {
-	return "Transforms input data using a specified expression. The input can be a string or an expression that evaluates to data."
+	return "Transforms data using a specified expression."
 }
 
 func (h *TransformActionFactory) Schema() map[string]any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
-			"input": map[string]any{
-				"type":        "string",
-				"description": "Input data source expression. If empty, uses all step results. Supports templating.",
-				"examples": []string{
-					"",
-					"steps.fetch_users",
-					"steps.api_call.response.data",
-					"trigger.webhook.payload",
-				},
-			},
 			"expression": map[string]any{
 				"type":        "string",
 				"format":      "template",
-				"description": "Go template expression to transform the input data. Use Go template syntax with {{}} delimiters.",
+				"description": "Go template expression to transform the data. Use Go template syntax with {{}} delimiters.",
 				"examples": []string{
 					"{{.name}}",
 					"{{.users.0.email}}",
@@ -67,16 +56,13 @@ func (h *TransformActionFactory) Schema() map[string]any {
 }
 
 type TransformAction struct {
-	Input      string
 	Expression string
 }
 
 func NewTransformAction(config map[string]any) (*TransformAction, error) {
-	input, _ := config["input"].(string)
 	expression, _ := config["expression"].(string)
 
 	return &TransformAction{
-		Input:      input,
 		Expression: expression,
 	}, nil
 }
@@ -87,41 +73,11 @@ func (a *TransformAction) Execute(ctx context.Context, executionCtx models.Execu
 	)
 	logger.Info("Executing TransformAction")
 
-	data, err := a.extract(executionCtx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get input data: %w", err)
-	}
-
-	result, err := template.Render(a.Expression, data)
+	result, err := template.Render(a.Expression, executionCtx.StepResults)
 	if err != nil {
 		return nil, fmt.Errorf("transformation failed: %w", err)
 	}
 
 	logger.Info("TransformAction completed successfully")
 	return result, nil
-}
-
-func (a *TransformAction) extract(executionCtx models.ExecutionContext) (any, error) {
-	if a.Input == "" {
-		return executionCtx.StepResults, nil
-	}
-
-	// Simple dot-notation path extraction
-	parts := strings.Split(a.Input, ".")
-	current := any(executionCtx.StepResults)
-
-	for _, part := range parts {
-		switch v := current.(type) {
-		case map[string]any:
-			if val, exists := v[part]; exists {
-				current = val
-			} else {
-				return nil, fmt.Errorf("path not found: %s", a.Input)
-			}
-		default:
-			return nil, fmt.Errorf("cannot navigate path %s: expected map but got %T", a.Input, current)
-		}
-	}
-
-	return current, nil
 }

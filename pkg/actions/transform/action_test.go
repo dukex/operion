@@ -38,13 +38,6 @@ func TestTransformActionFactory_Create(t *testing.T) {
 				"expression": "$.name",
 			},
 		},
-		{
-			name: "config with input and expression",
-			config: map[string]any{
-				"input":      "$.data",
-				"expression": "$.field",
-			},
-		},
 	}
 
 	for _, tt := range tests {
@@ -66,31 +59,27 @@ func TestNewTransformAction(t *testing.T) {
 		{
 			name: "basic transform",
 			config: map[string]any{
-				"id":         "test-1",
-				"input":      "$.data",
-				"expression": "$.field",
+				"id": "test-1",
+				"expression": "{{ .field }}",
 			},
 			expected: &TransformAction{
-				Input:      "$.data",
-				Expression: "$.field",
+				Expression: "{{ .field }}",
 			},
 		},
 		{
 			name:   "empty config",
 			config: map[string]any{},
 			expected: &TransformAction{
-				Input:      "",
 				Expression: "",
 			},
 		},
 		{
 			name: "partial config",
 			config: map[string]any{
-				"expression": "{ \"name\": $.name, \"age\": $.age }",
+				"expression": "{ \"name\": {{ .name }}, \"age\": {{ .age }} }",
 			},
 			expected: &TransformAction{
-				Input:      "",
-				Expression: "{ \"name\": $.name, \"age\": $.age }",
+				Expression: "{ \"name\": {{ .name }}, \"age\": {{ .age }} }",
 			},
 		},
 	}
@@ -106,7 +95,6 @@ func TestNewTransformAction(t *testing.T) {
 
 func TestTransformAction_Execute_SimpleTransform(t *testing.T) {
 	action := &TransformAction{
-		Input:      "",
 		Expression: "{{.user.name}}",
 	}
 
@@ -128,8 +116,7 @@ func TestTransformAction_Execute_SimpleTransform(t *testing.T) {
 
 func TestTransformAction_Execute_WithInput(t *testing.T) {
 	action := &TransformAction{
-		Input:      "step1.data",
-		Expression: "{{.temperature}}",
+		Expression: "{{.step1.data.temperature}}",
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -152,7 +139,6 @@ func TestTransformAction_Execute_WithInput(t *testing.T) {
 
 func TestTransformAction_Execute_ObjectConstruction(t *testing.T) {
 	action := &TransformAction{
-		Input:      "",
 		Expression: `{ "name": "{{.user.name}}", "status": "active", "age": {{.user.age}} }`,
 	}
 
@@ -177,7 +163,6 @@ func TestTransformAction_Execute_ObjectConstruction(t *testing.T) {
 
 func TestTransformAction_Execute_ArrayTransform(t *testing.T) {
 	action := &TransformAction{
-		Input:      "",
 		Expression: "{{index .users 0 \"name\"}}",
 	}
 
@@ -205,8 +190,7 @@ func TestTransformAction_Execute_ArrayTransform(t *testing.T) {
 
 func TestTransformAction_Execute_ComplexTransform(t *testing.T) {
 	action := &TransformAction{
-		Input:      "api_response",
-		Expression: `{ "price": {{if .close}}{{.close}}{{else}}{{.open}}{{end}}, "currency": "USD", "timestamp": "{{.time}}" }`,
+		Expression: `{ "price": {{if .api_response.close}}{{.api_response.close}}{{else}}{{.api_response.open}}{{end}}, "currency": "USD", "timestamp": "{{.api_response.time}}" }`,
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -233,7 +217,6 @@ func TestTransformAction_Execute_ComplexTransform(t *testing.T) {
 
 func TestTransformAction_Execute_EmptyExpression(t *testing.T) {
 	action := &TransformAction{
-		Input:      "",
 		Expression: "",
 	}
 
@@ -253,7 +236,6 @@ func TestTransformAction_Execute_EmptyExpression(t *testing.T) {
 
 func TestTransformAction_Execute_InvalidExpression(t *testing.T) {
 	action := &TransformAction{
-		Input:      "",
 		Expression: "{{.invalid..syntax}}",
 	}
 
@@ -270,28 +252,8 @@ func TestTransformAction_Execute_InvalidExpression(t *testing.T) {
 	assert.Contains(t, err.Error(), "transformation failed")
 }
 
-func TestTransformAction_Execute_InputNotFound(t *testing.T) {
-	action := &TransformAction{
-		Input:      "$.nonexistent.field",
-		Expression: "$.name",
-	}
-
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	execCtx := models.ExecutionContext{
-		StepResults: map[string]any{
-			"data": "test",
-		},
-	}
-
-	_, err := action.Execute(context.Background(), execCtx, logger)
-
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to get input data")
-}
-
 func TestTransformAction_Execute_WithCancel(t *testing.T) {
 	action := &TransformAction{
-		Input:      "",
 		Expression: "{{.data}}",
 	}
 
@@ -310,29 +272,4 @@ func TestTransformAction_Execute_WithCancel(t *testing.T) {
 	// Transform action should complete even with cancelled context
 	require.NoError(t, err)
 	assert.Equal(t, "test value", result)
-}
-
-func TestTransformAction_Extract(t *testing.T) {
-	action := &TransformAction{
-		Input:      "",
-		Expression: "",
-	}
-
-	execCtx := models.ExecutionContext{
-		StepResults: map[string]any{
-			"step1": "value1",
-			"step2": "value2",
-		},
-	}
-
-	// Test empty input - should return all step results
-	result, err := action.extract(execCtx)
-	require.NoError(t, err)
-	assert.Equal(t, execCtx.StepResults, result)
-
-	// Test with specific input
-	action.Input = "step1"
-	result, err = action.extract(execCtx)
-	require.NoError(t, err)
-	assert.Equal(t, "value1", result)
 }
