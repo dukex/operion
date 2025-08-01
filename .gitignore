@@ -1,5 +1,6 @@
 /bin/
-.claude
+.claude/planning/**
+.claude/settings.local.json
 *.so
 .serena/cache
 *.local.md
