@@ -6,7 +6,7 @@ Implement a feature using the PRP file with validation and analysis.
 
 ## Execution Process
 
-The Agent has Web search capabilities, so passes urls to documentation and examples, the Jira tools capabilities, so can search for the AI agent to use.
+The Agent has Web search capabilities, so passes urls to documentation and examples, the Github tools capabilities, so can search for the AI agent to use.
 
 1. **Load PRP**
     - Read the specified PRP file from ./.claude/planning/$ARGUMENTS.md
