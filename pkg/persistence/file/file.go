@@ -84,7 +84,7 @@ func (fp *FilePersistence) SaveWorkflow(workflow *models.Workflow) error {
 		return err
 	}
 
-	now := time.Now()
+	now := time.Now().UTC()
 	if workflow.CreatedAt.IsZero() {
 		workflow.CreatedAt = now
 	}

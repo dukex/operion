@@ -60,7 +60,7 @@ func (r *Repository) Create(workflow *models.Workflow) (*models.Workflow, error)
 		workflow.ID = uuid.New().String()
 	}
 
-	now := time.Now()
+	now := time.Now().UTC()
 	workflow.CreatedAt = now
 	workflow.UpdatedAt = now
 
@@ -88,7 +88,7 @@ func (r *Repository) Update(id string, workflow *models.Workflow) (*models.Workf
 
 	workflow.ID = id
 	workflow.CreatedAt = existing.CreatedAt
-	workflow.UpdatedAt = time.Now()
+	workflow.UpdatedAt = time.Now().UTC()
 
 	err = r.persistence.SaveWorkflow(workflow)
 	if err != nil {

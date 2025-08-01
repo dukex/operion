@@ -105,7 +105,7 @@ func NewBaseEvent(eventType EventType, workflowID string) BaseEvent {
 	return BaseEvent{
 		ID:         uuid.New().String(),
 		Type:       eventType,
-		Timestamp:  time.Now(),
+		Timestamp:  time.Now().UTC(),
 		WorkflowID: workflowID,
 		Metadata:   make(map[string]any),
 	}
