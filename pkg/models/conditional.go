@@ -1,8 +1,13 @@
 package models
 
-import "context"
-
 type Conditional interface {
-	Evaluate(ctx context.Context, input ExecutionContext) (bool, error)
-	GetExpression() string
+	Evaluate(exp any) (bool, error)
+}
+
+func GetConditional(c ConditionalExpression) Conditional {
+	if c.Language == "simple" {
+		return &SimpleConditionalInterpreter{}
+	}
+
+	return nil
 }
