@@ -54,6 +54,9 @@ jobs:
     - name: Run staticcheck
       run: staticcheck ./...
 
+    - name: Run deadcode analysis
+      run: go tool deadcode -test ./...
+
     - name: Install golangci-lint
       uses: golangci/golangci-lint-action@v6
       with:
