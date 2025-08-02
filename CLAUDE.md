@@ -90,11 +90,44 @@ npm run build           # Build for production
 npm run lint            # Run ESLint
 ```
 
+### Testing and Quality
+```bash
+make test           # Run all tests
+make test-coverage  # Generate coverage report (coverage.out and coverage.html)
+make fmt            # Format Go code
+make lint           # Run golangci-lint
+```
+
 ### Dependencies
 ```bash
 go mod download     # Download dependencies
 go mod tidy         # Clean up dependencies
 ```
+
+### CI/CD Pipeline
+
+The project uses GitHub Actions for continuous integration and quality assurance:
+
+#### Test and Coverage Workflow (`.github/workflows/test-and-coverage.yml`)
+- **Triggers**: Every pull request and push to main branch
+- **Go Version**: 1.24
+- **Quality Checks**:
+  - Format verification with `gofmt`
+  - Vet analysis with `go vet`
+  - Static analysis with `staticcheck`
+  - Linting with `golangci-lint`
+- **Testing**:
+  - Race condition detection with `-race` flag
+  - Coverage generation with `-coverprofile=coverage.out`
+  - Atomic coverage mode for accuracy
+- **Coverage Reporting**:
+  - Uploads to Codecov with project token
+  - Uploads to Coveralls with GitHub token
+  - HTML reports generated for artifacts
+- **Build Verification**:
+  - Builds all three binaries (operion-api, operion-worker, operion-dispatcher)
+  - Uploads build artifacts for download
+- **Caching**: Go modules cached for faster builds
 
 ## Current Implementation Status
 
