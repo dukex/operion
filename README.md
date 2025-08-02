@@ -194,6 +194,73 @@ The executor now operates on an event-driven, step-by-step model:
 - **Event Publishing**: Granular events published for monitoring and debugging
 - **State Management**: Step results stored by `uid` and accessible via Go templates
 - **Error Handling**: Failed steps can route to different next steps via `on_failure`
+- **Conditional Logic**: Steps can be executed conditionally based on runtime data evaluation
+
+### Conditional Expressions
+
+Workflow steps support conditional execution through the `conditional` field:
+
+```json
+{
+  "id": "check-user-role",
+  "name": "Admin Role Check",
+  "uid": "admin_check",
+  "action_id": "log",
+  "conditional": {
+    "language": "simple",
+    "expression": "{{eq .trigger_data.webhook.user.role \"admin\"}}"
+  },
+  "configuration": {
+    "message": "Admin access granted"
+  },
+  "on_success": "admin-only-action",
+  "on_failure": "access-denied"
+}
+```
+
+#### Conditional Logic Features
+
+- **Simple Language**: Boolean expressions using Go template syntax
+- **Template Integration**: Access to `trigger_data`, `step_results`, `variables`, and `metadata`
+- **Flow Control**: Steps execute when conditional evaluates to `true`, route to `on_failure` when `false`
+- **Type Conversion**: Automatic conversion of various data types to boolean values
+- **Built-in Functions**: Go template functions like `eq`, `ne`, `lt`, `gt`, `le`, `ge`, `and`, `or`, `not`
+
+#### Example Conditional Patterns
+
+**Role-based Access Control**:
+```json
+"conditional": {
+  "language": "simple", 
+  "expression": "{{eq .trigger_data.webhook.user.role \"admin\"}}"
+}
+```
+
+**Numeric Comparisons**:
+```json
+"conditional": {
+  "language": "simple",
+  "expression": "{{ge .step_results.data_info.record_count .variables.min_records}}"
+}
+```
+
+**Complex Logic**:
+```json
+"conditional": {
+  "language": "simple",
+  "expression": "{{and (ge .step_results.health_check.status 200) (lt .step_results.health_check.status 300)}}"
+}
+```
+
+**Environment-based Execution**:
+```json
+"conditional": {
+  "language": "simple",
+  "expression": "{{or .variables.debug_mode (eq .variables.environment \"development\")}}"
+}
+```
+
+See the `examples/workflows/` directory for complete workflow examples demonstrating conditional logic patterns including admin access control, API health monitoring, feature flags, and data validation pipelines.
 
 ## Development
 

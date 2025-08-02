@@ -20,6 +20,7 @@ The project follows a clean, layered architecture with clear separation of conce
 
 - **Workflow** - Contains triggers, steps, variables, and metadata
 - **WorkflowStep** - Individual workflow steps with actions and conditionals
+- **ConditionalExpression** - Evaluates boolean expressions for workflow step flow control
 - **Action Interface** - Contract for executable actions (pluggable architecture)
 - **Trigger Interface** - Contract for workflow triggers (extensible system)
 - **ExecutionContext** - Carries state between workflow steps
@@ -130,6 +131,29 @@ go mod tidy         # Clean up dependencies
 - **Log** (`pkg/actions/log/`) - Output log messages for debugging and monitoring
   - Schema includes: message (required), level
   - Templating examples: `Processing user: {{.trigger_data.webhook.user_name}}`, `{{step_results.api_call.status}}`
+
+### Conditional Expression System
+
+- **ConditionalExpression** (`pkg/models/conditional_expression.go`) - Core conditional evaluation functionality
+  - `Evaluate(ctx, input)` - Main evaluation method with full ExecutionContext
+  - `EvaluateWithResult(templateResult)` - Direct evaluation of template results
+  - Simple language support with Go template integration
+  - Boolean type conversion from strings, numbers, arrays, maps, and booleans
+  - Empty expression handling (defaults to true when no expression provided)
+- **Workflow Integration** (`pkg/workflow/executor.go`) - Integrated into workflow execution
+  - Template rendering at executor level to avoid circular dependencies
+  - Conditional false routes to `on_failure` step, conditional true continues to `on_success`
+  - Event publishing for both conditional success and failure scenarios
+- **Template Context** - Conditionals have access to:
+  - `trigger_data` - Data from workflow trigger
+  - `step_results` - Results from previous workflow steps (keyed by step uid)
+  - `variables` - Workflow-defined variables
+  - `metadata` - Workflow metadata and execution context
+- **Examples** - See `examples/workflows/` directory for complete conditional patterns:
+  - `admin-access-control.json` - Role-based access control
+  - `api-health-monitor.json` - Status-based API monitoring with retry logic
+  - `feature-flag-demo.json` - Environment and feature flag conditionals
+  - `data-validation-pipeline.json` - Data validation with error rate checks
 
 ## Development Memories
 

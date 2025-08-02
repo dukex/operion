@@ -57,6 +57,7 @@ func TestRepository_Create(t *testing.T) {
 	// Clean up
 	err = persistence.DeleteWorkflow(created.ID)
 	assert.NoError(t, err)
+	cleanupTestDirectory(testDir)
 }
 
 func TestRepository_Create_WithExistingID(t *testing.T) {
@@ -81,6 +82,7 @@ func TestRepository_Create_WithExistingID(t *testing.T) {
 	// Clean up
 	err = persistence.DeleteWorkflow(created.ID)
 	assert.NoError(t, err)
+	cleanupTestDirectory(testDir)
 }
 
 func TestRepository_FetchByID(t *testing.T) {
@@ -113,6 +115,7 @@ func TestRepository_FetchByID(t *testing.T) {
 	// Clean up
 	err = repo.Delete("fetch-test-workflow")
 	assert.NoError(t, err)
+	cleanupTestDirectory(testDir)
 }
 
 func TestRepository_FetchByID_NotFound(t *testing.T) {
@@ -125,6 +128,7 @@ func TestRepository_FetchByID_NotFound(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, workflow)
 	assert.Contains(t, err.Error(), "workflow not found")
+	cleanupTestDirectory(testDir)
 }
 
 func TestRepository_FetchAll(t *testing.T) {
@@ -171,6 +175,7 @@ func TestRepository_FetchAll(t *testing.T) {
 		err = repo.Delete(workflow.ID)
 		assert.NoError(t, err)
 	}
+	cleanupTestDirectory(testDir)
 }
 
 func TestRepository_Update(t *testing.T) {
@@ -213,6 +218,7 @@ func TestRepository_Update(t *testing.T) {
 	// Clean up
 	err = repo.Delete("update-workflow")
 	assert.NoError(t, err)
+	cleanupTestDirectory(testDir)
 }
 
 func TestRepository_Update_NotFound(t *testing.T) {
@@ -229,6 +235,7 @@ func TestRepository_Update_NotFound(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "workflow not found")
+	cleanupTestDirectory(testDir)
 }
 
 func TestRepository_Delete(t *testing.T) {
@@ -258,6 +265,7 @@ func TestRepository_Delete(t *testing.T) {
 	fetched, err = repo.FetchByID("delete-workflow")
 	assert.Error(t, err)
 	assert.Nil(t, fetched)
+	cleanupTestDirectory(testDir)
 }
 
 func TestRepository_Delete_NotFound(t *testing.T) {
@@ -269,4 +277,5 @@ func TestRepository_Delete_NotFound(t *testing.T) {
 	err := repo.Delete("non-existent")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "workflow not found")
+	cleanupTestDirectory(testDir)
 }

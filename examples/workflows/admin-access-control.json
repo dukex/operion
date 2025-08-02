@@ -1,0 +1,84 @@
+{
+  "id": "admin-access-control",
+  "name": "Admin Access Control Demo",
+  "description": "Demonstrates conditional workflow execution based on user role",
+  "variables": {
+    "environment": "production"
+  },
+  "workflow_triggers": [
+    {
+      "trigger_id": "webhook"
+    }
+  ],
+  "steps": [
+    {
+      "id": "check-admin-role",
+      "name": "Admin Role Check",
+      "uid": "admin_check",
+      "action_id": "log",
+      "conditional": {
+        "language": "simple",
+        "expression": "{{eq .trigger_data.webhook.user.role \"admin\"}}"
+      },
+      "configuration": {
+        "message": "Admin access granted for user: {{.trigger_data.webhook.user.name}}",
+        "level": "info"
+      },
+      "on_success": "admin-only-action",
+      "on_failure": "access-denied",
+      "enabled": true
+    },
+    {
+      "id": "admin-only-action",
+      "name": "Admin Only Action",
+      "uid": "admin_action",
+      "action_id": "http_request",
+      "configuration": {
+        "protocol": "https",
+        "host": "api.example.com",
+        "path": "/admin/dashboard",
+        "method": "GET",
+        "headers": {
+          "Authorization": "Bearer {{.trigger_data.webhook.token}}",
+          "User-Agent": "Operion-Workflow/1.0"
+        }
+      },
+      "on_success": "success-notification",
+      "on_failure": "error-notification",
+      "enabled": true
+    },
+    {
+      "id": "access-denied",
+      "name": "Access Denied Handler",
+      "uid": "access_denied",
+      "action_id": "log",
+      "configuration": {
+        "message": "Access denied for user: {{.trigger_data.webhook.user.name}} (role: {{.trigger_data.webhook.user.role}})",
+        "level": "warn"
+      },
+      "enabled": true
+    },
+    {
+      "id": "success-notification",
+      "name": "Success Notification",
+      "uid": "success_notify",
+      "action_id": "log",
+      "configuration": {
+        "message": "Admin dashboard accessed successfully by {{.trigger_data.webhook.user.name}}",
+        "level": "info"
+      },
+      "enabled": true
+    },
+    {
+      "id": "error-notification",
+      "name": "Error Notification",
+      "uid": "error_notify",
+      "action_id": "log",
+      "configuration": {
+        "message": "Failed to access admin dashboard: {{.step_results.admin_action.error}}",
+        "level": "error"
+      },
+      "enabled": true
+    }
+  ]
+}

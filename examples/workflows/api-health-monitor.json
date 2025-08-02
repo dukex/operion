@@ -1,0 +1,127 @@
+{
+  "id": "api-health-monitor",
+  "name": "API Health Monitor",
+  "description": "Monitors API health and takes action based on response status",
+  "variables": {
+    "api_endpoint": "https://jsonplaceholder.typicode.com/posts/1",
+    "max_retries": 3,
+    "retry_count": 0
+  },
+  "workflow_triggers": [
+    {
+      "trigger_id": "schedule"
+    }
+  ],
+  "steps": [
+    {
+      "id": "health-check",
+      "name": "API Health Check",
+      "uid": "health_check",
+      "action_id": "http_request",
+      "configuration": {
+        "url": "{{.variables.api_endpoint}}",
+        "method": "GET",
+        "headers": {
+          "User-Agent": "Operion-HealthCheck/1.0"
+        },
+        "retries": {
+          "attempts": 2,
+          "delay": 1000
+        }
+      },
+      "on_success": "check-response-status",
+      "on_failure": "api-down-alert",
+      "enabled": true
+    },
+    {
+      "id": "check-response-status",
+      "name": "Check Response Status",
+      "uid": "status_check",
+      "action_id": "log",
+      "conditional": {
+        "language": "simple",
+        "expression": "{{and (ge .step_results.health_check.status 200) (lt .step_results.health_check.status 300)}}"
+      },
+      "configuration": {
+        "message": "API is healthy - Status: {{.step_results.health_check.status}}",
+        "level": "info"
+      },
+      "on_success": "update-health-status",
+      "on_failure": "api-unhealthy-alert",
+      "enabled": true
+    },
+    {
+      "id": "update-health-status",
+      "name": "Update Health Status",
+      "uid": "update_status",
+      "action_id": "transform",
+      "configuration": {
+        "expression": "{\"status\": \"healthy\", \"last_check\": \"{{now}}\", \"response_time\": {{.step_results.health_check.duration}}, \"endpoint\": \"{{.variables.api_endpoint}}\"}"
+      },
+      "on_success": "log-success",
+      "enabled": true
+    },
+    {
+      "id": "api-unhealthy-alert",
+      "name": "API Unhealthy Alert",
+      "uid": "unhealthy_alert",
+      "action_id": "log",
+      "configuration": {
+        "message": "API unhealthy - Status: {{.step_results.health_check.status}}, Response: {{.step_results.health_check.body}}",
+        "level": "error"
+      },
+      "on_success": "check-retry-needed",
+      "enabled": true
+    },
+    {
+      "id": "check-retry-needed",
+      "name": "Check If Retry Needed",
+      "uid": "retry_check",
+      "action_id": "log",
+      "conditional": {
+        "language": "simple",
+        "expression": "{{lt .variables.retry_count .variables.max_retries}}"
+      },
+      "configuration": {
+        "message": "Retrying health check (attempt {{.variables.retry_count}} of {{.variables.max_retries}})",
+        "level": "info"
+      },
+      "on_success": "health-check",
+      "on_failure": "max-retries-reached",
+      "enabled": true
+    },
+    {
+      "id": "api-down-alert",
+      "name": "API Down Alert",
+      "uid": "down_alert",
+      "action_id": "log",
+      "configuration": {
+        "message": "CRITICAL: API is completely down - {{.variables.api_endpoint}} unreachable",
+        "level": "error"
+      },
+      "enabled": true
+    },
+    {
+      "id": "max-retries-reached",
+      "name": "Max Retries Reached",
+      "uid": "max_retries",
+      "action_id": "log",
+      "configuration": {
+        "message": "Max retries reached ({{.variables.max_retries}}) - API remains unhealthy",
+        "level": "error"
+      },
+      "enabled": true
+    },
+    {
+      "id": "log-success",
+      "name": "Log Success",
+      "uid": "log_success",
+      "action_id": "log",
+      "configuration": {
+        "message": "Health check completed successfully: {{.step_results.update_status}}",
+        "level": "info"
+      },
+      "enabled": true
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "command": "npm run dev",
+            "name": "Run npm dev",
+            "request": "launch",
+            "type": "node-terminal",
+            "cwd": "${workspaceFolder}/ui/operion-editor",
+            "env": {
+                "API_BASE_URL": "http://localhost:8099"
+            }
+        },
+      
+  
+        
+        {
+            "name": "Launch Trigger",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "env": {
+                "KAFKA_BROKERS": "localhost:29092",
+                "DATABASE_URL": "file://./examples/data",
+                "EVENT_BUS": "kafka",
+                "PLUGINS_PATH": "./examples/plugins"
+            },
+            "program": "./cmd/operion-dispatcher",
+            "args": [
+                "run",
+                "--database-url", 
+                "file:///Users/emerson.almeidacaju.com.br/code/dukex/operion/examples/data", 
+                "--event-bus", "kafka"
+            ]
+        },
+        {
+            "name": "Launch Worker",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "env": {
+                "KAFKA_BROKERS": "localhost:29092",
+                "DATABASE_URL": "file://./examples/data",
+                "EVENT_BUS": "kafka",
+                "PLUGINS_PATH": "./examples/plugins"
+            },
+            "program": "./cmd/operion-worker",
+            "args": [
+                "run",
+                "--database-url", 
+                "file:///Users/emerson.almeidacaju.com.br/code/dukex/operion/examples/data", 
+                "--event-bus", 
+                "kafka",
+                "--plugins-path", 
+                "./examples/plugins"
+            ]
+        }
+    ]
+}

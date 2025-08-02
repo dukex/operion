@@ -140,8 +140,8 @@ func TestKafkaTriggerEnvironmentBrokers(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	// Test with environment variable
-	os.Setenv("KAFKA_BROKERS", "env-broker1:9092,env-broker2:9092")
-	defer os.Unsetenv("KAFKA_BROKERS")
+	_ = os.Setenv("KAFKA_BROKERS", "env-broker1:9092,env-broker2:9092")
+	defer func() { _ = os.Unsetenv("KAFKA_BROKERS") }()
 
 	config := map[string]any{
 		"topic": "test-topic",

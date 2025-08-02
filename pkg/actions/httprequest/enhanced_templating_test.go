@@ -66,16 +66,16 @@ func TestHTTPRequestAction_EnhancedTemplating(t *testing.T) {
 		Method:   "POST",
 		Host:     strings.Split(server.URL, "://")[1], // Extract host from URL
 		Protocol: strings.Split(server.URL, "://")[0], // Extract protocol from URL
-		Path:     "/users/{{ .vars.user_id }}/orders",
+		Path:     "/users/{{ .variables.user_id }}/orders",
 		Headers: map[string]string{
 			"Authorization": "Bearer {{ .env.TEST_API_TOKEN }}",
 			"Content-Type":  "application/json",
 			"X-Workflow-ID": "{{ .execution.workflow_id }}",
 		},
 		Body: `{
-			"user_id": "{{ .vars.user_id }}",
+			"user_id": "{{ .variables.user_id }}",
 			"workflow_id": "{{ .execution.workflow_id }}",
-			"api_endpoint": "{{ .vars.config.api_endpoint }}",
+			"api_endpoint": "{{ .variables.config.api_endpoint }}",
 			"order_total": {{ .step_results.price_calculation.total }}
 		}`,
 		Timeout: 10 * time.Second, // Increase timeout

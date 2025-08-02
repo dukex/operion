@@ -1,0 +1,182 @@
+{
+  "id": "data-validation-pipeline",
+  "name": "Data Validation Pipeline",
+  "description": "Validates incoming data and processes it conditionally based on validation results",
+  "variables": {
+    "min_records": 1,
+    "max_error_rate": 0.1,
+    "process_mode": "strict"
+  },
+  "workflow_triggers": [
+    {
+      "trigger_id": "webhook"
+    }
+  ],
+  "steps": [
+    {
+      "id": "extract-data-info",
+      "name": "Extract Data Information",
+      "uid": "data_info",
+      "action_id": "transform",
+      "configuration": {
+        "expression": "{\"record_count\": {{len .trigger_data.webhook.data}}, \"has_errors\": {{.trigger_data.webhook.has_errors}}, \"error_count\": {{.trigger_data.webhook.error_count}}, \"timestamp\": \"{{now}}\"}"
+      },
+      "on_success": "validate-record-count",
+      "on_failure": "data-extraction-failed",
+      "enabled": true
+    },
+    {
+      "id": "validate-record-count",
+      "name": "Validate Record Count",
+      "uid": "count_validation",
+      "action_id": "log",
+      "conditional": {
+        "language": "simple",
+        "expression": "{{ge .step_results.data_info.record_count .variables.min_records}}"
+      },
+      "configuration": {
+        "message": "Record count validation passed: {{.step_results.data_info.record_count}} records (minimum: {{.variables.min_records}})",
+        "level": "info"
+      },
+      "on_success": "validate-error-rate",
+      "on_failure": "insufficient-data-error",
+      "enabled": true
+    },
+    {
+      "id": "validate-error-rate",
+      "name": "Validate Error Rate",
+      "uid": "error_validation",
+      "action_id": "transform",
+      "configuration": {
+        "expression": "{\"error_rate\": {{div .step_results.data_info.error_count .step_results.data_info.record_count}}, \"acceptable\": {{le (div .step_results.data_info.error_count .step_results.data_info.record_count) .variables.max_error_rate}}}"
+      },
+      "on_success": "check-error-rate-acceptable",
+      "on_failure": "error-rate-calculation-failed",
+      "enabled": true
+    },
+    {
+      "id": "check-error-rate-acceptable",
+      "name": "Check Error Rate Acceptable",
+      "uid": "error_check",
+      "action_id": "log",
+      "conditional": {
+        "language": "simple",
+        "expression": "{{.step_results.error_validation.acceptable}}"
+      },
+      "configuration": {
+        "message": "Error rate validation passed: {{.step_results.error_validation.error_rate}} (max allowed: {{.variables.max_error_rate}})",
+        "level": "info"
+      },
+      "on_success": "process-valid-data",
+      "on_failure": "high-error-rate-handling",
+      "enabled": true
+    },
+    {
+      "id": "process-valid-data",
+      "name": "Process Valid Data",
+      "uid": "process_data",
+      "action_id": "transform",
+      "configuration": {
+        "expression": "{\"status\": \"processed\", \"record_count\": {{.step_results.data_info.record_count}}, \"error_rate\": {{.step_results.error_validation.error_rate}}, \"processed_at\": \"{{now}}\", \"mode\": \"{{.variables.process_mode}}\"}"
+      },
+      "on_success": "check-strict-mode",
+      "enabled": true
+    },
+    {
+      "id": "check-strict-mode",
+      "name": "Check Strict Mode Processing",
+      "uid": "strict_check",
+      "action_id": "log",
+      "conditional": {
+        "language": "simple",
+        "expression": "{{eq .variables.process_mode \"strict\"}}"
+      },
+      "configuration": {
+        "message": "Strict mode enabled - applying additional validation and processing rules",
+        "level": "info"
+      },
+      "on_success": "strict-mode-processing",
+      "on_failure": "standard-mode-processing",
+      "enabled": true
+    },
+    {
+      "id": "strict-mode-processing",
+      "name": "Strict Mode Processing",
+      "uid": "strict_processing",
+      "action_id": "log",
+      "configuration": {
+        "message": "STRICT: Data processed with enhanced validation - {{.step_results.process_data.record_count}} records, error rate: {{.step_results.process_data.error_rate}}",
+        "level": "info"
+      },
+      "on_success": "completion-notification",
+      "enabled": true
+    },
+    {
+      "id": "standard-mode-processing",
+      "name": "Standard Mode Processing", 
+      "uid": "standard_processing",
+      "action_id": "log",
+      "configuration": {
+        "message": "STANDARD: Data processed normally - {{.step_results.process_data.record_count}} records, error rate: {{.step_results.process_data.error_rate}}",
+        "level": "info"
+      },
+      "on_success": "completion-notification",
+      "enabled": true
+    },
+    {
+      "id": "insufficient-data-error",
+      "name": "Insufficient Data Error",
+      "uid": "insufficient_error",
+      "action_id": "log",
+      "configuration": {
+        "message": "ERROR: Insufficient data - received {{.step_results.data_info.record_count}} records, minimum required: {{.variables.min_records}}",
+        "level": "error"
+      },
+      "enabled": true
+    },
+    {
+      "id": "high-error-rate-handling",
+      "name": "High Error Rate Handling",
+      "uid": "high_error",
+      "action_id": "log",
+      "configuration": {
+        "message": "ERROR: High error rate detected - {{.step_results.error_validation.error_rate}} exceeds maximum allowed {{.variables.max_error_rate}}",
+        "level": "error"
+      },
+      "enabled": true
+    },
+    {
+      "id": "data-extraction-failed",
+      "name": "Data Extraction Failed",
+      "uid": "extraction_failed",
+      "action_id": "log",
+      "configuration": {
+        "message": "ERROR: Failed to extract data information from webhook payload",
+        "level": "error"
+      },
+      "enabled": true
+    },
+    {
+      "id": "error-rate-calculation-failed",
+      "name": "Error Rate Calculation Failed",
+      "uid": "calc_failed",
+      "action_id": "log",
+      "configuration": {
+        "message": "ERROR: Failed to calculate error rate - division error or invalid data",
+        "level": "error"
+      },
+      "enabled": true
+    },
+    {
+      "id": "completion-notification",
+      "name": "Completion Notification",
+      "uid": "completion",
+      "action_id": "log",
+      "configuration": {
+        "message": "Data validation pipeline completed successfully - Mode: {{.variables.process_mode}}, Records: {{.step_results.process_data.record_count}}",
+        "level": "info"
+      },
+      "enabled": true
+    }
+  ]
+}

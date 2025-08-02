@@ -1,0 +1,123 @@
+{
+  "id": "feature-flag-demo",
+  "name": "Feature Flag Demonstration",
+  "description": "Shows how to use conditionals for feature flags and environment-based execution",
+  "variables": {
+    "environment": "production",
+    "feature_beta_enabled": true,
+    "debug_mode": false
+  },
+  "workflow_triggers": [
+    {
+      "trigger_id": "webhook"
+    }
+  ],
+  "steps": [
+    {
+      "id": "environment-check",
+      "name": "Environment Check",
+      "uid": "env_check",
+      "action_id": "log",
+      "conditional": {
+        "language": "simple",
+        "expression": "{{eq .variables.environment \"production\"}}"
+      },
+      "configuration": {
+        "message": "Running in production environment",
+        "level": "info"
+      },
+      "on_success": "production-setup",
+      "on_failure": "development-setup",
+      "enabled": true
+    },
+    {
+      "id": "production-setup",
+      "name": "Production Setup",
+      "uid": "prod_setup",
+      "action_id": "transform",
+      "configuration": {
+        "expression": "{\"config\": \"production\", \"debug\": false, \"metrics\": true, \"logging_level\": \"info\"}"
+      },
+      "on_success": "check-beta-feature",
+      "enabled": true
+    },
+    {
+      "id": "development-setup",
+      "name": "Development Setup",
+      "uid": "dev_setup",
+      "action_id": "transform",
+      "configuration": {
+        "expression": "{\"config\": \"development\", \"debug\": true, \"metrics\": false, \"logging_level\": \"debug\"}"
+      },
+      "on_success": "check-beta-feature",
+      "enabled": true
+    },
+    {
+      "id": "check-beta-feature",
+      "name": "Check Beta Feature Flag",
+      "uid": "beta_check",
+      "action_id": "log",
+      "conditional": {
+        "language": "simple",
+        "expression": "{{.variables.feature_beta_enabled}}"
+      },
+      "configuration": {
+        "message": "Beta feature is enabled - executing new functionality",
+        "level": "info"
+      },
+      "on_success": "beta-feature-action",
+      "on_failure": "standard-feature-action",
+      "enabled": true
+    },
+    {
+      "id": "beta-feature-action",
+      "name": "Beta Feature Action",
+      "uid": "beta_action",
+      "action_id": "transform",
+      "configuration": {
+        "expression": "{\"feature\": \"beta\", \"version\": \"2.0\", \"capabilities\": [\"advanced_analytics\", \"real_time_updates\", \"enhanced_ui\"], \"user\": \"{{.trigger_data.webhook.user.id}}\"}"
+      },
+      "on_success": "debug-logging-check",
+      "enabled": true
+    },
+    {
+      "id": "standard-feature-action",
+      "name": "Standard Feature Action",
+      "uid": "standard_action",
+      "action_id": "transform",
+      "configuration": {
+        "expression": "{\"feature\": \"standard\", \"version\": \"1.0\", \"capabilities\": [\"basic_analytics\", \"standard_ui\"], \"user\": \"{{.trigger_data.webhook.user.id}}\"}"
+      },
+      "on_success": "debug-logging-check",
+      "enabled": true
+    },
+    {
+      "id": "debug-logging-check",
+      "name": "Debug Logging Check",
+      "uid": "debug_check",
+      "action_id": "log",
+      "conditional": {
+        "language": "simple",
+        "expression": "{{or .variables.debug_mode (eq .variables.environment \"development\")}}"
+      },
+      "configuration": {
+        "message": "DEBUG: Workflow execution details - Environment: {{.variables.environment}}, Beta: {{.variables.feature_beta_enabled}}, Step Results: {{.step_results}}",
+        "level": "debug"
+      },
+      "on_success": "completion-summary",
+      "on_failure": "completion-summary",
+      "enabled": true
+    },
+    {
+      "id": "completion-summary",
+      "name": "Completion Summary",
+      "uid": "completion",
+      "action_id": "log",
+      "configuration": {
+        "message": "Workflow completed - Feature: {{.step_results.beta_action.feature}}{{.step_results.standard_action.feature}}, Environment: {{.variables.environment}}",
+        "level": "info"
+      },
+      "enabled": true
+    }
+  ]
+}

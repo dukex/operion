@@ -6,11 +6,12 @@ Generate a complete PRP for general feature implementation with thorough researc
 
 The AI agent only gets the context you are appending to the PRP and training data. Assume the AI agent has access to the codebase and the same knowledge cutoff as you, so it's important that your research findings are included or referenced in the PRP.
 
-The Agent has web search capabilities, so pass URLs to documentation and examples, and GitHub issue access capabilities for comprehensive research.
+The Agent has web search capabilities, so pass URLs to documentation and examples, and have github issue access capabilities for comprehensive research.
 
 ## Research Process
 
 1. **Read the Feature GitHub Issue**
+    - Use `hub` command line if available
     - Understand the feature requirements
     - Identify examples provided in the issue
     - Note any specific patterns or conventions mentioned

@@ -129,7 +129,6 @@ func (a *HTTPRequestAction) Execute(ctx context.Context, executionCtx models.Exe
 			bodyReader = strings.NewReader(string(bodyBytes))
 		}
 
-		// Only render path if it contains template expressions
 		pathResult, err := template.RenderWithContext(a.Path, &executionCtx)
 		if err != nil {
 			cancel()

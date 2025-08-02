@@ -31,6 +31,8 @@ func TestNewExecutor(t *testing.T) {
 	assert.NotNil(t, executor)
 	assert.Equal(t, persistence, executor.persistence)
 	assert.Equal(t, registry, executor.registry)
+
+	cleanupTestDirectory("./test-data")
 }
 
 func TestExecutor_Start_EmptyWorkflow(t *testing.T) {
@@ -63,6 +65,7 @@ func TestExecutor_Start_EmptyWorkflow(t *testing.T) {
 	// Clean up
 	err = repo.Delete("empty-workflow")
 	assert.NoError(t, err)
+	cleanupTestDirectory("./test-data")
 }
 
 func TestExecutor_Start_Success(t *testing.T) {
@@ -115,6 +118,7 @@ func TestExecutor_Start_Success(t *testing.T) {
 	// Clean up
 	err = repo.Delete("single-step-workflow")
 	assert.NoError(t, err)
+	cleanupTestDirectory("./test-data")
 }
 
 func TestExecutor_ExecuteStep_LogAction(t *testing.T) {
@@ -184,6 +188,7 @@ func TestExecutor_ExecuteStep_LogAction(t *testing.T) {
 
 	// Verify execution context was updated
 	assert.Contains(t, execCtx.StepResults, "log_action")
+	cleanupTestDirectory("./test-data")
 }
 
 func TestExecutor_ExecuteStep_WithNextStep(t *testing.T) {
@@ -257,6 +262,7 @@ func TestExecutor_ExecuteStep_WithNextStep(t *testing.T) {
 	assert.Equal(t, events.WorkflowStepAvailableEvent, stepAvailableEvent.GetType())
 	assert.Equal(t, "step-2", stepAvailableEvent.StepID)
 	assert.Equal(t, execCtx, stepAvailableEvent.ExecutionContext)
+	cleanupTestDirectory("./test-data")
 }
 
 func TestExecutor_ExecuteStep_DisabledStep(t *testing.T) {
@@ -299,6 +305,7 @@ func TestExecutor_ExecuteStep_DisabledStep(t *testing.T) {
 	// Verify workflow finished event (disabled step treated as success)
 	workflowFinishedEvent := eventList[0].(*events.WorkflowFinished)
 	assert.Equal(t, events.WorkflowFinishedEvent, workflowFinishedEvent.GetType())
+	cleanupTestDirectory("./test-data")
 }
 
 func TestExecutor_ExecuteStep_StepNotFound(t *testing.T) {
@@ -329,6 +336,7 @@ func TestExecutor_ExecuteStep_StepNotFound(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, eventList)
 	assert.Contains(t, err.Error(), "step non-existent-step not found")
+	cleanupTestDirectory("./test-data")
 }
 
 func TestExecutor_ExecuteStep_Action_failure(t *testing.T) {
@@ -384,6 +392,7 @@ func TestExecutor_ExecuteStep_Action_failure(t *testing.T) {
 	assert.Equal(t, "failing-step", stepFailedEvent.StepID)
 	assert.Equal(t, "non-existent-action", stepFailedEvent.ActionID)
 	assert.Contains(t, stepFailedEvent.Error, "not registered")
+	cleanupTestDirectory("./test-data")
 }
 
 func TestExecutor_IntegrationWithEventBus(t *testing.T) {
@@ -487,6 +496,7 @@ func TestExecutor_IntegrationWithEventBus(t *testing.T) {
 
 	err = repo.Delete("integration-workflow")
 	assert.NoError(t, err)
+	cleanupTestDirectory("./test-data")
 }
 
 // Helper function to create a test registry with native actions
