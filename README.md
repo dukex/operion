@@ -205,6 +205,29 @@ make build-linux    # Cross-compile for Linux
 make clean          # Clean build artifacts
 ```
 
+### Testing
+
+```bash
+make test           # Run all tests
+make test-coverage  # Generate coverage report (coverage.out and coverage.html)
+make fmt            # Format Go code
+make lint           # Run golangci-lint
+```
+
+### CI/CD
+
+The project uses GitHub Actions for continuous integration:
+
+- **Test and Coverage**: Runs on every PR and push to main
+  - Tests with Go 1.24
+  - Generates coverage reports
+  - Uploads coverage to Codecov and Coveralls
+  - Runs static analysis (vet, staticcheck, golangci-lint)
+  - Format checking
+  - Builds all binaries
+
+See [`.github/workflows/test-and-coverage.yml`](.github/workflows/test-and-coverage.yml) for complete workflow configuration.
+
 ### Development Server
 
 ```bash

@@ -47,10 +47,6 @@ func GetWebhookServerManager(port int, logger *slog.Logger) *WebhookServerManage
 	return globalServerManager
 }
 
-func SetGlobalWebhookServerManager(manager *WebhookServerManager) {
-	globalServerManager = manager
-}
-
 func GetGlobalWebhookServerManager() *WebhookServerManager {
 	return globalServerManager
 }
@@ -217,12 +213,6 @@ func (sm *WebhookServerManager) Stop(ctx context.Context) error {
 	})
 	sm.logger.Info("Webhook server manager stopped")
 	return nil
-}
-
-func (sm *WebhookServerManager) GetHandlerCount() int {
-	sm.mu.RLock()
-	defer sm.mu.RUnlock()
-	return len(sm.handlers)
 }
 
 func (sm *WebhookServerManager) Done() <-chan struct{} {
