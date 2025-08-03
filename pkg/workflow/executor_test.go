@@ -162,8 +162,10 @@ func TestExecutor_ExecuteStep_LogAction(t *testing.T) {
 	require.Len(t, eventList, 2) // StepFinished + WorkflowFinished (no next step)
 
 	// Events can be in different order, so check by type
-	var stepFinishedEvent *events.WorkflowStepFinished
-	var workflowFinishedEvent *events.WorkflowFinished
+	var (
+		stepFinishedEvent     *events.WorkflowStepFinished
+		workflowFinishedEvent *events.WorkflowFinished
+	)
 
 	for _, event := range eventList {
 		switch e := event.(type) {
@@ -243,8 +245,10 @@ func TestExecutor_ExecuteStep_WithNextStep(t *testing.T) {
 	require.Len(t, eventList, 2) // StepFinished + StepAvailable
 
 	// Events can be in different order, so check by type
-	var stepFinishedEvent *events.WorkflowStepFinished
-	var stepAvailableEvent *events.WorkflowStepAvailable
+	var (
+		stepFinishedEvent  *events.WorkflowStepFinished
+		stepAvailableEvent *events.WorkflowStepAvailable
+	)
 
 	for _, event := range eventList {
 		switch e := event.(type) {
@@ -339,7 +343,7 @@ func TestExecutor_ExecuteStep_StepNotFound(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, eventList)
-	assert.Contains(t, err.Error(), "step non-existent-step not found")
+	assert.Contains(t, err.Error(), "step not found in workflow")
 
 	cleanupTestDirectory("./test-data")
 }
@@ -443,13 +447,19 @@ func TestExecutor_IntegrationWithEventBus(t *testing.T) {
 	require.NoError(t, err)
 
 	// Set up event handling
-	var receivedEvents []eventbus.Event
-	var eventsMutex sync.Mutex
+	var (
+		receivedEvents []eventbus.Event
+		eventsMutex    sync.Mutex
+	)
 
 	err = eventBus.Handle(events.WorkflowStepAvailableEvent, func(ctx context.Context, event any) error {
 		eventsMutex.Lock()
 		defer eventsMutex.Unlock()
-		receivedEvents = append(receivedEvents, event.(eventbus.Event))
+
+		if eventData, ok := event.(eventbus.Event); ok {
+			receivedEvents = append(receivedEvents, eventData)
+		}
+
 		return nil
 	})
 	require.NoError(t, err)
@@ -457,7 +467,11 @@ func TestExecutor_IntegrationWithEventBus(t *testing.T) {
 	err = eventBus.Handle(events.WorkflowStepFinishedEvent, func(ctx context.Context, event any) error {
 		eventsMutex.Lock()
 		defer eventsMutex.Unlock()
-		receivedEvents = append(receivedEvents, event.(eventbus.Event))
+
+		if eventData, ok := event.(eventbus.Event); ok {
+			receivedEvents = append(receivedEvents, eventData)
+		}
+
 		return nil
 	})
 	require.NoError(t, err)
@@ -465,7 +479,11 @@ func TestExecutor_IntegrationWithEventBus(t *testing.T) {
 	err = eventBus.Handle(events.WorkflowFinishedEvent, func(ctx context.Context, event any) error {
 		eventsMutex.Lock()
 		defer eventsMutex.Unlock()
-		receivedEvents = append(receivedEvents, event.(eventbus.Event))
+
+		if eventData, ok := event.(eventbus.Event); ok {
+			receivedEvents = append(receivedEvents, eventData)
+		}
+
 		return nil
 	})
 	require.NoError(t, err)
@@ -506,7 +524,7 @@ func TestExecutor_IntegrationWithEventBus(t *testing.T) {
 	cleanupTestDirectory("./test-data")
 }
 
-// Helper function to create a test registry with native actions
+// Helper function to create a test registry with native actions.
 func createTestRegistry() *registry.Registry {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	reg := registry.NewRegistry(logger)

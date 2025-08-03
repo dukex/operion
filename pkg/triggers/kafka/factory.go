@@ -8,6 +8,10 @@ import (
 	"github.com/dukex/operion/pkg/protocol"
 )
 
+var (
+	ErrConfigNil = errors.New("config cannot be nil")
+)
+
 func NewKafkaTriggerFactory() protocol.TriggerFactory {
 	return &KafkaTriggerFactory{}
 }
@@ -81,11 +85,13 @@ func (f *KafkaTriggerFactory) Schema() map[string]any {
 
 func (f *KafkaTriggerFactory) Create(config map[string]any, logger *slog.Logger) (protocol.Trigger, error) {
 	if config == nil {
-		return nil, errors.New("config cannot be nil")
+		return nil, ErrConfigNil
 	}
+
 	trigger, err := NewKafkaTrigger(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kafka trigger: %w", err)
 	}
+
 	return trigger, nil
 }

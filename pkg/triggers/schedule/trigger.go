@@ -12,6 +12,10 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
+var (
+	ErrCronExpressionRequired = errors.New("schedule trigger cron expression is required")
+)
+
 type ScheduleTrigger struct {
 	CronExpr string
 	Enabled  bool
@@ -24,6 +28,7 @@ func NewScheduleTrigger(config map[string]any, logger *slog.Logger) (*ScheduleTr
 	cronExpr, _ := config["cron"].(string)
 
 	enabled := true
+
 	if enabledVal, exists := config["enabled"]; exists {
 		if enabledBool, ok := enabledVal.(bool); ok {
 			enabled = enabledBool
@@ -39,27 +44,34 @@ func NewScheduleTrigger(config map[string]any, logger *slog.Logger) (*ScheduleTr
 			"enabled", enabled,
 		),
 	}
-	if err := trigger.Validate(); err != nil {
+
+	err := trigger.Validate()
+	if err != nil {
 		return nil, err
 	}
+
 	return trigger, nil
 }
 
 func (t *ScheduleTrigger) Validate() error {
 	if t.CronExpr == "" {
-		return errors.New("schedule trigger cron expression is required")
+		return ErrCronExpressionRequired
 	}
+
 	if _, err := cron.ParseStandard(t.CronExpr); err != nil {
 		return fmt.Errorf("invalid cron expression: %w", err)
 	}
+
 	return nil
 }
 
 func (t *ScheduleTrigger) Start(ctx context.Context, callback protocol.TriggerCallback) error {
 	if !t.Enabled {
 		t.logger.Info("ScheduleTrigger is disabled.")
+
 		return nil
 	}
+
 	t.logger.Info("Starting ScheduleTrigger")
 	t.callback = callback
 
@@ -71,10 +83,23 @@ func (t *ScheduleTrigger) Start(ctx context.Context, callback protocol.TriggerCa
 	id, err := t.cron.AddFunc(t.CronExpr, t.run)
 
 	t.logger.Info("Adding cron job for trigger", "id", id)
+
 	if err != nil {
 		return fmt.Errorf("failed to add cron job for trigger with cron %s: %w", t.CronExpr, err)
 	}
+
 	t.cron.Start()
+
+	return nil
+}
+
+func (t *ScheduleTrigger) Stop(ctx context.Context) error {
+	t.logger.Info("Stopping ScheduleTrigger", "cron", t.CronExpr)
+
+	if t.cron != nil {
+		t.cron.Stop()
+	}
+
 	return nil
 }
 
@@ -86,17 +111,9 @@ func (t *ScheduleTrigger) run() {
 	}
 
 	go func() {
-		if err := t.callback(context.Background(), triggerData); err != nil {
+		err := t.callback(context.Background(), triggerData)
+		if err != nil {
 			t.logger.Error("Error executing workflow for trigger", "error", err)
 		}
 	}()
-}
-
-func (t *ScheduleTrigger) Stop(ctx context.Context) error {
-	t.logger.Info("Stopping ScheduleTrigger", "cron", t.CronExpr)
-
-	if t.cron != nil {
-		t.cron.Stop()
-	}
-	return nil
 }

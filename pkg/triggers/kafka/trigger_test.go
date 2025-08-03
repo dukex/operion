@@ -63,16 +63,19 @@ func TestNewKafkaTrigger(t *testing.T) {
 				if err == nil {
 					t.Errorf("NewKafkaTrigger() expected error but got none")
 				}
+
 				return
 			}
 
 			if err != nil {
 				t.Errorf("NewKafkaTrigger() unexpected error: %v", err)
+
 				return
 			}
 
 			if trigger == nil {
 				t.Errorf("NewKafkaTrigger() returned nil trigger")
+
 				return
 			}
 
@@ -140,8 +143,16 @@ func TestKafkaTriggerEnvironmentBrokers(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	// Test with environment variable
-	os.Setenv("KAFKA_BROKERS", "env-broker1:9092,env-broker2:9092")
-	defer os.Unsetenv("KAFKA_BROKERS")
+	if err := os.Setenv("KAFKA_BROKERS", "env-broker1:9092,env-broker2:9092"); err != nil {
+		t.Fatalf("Failed to set environment variable: %v", err)
+	}
+
+	defer func() {
+		err := os.Unsetenv("KAFKA_BROKERS")
+		if err != nil {
+			t.Logf("Failed to unset environment variable: %v", err)
+		}
+	}()
 
 	config := map[string]any{
 		"topic": "test-topic",
@@ -155,6 +166,7 @@ func TestKafkaTriggerEnvironmentBrokers(t *testing.T) {
 	expectedBrokers := []string{"env-broker1:9092", "env-broker2:9092"}
 	if len(trigger.Brokers) != len(expectedBrokers) {
 		t.Errorf("Brokers length = %v, want %v", len(trigger.Brokers), len(expectedBrokers))
+
 		return
 	}
 
@@ -181,6 +193,7 @@ func TestKafkaTriggerConsumerGroupGeneration(t *testing.T) {
 	expectedPrefix := "operion-triggers-"
 	if len(trigger.ConsumerGroup) < len(expectedPrefix) {
 		t.Errorf("ConsumerGroup length too short: %v", trigger.ConsumerGroup)
+
 		return
 	}
 
@@ -211,7 +224,7 @@ func TestKafkaTriggerStopWithoutStart(t *testing.T) {
 	}
 }
 
-// Mock callback for testing
+// Mock callback for testing.
 func mockCallback(ctx context.Context, data map[string]any) error {
 	return nil
 }

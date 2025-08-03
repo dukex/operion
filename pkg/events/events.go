@@ -34,6 +34,7 @@ type BaseEvent struct {
 
 type WorkflowTriggered struct {
 	BaseEvent
+
 	TriggerID   string         `json:"trigger_id"`
 	TriggerData map[string]any `json:"trigger_data,omitempty"`
 }
@@ -44,6 +45,7 @@ func (w WorkflowTriggered) GetType() EventType {
 
 type WorkflowFinished struct {
 	BaseEvent
+
 	ExecutionID string         `json:"execution_id"`
 	Result      map[string]any `json:"result,omitempty"`
 	Duration    time.Duration  `json:"duration"`
@@ -55,6 +57,7 @@ func (w WorkflowFinished) GetType() EventType {
 
 type WorkflowFailed struct {
 	BaseEvent
+
 	ExecutionID string        `json:"execution_id"`
 	Error       string        `json:"error"`
 	Duration    time.Duration `json:"duration"`
@@ -66,6 +69,7 @@ func (w WorkflowFailed) GetType() EventType {
 
 type WorkflowStepAvailable struct {
 	BaseEvent
+
 	ExecutionID      string                   `json:"execution_id"`
 	StepID           string                   `json:"step_id"`
 	ExecutionContext *models.ExecutionContext `json:"execution_context,omitempty"`
@@ -77,6 +81,7 @@ func (w WorkflowStepAvailable) GetType() EventType {
 
 type WorkflowStepFinished struct {
 	BaseEvent
+
 	ExecutionID string        `json:"execution_id"`
 	StepID      string        `json:"step_id"`
 	ActionID    string        `json:"action_id"`
@@ -90,6 +95,7 @@ func (w WorkflowStepFinished) GetType() EventType {
 
 type WorkflowStepFailed struct {
 	BaseEvent
+
 	ExecutionID string        `json:"execution_id"`
 	StepID      string        `json:"step_id"`
 	ActionID    string        `json:"action_id"`

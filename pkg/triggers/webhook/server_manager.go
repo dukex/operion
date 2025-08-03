@@ -3,6 +3,7 @@ package webhook
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -11,6 +12,10 @@ import (
 	"time"
 
 	"github.com/dukex/operion/pkg/protocol"
+)
+
+var (
+	ErrPathAlreadyRegistered = errors.New("webhook path already registered")
 )
 
 var (
@@ -44,6 +49,7 @@ func GetWebhookServerManager(port int, logger *slog.Logger) *WebhookServerManage
 			done:     make(chan struct{}),
 		}
 	})
+
 	return globalServerManager
 }
 
@@ -56,11 +62,12 @@ func (sm *WebhookServerManager) RegisterWebhook(path string, handler *WebhookHan
 	defer sm.mu.Unlock()
 
 	if _, exists := sm.handlers[path]; exists {
-		return fmt.Errorf("webhook path %s already registered", path)
+		return fmt.Errorf("%w: %s", ErrPathAlreadyRegistered, path)
 	}
 
 	sm.handlers[path] = handler
 	sm.logger.Info("Registered webhook handler", "path", path, "trigger_id", handler.TriggerID)
+
 	return nil
 }
 
@@ -95,20 +102,28 @@ func (sm *WebhookServerManager) Start(ctx context.Context) error {
 
 	go func() {
 		sm.logger.Info("Starting webhook HTTP server", "addr", sm.server.Addr)
-		if err := sm.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		err := sm.server.ListenAndServe()
+
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			sm.logger.Error("Failed to start webhook server", "error", err)
 		}
 	}()
 
 	go func() {
 		<-ctx.Done()
-		if err := sm.Stop(context.Background()); err != nil {
+
+		stopCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+
+		err := sm.Stop(stopCtx)
+		if err != nil {
 			sm.logger.Error("Failed to stop webhook server", "error", err)
 		}
 	}()
 
 	sm.started = true
 	sm.logger.Info("Webhook server manager started")
+
 	return nil
 }
 
@@ -120,6 +135,7 @@ func (sm *WebhookServerManager) handleWebhook(w http.ResponseWriter, r *http.Req
 	if !exists {
 		sm.logger.Warn("No handler found for webhook path", "path", r.URL.Path)
 		http.Error(w, "Webhook path not found", http.StatusNotFound)
+
 		return
 	}
 
@@ -129,23 +145,29 @@ func (sm *WebhookServerManager) handleWebhook(w http.ResponseWriter, r *http.Req
 	if err != nil {
 		handler.Logger.Error("Failed to read request body", "error", err)
 		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+
 		return
 	}
+
 	defer func() {
-		if err := r.Body.Close(); err != nil {
+		err := r.Body.Close()
+		if err != nil {
 			handler.Logger.Error("Failed to close request body", "error", err)
 		}
 	}()
 
 	var bodyData any
 	if len(body) > 0 {
-		if err := json.Unmarshal(body, &bodyData); err != nil {
+		err := json.Unmarshal(body, &bodyData)
+		if err != nil {
 			handler.Logger.Warn("Failed to parse JSON body, using raw string", "error", err)
+
 			bodyData = string(body)
 		}
 	}
 
 	headers := make(map[string]any)
+
 	for name, values := range r.Header {
 		if len(values) == 1 {
 			headers[name] = values[0]
@@ -155,6 +177,7 @@ func (sm *WebhookServerManager) handleWebhook(w http.ResponseWriter, r *http.Req
 	}
 
 	query := make(map[string]any)
+
 	for name, values := range r.URL.Query() {
 		if len(values) == 1 {
 			query[name] = values[0]
@@ -174,13 +197,18 @@ func (sm *WebhookServerManager) handleWebhook(w http.ResponseWriter, r *http.Req
 	}
 
 	go func() {
-		if err := handler.Callback(context.Background(), triggerData); err != nil {
+		callbackCtx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+		defer cancel()
+
+		err := handler.Callback(callbackCtx, triggerData)
+		if err != nil {
 			handler.Logger.Error("Error executing workflow for webhook trigger", "error", err)
 		}
 	}()
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
+
 	if err := json.NewEncoder(w).Encode(map[string]any{
 		"status":  "success",
 		"message": "webhook received",
@@ -199,11 +227,13 @@ func (sm *WebhookServerManager) Stop(ctx context.Context) error {
 
 	sm.logger.Info("Stopping webhook server manager")
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	if err := sm.server.Shutdown(shutdownCtx); err != nil {
+	err := sm.server.Shutdown(shutdownCtx)
+	if err != nil {
 		sm.logger.Error("Error shutting down webhook server", "error", err)
+
 		return err
 	}
 
@@ -212,16 +242,18 @@ func (sm *WebhookServerManager) Stop(ctx context.Context) error {
 		close(sm.done)
 	})
 	sm.logger.Info("Webhook server manager stopped")
+
 	return nil
 }
 
 func (sm *WebhookServerManager) Done() <-chan struct{} {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
+
 	return sm.done
 }
 
-// ResetGlobalManager resets the global manager (for testing purposes)
+// ResetGlobalManager resets the global manager (for testing purposes).
 func ResetGlobalManager() {
 	once = sync.Once{}
 	globalServerManager = nil

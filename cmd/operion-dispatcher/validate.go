@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"maps"
@@ -10,6 +11,11 @@ import (
 	"github.com/dukex/operion/pkg/workflow"
 	"github.com/go-playground/validator/v10"
 	"github.com/urfave/cli/v3"
+)
+
+var (
+	ErrInvalidTriggers = errors.New("invalid triggers found")
+	ErrInvalidSteps    = errors.New("invalid steps found")
 )
 
 var validate *validator.Validate
@@ -44,7 +50,8 @@ func NewValidateCommand() *cli.Command {
 			persistence := cmd.NewPersistence(logger, command.String("database-url"))
 
 			defer func() {
-				if err := persistence.Close(); err != nil {
+				err := persistence.Close()
+				if err != nil {
 					return
 				}
 			}()
@@ -71,6 +78,7 @@ func NewValidateCommand() *cli.Command {
 				if len(workflow.WorkflowTriggers) == 0 {
 					fmt.Printf("    ❌ INVALID: No trigger found for this workflow.\n")
 					invalidTriggers++
+
 					continue
 				}
 
@@ -91,9 +99,14 @@ func NewValidateCommand() *cli.Command {
 
 					err = validate.Struct(workflowTrigger)
 					if err != nil {
-						validationErrors := err.(validator.ValidationErrors)
-						fmt.Printf("    ❌ INVALID: %v\n", validationErrors)
+						var validationErrors validator.ValidationErrors
+						if errors.As(err, &validationErrors) {
+							fmt.Printf("    ❌ INVALID: %v\n", validationErrors)
+						} else {
+							fmt.Printf("    ❌ INVALID: %v\n", err)
+						}
 						invalidTriggers++
+
 						continue
 					}
 
@@ -114,9 +127,12 @@ func NewValidateCommand() *cli.Command {
 					err = validate.Struct(step)
 
 					if err != nil {
-						validationErrors := err.(validator.ValidationErrors)
-
-						fmt.Printf("    ❌ INVALID: %v\n", validationErrors)
+						var validationErrors validator.ValidationErrors
+						if errors.As(err, &validationErrors) {
+							fmt.Printf("    ❌ INVALID: %v\n", validationErrors)
+						} else {
+							fmt.Printf("    ❌ INVALID: %v\n", err)
+						}
 						invalidSteps++
 					} else {
 						validSteps++
@@ -134,14 +150,15 @@ func NewValidateCommand() *cli.Command {
 			fmt.Printf("  Invalid steps: %d\n", invalidSteps)
 
 			if invalidTriggers > 0 {
-				return fmt.Errorf("found %d invalid triggers", invalidTriggers)
+				return fmt.Errorf("%w: found %d invalid triggers", ErrInvalidTriggers, invalidTriggers)
 			}
 
 			if invalidSteps > 0 {
-				return fmt.Errorf("found %d invalid steps", invalidSteps)
+				return fmt.Errorf("%w: found %d invalid steps", ErrInvalidSteps, invalidSteps)
 			}
 
 			fmt.Println("All triggers and steps are valid! ✅")
+
 			return nil
 		},
 	}

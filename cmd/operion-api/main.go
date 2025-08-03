@@ -55,7 +55,8 @@ func main() {
 			persistence := cmd.NewPersistence(logger, command.String("database-url"))
 
 			defer func() {
-				if err := persistence.Close(); err != nil {
+				err := persistence.Close()
+				if err != nil {
 					logger.Error("Failed to close persistence", "error", err)
 				}
 			}()
@@ -66,7 +67,8 @@ func main() {
 				registry,
 			)
 
-			if err := api.Start(command.Int("port")); err != nil {
+			err := api.Start(command.Int("port"))
+			if err != nil {
 				logger.Error("Failed to start event-driven worker", "error", err)
 			}
 
@@ -74,7 +76,8 @@ func main() {
 		},
 	}
 
-	if err := cmd.Run(context.Background(), os.Args); err != nil {
+	err := cmd.Run(context.Background(), os.Args)
+	if err != nil {
 		panic(err)
 	}
 }

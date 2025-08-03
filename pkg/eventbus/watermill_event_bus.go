@@ -36,6 +36,7 @@ func (eb *WatermillEventBus) Publish(ctx context.Context, key string, event Even
 	msg := message.NewMessage("msg-"+eb.GenerateID(), payload)
 	msg.Metadata.Set(events.EventMetadataKey, key)
 	msg.Metadata.Set(events.EventTypeMetadataKey, string(event.GetType()))
+
 	return eb.publisher.Publish(events.Topic, msg)
 }
 
@@ -50,9 +51,11 @@ func (eb *WatermillEventBus) Subscribe(ctx context.Context) error {
 			var event any
 
 			eventType := events.EventType(msg.Metadata.Get(events.EventTypeMetadataKey))
+
 			handler, exists := eb.subscriptions[eventType]
 			if !exists {
 				msg.Ack()
+
 				continue
 			}
 
@@ -71,16 +74,21 @@ func (eb *WatermillEventBus) Subscribe(ctx context.Context) error {
 				event = &events.WorkflowStepFailed{}
 			default:
 				msg.Nack()
+
 				continue
 			}
 
-			if err := json.Unmarshal(msg.Payload, event); err != nil {
+			err := json.Unmarshal(msg.Payload, event)
+			if err != nil {
 				msg.Nack()
+
 				continue
 			}
 
-			if err := handler(ctx, event); err != nil {
+			err = handler(ctx, event)
+			if err != nil {
 				msg.Nack()
+
 				continue
 			}
 
@@ -93,12 +101,15 @@ func (eb *WatermillEventBus) Subscribe(ctx context.Context) error {
 
 func (eb *WatermillEventBus) Handle(eventType events.EventType, handler EventHandler) error {
 	eb.subscriptions[eventType] = handler
+
 	return nil
 }
 
 func (eb *WatermillEventBus) Close() error {
-	if err := eb.publisher.Close(); err != nil {
+	err := eb.publisher.Close()
+	if err != nil {
 		return err
 	}
+
 	return eb.subscriber.Close()
 }

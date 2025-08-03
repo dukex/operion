@@ -79,5 +79,6 @@ func (a *TransformAction) Execute(ctx context.Context, executionCtx models.Execu
 	}
 
 	logger.Info("TransformAction completed successfully")
+
 	return result, nil
 }

@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Mock event bus for testing
+// Mock event bus for testing.
 type MockEventBus struct {
 	publishedEvents []any
 }
@@ -26,6 +26,7 @@ func (m *MockEventBus) Handle(eventType events.EventType, handler eventbus.Event
 
 func (m *MockEventBus) Publish(ctx context.Context, key string, event eventbus.Event) error {
 	m.publishedEvents = append(m.publishedEvents, event)
+
 	return nil
 }
 
@@ -223,7 +224,7 @@ func TestWorkerManager_BasicWorkflowExecution(t *testing.T) {
 	}
 }
 
-// Mock workflow repository for testing
+// Mock workflow repository for testing.
 type MockWorkflowRepository struct {
 	workflows map[string]*models.Workflow
 }
@@ -236,5 +237,6 @@ func NewWorkflowRepository(persistence any) *MockWorkflowRepository {
 
 func (r *MockWorkflowRepository) Create(workflow *models.Workflow) error {
 	r.workflows[workflow.ID] = workflow
+
 	return nil
 }

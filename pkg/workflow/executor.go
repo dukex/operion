@@ -3,6 +3,7 @@ package workflow
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"maps"
@@ -13,6 +14,11 @@ import (
 	"github.com/dukex/operion/pkg/persistence"
 	"github.com/dukex/operion/pkg/registry"
 	"github.com/google/uuid"
+)
+
+var (
+	ErrWorkflowNoSteps = errors.New("workflow has no steps")
+	ErrStepNotFound    = errors.New("step not found in workflow")
 )
 
 type Executor struct {
@@ -34,10 +40,11 @@ func (s *Executor) Start(ctx context.Context, logger *slog.Logger, workflowID st
 	logger.Info("Starting execution of workflow")
 
 	workflowRepository := NewRepository(s.persistence)
-	workflowItem, err := workflowRepository.FetchByID(workflowID)
 
+	workflowItem, err := workflowRepository.FetchByID(workflowID)
 	if err != nil {
 		logger.Error("Failed to get workflow", "error", err)
+
 		return nil, err
 	}
 
@@ -45,7 +52,8 @@ func (s *Executor) Start(ctx context.Context, logger *slog.Logger, workflowID st
 
 	if len(workflowItem.Steps) == 0 {
 		logger.Info("Workflow has no steps to execute")
-		return nil, fmt.Errorf("workflow %s has no steps", workflowID)
+
+		return nil, fmt.Errorf("%w: %s", ErrWorkflowNoSteps, workflowID)
 	}
 
 	// TODO: save it to the database
@@ -71,7 +79,7 @@ func (s *Executor) ExecuteStep(ctx context.Context, logger *slog.Logger, workflo
 	[]eventbus.Event, error) {
 	step, found := s.findStepByID(workflow.Steps, currentStepID)
 	if !found {
-		return nil, fmt.Errorf("step %s not found in workflow %s", currentStepID, workflow.ID)
+		return nil, fmt.Errorf("%w %s in workflow %s", ErrStepNotFound, currentStepID, workflow.ID)
 	}
 
 	logger = logger.With(
@@ -119,6 +127,7 @@ func (s *Executor) ExecuteStep(ctx context.Context, logger *slog.Logger, workflo
 	if executionCtx.StepResults == nil {
 		executionCtx.StepResults = make(map[string]any)
 	}
+
 	executionCtx.StepResults[step.UID] = result
 	logger.Info("Step executed successfully", "result", result)
 
@@ -190,6 +199,7 @@ func (s *Executor) findStepByID(steps []*models.WorkflowStep, stepID string) (*m
 			return step, true
 		}
 	}
+
 	return nil, false
 }
 
@@ -237,6 +247,7 @@ func (s *Executor) executeAction(ctx context.Context, logger *slog.Logger, step 
 	}
 
 	logger.Info("Action completed successfully")
+
 	return result, err
 }
 
@@ -252,5 +263,5 @@ func (s *Executor) getNextStepID(step *models.WorkflowStep, success bool) (strin
 }
 
 func generateExecutionID() string {
-	return fmt.Sprintf("exec-%s", uuid.New().String()[:8])
+	return "exec-" + uuid.New().String()[:8]
 }

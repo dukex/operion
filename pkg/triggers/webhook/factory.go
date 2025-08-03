@@ -8,6 +8,10 @@ import (
 	"github.com/dukex/operion/pkg/protocol"
 )
 
+var (
+	ErrConfigNil = errors.New("config cannot be nil")
+)
+
 func NewWebhookTriggerFactory() protocol.TriggerFactory {
 	return &WebhookTriggerFactory{}
 }
@@ -86,11 +90,13 @@ func (f *WebhookTriggerFactory) Schema() map[string]any {
 
 func (f *WebhookTriggerFactory) Create(config map[string]any, logger *slog.Logger) (protocol.Trigger, error) {
 	if config == nil {
-		return nil, errors.New("config cannot be nil")
+		return nil, ErrConfigNil
 	}
+
 	trigger, err := NewWebhookTrigger(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create webhook trigger: %w", err)
 	}
+
 	return trigger, nil
 }

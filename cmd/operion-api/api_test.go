@@ -33,9 +33,16 @@ func TestAPI_RootEndpoint(t *testing.T) {
 	tempDir := t.TempDir()
 	app := setupTestApp(tempDir)
 
-	req := httptest.NewRequest("GET", "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	resp, err := app.Test(req)
 	require.NoError(t, err)
+
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			t.Logf("Failed to close response body: %v", err)
+		}
+	}()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -48,9 +55,16 @@ func TestAPI_HealthCheck(t *testing.T) {
 	tempDir := t.TempDir()
 	app := setupTestApp(tempDir)
 
-	req := httptest.NewRequest("GET", "/livez", nil)
+	req := httptest.NewRequest(http.MethodGet, "/livez", nil)
 	resp, err := app.Test(req)
 	require.NoError(t, err)
+
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			t.Logf("Failed to close response body: %v", err)
+		}
+	}()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -63,14 +77,22 @@ func TestAPI_GetWorkflows_Empty(t *testing.T) {
 	tempDir := t.TempDir()
 	app := setupTestApp(tempDir)
 
-	req := httptest.NewRequest("GET", "/workflows", nil)
+	req := httptest.NewRequest(http.MethodGet, "/workflows", nil)
 	req.Header.Set("Accept", "application/json")
 	resp, err := app.Test(req)
 	require.NoError(t, err)
 
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			t.Logf("Failed to close response body: %v", err)
+		}
+	}()
+
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	var workflows []models.Workflow
+
 	err = json.NewDecoder(resp.Body).Decode(&workflows)
 	require.NoError(t, err)
 	assert.Empty(t, workflows)
@@ -130,14 +152,22 @@ func TestAPI_GetWorkflows_WithData(t *testing.T) {
 
 	app := setupTestApp(tempDir)
 
-	req := httptest.NewRequest("GET", "/workflows", nil)
+	req := httptest.NewRequest(http.MethodGet, "/workflows", nil)
 	req.Header.Set("Accept", "application/json")
 	resp, err := app.Test(req)
 	require.NoError(t, err)
 
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			t.Logf("Failed to close response body: %v", err)
+		}
+	}()
+
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	var workflows []models.Workflow
+
 	err = json.NewDecoder(resp.Body).Decode(&workflows)
 	require.NoError(t, err)
 	assert.Len(t, workflows, 2)
@@ -184,14 +214,22 @@ func TestAPI_GetWorkflow_Success(t *testing.T) {
 
 	app := setupTestApp(tempDir)
 
-	req := httptest.NewRequest("GET", "/workflows/test-workflow-specific", nil)
+	req := httptest.NewRequest(http.MethodGet, "/workflows/test-workflow-specific", nil)
 	req.Header.Set("Accept", "application/json")
 	resp, err := app.Test(req)
 	require.NoError(t, err)
 
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			t.Logf("Failed to close response body: %v", err)
+		}
+	}()
+
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	var returnedWorkflow models.Workflow
+
 	err = json.NewDecoder(resp.Body).Decode(&returnedWorkflow)
 	require.NoError(t, err)
 
@@ -207,10 +245,17 @@ func TestAPI_GetWorkflow_NotFound(t *testing.T) {
 	tempDir := t.TempDir()
 	app := setupTestApp(tempDir)
 
-	req := httptest.NewRequest("GET", "/workflows/non-existent-workflow", nil)
+	req := httptest.NewRequest(http.MethodGet, "/workflows/non-existent-workflow", nil)
 	req.Header.Set("Accept", "application/json")
 	resp, err := app.Test(req)
 	require.NoError(t, err)
+
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			t.Logf("Failed to close response body: %v", err)
+		}
+	}()
 
 	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
 }
@@ -219,10 +264,17 @@ func TestAPI_GetWorkflow_InvalidID(t *testing.T) {
 	tempDir := t.TempDir()
 	app := setupTestApp(tempDir)
 
-	req := httptest.NewRequest("GET", "/workflows/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/workflows/", nil)
 	req.Header.Set("Accept", "application/json")
 	resp, err := app.Test(req)
 	require.NoError(t, err)
+
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			t.Logf("Failed to close response body: %v", err)
+		}
+	}()
 
 	// Should return the list of workflows instead
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -232,11 +284,18 @@ func TestAPI_CORS_Headers(t *testing.T) {
 	tempDir := t.TempDir()
 	app := setupTestApp(tempDir)
 
-	req := httptest.NewRequest("OPTIONS", "/workflows", nil)
+	req := httptest.NewRequest(http.MethodOptions, "/workflows", nil)
 	req.Header.Set("Origin", "http://localhost:3000")
 	req.Header.Set("Access-Control-Request-Method", "GET")
 	resp, err := app.Test(req)
 	require.NoError(t, err)
+
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			t.Logf("Failed to close response body: %v", err)
+		}
+	}()
 
 	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
 	assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
@@ -246,10 +305,17 @@ func TestAPI_ContentType_JSON(t *testing.T) {
 	tempDir := t.TempDir()
 	app := setupTestApp(tempDir)
 
-	req := httptest.NewRequest("GET", "/workflows", nil)
+	req := httptest.NewRequest(http.MethodGet, "/workflows", nil)
 	req.Header.Set("Accept", "application/json")
 	resp, err := app.Test(req)
 	require.NoError(t, err)
+
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			t.Logf("Failed to close response body: %v", err)
+		}
+	}()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Contains(t, resp.Header.Get("Content-Type"), "application/json")
@@ -353,26 +419,34 @@ func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
 	app := setupTestApp(tempDir)
 
 	// Test 1: Fetch all workflows and verify our workflow is there
-	req := httptest.NewRequest("GET", "/workflows", nil)
+	req := httptest.NewRequest(http.MethodGet, "/workflows", nil)
 	req.Header.Set("Accept", "application/json")
 	resp, err := app.Test(req)
 	require.NoError(t, err)
+
+	defer func() { _ = resp.Body.Close() }()
+
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	var workflows []models.Workflow
+
 	err = json.NewDecoder(resp.Body).Decode(&workflows)
 	require.NoError(t, err)
 	assert.Len(t, workflows, 1)
 	assert.Equal(t, "integration-test-workflow", workflows[0].ID)
 
 	// Test 2: Fetch specific workflow and verify all details
-	req = httptest.NewRequest("GET", "/workflows/integration-test-workflow", nil)
+	req = httptest.NewRequest(http.MethodGet, "/workflows/integration-test-workflow", nil)
 	req.Header.Set("Accept", "application/json")
 	resp, err = app.Test(req)
 	require.NoError(t, err)
+
+	defer func() { _ = resp.Body.Close() }()
+
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	var fetchedWorkflow models.Workflow
+
 	err = json.NewDecoder(resp.Body).Decode(&fetchedWorkflow)
 	require.NoError(t, err)
 
@@ -408,7 +482,7 @@ func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
 	assert.Equal(t, "0 0 * * *", trigger.Configuration["schedule"])
 }
 
-// Helper function to create string pointers
+// Helper function to create string pointers.
 func stringPtr(s string) *string {
 	return &s
 }

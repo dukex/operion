@@ -20,7 +20,6 @@ func InitTracer(ctx context.Context, serviceName string) (*sdktrace.TracerProvid
 			semconv.ServiceName(serviceName),
 		),
 	)
-
 	if err != nil {
 		return nil, err
 	}

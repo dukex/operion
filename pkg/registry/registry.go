@@ -2,6 +2,7 @@
 package registry
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"log/slog"
@@ -10,6 +11,11 @@ import (
 	"strings"
 
 	"github.com/dukex/operion/pkg/protocol"
+)
+
+var (
+	ErrActionNotRegistered  = errors.New("action type not registered")
+	ErrTriggerNotRegistered = errors.New("trigger ID not registered")
 )
 
 type Registry struct {
@@ -53,20 +59,22 @@ func (r *Registry) RegisterTrigger(triggerFactory protocol.TriggerFactory) {
 func (r *Registry) CreateAction(actionType string, config map[string]any) (protocol.Action, error) {
 	factory, ok := r.actionFactories[actionType]
 	if !ok {
-		return nil, fmt.Errorf("action type '%s' not registered", actionType)
+		return nil, fmt.Errorf("%w: '%s'", ErrActionNotRegistered, actionType)
 	}
+
 	return factory.Create(config)
 }
 
 func (r *Registry) CreateTrigger(triggerID string, config map[string]any) (protocol.Trigger, error) {
 	factory, ok := r.triggerFactories[triggerID]
 	if !ok {
-		return nil, fmt.Errorf("trigger ID '%s' not registered", triggerID)
+		return nil, fmt.Errorf("%w: '%s'", ErrTriggerNotRegistered, triggerID)
 	}
+
 	return factory.Create(config, r.logger)
 }
 
-// GetAvailableActions returns all available action types sorted by ID
+// GetAvailableActions returns all available action types sorted by ID.
 func (r *Registry) GetAvailableActions() []protocol.ActionFactory {
 	actions := make([]protocol.ActionFactory, 0, len(r.actionFactories))
 	for _, action := range r.actionFactories {
@@ -76,12 +84,13 @@ func (r *Registry) GetAvailableActions() []protocol.ActionFactory {
 	return actions
 }
 
-// GetAvailableTriggers returns all available trigger types
+// GetAvailableTriggers returns all available trigger types.
 func (r *Registry) GetAvailableTriggers() []protocol.TriggerFactory {
 	triggers := make([]protocol.TriggerFactory, 0, len(r.triggerFactories))
 	for _, trigger := range r.triggerFactories {
 		triggers = append(triggers, trigger)
 	}
+
 	return triggers
 }
 
@@ -135,6 +144,7 @@ func (r *Registry) GetAvailableTriggers() []protocol.TriggerFactory {
 func loadPlugin[T any](logger *slog.Logger, pluginsPath string, symbolName string) ([]T, error) {
 	rootPath := pluginsPath + "/" + strings.ToLower(symbolName) + "s"
 	root := os.DirFS(rootPath)
+
 	pluginPathList, err := fs.Glob(root, "**/*.so")
 	if err != nil {
 		return nil, err
@@ -144,6 +154,7 @@ func loadPlugin[T any](logger *slog.Logger, pluginsPath string, symbolName strin
 	l.Info("Loading plugins")
 
 	pluginList := make([]T, 0, len(pluginPathList))
+
 	for _, p := range pluginPathList {
 		plg, err := plugin.Open(rootPath + "/" + p)
 		if err != nil {

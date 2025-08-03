@@ -38,6 +38,7 @@ func (a *LogAction) Execute(ctx context.Context, executionCtx models.ExecutionCo
 	if err != nil {
 		return nil, fmt.Errorf("failed to render log message template: %w", err)
 	}
+
 	message := fmt.Sprintf("%v", renderedMessage)
 
 	// Log the message at the specified level

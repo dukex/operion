@@ -70,14 +70,15 @@ func main() {
 				return fmt.Errorf("failed to initialize tracer: %w", err)
 			}
 			defer func() {
-				if err := tracerProvider.Shutdown(ctx); err != nil {
+				err := tracerProvider.Shutdown(ctx)
+				if err != nil {
 					slog.Error("Failed to shutdown tracer provider", "error", err)
 				}
 			}()
 
 			dispatcherID := command.String("dispatcher-id")
 			if dispatcherID == "" {
-				dispatcherID = fmt.Sprintf("dispatcher-%s", uuid.New().String()[:8])
+				dispatcherID = "dispatcher-" + uuid.New().String()[:8]
 			}
 
 			logger := log.WithModule("operion-dispatcher").With("dispatcher_id", dispatcherID)
@@ -88,14 +89,16 @@ func main() {
 
 			eventBus := cmd.NewEventBus(command.String("event-bus"), logger)
 			defer func() {
-				if err := eventBus.Close(); err != nil {
+				err := eventBus.Close()
+				if err != nil {
 					logger.Error("Failed to close event bus", "error", err)
 				}
 			}()
 
 			persistence := cmd.NewPersistence(logger, command.String("database-url"))
 			defer func() {
-				if err := persistence.Close(); err != nil {
+				err := persistence.Close()
+				if err != nil {
 					logger.Error("Failed to close persistence", "error", err)
 				}
 			}()
@@ -113,7 +116,8 @@ func main() {
 		},
 	}
 
-	if err := cmd.Run(context.Background(), os.Args); err != nil {
+	err := cmd.Run(context.Background(), os.Args)
+	if err != nil {
 		panic(err)
 	}
 }

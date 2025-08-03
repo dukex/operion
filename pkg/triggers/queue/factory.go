@@ -8,6 +8,10 @@ import (
 	"github.com/dukex/operion/pkg/protocol"
 )
 
+var (
+	ErrConfigNil = errors.New("config cannot be nil")
+)
+
 func NewQueueTriggerFactory() protocol.TriggerFactory {
 	return &QueueTriggerFactory{}
 }
@@ -102,11 +106,13 @@ func (f *QueueTriggerFactory) Schema() map[string]any {
 
 func (f *QueueTriggerFactory) Create(config map[string]any, logger *slog.Logger) (protocol.Trigger, error) {
 	if config == nil {
-		return nil, errors.New("config cannot be nil")
+		return nil, ErrConfigNil
 	}
+
 	trigger, err := NewQueueTrigger(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create queue trigger: %w", err)
 	}
+
 	return trigger, nil
 }

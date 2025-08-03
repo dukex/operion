@@ -1,6 +1,7 @@
 package workflow
 
 import (
+	"log"
 	"os"
 	"testing"
 
@@ -290,5 +291,9 @@ func TestRepository_Delete_NotFound(t *testing.T) {
 }
 
 func cleanupTestDirectory(dir string) {
-	os.RemoveAll(dir)
+	err := os.RemoveAll(dir)
+	if err != nil {
+		// Just log the error during cleanup, don't fail the test
+		log.Printf("Failed to cleanup test directory %s: %v", dir, err)
+	}
 }

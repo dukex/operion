@@ -9,6 +9,10 @@ import (
 	"github.com/google/uuid"
 )
 
+var (
+	ErrWorkflowNotFound = errors.New("workflow not found")
+)
+
 type Repository struct {
 	persistence persistence.Persistence
 }
@@ -24,7 +28,8 @@ func (r *Repository) HealthCheck() (string, bool) {
 		return "Persistence layer not initialized", false
 	}
 
-	if err := r.persistence.HealthCheck(); err != nil {
+	err := r.persistence.HealthCheck()
+	if err != nil {
 		return "Persistence layer is unhealthy: " + err.Error(), false
 	}
 
@@ -33,7 +38,6 @@ func (r *Repository) HealthCheck() (string, bool) {
 
 func (r *Repository) FetchAll() ([]*models.Workflow, error) {
 	workflows, err := r.persistence.Workflows()
-
 	if err != nil {
 		return make([]*models.Workflow, 0), err
 	}
@@ -43,13 +47,12 @@ func (r *Repository) FetchAll() ([]*models.Workflow, error) {
 
 func (r *Repository) FetchByID(id string) (*models.Workflow, error) {
 	workflow, err := r.persistence.WorkflowByID(id)
-
 	if err != nil {
 		return nil, err
 	}
 
 	if workflow == nil {
-		return nil, errors.New("workflow not found")
+		return nil, ErrWorkflowNotFound
 	}
 
 	return workflow, nil
@@ -83,7 +86,7 @@ func (r *Repository) Update(id string, workflow *models.Workflow) (*models.Workf
 	}
 
 	if existing == nil {
-		return nil, errors.New("workflow not found")
+		return nil, ErrWorkflowNotFound
 	}
 
 	workflow.ID = id
@@ -105,7 +108,7 @@ func (r *Repository) Delete(id string) error {
 	}
 
 	if existing == nil {
-		return errors.New("workflow not found")
+		return ErrWorkflowNotFound
 	}
 
 	return r.persistence.DeleteWorkflow(id)
