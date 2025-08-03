@@ -19,7 +19,7 @@ The project follows a clean, layered architecture with clear separation of conce
 ### Key Domain Models
 
 - **Workflow** - Contains triggers, steps, variables, and metadata
-- **WorkflowStep** - Individual workflow steps with actions and conditionals
+- **WorkflowStep** - Individual workflow steps with actions
 - **Action Interface** - Contract for executable actions (pluggable architecture)
 - **Trigger Interface** - Contract for workflow triggers (extensible system)
 - **ExecutionContext** - Carries state between workflow steps

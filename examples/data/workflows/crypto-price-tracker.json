@@ -36,10 +36,7 @@
           "delay": 2
         }
       },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
+  
       "on_success": "process-bitcoin",
       "on_failure": "log-fetch-error",
       "enabled": true
@@ -52,10 +49,6 @@
       "configuration": {
         "expression": "{\n  \"coin\": \"bitcoin\",\n  \"price\": steps.cryptodata.body.bitcoin.usd,\n  \"market_cap\": steps.cryptodata.body.bitcoin.usd_market_cap,\n  \"change_24h\": steps.cryptodata.body.bitcoin.usd_24h_change,\n  \"timestamp\": $now(),\n  \"significant_change\": $abs(steps.cryptodata.body.bitcoin.usd_24h_change) > vars.change_threshold,\n  \"direction\": steps.cryptodata.body.bitcoin.usd_24h_change > 0 ? \"UP\" : \"DOWN\"\n}"
       },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
       "on_success": "process-ethereum",
       "enabled": true
     },
@@ -66,10 +59,6 @@
       "uid": "ethereumanalysis",
       "configuration": {
         "expression": "{\n  \"coin\": \"ethereum\",\n  \"price\": steps.cryptodata.body.ethereum.usd,\n  \"market_cap\": steps.cryptodata.body.ethereum.usd_market_cap,\n  \"change_24h\": steps.cryptodata.body.ethereum.usd_24h_change,\n  \"timestamp\": $now(),\n  \"significant_change\": $abs(steps.cryptodata.body.ethereum.usd_24h_change) > vars.change_threshold,\n  \"direction\": steps.cryptodata.body.ethereum.usd_24h_change > 0 ? \"UP\" : \"DOWN\"\n}"
-      },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
       },
       "on_success": "create-summary",
       "enabled": true
@@ -82,10 +71,6 @@
       "configuration": {
         "expression": "{\n  \"timestamp\": $now(),\n  \"coins\": [\n    steps.bitcoinanalysis,\n    steps.ethereumanalysis\n  ],\n  \"alerts\": [\n    steps.bitcoinanalysis.significant_change ? \"Bitcoin \" & steps.bitcoinanalysis.direction & \" \" & $string($abs(steps.bitcoinanalysis.change_24h)) & \"%\" : null,\n    steps.ethereumanalysis.significant_change ? \"Ethereum \" & steps.ethereumanalysis.direction & \" \" & $string($abs(steps.ethereumanalysis.change_24h)) & \"%\" : null\n  ][$exists($)],\n  \"total_market_cap\": steps.bitcoinanalysis.market_cap + steps.ethereumanalysis.market_cap\n}"
       },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
       "on_success": "log-prices",
       "enabled": true
     },
@@ -96,10 +81,6 @@
       "uid": "pricelog",
       "configuration": {
         "message": "\"Crypto Prices - BTC: $\" & $string(steps.bitcoinanalysis.price) & \" (\" & $string($round(steps.bitcoinanalysis.change_24h, 2)) & \"%), ETH: $\" & $string(steps.ethereumanalysis.price) & \" (\" & $string($round(steps.ethereumanalysis.change_24h, 2)) & \"%)\""
-      },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
       },
       "on_success": "send-price-report",
       "enabled": true
@@ -120,10 +101,6 @@
         "body": "{\n  \"service\": \"crypto-tracker\",\n  \"timestamp\": steps.pricesummary.timestamp,\n  \"data\": {\n    \"bitcoin\": {\n      \"price\": steps.bitcoinanalysis.price,\n      \"change_24h\": steps.bitcoinanalysis.change_24h,\n      \"market_cap\": steps.bitcoinanalysis.market_cap,\n      \"alert\": steps.bitcoinanalysis.significant_change\n    },\n    \"ethereum\": {\n      \"price\": steps.ethereumanalysis.price,\n      \"change_24h\": steps.ethereumanalysis.change_24h,\n      \"market_cap\": steps.ethereumanalysis.market_cap,\n      \"alert\": steps.ethereumanalysis.significant_change\n    }\n  },\n  \"alerts\": steps.pricesummary.alerts,\n  \"total_market_cap\": steps.pricesummary.total_market_cap\n}",
         "timeout": 10
       },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
       "on_success": "log-success",
       "on_failure": "log-webhook-error",
       "enabled": true
@@ -136,10 +113,6 @@
       "configuration": {
         "message": "\"Crypto tracking completed successfully. Alerts: \" & $string($count(steps.pricesummary.alerts))"
       },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
       "enabled": true
     },
     {
@@ -150,10 +123,6 @@
       "configuration": {
         "message": "\"Failed to fetch cryptocurrency prices from CoinGecko API\""
       },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
       "enabled": true
     },
     {
@@ -163,10 +132,6 @@
       "uid": "webhookerrorlog",
       "configuration": {
         "message": "\"Failed to send crypto price report\""
-      },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
       },
       "enabled": true
     }

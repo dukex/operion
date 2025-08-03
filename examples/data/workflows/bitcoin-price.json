@@ -32,10 +32,6 @@
         }
       },
       "uid": "bitcoindata",
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
       "on_success": "8de00551-e4de-48bf-aeff-21d394c86a9e",
       "on_failure": "temp_l7oaen33g",
       "enabled": true
@@ -49,10 +45,6 @@
       },
       "uid": "processbitcoindata",
       "name": "Extract Bitcoin Price",
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
       "on_success": "8866978c-806e-468e-a1f6-d03fa418b238",
       "on_failure": "temp_l7oaen33g",
       "enabled": true
@@ -76,10 +68,6 @@
       },
       "uid": "save",
       "name": "Save Bitcoin Price",
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
       "enabled": true
     },
     {
@@ -88,10 +76,6 @@
       "configuration": {},
       "uid": "logerror",
       "name": "Log Error",
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
       "enabled": true
     }
   ],

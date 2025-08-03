@@ -8,7 +8,6 @@ Operion enables you to create automated workflows through:
 
 - **Triggers**: Events that initiate workflows (scheduled execution)
 - **Actions**: Operations executed in workflows (HTTP requests, file operations, logging, data transformation)
-- **Conditionals**: Logic for flow control between steps
 - **Context**: Data sharing between workflow steps
 - **Workers**: Background processes that execute workflows
 
@@ -260,7 +259,6 @@ See [TODO.md](./TODO.md) for a comprehensive list of planned features organized 
 - **Email Action**: SMTP-based notifications for cloud environments
 - **Slack/Discord Actions**: Team communication via webhooks
 - **Database Actions**: Cloud database operations (PostgreSQL, MySQL, MongoDB)
-- **Conditional Actions**: Workflow branching and business rule implementation
 
 ### Infrastructure Enhancements
 - **Kubernetes Integration**: Helm charts, HPA support, and service mesh compatibility

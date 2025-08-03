@@ -30,10 +30,6 @@
         "message": "Processing order from Kafka - Topic: {{ trigger.topic }}, Partition: {{ trigger.partition }}, Offset: {{ trigger.offset }}, Order ID: {{ trigger.message_data.order_id }}",
         "level": "info"
       },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
       "enabled": true
     },
     {
@@ -43,10 +39,6 @@
       "uid": "validateorderdata",
       "configuration": {
         "expression": "{ \"order_id\": trigger.message_data.order_id, \"customer_id\": trigger.message_data.customer_id, \"total_amount\": trigger.message_data.total_amount, \"status\": trigger.message_data.status, \"timestamp\": trigger.timestamp, \"is_valid\": trigger.message_data.order_id != null and trigger.message_data.customer_id != null and trigger.message_data.total_amount > 0 }"
-      },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
       },
       "enabled": true
     },
@@ -75,10 +67,6 @@
           }
         }
       },
-      "conditional": {
-        "language": "simple",
-        "expression": "{{ steps.validateorderdata.is_valid }} == true"
-      },
       "enabled": true
     },
     {
@@ -106,10 +94,6 @@
           "processed_at": "{{ steps.validateorderdata.timestamp }}"
         }
       },
-      "conditional": {
-        "language": "simple",
-        "expression": "{{ steps.processvalidorder.status_code }} >= 200 and {{ steps.processvalidorder.status_code }} < 300"
-      },
       "enabled": true
     },
     {
@@ -121,10 +105,6 @@
         "message": "Invalid order received from Kafka - Order ID: {{ trigger.message_data.order_id }}, Reason: Missing required fields",
         "level": "error"
       },
-      "conditional": {
-        "language": "simple",
-        "expression": "{{ steps.validateorderdata.is_valid }} == false"
-      },
       "enabled": true
     },
     {
@@ -135,10 +115,6 @@
       "configuration": {
         "message": "Order processing completed - Order ID: {{ steps.validateorderdata.order_id }}, Valid: {{ steps.validateorderdata.is_valid }}, API Status: {{ steps.processvalidorder.status_code }}",
         "level": "info"
-      },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
       },
       "enabled": true
     }
