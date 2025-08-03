@@ -4,7 +4,10 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
 
 jobs:
   test:
@@ -57,10 +60,11 @@ jobs:
       - name: Run deadcode analysis
         run: go tool deadcode -test ./...
 
-      # - name: Install golangci-lint
-      #   uses: golangci/golangci-lint-action@v8
-      #   with:
-      #     version: latest
+      - name: Install golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: latest
+          only-new-issues: true
 
       - name: Run tests
         run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
