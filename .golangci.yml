@@ -1,3 +1,12 @@
 version: "2"
 linters:
   default: all
+  settings:
+    funlen:
+      lines: 120
+    depguard:
+      rules:
+        main:
+          list-mode: lax
+          allow:
+            - github.com/dukex/operion/pkg/protocol
