@@ -21,10 +21,6 @@
       "name": "Fetch Current Weather",
       "action_id": "http_request",
       "uid": "weatherdata",
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
       "configuration": {
         "protocol": "https",
         "host": "api.openweathermap.org",
@@ -49,10 +45,6 @@
       "name": "Process Weather Data",
       "action_id": "transform",
       "uid": "weatherprocessed",
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
       "configuration": {
         "expression": "{\n  \"city\": steps.weatherdata.body.name,\n  \"country\": steps.weatherdata.body.sys.country,\n  \"temperature\": steps.weatherdata.body.main.temp,\n  \"feels_like\": steps.weatherdata.body.main.feels_like,\n  \"humidity\": steps.weatherdata.body.main.humidity,\n  \"pressure\": steps.weatherdata.body.main.pressure,\n  \"weather\": steps.weatherdata.body.weather[0].description,\n  \"wind_speed\": steps.weatherdata.body.wind.speed,\n  \"timestamp\": $now(),\n  \"alert_needed\": steps.weatherdata.body.main.temp > vars.temperature_threshold\n}"
       },
@@ -64,10 +56,6 @@
       "name": "Check Alert Condition",
       "action_id": "transform",
       "uid": "alertdecision",
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
       "configuration": {
         "expression": "steps.weatherprocessed.alert_needed ? \"ALERT\" : \"OK\""
       },
@@ -79,10 +67,6 @@
       "name": "Log Weather Status",
       "action_id": "log",
       "uid": "weatherlog",
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
       "configuration": {
         "message": "\"Weather in \" & steps.weatherprocessed.city & \": \" & $string(steps.weatherprocessed.temperature) & \"°C (\" & steps.weatherprocessed.weather & \") - Status: \" & steps.alertdecision"
       },
@@ -94,10 +78,6 @@
       "name": "Send Weather Report",
       "action_id": "http_request",
       "uid": "webhookresponse",
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
       "configuration": {
         "protocol": "https",
         "host": "httpbin.org",
@@ -118,10 +98,6 @@
       "name": "Log Success",
       "action_id": "log",
       "uid": "successlog",
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
       "configuration": {
         "message": "\"Weather monitoring completed successfully for \" & steps.weatherprocessed.city"
       },
@@ -132,10 +108,6 @@
       "name": "Log Fetch Error",
       "action_id": "log",
       "uid": "fetcherrorlog",
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
       "configuration": {
         "message": "\"Failed to fetch weather data for \" & vars.city"
       },
@@ -146,10 +118,6 @@
       "name": "Log Webhook Error",
       "action_id": "log",
       "uid": "webhookerrorlog",
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
       "configuration": {
         "message": "\"Failed to send weather report webhook\""
       },

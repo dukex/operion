@@ -36,10 +36,6 @@
           "delay": 5
         }
       },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
       "on_success": "fetch-region-data",
       "on_failure": "log-fetch-error",
       "enabled": true
@@ -60,10 +56,6 @@
           "User-Agent": "Operion-DataSync/1.0"
         }
       },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
       "on_success": "process-countries",
       "on_failure": "log-region-error",
       "enabled": true
@@ -76,10 +68,6 @@
       "configuration": {
         "expression": "{\n  \"total_countries\": $count(steps.countriesdata.body),\n  \"total_population\": $sum($map(steps.countriesdata.body, function($country) {\n    $country.population ? $country.population : 0\n  })),\n  \"largest_countries\": $map($sort(steps.countriesdata.body, function($a, $b) {\n    ($b.area ? $b.area : 0) - ($a.area ? $a.area : 0)\n  })[0..4], function($country) {\n    {\n      \"name\": $country.name.common,\n      \"area\": $country.area,\n      \"population\": $country.population,\n      \"region\": $country.region\n    }\n  }),\n  \"regions\": $distinct($map(steps.countriesdata.body, function($country) {\n    $country.region\n  })),\n  \"timestamp\": $now()\n}"
       },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
       "on_success": "process-europe",
       "enabled": true
     },
@@ -90,10 +78,6 @@
       "uid": "processedeurope",
       "configuration": {
         "expression": "{\n  \"europe_countries\": $count(steps.europedata.body),\n  \"europe_population\": $sum($map(steps.europedata.body, function($country) {\n    $country.population ? $country.population : 0\n  })),\n  \"largest_eu_countries\": $map($sort(steps.europedata.body, function($a, $b) {\n    ($b.population ? $b.population : 0) - ($a.population ? $a.population : 0)\n  })[0..2], function($country) {\n    {\n      \"name\": $country.name.common,\n      \"capital\": $country.capital ? $country.capital[0] : \"N/A\",\n      \"population\": $country.population\n    }\n  }),\n  \"timestamp\": $now()\n}"
-      },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
       },
       "on_success": "validate-data",
       "enabled": true
@@ -106,10 +90,6 @@
       "configuration": {
         "expression": "{\n  \"validation\": {\n    \"total_countries_valid\": steps.processedcountries.total_countries > 0,\n    \"population_valid\": steps.processedcountries.total_population > 0,\n    \"europe_subset_valid\": steps.processedeurope.europe_countries <= steps.processedcountries.total_countries,\n    \"regions_count\": $count(steps.processedcountries.regions),\n    \"has_europe\": \"Europe\" in steps.processedcountries.regions\n  },\n  \"data_quality_score\": (\n    (steps.processedcountries.total_countries > 190 ? 1 : 0) +\n    (steps.processedcountries.total_population > 7000000000 ? 1 : 0) +\n    (steps.processedeurope.europe_countries > 40 ? 1 : 0) +\n    ($count(steps.processedcountries.regions) >= 5 ? 1 : 0)\n  ),\n  \"sync_status\": (\n    steps.processedcountries.total_countries > 190 and\n    steps.processedcountries.total_population > 7000000000 and\n    steps.processedeurope.europe_countries > 40\n  ) ? \"SUCCESS\" : \"WARNING\",\n  \"timestamp\": $now()\n}"
       },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
       "on_success": "create-sync-report",
       "enabled": true
     },
@@ -121,10 +101,6 @@
       "configuration": {
         "expression": "{\n  \"sync_summary\": {\n    \"timestamp\": $now(),\n    \"status\": steps.validationresults.sync_status,\n    \"data_quality_score\": steps.validationresults.data_quality_score & \"/4\",\n    \"statistics\": {\n      \"total_countries\": steps.processedcountries.total_countries,\n      \"world_population\": steps.processedcountries.total_population,\n      \"europe_countries\": steps.processedeurope.europe_countries,\n      \"europe_population\": steps.processedeurope.europe_population,\n      \"regions_found\": $count(steps.processedcountries.regions)\n    }\n  },\n  \"data_samples\": {\n    \"largest_countries\": steps.processedcountries.largest_countries,\n    \"largest_eu_countries\": steps.processedeurope.largest_eu_countries\n  },\n  \"validation\": steps.validationresults.validation\n}"
       },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
       "on_success": "log-sync-stats",
       "enabled": true
     },
@@ -135,10 +111,6 @@
       "uid": "statslog",
       "configuration": {
         "message": "\"Data Sync - Status: \" & steps.syncreport.sync_summary.status & \", Countries: \" & $string(steps.syncreport.sync_summary.statistics.total_countries) & \", Quality Score: \" & steps.syncreport.sync_summary.data_quality_score"
-      },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
       },
       "on_success": "send-sync-report",
       "enabled": true
@@ -159,10 +131,6 @@
         "body": "{\n  \"service\": \"data-sync\",\n  \"timestamp\": steps.syncreport.sync_summary.timestamp,\n  \"sync_status\": steps.syncreport.sync_summary.status,\n  \"quality_metrics\": {\n    \"data_quality_score\": steps.syncreport.sync_summary.data_quality_score,\n    \"total_records\": steps.syncreport.sync_summary.statistics.total_countries,\n    \"validation_passed\": steps.validationresults.validation\n  },\n  \"statistics\": steps.syncreport.sync_summary.statistics,\n  \"sample_data\": steps.syncreport.data_samples\n}",
         "timeout": 10
       },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
       "on_success": "log-success",
       "on_failure": "log-webhook-error",
       "enabled": true
@@ -175,10 +143,6 @@
       "configuration": {
         "message": "\"Data synchronization completed successfully. Status: \" & steps.syncreport.sync_summary.status"
       },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
       "enabled": true
     },
     {
@@ -188,10 +152,6 @@
       "uid": "fetcherrorlog",
       "configuration": {
         "message": "\"Failed to fetch countries data from REST Countries API\""
-      },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
       },
       "enabled": true
     },
@@ -203,10 +163,6 @@
       "configuration": {
         "message": "\"Failed to fetch Europe region data from REST Countries API\""
       },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
       "enabled": true
     },
     {
@@ -216,10 +172,6 @@
       "uid": "webhookerrorlog",
       "configuration": {
         "message": "\"Failed to send data sync report\""
-      },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
       },
       "enabled": true
     }

@@ -34,11 +34,6 @@ export interface TriggerItem {
   };
 }
 
-export interface ConditionalExpression {
-  language: "javascript" | "cel" | "simple" | "";
-  expression: string;
-}
-
 export interface WorkflowStep {
   id: string;
   action_id: string;
@@ -46,7 +41,6 @@ export interface WorkflowStep {
   name: string;
   description: string;
   configuration: Record<string, unknown>;
-  conditional?: ConditionalExpression;
   on_success?: string | null;
   on_failure?: string | null;
   enabled: boolean;
@@ -92,7 +86,6 @@ export interface Workflow {
 //   id: string; // Added step ID
 //   name: string;
 //   action: Omit<ActionItem, "id">; // ID auto-generated for action within step
-//   conditional?: ConditionalExpression;
 //   on_success?: string | null;
 //   on_failure?: string | null;
 //   enabled: boolean;
