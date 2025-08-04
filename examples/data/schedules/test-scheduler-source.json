@@ -1,0 +1,9 @@
+{
+  "id": "test-scheduler-source",
+  "source_id": "test-scheduler-source",
+  "cron_expression": "*/1 * * * *",
+  "next_due_at": "2025-08-04T22:26:00Z",
+  "created_at": "2025-08-04T12:07:46.658754Z",
+  "updated_at": "2025-08-04T22:25:43.97714Z",
+  "active": true
+}

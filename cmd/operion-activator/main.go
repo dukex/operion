@@ -15,39 +15,25 @@ import (
 
 func main() {
 	cmd := &cli.Command{
-		Name:                  "operion-dispatcher",
-		Usage:                 "Start the Operion dispatcher service",
+		Name:                  "operion-activator",
+		Usage:                 "Start the Operion activator service",
 		EnableShellCompletion: true,
 		Commands: []*cli.Command{
 			NewValidateCommand(),
 		},
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:    "dispatcher-id",
+				Name:    "activator-id",
 				Aliases: []string{"id"},
-				Usage:   "Custom dispatcher ID (auto-generated if not provided)",
+				Usage:   "Custom activator ID (auto-generated if not provided)",
 				Value:   "",
-				Sources: cli.EnvVars("DISPATCHER_ID"),
+				Sources: cli.EnvVars("ACTIVATOR_ID"),
 			},
 			&cli.StringFlag{
 				Name:     "database-url",
 				Usage:    "Database connection URL for persistence",
 				Required: true,
 				Sources:  cli.EnvVars("DATABASE_URL"),
-			},
-			&cli.StringFlag{
-				Name:     "plugins-path",
-				Usage:    "Path to the directory containing action plugins",
-				Value:    "./plugins",
-				Required: false,
-				Sources:  cli.EnvVars("PLUGINS_PATH"),
-			},
-			&cli.IntFlag{
-				Name:     "webhook-port",
-				Usage:    "Port for webhook HTTP server",
-				Value:    8085,
-				Required: false,
-				Sources:  cli.EnvVars("WEBHOOK_PORT"),
 			},
 			&cli.StringFlag{
 				Name:    "log-level",
@@ -59,7 +45,7 @@ func main() {
 		Action: func(ctx context.Context, command *cli.Command) error {
 			log.Setup(command.String("log-level"))
 
-			tracerProvider, err := trc.InitTracer(ctx, "operion-trigger")
+			tracerProvider, err := trc.InitTracer(ctx, "operion-activator")
 			if err != nil {
 				return fmt.Errorf("failed to initialize tracer: %w", err)
 			}
@@ -69,21 +55,26 @@ func main() {
 				}
 			}()
 
-			dispatcherID := command.String("dispatcher-id")
-			if dispatcherID == "" {
-				dispatcherID = fmt.Sprintf("dispatcher-%s", uuid.New().String()[:8])
+			activatorID := command.String("activator-id")
+			if activatorID == "" {
+				activatorID = fmt.Sprintf("activator-%s", uuid.New().String()[:8])
 			}
 
-			logger := log.WithModule("operion-dispatcher").With("dispatcher_id", dispatcherID)
+			logger := log.WithModule("operion-activator").With("activator_id", activatorID)
 
-			logger.Info("Initializing Operion Dispatcher", "dispatcher_id", dispatcherID)
-
-			registry := cmd.NewRegistry(logger, command.String("plugins-path"))
+			logger.Info("Initializing Operion Activator", "activator_id", activatorID)
 
 			eventBus := cmd.NewEventBus(logger)
 			defer func() {
 				if err := eventBus.Close(); err != nil {
-					logger.Error("Failed to close event bus", "error", err)
+					logger.Error("Failed to close workflow event bus", "error", err)
+				}
+			}()
+
+			sourceEventBus := cmd.NewSourceEventBus(logger)
+			defer func() {
+				if err := sourceEventBus.Close(); err != nil {
+					logger.Error("Failed to close source event bus", "error", err)
 				}
 			}()
 
@@ -94,14 +85,15 @@ func main() {
 				}
 			}()
 
-			NewDispatcherManager(
-				dispatcherID,
+			activator := NewActivator(
+				activatorID,
 				persistence,
 				eventBus,
+				sourceEventBus,
 				logger,
-				registry,
-				command.Int("webhook-port"),
-			).Start(ctx)
+			)
+
+			activator.Start(ctx)
 
 			return nil
 		},

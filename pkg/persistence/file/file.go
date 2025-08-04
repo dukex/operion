@@ -107,3 +107,123 @@ func (fp *FilePersistence) DeleteWorkflow(id string) error {
 	}
 	return err
 }
+
+// Schedule operations
+
+func (fp *FilePersistence) Schedules() ([]*models.Schedule, error) {
+	root := os.DirFS(fp.root + "/schedules")
+	jsonFiles, err := fs.Glob(root, "*.json")
+
+	if err != nil {
+		return nil, err
+	}
+
+	if len(jsonFiles) == 0 {
+		return make([]*models.Schedule, 0), nil
+	}
+
+	schedules := make([]*models.Schedule, 0, len(jsonFiles))
+
+	for _, file := range jsonFiles {
+		schedule, err := fp.ScheduleByID(file[:len(file)-5])
+		if err != nil {
+			return nil, err
+		}
+		if schedule != nil {
+			schedules = append(schedules, schedule)
+		}
+	}
+
+	return schedules, nil
+}
+
+func (fp *FilePersistence) ScheduleByID(scheduleID string) (*models.Schedule, error) {
+	filePath := path.Join(fp.root+"/schedules", scheduleID+".json")
+	body, err := os.ReadFile(filePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	var schedule models.Schedule
+	err = json.Unmarshal(body, &schedule)
+	if err != nil {
+		return nil, err
+	}
+
+	return &schedule, nil
+}
+
+func (fp *FilePersistence) ScheduleBySourceID(sourceID string) (*models.Schedule, error) {
+	schedules, err := fp.Schedules()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, schedule := range schedules {
+		if schedule.SourceID == sourceID {
+			return schedule, nil
+		}
+	}
+
+	return nil, nil
+}
+
+func (fp *FilePersistence) SaveSchedule(schedule *models.Schedule) error {
+	err := os.MkdirAll(fp.root+"/schedules", 0755)
+	if err != nil {
+		return err
+	}
+
+	now := time.Now().UTC()
+	if schedule.CreatedAt.IsZero() {
+		schedule.CreatedAt = now
+	}
+	schedule.UpdatedAt = now
+
+	data, err := json.MarshalIndent(schedule, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	filePath := path.Join(fp.root+"/schedules", schedule.ID+".json")
+	return os.WriteFile(filePath, data, 0644)
+}
+
+func (fp *FilePersistence) DeleteSchedule(id string) error {
+	filePath := path.Join(fp.root+"/schedules", id+".json")
+	err := os.Remove(filePath)
+	if err != nil && os.IsNotExist(err) {
+		return nil
+	}
+	return err
+}
+
+func (fp *FilePersistence) DeleteScheduleBySourceID(sourceID string) error {
+	schedule, err := fp.ScheduleBySourceID(sourceID)
+	if err != nil {
+		return err
+	}
+	if schedule == nil {
+		return nil
+	}
+	return fp.DeleteSchedule(schedule.ID)
+}
+
+func (fp *FilePersistence) DueSchedules(before time.Time) ([]*models.Schedule, error) {
+	schedules, err := fp.Schedules()
+	if err != nil {
+		return nil, err
+	}
+
+	dueSchedules := make([]*models.Schedule, 0)
+	for _, schedule := range schedules {
+		if schedule.IsDue(before) {
+			dueSchedules = append(dueSchedules, schedule)
+		}
+	}
+
+	return dueSchedules, nil
+}

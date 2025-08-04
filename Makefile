@@ -9,10 +9,16 @@ GOFLAGS ?= -ldflags="-s -w"
 ./bin/operion-api:
 	go build $(GOFLAGS) -o ./bin/operion-api ./cmd/operion-api
 
+./bin/operion-activator:
+	go build $(GOFLAGS) -o ./bin/operion-activator ./cmd/operion-activator
+
+./bin/operion-source-manager:
+	go build $(GOFLAGS) -o ./bin/operion-source-manager ./cmd/operion-source-manager
+
 
 .PHONY: build build-linux clean test test-coverage fmt lint docs mod-check
 
-build: ./bin/operion-worker ./bin/operion-dispatcher ./bin/operion-api
+build: ./bin/operion-worker ./bin/operion-dispatcher ./bin/operion-api ./bin/operion-activator ./bin/operion-source-manager
 
 clean:
 	rm -rf ./bin

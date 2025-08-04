@@ -57,7 +57,7 @@ air                 # Start development server with live reload (proxy on port 3
 ```bash
 PORT=9091              # API server port (default: 9091)
 DATABASE_URL           # Database connection URL (required)
-EVENT_BUS_TYPE         # Event bus type (kafka, rabbitmq, etc.) (required)
+KAFKA_BROKERS          # Kafka broker addresses (required)
 PLUGINS_PATH=./plugins # Path to action plugins directory (default: ./plugins)
 LOG_LEVEL=info         # Log level: debug, info, warn, error (default: info)
 ```
@@ -66,7 +66,7 @@ LOG_LEVEL=info         # Log level: debug, info, warn, error (default: info)
 ```bash
 WORKER_ID              # Custom worker ID (auto-generated if not provided)
 DATABASE_URL           # Database connection URL (required)
-EVENT_BUS_TYPE         # Event bus type (kafka, rabbitmq, etc.) (required)
+KAFKA_BROKERS          # Kafka broker addresses (required)
 PLUGINS_PATH=./plugins # Path to action plugins directory (default: ./plugins)
 LOG_LEVEL=info         # Log level: debug, info, warn, error (default: info)
 ```
@@ -75,9 +75,27 @@ LOG_LEVEL=info         # Log level: debug, info, warn, error (default: info)
 ```bash
 DISPATCHER_ID          # Custom dispatcher ID (auto-generated if not provided)
 DATABASE_URL           # Database connection URL (required)
-EVENT_BUS_TYPE         # Event bus type (kafka, rabbitmq, etc.) (required)
+KAFKA_BROKERS          # Kafka broker addresses (required)
 PLUGINS_PATH=./plugins # Path to action plugins directory (default: ./plugins)
 WEBHOOK_PORT=8085      # Port for webhook HTTP server (default: 8085)
+LOG_LEVEL=info         # Log level: debug, info, warn, error (default: info)
+```
+
+#### Source Manager Service (operion-source-manager)
+```bash
+SOURCE_MANAGER_ID      # Custom source manager ID (auto-generated if not provided)
+DATABASE_URL           # Database connection URL (required)
+KAFKA_BROKERS          # Kafka broker addresses (required)
+PLUGINS_PATH=./plugins # Path to source provider plugins directory (default: ./plugins)
+SOURCE_PROVIDERS       # Comma-separated list of providers to run (e.g., 'scheduler,webhook')
+LOG_LEVEL=info         # Log level: debug, info, warn, error (default: info)
+```
+
+#### Activator Service (operion-activator)
+```bash
+ACTIVATOR_ID           # Custom activator ID (auto-generated if not provided)
+DATABASE_URL           # Database connection URL (required)
+KAFKA_BROKERS          # Kafka broker addresses (required)
 LOG_LEVEL=info         # Log level: debug, info, warn, error (default: info)
 ```
 
@@ -105,10 +123,12 @@ go mod tidy         # Clean up dependencies
   - `/registry/triggers` - Sorted list of available triggers with complete JSON schemas
 - **CLI Worker** (`cmd/operion-worker/`) - Background workflow execution tool
 - **CLI Dispatcher Service** (`cmd/operion-dispatcher/`) - Trigger listener and event publisher (replaces operion-trigger)
+- **CLI Source Manager** (`cmd/operion-source-manager/`) - Centralized scheduler orchestrator for managing source providers
+- **CLI Activator** (`cmd/operion-activator/`) - Bridge between source events and workflow events
 - **Visual Workflow Editor** (`ui/operion-editor/`) - React-based browser interface for workflow visualization
 - **Domain Models** (`pkg/models/`) - Core workflow, action, and trigger models
 - **Workflow Engine** (`pkg/workflow/`) - Workflow execution, management, and repository
-- **Event System** (`pkg/event_bus/`, `pkg/events/`) - Event-driven communication
+- **Event System** (`pkg/event_bus/`, `pkg/events/`) - Kafka-based event-driven communication with dual topics
 - **Plugin Registry** (`pkg/registry/`) - Plugin-based system for actions and triggers with .so file loading
 - **File Persistence** (`pkg/persistence/file/`) - JSON file storage
 

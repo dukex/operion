@@ -1,93 +1,93 @@
 services:
-  api:
-    build:
-      dockerfile: Dockerfile
-      context: ..
-    restart: unless-stopped
-    depends_on:
-      - kafka
-      - jaeger
-    volumes:
-      - ..:/app
-      - $GOPATH/pkg/mod:/go/pkg/mod
-    working_dir: /app
-    command: /bin/operion-api
-    ports:
-      - 8099:8099
-    environment:
-      - PORT=8099
-      - DATABASE_URL=file:///app/examples/data
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
-      - OTEL_SERVICE_NAME=operion-api
-      - OTEL_TRACES_EXPORTER=otlp
-      - KAFKA_BROKERS=kafka:9092
-    develop:
-      watch:
-        - action: rebuild
-          path: ..
+  # api:
+  #   build:
+  #     dockerfile: Dockerfile
+  #     context: ..
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - kafka
+  #     - jaeger
+  #   volumes:
+  #     - ..:/app
+  #     - $GOPATH/pkg/mod:/go/pkg/mod
+  #   working_dir: /app
+  #   command: /bin/operion-api
+  #   ports:
+  #     - 8099:8099
+  #   environment:
+  #     - PORT=8099
+  #     - DATABASE_URL=file:///app/examples/data
+  #     - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+  #     - OTEL_SERVICE_NAME=operion-api
+  #     - OTEL_TRACES_EXPORTER=otlp
+  #     - KAFKA_BROKERS=kafka:9092
+  #   develop:
+  #     watch:
+  #       - action: rebuild
+  #         path: ..
 
-  editor:
-    build:
-      dockerfile: Dockerfile
-      target: vite-app
-      context: ../ui/operion-editor
-      args:
-        API_BASE_URL: http://localhost:8099
-    command: npm run dev -- --host 0.0.0.0
-    environment:
-      - API_BASE_URL=http://localhost:8099
-    ports:
-      - 8900:5173
-    depends_on:
-      - api
+  # editor:
+  #   build:
+  #     dockerfile: Dockerfile
+  #     target: vite-app
+  #     context: ../ui/operion-editor
+  #     args:
+  #       API_BASE_URL: http://localhost:8099
+  #   command: npm run dev -- --host 0.0.0.0
+  #   environment:
+  #     - API_BASE_URL=http://localhost:8099
+  #   ports:
+  #     - 8900:5173
+  #   depends_on:
+  #     - api
 
-  dispatcher-kafka:
-    build: 
-      dockerfile: Dockerfile 
-      context: ..
-    restart: unless-stopped
-    depends_on:
-      - kafka
-      - jaeger
-    volumes:
-      - ..:/app
-      - $GOPATH/pkg/mod:/go/pkg/mod
-    ports:
-      - 8085:8085 # Expose the webhook dispatcher port
-    working_dir: /app
-    command: /bin/operion-dispatcher --database-url file:///app/examples/data --event-bus kafka
-    environment:
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
-      - OTEL_SERVICE_NAME=operion-dispatcher-kafka
-      - OTEL_TRACES_EXPORTER=otlp
-      - KAFKA_BROKERS=kafka:9092
-    develop:
-      watch:
-        - action: rebuild
-          path: ..
+  # dispatcher-kafka:
+  #   build: 
+  #     dockerfile: Dockerfile 
+  #     context: ..
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - kafka
+  #     - jaeger
+  #   volumes:
+  #     - ..:/app
+  #     - $GOPATH/pkg/mod:/go/pkg/mod
+  #   ports:
+  #     - 8085:8085 # Expose the webhook dispatcher port
+  #   working_dir: /app
+  #   command: /bin/operion-dispatcher --database-url file:///app/examples/data --event-bus kafka
+  #   environment:
+  #     - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+  #     - OTEL_SERVICE_NAME=operion-dispatcher-kafka
+  #     - OTEL_TRACES_EXPORTER=otlp
+  #     - KAFKA_BROKERS=kafka:9092
+  #   develop:
+  #     watch:
+  #       - action: rebuild
+  #         path: ..
 
-  worker-kafka:
-    build: 
-      dockerfile: Dockerfile 
-      context: ..
-    restart: unless-stopped
-    depends_on:
-      - kafka
-      - jaeger
-    volumes:
-      - ..:/app
-      - $GOPATH/pkg/mod:/go/pkg/mod
-    working_dir: /app
-    command: /bin/operion-worker --database-url file:///app/examples/data --event-bus kafka --plugins-path ./examples/plugins
-    environment:
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
-      - OTEL_SERVICE_NAME=operion-worker-kafka
-      - OTEL_TRACES_EXPORTER=otlp
-      - KAFKA_BROKERS=kafka:9092
-    develop:
-      watch:
-        - action: rebuild
-          path: ..
+  # worker-kafka:
+  #   build: 
+  #     dockerfile: Dockerfile 
+  #     context: ..
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - kafka
+  #     - jaeger
+  #   volumes:
+  #     - ..:/app
+  #     - $GOPATH/pkg/mod:/go/pkg/mod
+  #   working_dir: /app
+  #   command: /bin/operion-worker --database-url file:///app/examples/data --event-bus kafka --plugins-path ./examples/plugins
+  #   environment:
+  #     - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+  #     - OTEL_SERVICE_NAME=operion-worker-kafka
+  #     - OTEL_TRACES_EXPORTER=otlp
+  #     - KAFKA_BROKERS=kafka:9092
+  #   develop:
+  #     watch:
+  #       - action: rebuild
+  #         path: ..
 
   # Event bus
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/dukex/operion/pkg/cmd"
 	"github.com/dukex/operion/pkg/log"
@@ -15,19 +16,19 @@ import (
 
 func main() {
 	cmd := &cli.Command{
-		Name:                  "operion-dispatcher",
-		Usage:                 "Start the Operion dispatcher service",
+		Name:                  "operion-source-manager",
+		Usage:                 "Start the Operion source provider manager service",
 		EnableShellCompletion: true,
 		Commands: []*cli.Command{
 			NewValidateCommand(),
 		},
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:    "dispatcher-id",
+				Name:    "manager-id",
 				Aliases: []string{"id"},
-				Usage:   "Custom dispatcher ID (auto-generated if not provided)",
+				Usage:   "Custom source manager ID (auto-generated if not provided)",
 				Value:   "",
-				Sources: cli.EnvVars("DISPATCHER_ID"),
+				Sources: cli.EnvVars("SOURCE_MANAGER_ID"),
 			},
 			&cli.StringFlag{
 				Name:     "database-url",
@@ -37,17 +38,16 @@ func main() {
 			},
 			&cli.StringFlag{
 				Name:     "plugins-path",
-				Usage:    "Path to the directory containing action plugins",
+				Usage:    "Path to the directory containing source provider plugins",
 				Value:    "./plugins",
 				Required: false,
 				Sources:  cli.EnvVars("PLUGINS_PATH"),
 			},
-			&cli.IntFlag{
-				Name:     "webhook-port",
-				Usage:    "Port for webhook HTTP server",
-				Value:    8085,
-				Required: false,
-				Sources:  cli.EnvVars("WEBHOOK_PORT"),
+			&cli.StringFlag{
+				Name:    "providers",
+				Usage:   "Comma-separated list of source providers to run (e.g., 'scheduler,webhook'). If empty, runs all available providers.",
+				Value:   "",
+				Sources: cli.EnvVars("SOURCE_PROVIDERS"),
 			},
 			&cli.StringFlag{
 				Name:    "log-level",
@@ -59,7 +59,7 @@ func main() {
 		Action: func(ctx context.Context, command *cli.Command) error {
 			log.Setup(command.String("log-level"))
 
-			tracerProvider, err := trc.InitTracer(ctx, "operion-trigger")
+			tracerProvider, err := trc.InitTracer(ctx, "operion-source-manager")
 			if err != nil {
 				return fmt.Errorf("failed to initialize tracer: %w", err)
 			}
@@ -69,21 +69,32 @@ func main() {
 				}
 			}()
 
-			dispatcherID := command.String("dispatcher-id")
-			if dispatcherID == "" {
-				dispatcherID = fmt.Sprintf("dispatcher-%s", uuid.New().String()[:8])
+			managerID := command.String("manager-id")
+			if managerID == "" {
+				managerID = fmt.Sprintf("source-manager-%s", uuid.New().String()[:8])
 			}
 
-			logger := log.WithModule("operion-dispatcher").With("dispatcher_id", dispatcherID)
+			// Parse provider filter
+			var providerFilter []string
+			if providersStr := command.String("providers"); providersStr != "" {
+				providerFilter = strings.Split(providersStr, ",")
+				for i, provider := range providerFilter {
+					providerFilter[i] = strings.TrimSpace(provider)
+				}
+			}
 
-			logger.Info("Initializing Operion Dispatcher", "dispatcher_id", dispatcherID)
+			logger := log.WithModule("operion-source-manager").With("manager_id", managerID)
+
+			logger.Info("Initializing Operion Source Provider Manager", 
+				"manager_id", managerID,
+				"providers", providerFilter)
 
 			registry := cmd.NewRegistry(logger, command.String("plugins-path"))
 
-			eventBus := cmd.NewEventBus(logger)
+			sourceEventBus := cmd.NewSourceEventBus(logger)
 			defer func() {
-				if err := eventBus.Close(); err != nil {
-					logger.Error("Failed to close event bus", "error", err)
+				if err := sourceEventBus.Close(); err != nil {
+					logger.Error("Failed to close source event bus", "error", err)
 				}
 			}()
 
@@ -94,14 +105,16 @@ func main() {
 				}
 			}()
 
-			NewDispatcherManager(
-				dispatcherID,
+			manager := NewSourceProviderManager(
+				managerID,
 				persistence,
-				eventBus,
+				sourceEventBus,
 				logger,
 				registry,
-				command.Int("webhook-port"),
-			).Start(ctx)
+				providerFilter,
+			)
+
+			manager.Start(ctx)
 
 			return nil
 		},

@@ -8,6 +8,7 @@ import (
 	logaction "github.com/dukex/operion/pkg/actions/log"
 	"github.com/dukex/operion/pkg/actions/transform"
 	"github.com/dukex/operion/pkg/registry"
+	"github.com/dukex/operion/pkg/sources/scheduler"
 	"github.com/dukex/operion/pkg/triggers/kafka"
 	"github.com/dukex/operion/pkg/triggers/queue"
 	"github.com/dukex/operion/pkg/triggers/schedule"
@@ -35,6 +36,16 @@ func registreTriggerPlugins(reg *registry.Registry, pluginsPath string) {
 	}
 }
 
+func registerSourceProviderPlugins(reg *registry.Registry, pluginsPath string) {
+	sourceProviderPlugins, err := reg.LoadSourceProviderPlugins(pluginsPath)
+	if err != nil {
+		panic(err)
+	}
+	for _, plugin := range sourceProviderPlugins {
+		reg.RegisterSourceProvider(plugin)
+	}
+}
+
 func registerNativeActions(reg *registry.Registry) {
 	reg.RegisterAction(httprequest.NewHTTPRequestActionFactory())
 	reg.RegisterAction(transform.NewTransformActionFactory())
@@ -55,14 +66,21 @@ func registerNativeTriggers(reg *registry.Registry) {
 	reg.RegisterTrigger(kafkaTrigger)
 }
 
+func registerNativeSourceProviders(reg *registry.Registry) {
+	schedulerProvider := scheduler.NewSchedulerSourceProviderFactory()
+	reg.RegisterSourceProvider(schedulerProvider)
+}
+
 func NewRegistry(log *slog.Logger, pluginsPath string) *registry.Registry {
 	reg := registry.NewRegistry(log)
 
 	registreActionPlugins(reg, pluginsPath)
 	registreTriggerPlugins(reg, pluginsPath)
+	registerSourceProviderPlugins(reg, pluginsPath)
 
-	registerNativeTriggers(reg)
 	registerNativeActions(reg)
+	registerNativeTriggers(reg)
+	registerNativeSourceProviders(reg)
 
 	return reg
 }

@@ -1,0 +1,254 @@
+package main
+
+import (
+	"context"
+	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/dukex/operion/pkg/eventbus"
+	"github.com/dukex/operion/pkg/events"
+	"github.com/dukex/operion/pkg/models"
+	"github.com/dukex/operion/pkg/persistence"
+	"github.com/dukex/operion/pkg/workflow"
+)
+
+// TriggerMatch represents a workflow trigger that matches a source event
+type TriggerMatch struct {
+	WorkflowID string
+	Trigger    *models.WorkflowTrigger
+}
+
+// Activator consumes source events and triggers workflows based on registered triggers
+type Activator struct {
+	id              string
+	eventBus        eventbus.EventBus
+	sourceEventBus  eventbus.SourceEventBus
+	persistence     persistence.Persistence
+	logger          *slog.Logger
+	ctx             context.Context
+	cancel          context.CancelFunc
+	restartCount    int
+}
+
+// NewActivator creates a new Activator instance
+func NewActivator(
+	id string,
+	persistence persistence.Persistence,
+	eventBus eventbus.EventBus,
+	sourceEventBus eventbus.SourceEventBus,
+	logger *slog.Logger,
+) *Activator {
+	return &Activator{
+		id:             id,
+		eventBus:       eventBus,
+		sourceEventBus: sourceEventBus,
+		persistence:    persistence,
+		logger:         logger.With("module", "activator"),
+	}
+}
+
+// Start begins the activator service
+func (a *Activator) Start(ctx context.Context) {
+	a.ctx, a.cancel = context.WithCancel(ctx)
+	a.logger.Info("Starting activator")
+
+	a.handleSignals()
+	a.run()
+}
+
+// handleSignals sets up signal handling for graceful shutdown and restart
+func (a *Activator) handleSignals() {
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		sig := <-signals
+		a.logger.Info("Received signal", "signal", sig)
+
+		switch sig {
+		case syscall.SIGHUP:
+			a.logger.Info("Reloading configuration...")
+			a.restart()
+		case syscall.SIGINT, syscall.SIGTERM:
+			a.logger.Info("Shutting down gracefully...")
+			a.stop()
+			os.Exit(0)
+		default:
+			a.logger.Warn("Unhandled signal received", "signal", sig)
+		}
+	}()
+}
+
+// restart handles service restart with exponential backoff
+func (a *Activator) restart() {
+	a.restartCount++
+	ctx := context.WithoutCancel(a.ctx)
+	a.stop()
+
+	if a.restartCount > 5 {
+		a.logger.Error("Restart limit reached, exiting...")
+		os.Exit(1)
+	}
+
+	backoff := time.Duration(a.restartCount) * time.Second
+	a.logger.Info("Restarting activator...", "backoff", backoff)
+	time.Sleep(backoff)
+	
+	a.Start(ctx)
+}
+
+// run is the main loop that consumes source events
+func (a *Activator) run() {
+	a.logger.Info("Starting source event consumption")
+
+	// Set up source event subscription
+	a.processSourceEvents()
+	
+	// Wait for context cancellation - the subscription runs in background goroutines
+	<-a.ctx.Done()
+	a.logger.Info("Activator context cancelled, stopping...")
+}
+
+// processSourceEvents handles incoming source events and triggers workflows
+func (a *Activator) processSourceEvents() {
+	a.logger.Info("Setting up source event subscription")
+	
+	// Register handler for source events
+	err := a.sourceEventBus.HandleSourceEvents(func(ctx context.Context, sourceEvent *events.SourceEvent) error {
+		a.logger.Info("Received source event", 
+			"source_id", sourceEvent.SourceID,
+			"provider_id", sourceEvent.ProviderID,
+			"event_type", sourceEvent.EventType)
+		return a.handleSourceEvent(sourceEvent)
+	})
+	
+	if err != nil {
+		a.logger.Error("Failed to register source event handler", "error", err)
+		return
+	}
+	
+	// Start subscribing to source events
+	err = a.sourceEventBus.SubscribeToSourceEvents(a.ctx)
+	if err != nil {
+		a.logger.Error("Failed to start source event subscription", "error", err)
+		return
+	}
+	
+	a.logger.Info("Successfully subscribed to source events - waiting for events...")
+}
+
+// handleSourceEvent processes a single source event and triggers matching workflows
+func (a *Activator) handleSourceEvent(sourceEvent *events.SourceEvent) error {
+	logger := a.logger.With(
+		"source_id", sourceEvent.SourceID,
+		"provider_id", sourceEvent.ProviderID,
+		"event_type", sourceEvent.EventType,
+	)
+
+	logger.Info("Processing source event")
+
+	// Validate the source event
+	if err := sourceEvent.Validate(); err != nil {
+		logger.Error("Invalid source event", "error", err)
+		return err
+	}
+
+	// Find triggers that match this source event
+	matchingTriggers, err := a.findTriggersForSourceEvent(sourceEvent)
+	if err != nil {
+		logger.Error("Failed to find matching triggers", "error", err)
+		return err
+	}
+
+	logger.Info("Found matching triggers", "count", len(matchingTriggers))
+
+	// Publish WorkflowTriggered event for each matching trigger
+	for _, matchInfo := range matchingTriggers {
+		if err := a.publishWorkflowTriggered(matchInfo.WorkflowID, matchInfo.Trigger.ID, sourceEvent.EventData); err != nil {
+			logger.Error("Failed to publish WorkflowTriggered event", 
+				"workflow_id", matchInfo.WorkflowID, 
+				"trigger_id", matchInfo.Trigger.ID, 
+				"error", err)
+			// Continue processing other triggers even if one fails
+		}
+	}
+
+	return nil
+}
+
+// findTriggersForSourceEvent queries the database for triggers that match a source event
+func (a *Activator) findTriggersForSourceEvent(sourceEvent *events.SourceEvent) ([]*TriggerMatch, error) {
+	workflowRepo := workflow.NewRepository(a.persistence)
+	workflows, err := workflowRepo.FetchAll()
+	if err != nil {
+		a.logger.Error("Failed to fetch workflows", "error", err)
+		return nil, err
+	}
+
+	var matchingTriggers []*TriggerMatch
+	for _, wf := range workflows {
+		// Only process active workflows
+		if wf.Status != models.WorkflowStatusActive {
+			continue
+		}
+
+		for _, trigger := range wf.WorkflowTriggers {
+			// Check if this trigger matches the source event
+			if a.triggerMatchesSourceEvent(trigger, sourceEvent) {
+				matchingTriggers = append(matchingTriggers, &TriggerMatch{
+					WorkflowID: wf.ID,
+					Trigger:    trigger,
+				})
+			}
+		}
+	}
+
+	return matchingTriggers, nil
+}
+
+// triggerMatchesSourceEvent determines if a workflow trigger should be activated by a source event
+func (a *Activator) triggerMatchesSourceEvent(trigger *models.WorkflowTrigger, sourceEvent *events.SourceEvent) bool {
+	// Source ID must match
+	if trigger.SourceID != sourceEvent.SourceID {
+		return false
+	}
+
+	// TODO: Add event type filtering based on trigger configuration
+	// For now, any event from the matching source will trigger the workflow
+	// Future enhancement: triggers could specify which event types they're interested in
+	// via their Configuration map, e.g., trigger.Configuration["event_types"] = ["ScheduleDue", "ScheduleOverdue"]
+
+	return true
+}
+
+// publishWorkflowTriggered publishes a WorkflowTriggered event for a specific trigger
+func (a *Activator) publishWorkflowTriggered(workflowID, triggerID string, sourceData map[string]any) error {
+	logger := a.logger.With("workflow_id", workflowID, "trigger_id", triggerID)
+	logger.Info("Publishing WorkflowTriggered event")
+
+	event := events.WorkflowTriggered{
+		BaseEvent:   events.NewBaseEvent(events.WorkflowTriggeredEvent, workflowID),
+		TriggerID:   triggerID,
+		TriggerData: sourceData,
+	}
+	event.ID = a.eventBus.GenerateID()
+
+	if err := a.eventBus.Publish(a.ctx, workflowID, event); err != nil {
+		logger.Error("Failed to publish WorkflowTriggered event", "error", err)
+		return err
+	}
+
+	logger.With("event_id", event.ID).Info("Successfully published WorkflowTriggered event")
+	return nil
+}
+
+// stop gracefully shuts down the activator
+func (a *Activator) stop() {
+	a.logger.Info("Stopping activator")
+	if a.cancel != nil {
+		a.cancel()
+	}
+}

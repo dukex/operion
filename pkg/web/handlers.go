@@ -6,6 +6,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/registry"
 	"github.com/dukex/operion/pkg/workflow"
 	"github.com/go-playground/validator/v10"
@@ -110,36 +111,23 @@ func (h *APIHandlers) GetWorkflow(c fiber.Ctx) error {
 	return c.JSON(workflow)
 }
 
-// func (h *APIHandlers) CreateWorkflow(c *fiber.Ctx) error {
-// 	var workflow domain.Workflow
-// 	if err := c.BodyParser(&workflow); err != nil {
-// 		return badRequest(c, "Invalid JSON format")
-// 	}
+func (h *APIHandlers) CreateWorkflow(c fiber.Ctx) error {
+	var workflow models.Workflow
+	if err := c.Bind().JSON(&workflow); err != nil {
+		return badRequest(c, "Invalid JSON format")
+	}
 
-// 	// Auto-generate IDs for triggers
-// 	if len(workflow.Triggers) > 0 {
-// 		workflow.Triggers = h.prepareWorkflowTriggers(workflow.Triggers)
-// 	}
+	if err := h.validator.Struct(workflow); err != nil {
+		return badRequest(c, err.Error())
+	}
 
-// 	// Auto-generate IDs for steps and actions
-// 	if len(workflow.Steps) > 0 {
-// 		workflow.Steps = h.prepareWorkflowSteps(workflow.Steps)
-// 		if err := h.validateWorkflowSteps(workflow.Steps); err != nil {
-// 			return badRequest(c, err.Error())
-// 		}
-// 	}
+	createdWorkflow, err := h.repository.Create(&workflow)
+	if err != nil {
+		return internalError(c, err)
+	}
 
-// 	if err := h.validator.Struct(workflow); err != nil {
-// 		return badRequestWithError(c, err)
-// 	}
-
-// 	createdWorkflow, err := h.repository.Create(&workflow)
-// 	if err != nil {
-// 		return internalError(c, err)
-// 	}
-
-// 	return c.Status(fiber.StatusCreated).JSON(createdWorkflow)
-// }
+	return c.Status(fiber.StatusCreated).JSON(createdWorkflow)
+}
 
 // func (h *APIHandlers) PatchWorkflow(c *fiber.Ctx) error {
 // 	id := c.Params("id")

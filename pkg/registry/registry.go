@@ -13,21 +13,23 @@ import (
 )
 
 type Registry struct {
-	logger           *slog.Logger
-	actionFactories  map[string]protocol.ActionFactory
-	triggerFactories map[string]protocol.TriggerFactory
+	logger                 *slog.Logger
+	actionFactories        map[string]protocol.ActionFactory
+	triggerFactories       map[string]protocol.TriggerFactory
+	sourceProviderFactories map[string]protocol.SourceProviderFactory
 }
 
 func NewRegistry(log *slog.Logger) *Registry {
 	return &Registry{
-		logger:           log,
-		actionFactories:  make(map[string]protocol.ActionFactory),
-		triggerFactories: make(map[string]protocol.TriggerFactory),
+		logger:                 log,
+		actionFactories:        make(map[string]protocol.ActionFactory),
+		triggerFactories:       make(map[string]protocol.TriggerFactory),
+		sourceProviderFactories: make(map[string]protocol.SourceProviderFactory),
 	}
 }
 
 func (r *Registry) HealthCheck() (string, bool) {
-	if len(r.actionFactories) == 0 && len(r.triggerFactories) == 0 {
+	if len(r.actionFactories) == 0 && len(r.triggerFactories) == 0 && len(r.sourceProviderFactories) == 0 {
 		return "No plugins loaded", false
 	}
 
@@ -42,12 +44,20 @@ func (r *Registry) LoadTriggerPlugins(pluginsPath string) ([]protocol.TriggerFac
 	return loadPlugin[protocol.TriggerFactory](r.logger, pluginsPath, "Trigger")
 }
 
+func (r *Registry) LoadSourceProviderPlugins(pluginsPath string) ([]protocol.SourceProviderFactory, error) {
+	return loadPlugin[protocol.SourceProviderFactory](r.logger, pluginsPath, "SourceProvider")
+}
+
 func (r *Registry) RegisterAction(actionFactory protocol.ActionFactory) {
 	r.actionFactories[actionFactory.ID()] = actionFactory
 }
 
 func (r *Registry) RegisterTrigger(triggerFactory protocol.TriggerFactory) {
 	r.triggerFactories[triggerFactory.ID()] = triggerFactory
+}
+
+func (r *Registry) RegisterSourceProvider(sourceProviderFactory protocol.SourceProviderFactory) {
+	r.sourceProviderFactories[sourceProviderFactory.ID()] = sourceProviderFactory
 }
 
 func (r *Registry) CreateAction(actionType string, config map[string]any) (protocol.Action, error) {
@@ -62,6 +72,14 @@ func (r *Registry) CreateTrigger(triggerID string, config map[string]any) (proto
 	factory, ok := r.triggerFactories[triggerID]
 	if !ok {
 		return nil, fmt.Errorf("trigger ID '%s' not registered", triggerID)
+	}
+	return factory.Create(config, r.logger)
+}
+
+func (r *Registry) CreateSourceProvider(providerID string, config map[string]any) (protocol.SourceProvider, error) {
+	factory, ok := r.sourceProviderFactories[providerID]
+	if !ok {
+		return nil, fmt.Errorf("source provider ID '%s' not registered", providerID)
 	}
 	return factory.Create(config, r.logger)
 }
@@ -83,6 +101,24 @@ func (r *Registry) GetAvailableTriggers() []protocol.TriggerFactory {
 		triggers = append(triggers, trigger)
 	}
 	return triggers
+}
+
+// GetAvailableSourceProviders returns all available source provider types
+func (r *Registry) GetAvailableSourceProviders() []protocol.SourceProviderFactory {
+	sourceProviders := make([]protocol.SourceProviderFactory, 0, len(r.sourceProviderFactories))
+	for _, sourceProvider := range r.sourceProviderFactories {
+		sourceProviders = append(sourceProviders, sourceProvider)
+	}
+	return sourceProviders
+}
+
+// GetSourceProviders returns all source provider factories as a map
+func (r *Registry) GetSourceProviders() map[string]protocol.SourceProviderFactory {
+	sourceProviders := make(map[string]protocol.SourceProviderFactory)
+	for id, factory := range r.sourceProviderFactories {
+		sourceProviders[id] = factory
+	}
+	return sourceProviders
 }
 
 // // GetComponent retrieves component metadata by type
