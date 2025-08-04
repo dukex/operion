@@ -9,14 +9,19 @@ import (
 	"github.com/dukex/operion/pkg/eventbus"
 )
 
-func NewEventBus(logger *slog.Logger) eventbus.EventBus {
-	pub, sub, err := kafka.CreateChannel(watermill.NewSlogLogger(logger), "operion")
+func NewEventBus(provider string, logger *slog.Logger) eventbus.EventBus {
+	switch provider {
+	case "kafka":
+		pub, sub, err := kafka.CreateChannel(watermill.NewSlogLogger(logger), "operion")
 
-	if err != nil {
-		panic(fmt.Errorf("failed to create Kafka pub/sub: %w", err))
+		if err != nil {
+			panic(fmt.Errorf("failed to create Kafka pub/sub: %w", err))
+		}
+
+		return eventbus.NewWatermillEventBus(pub, sub)
+	default:
+		panic("Unsupported event bus provider: " + provider)
 	}
-
-	return eventbus.NewWatermillEventBus(pub, sub)
 }
 
 // NewSourceEventBus creates a Kafka-based source event bus instance

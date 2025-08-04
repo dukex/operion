@@ -36,6 +36,12 @@ func main() {
 				Sources:  cli.EnvVars("DATABASE_URL"),
 			},
 			&cli.StringFlag{
+				Name:     "event-bus",
+				Usage:    "Event bus type (kafka, rabbitmq, etc.)",
+				Required: true,
+				Sources:  cli.EnvVars("EVENT_BUS_TYPE"),
+			},
+			&cli.StringFlag{
 				Name:     "plugins-path",
 				Usage:    "Path to the directory containing action plugins",
 				Value:    "./plugins",
@@ -80,7 +86,7 @@ func main() {
 
 			registry := cmd.NewRegistry(logger, command.String("plugins-path"))
 
-			eventBus := cmd.NewEventBus(logger)
+			eventBus := cmd.NewEventBus(command.String("event-bus"), logger)
 			defer func() {
 				if err := eventBus.Close(); err != nil {
 					logger.Error("Failed to close event bus", "error", err)

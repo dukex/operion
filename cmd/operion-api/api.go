@@ -55,8 +55,8 @@ func (a *API) App() *fiber.App {
 	w := app.Group("/workflows")
 	w.Get("/", handlers.GetWorkflows)
 	w.Get("/:id", handlers.GetWorkflow)
-	w.Post("/", handlers.CreateWorkflow)
 
+	// 	// w.Post("/", handlers.CreateWorkflow)
 	// 	// w.Patch("/:id", handlers.PatchWorkflow)
 	// 	// w.Delete("/:id", handlers.DeleteWorkflow)
 	// 	// w.Patch("/:id/steps", handlers.PatchWorkflowSteps)

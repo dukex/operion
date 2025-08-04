@@ -36,6 +36,12 @@ func main() {
 				Sources:  cli.EnvVars("DATABASE_URL"),
 			},
 			&cli.StringFlag{
+				Name:     "event-bus",
+				Usage:    "Event bus type (kafka, rabbitmq, etc.)",
+				Required: true,
+				Sources:  cli.EnvVars("EVENT_BUS_TYPE"),
+			},
+			&cli.StringFlag{
 				Name:    "log-level",
 				Usage:   "Log level (debug, info, warn, error)",
 				Value:   "info",
@@ -64,7 +70,7 @@ func main() {
 
 			logger.Info("Initializing Operion Activator", "activator_id", activatorID)
 
-			eventBus := cmd.NewEventBus(logger)
+			eventBus := cmd.NewEventBus(command.String("event-bus"), logger)
 			defer func() {
 				if err := eventBus.Close(); err != nil {
 					logger.Error("Failed to close workflow event bus", "error", err)
