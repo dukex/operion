@@ -95,7 +95,7 @@ func TestNewTransformAction(t *testing.T) {
 
 func TestTransformAction_Execute_SimpleTransform(t *testing.T) {
 	action := &TransformAction{
-		Expression: "{{.user.name}}",
+		Expression: "{{.step_results.user.name}}",
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -116,7 +116,7 @@ func TestTransformAction_Execute_SimpleTransform(t *testing.T) {
 
 func TestTransformAction_Execute_WithInput(t *testing.T) {
 	action := &TransformAction{
-		Expression: "{{.step1.data.temperature}}",
+		Expression: "{{.step_results.step1.data.temperature}}",
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -139,7 +139,7 @@ func TestTransformAction_Execute_WithInput(t *testing.T) {
 
 func TestTransformAction_Execute_ObjectConstruction(t *testing.T) {
 	action := &TransformAction{
-		Expression: `{ "name": "{{.user.name}}", "status": "active", "age": {{.user.age}} }`,
+		Expression: `{ "name": "{{.step_results.user.name}}", "status": "active", "age": {{.step_results.user.age}} }`,
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -163,7 +163,7 @@ func TestTransformAction_Execute_ObjectConstruction(t *testing.T) {
 
 func TestTransformAction_Execute_ArrayTransform(t *testing.T) {
 	action := &TransformAction{
-		Expression: "{{index .users 0 \"name\"}}",
+		Expression: "{{index .step_results.users 0 \"name\"}}",
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -190,7 +190,7 @@ func TestTransformAction_Execute_ArrayTransform(t *testing.T) {
 
 func TestTransformAction_Execute_ComplexTransform(t *testing.T) {
 	action := &TransformAction{
-		Expression: `{ "price": {{if .api_response.close}}{{.api_response.close}}{{else}}{{.api_response.open}}{{end}}, "currency": "USD", "timestamp": "{{.api_response.time}}" }`,
+		Expression: `{ "price": {{if .step_results.api_response.close}}{{.step_results.api_response.close}}{{else}}{{.step_results.api_response.open}}{{end}}, "currency": "USD", "timestamp": "{{.step_results.api_response.time}}" }`,
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -254,7 +254,7 @@ func TestTransformAction_Execute_InvalidExpression(t *testing.T) {
 
 func TestTransformAction_Execute_WithCancel(t *testing.T) {
 	action := &TransformAction{
-		Expression: "{{.data}}",
+		Expression: "{{.step_results.data}}",
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))

@@ -18,6 +18,7 @@ func RenderWithContext(input string, executionCtx *models.ExecutionContext) (any
 	enhancedData := map[string]any{
 		"step_results": executionCtx.StepResults,
 		"variables":    executionCtx.Variables,
+		"vars":         executionCtx.Variables, // Support both .vars and .variables for backward compatibility
 		"trigger_data": executionCtx.TriggerData,
 		"metadata":     executionCtx.Metadata,
 		"env":          getEnvVars(),
