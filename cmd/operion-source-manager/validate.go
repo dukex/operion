@@ -93,8 +93,12 @@ func NewValidateCommand() *cli.Command {
 					// Validate struct fields
 					err = validate.Struct(workflowTrigger)
 					if err != nil {
-						validationErrors := err.(validator.ValidationErrors)
-						fmt.Printf("    ❌ INVALID: %v\n", validationErrors)
+						var validationErrors validator.ValidationErrors
+						if errors.As(err, &validationErrors) {
+							fmt.Printf("    ❌ INVALID: %v\n", validationErrors)
+						} else {
+							fmt.Printf("    ❌ INVALID: %v\n", err)
+						}
 						invalidTriggers++
 						continue
 					}
@@ -106,32 +110,26 @@ func NewValidateCommand() *cli.Command {
 						continue
 					}
 
-					// Try to determine source provider type from configuration
-					// This is a heuristic approach since we don't have explicit provider type in trigger
-					sourceProviderType := ""
-					if cronExpr, exists := workflowTrigger.Configuration["cron_expression"]; exists && cronExpr != nil {
-						sourceProviderType = "scheduler"
+					// Use TriggerID as the source provider type - this should always be set
+					sourceProviderType := workflowTrigger.TriggerID
+					if sourceProviderType == "" {
+						panic(fmt.Sprintf("TriggerID is empty for workflow %s, trigger %s - this should not happen", workflow.ID, workflowTrigger.ID))
 					}
-					// Add more heuristics for other provider types as needed
 
-					if sourceProviderType != "" {
-						// Validate that the source provider exists
-						if factory, exists := sourceProviders[sourceProviderType]; exists {
-							fmt.Printf("    ✅ VALID: Source provider '%s' found\n", sourceProviderType)
+					// Validate that the source provider exists
+					if factory, exists := sourceProviders[sourceProviderType]; exists {
+						fmt.Printf("    ✅ VALID: Source provider '%s' found\n", sourceProviderType)
 
-							// Validate configuration schema if possible
-							schema := factory.Schema()
-							if schema != nil {
-								fmt.Printf("    📋 Configuration schema available\n")
-							}
-
-							validProviders++
-						} else {
-							fmt.Printf("    ❌ INVALID: Source provider '%s' not found\n", sourceProviderType)
-							invalidProviders++
+						// Validate configuration schema if possible
+						schema := factory.Schema()
+						if schema != nil {
+							fmt.Printf("    📋 Configuration schema available\n")
 						}
+
+						validProviders++
 					} else {
-						fmt.Printf("    ⚠️  WARNING: Could not determine source provider type from configuration\n")
+						fmt.Printf("    ❌ INVALID: Source provider '%s' not found\n", sourceProviderType)
+						invalidProviders++
 					}
 
 					validTriggers++

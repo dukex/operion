@@ -56,17 +56,18 @@ func NewSchedule(id, sourceID, cronExpression string) (*Schedule, error) {
 	return schedule, nil
 }
 
-// UpdateNextDueAt calculates and updates the next execution time based on current time
+// UpdateNextDueAt calculates and updates the next execution time based on current time.
 func (s *Schedule) UpdateNextDueAt() error {
 	// Use current time as reference
 	return s.calculateNextDueAt(time.Now().UTC())
 }
 
-// calculateNextDueAt is the shared logic for calculating next execution time
-// referenceTime is the time to calculate the next execution from
+// calculateNextDueAt is the shared logic for calculating next execution time.
+// referenceTime is the time to calculate the next execution from.
 func (s *Schedule) calculateNextDueAt(referenceTime time.Time) error {
 	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
 	cronSchedule, err := parser.Parse(s.CronExpression)
+
 	if err != nil {
 		return err
 	}
@@ -74,6 +75,7 @@ func (s *Schedule) calculateNextDueAt(referenceTime time.Time) error {
 	// Calculate next execution time from the reference time
 	s.NextDueAt = cronSchedule.Next(referenceTime)
 	s.UpdatedAt = time.Now().UTC()
+
 	return nil
 }
 
@@ -99,6 +101,7 @@ func (s *Schedule) Validate() error {
 	// Validate cron expression format
 	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
 	_, err := parser.Parse(s.CronExpression)
+
 	return err
 }
 

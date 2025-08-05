@@ -54,7 +54,7 @@ func (k *kafkaSourceEventBus) PublishSourceEvent(ctx context.Context, sourceEven
 	msg.Metadata.Set("key", sourceEvent.SourceID) // Required for Kafka partitioning
 	msg.Metadata.Set("source_id", sourceEvent.SourceID)
 	msg.Metadata.Set("provider_id", sourceEvent.ProviderID)
-	msg.Metadata.Set("event_type", string(sourceEvent.EventType))
+	msg.Metadata.Set("event_type", sourceEvent.EventType)
 
 	k.logger.Debug("Publishing source event to Kafka",
 		"source_id", sourceEvent.SourceID,
@@ -106,6 +106,7 @@ func (k *kafkaSourceEventBus) SubscribeToSourceEvents(ctx context.Context) error
 			if err := json.Unmarshal(msg.Payload, &sourceEvent); err != nil {
 				k.logger.Error("Failed to unmarshal source event", "error", err, "message_id", msg.UUID)
 				msg.Nack()
+
 				continue
 			}
 

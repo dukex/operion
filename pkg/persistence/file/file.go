@@ -122,7 +122,6 @@ func (fp *FilePersistence) DeleteWorkflow(id string) error {
 func (fp *FilePersistence) Schedules() ([]*models.Schedule, error) {
 	root := os.DirFS(fp.root + "/schedules")
 	jsonFiles, err := fs.Glob(root, "*.json")
-
 	if err != nil {
 		return nil, err
 	}
@@ -158,6 +157,7 @@ func (fp *FilePersistence) ScheduleByID(scheduleID string) (*models.Schedule, er
 
 	var schedule models.Schedule
 	err = json.Unmarshal(body, &schedule)
+
 	if err != nil {
 		return nil, err
 	}

@@ -71,7 +71,7 @@ func main() {
 
 			managerID := command.String("manager-id")
 			if managerID == "" {
-				managerID = fmt.Sprintf("source-manager-%s", uuid.New().String()[:8])
+				managerID = "source-manager-" + uuid.New().String()[:8]
 			}
 
 			// Parse provider filter

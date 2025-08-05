@@ -1,7 +1,6 @@
 package file_test
 
 import (
-	"os"
 	"testing"
 	"time"
 
@@ -13,12 +12,9 @@ import (
 
 func TestFilePersistence_ScheduleOperations(t *testing.T) {
 	// Create temporary directory for testing
-	tempDir, err := os.MkdirTemp("", "operion-test-schedules")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 
 	persistence := file.NewFilePersistence(tempDir)
-
 	// Create a test schedule
 	schedule, err := models.NewSchedule("test-schedule", "test-source", "0 0 * * *")
 	require.NoError(t, err)
@@ -66,24 +62,18 @@ func TestFilePersistence_ScheduleOperations(t *testing.T) {
 }
 
 func TestFilePersistence_ScheduleBySourceID_NotFound(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "operion-test-schedules")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 
 	persistence := file.NewFilePersistence(tempDir)
-
 	schedule, err := persistence.ScheduleBySourceID("non-existent")
 	assert.NoError(t, err)
 	assert.Nil(t, schedule)
 }
 
 func TestFilePersistence_EmptySchedules(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "operion-test-schedules")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 
 	persistence := file.NewFilePersistence(tempDir)
-
 	schedules, err := persistence.Schedules()
 	assert.NoError(t, err)
 	assert.Len(t, schedules, 0)

@@ -126,6 +126,7 @@ func (s *SchedulerSourceProvider) processDueSchedules() {
 			s.logger.Error("Failed to publish schedule event",
 				"source_id", schedule.SourceID,
 				"error", err)
+
 			continue
 		}
 
@@ -134,6 +135,7 @@ func (s *SchedulerSourceProvider) processDueSchedules() {
 			s.logger.Error("Failed to update next due at",
 				"source_id", schedule.SourceID,
 				"error", err)
+
 			continue
 		}
 

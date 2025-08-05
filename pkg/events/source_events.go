@@ -79,6 +79,7 @@ func (se *SourceEvent) GetEventDataString(key string) (string, bool) {
 	}
 
 	strValue, ok := value.(string)
+
 	return strValue, ok
 }
 

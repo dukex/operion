@@ -18,6 +18,11 @@ import (
 	"github.com/dukex/operion/pkg/workflow"
 )
 
+// Constants for source provider types
+const (
+	SchedulerProviderType = "scheduler"
+)
+
 type SourceProviderManager struct {
 	id               string
 	sourceEventBus   eventbus.SourceEventBus
@@ -118,17 +123,20 @@ func (spm *SourceProviderManager) run() {
 
 	// Keep running until context is cancelled
 	<-spm.ctx.Done()
+
 	spm.logger.Info("Source provider manager stopped")
 }
 
 func (spm *SourceProviderManager) createSchedulesFromWorkflows() error {
 	workflowRepo := workflow.NewRepository(spm.persistence)
+
 	workflows, err := workflowRepo.FetchAll()
 	if err != nil {
 		return err
 	}
 
 	scheduleCount := 0
+
 	for _, wf := range workflows {
 		if wf.Status != models.WorkflowStatusActive {
 			continue
@@ -184,11 +192,11 @@ func (spm *SourceProviderManager) createSchedulesFromWorkflows() error {
 					continue
 				}
 
+				scheduleCount++
 				spm.logger.Info("Created schedule",
 					"source_id", sourceID,
 					"cron", cronStr,
 					"next_due_at", schedule.NextDueAt)
-				scheduleCount++
 			}
 		}
 	}
@@ -212,6 +220,7 @@ func (spm *SourceProviderManager) startSourceProviders() error {
 			for _, filterName := range spm.providerFilter {
 				if factory.ID() == filterName {
 					providersToStart = append(providersToStart, factory)
+
 					break
 				}
 			}
@@ -246,7 +255,7 @@ func (spm *SourceProviderManager) startSourceProvider(factory protocol.SourcePro
 	// Create provider configuration
 	var sourceConfigs []map[string]any
 
-	if providerID == "scheduler" {
+	if providerID == SchedulerProviderType {
 		// Create single orchestrator instance (no source-specific configuration)
 		config := map[string]any{
 			"persistence": spm.persistence,
@@ -264,8 +273,8 @@ func (spm *SourceProviderManager) startSourceProvider(factory protocol.SourcePro
 	for _, config := range sourceConfigs {
 		// Generate provider instance key (scheduler uses orchestrator key, others use source_id)
 		var instanceKey string
-		if providerID == "scheduler" {
-			instanceKey = "scheduler-orchestrator"
+		if providerID == SchedulerProviderType {
+			instanceKey = SchedulerProviderType + "-orchestrator"
 		} else {
 			sourceID, ok := config["source_id"].(string)
 			if !ok {
@@ -290,7 +299,7 @@ func (spm *SourceProviderManager) startSourceProvider(factory protocol.SourcePro
 
 		// Create callback - scheduler orchestrator handles all sources, others handle specific source
 		var callback protocol.SourceEventCallback
-		if providerID == "scheduler" {
+		if providerID == SchedulerProviderType {
 			callback = spm.createSourceEventCallback("") // Empty source_id for orchestrator
 		} else {
 			callback = spm.createSourceEventCallback(instanceKey)

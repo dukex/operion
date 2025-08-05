@@ -63,7 +63,7 @@ func main() {
 
 			activatorID := command.String("activator-id")
 			if activatorID == "" {
-				activatorID = fmt.Sprintf("activator-%s", uuid.New().String()[:8])
+				activatorID = "activator-" + uuid.New().String()[:8]
 			}
 
 			logger := log.WithModule("operion-activator").With("activator_id", activatorID)

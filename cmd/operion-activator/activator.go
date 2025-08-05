@@ -124,7 +124,6 @@ func (a *Activator) processSourceEvents() {
 			"event_type", sourceEvent.EventType)
 		return a.handleSourceEvent(sourceEvent)
 	})
-
 	if err != nil {
 		a.logger.Error("Failed to register source event handler", "error", err)
 		return
@@ -172,23 +171,24 @@ func (a *Activator) handleSourceEvent(sourceEvent *events.SourceEvent) error {
 				"workflow_id", matchInfo.WorkflowID,
 				"trigger_id", matchInfo.Trigger.ID,
 				"error", err)
-			// Continue processing other triggers even if one fails
 		}
 	}
-
 	return nil
 }
 
 // findTriggersForSourceEvent queries the database for triggers that match a source event
 func (a *Activator) findTriggersForSourceEvent(sourceEvent *events.SourceEvent) ([]*TriggerMatch, error) {
 	workflowRepo := workflow.NewRepository(a.persistence)
+
 	workflows, err := workflowRepo.FetchAll()
+
 	if err != nil {
 		a.logger.Error("Failed to fetch workflows", "error", err)
 		return nil, err
 	}
 
 	var matchingTriggers []*TriggerMatch
+
 	for _, wf := range workflows {
 		// Only process active workflows
 		if wf.Status != models.WorkflowStatusActive {
@@ -248,6 +248,7 @@ func (a *Activator) publishWorkflowTriggered(workflowID, triggerID string, sourc
 // stop gracefully shuts down the activator
 func (a *Activator) stop() {
 	a.logger.Info("Stopping activator")
+
 	if a.cancel != nil {
 		a.cancel()
 	}

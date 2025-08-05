@@ -79,8 +79,12 @@ func NewValidateCommand() *cli.Command {
 					// Validate struct fields
 					err = validate.Struct(workflowTrigger)
 					if err != nil {
-						validationErrors := err.(validator.ValidationErrors)
-						fmt.Printf("    ❌ INVALID: %v\n", validationErrors)
+						var validationErrors validator.ValidationErrors
+						if errors.As(err, &validationErrors) {
+							fmt.Printf("    ❌ INVALID: %v\n", validationErrors)
+						} else {
+							fmt.Printf("    ❌ INVALID: %v\n", err)
+						}
 						invalidTriggers++
 						continue
 					}
@@ -106,9 +110,12 @@ func NewValidateCommand() *cli.Command {
 					err = validate.Struct(step)
 
 					if err != nil {
-						validationErrors := err.(validator.ValidationErrors)
-
-						fmt.Printf("    ❌ INVALID: %v\n", validationErrors)
+						var validationErrors validator.ValidationErrors
+						if errors.As(err, &validationErrors) {
+							fmt.Printf("    ❌ INVALID: %v\n", validationErrors)
+						} else {
+							fmt.Printf("    ❌ INVALID: %v\n", err)
+						}
 						invalidSteps++
 					} else {
 						validSteps++
