@@ -71,6 +71,7 @@ func NewValidateCommand() *cli.Command {
 				if len(workflow.WorkflowTriggers) == 0 {
 					fmt.Fprintf(os.Stdout, "    ❌ INVALID: No triggers found for this workflow.\n")
 					invalidTriggers++
+
 					continue
 				}
 
@@ -87,6 +88,7 @@ func NewValidateCommand() *cli.Command {
 							fmt.Fprintf(os.Stdout, "    ❌ INVALID: %v\n", err)
 						}
 						invalidTriggers++
+
 						continue
 					}
 
@@ -94,6 +96,7 @@ func NewValidateCommand() *cli.Command {
 					if workflowTrigger.SourceID == "" {
 						fmt.Fprintf(os.Stdout, "    ❌ INVALID: SourceID is required for activator-based triggers\n")
 						invalidTriggers++
+
 						continue
 					}
 

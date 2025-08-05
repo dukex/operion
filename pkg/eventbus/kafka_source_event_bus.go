@@ -46,6 +46,7 @@ func (k *kafkaSourceEventBus) PublishSourceEvent(ctx context.Context, sourceEven
 	payload, err := json.Marshal(sourceEvent)
 	if err != nil {
 		k.logger.Error("Failed to marshal source event", "error", err, "source_id", sourceEvent.SourceID)
+
 		return err
 	}
 
@@ -70,6 +71,7 @@ func (k *kafkaSourceEventBus) PublishSourceEvent(ctx context.Context, sourceEven
 	}
 
 	k.logger.Debug("Successfully published source event to Kafka")
+
 	return nil
 }
 

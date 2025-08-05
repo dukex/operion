@@ -112,6 +112,7 @@ func (se *SourceEvent) GetEventDataMap(key string) (map[string]any, bool) {
 	}
 
 	mapValue, ok := value.(map[string]any)
+
 	return mapValue, ok
 }
 
