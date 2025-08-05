@@ -54,7 +54,7 @@ func NewSourceEvent(sourceID, providerID, eventType string, eventData map[string
 // Matching rules:
 // 1. SourceID must match exactly
 // 2. If eventTypeFilter is specified and non-empty, EventType must match
-// 3. If eventTypeFilter is empty, all event types for the source will match
+// 3. If eventTypeFilter is empty, all event types for the source will match.
 func (se *SourceEvent) MatchesTrigger(sourceID, eventTypeFilter string) bool {
 	// Source ID must match exactly
 	if se.SourceID != sourceID {

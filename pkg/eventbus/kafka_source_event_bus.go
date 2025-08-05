@@ -13,7 +13,7 @@ import (
 
 const SourceEventsTopic = "operion.source-events"
 
-// kafkaSourceEventBus implements SourceEventBus using Kafka via Watermill
+// kafkaSourceEventBus implements SourceEventBus using Kafka via Watermill.
 type kafkaSourceEventBus struct {
 	publisher  message.Publisher
 	subscriber message.Subscriber
@@ -21,7 +21,7 @@ type kafkaSourceEventBus struct {
 	logger     *slog.Logger
 }
 
-// NewKafkaSourceEventBus creates a new Kafka-based source event bus
+// NewKafkaSourceEventBus creates a new Kafka-based source event bus.
 func NewKafkaSourceEventBus(logger *slog.Logger) (SourceEventBus, error) {
 	pub, sub, err := kafka.CreateChannel(watermill.NewSlogLogger(logger), "source-events")
 	if err != nil {
@@ -36,7 +36,7 @@ func NewKafkaSourceEventBus(logger *slog.Logger) (SourceEventBus, error) {
 	}, nil
 }
 
-// PublishSourceEvent publishes a source event to Kafka
+// PublishSourceEvent publishes a source event to Kafka.
 func (k *kafkaSourceEventBus) PublishSourceEvent(ctx context.Context, sourceEvent *events.SourceEvent) error {
 	if err := sourceEvent.Validate(); err != nil {
 		return err
@@ -67,6 +67,7 @@ func (k *kafkaSourceEventBus) PublishSourceEvent(ctx context.Context, sourceEven
 	err = k.publisher.Publish(SourceEventsTopic, msg)
 	if err != nil {
 		k.logger.Error("Failed to publish source event to Kafka", "error", err)
+
 		return err
 	}
 
@@ -75,17 +76,19 @@ func (k *kafkaSourceEventBus) PublishSourceEvent(ctx context.Context, sourceEven
 	return nil
 }
 
-// HandleSourceEvents registers a handler for source events
+// HandleSourceEvents registers a handler for source events.
 func (k *kafkaSourceEventBus) HandleSourceEvents(handler SourceEventHandler) error {
 	k.handlers = append(k.handlers, handler)
 	k.logger.Debug("Registered source event handler", "total_handlers", len(k.handlers))
+
 	return nil
 }
 
-// SubscribeToSourceEvents starts consuming source events from Kafka
+// SubscribeToSourceEvents starts consuming source events from Kafka.
 func (k *kafkaSourceEventBus) SubscribeToSourceEvents(ctx context.Context) error {
 	if len(k.handlers) == 0 {
 		k.logger.Warn("No handlers registered for source events")
+
 		return nil
 	}
 
@@ -95,6 +98,7 @@ func (k *kafkaSourceEventBus) SubscribeToSourceEvents(ctx context.Context) error
 	messages, err := k.subscriber.Subscribe(ctx, SourceEventsTopic)
 	if err != nil {
 		k.logger.Error("Failed to subscribe to Kafka topic", "error", err, "topic", SourceEventsTopic)
+
 		return err
 	}
 
@@ -143,10 +147,11 @@ func (k *kafkaSourceEventBus) SubscribeToSourceEvents(ctx context.Context) error
 	}()
 
 	k.logger.Info("Kafka source event subscription started successfully")
+
 	return nil
 }
 
-// Close shuts down the Kafka source event bus
+// Close shuts down the Kafka source event bus.
 func (k *kafkaSourceEventBus) Close() error {
 	k.logger.Info("Closing Kafka source event bus")
 
@@ -170,5 +175,6 @@ func (k *kafkaSourceEventBus) Close() error {
 	if publisherErr != nil {
 		return publisherErr
 	}
+
 	return subscriberErr
 }

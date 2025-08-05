@@ -66,6 +66,7 @@ func (s *Schedule) UpdateNextDueAt() error {
 // referenceTime is the time to calculate the next execution from.
 func (s *Schedule) calculateNextDueAt(referenceTime time.Time) error {
 	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
+
 	cronSchedule, err := parser.Parse(s.CronExpression)
 	if err != nil {
 		return err
@@ -105,6 +106,6 @@ func (s *Schedule) Validate() error {
 }
 
 var (
-	// ErrInvalidSchedule is returned when schedule validation fails
+	// ErrInvalidSchedule is returned when schedule validation fails.
 	ErrInvalidSchedule = errors.New("invalid schedule configuration")
 )

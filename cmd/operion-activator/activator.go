@@ -15,13 +15,13 @@ import (
 	"github.com/dukex/operion/pkg/workflow"
 )
 
-// TriggerMatch represents a workflow trigger that matches a source event
+// TriggerMatch represents a workflow trigger that matches a source event.
 type TriggerMatch struct {
 	WorkflowID string
 	Trigger    *models.WorkflowTrigger
 }
 
-// Activator consumes source events and triggers workflows based on registered triggers
+// Activator consumes source events and triggers workflows based on registered triggers.
 type Activator struct {
 	id             string
 	eventBus       eventbus.EventBus
@@ -31,7 +31,7 @@ type Activator struct {
 	restartCount   int
 }
 
-// NewActivator creates a new Activator instance
+// NewActivator creates a new Activator instance.
 func NewActivator(
 	id string,
 	persistence persistence.Persistence,
@@ -48,16 +48,17 @@ func NewActivator(
 	}
 }
 
-// Start begins the activator service
+// Start begins the activator service.
 func (a *Activator) Start(ctx context.Context) {
 	aCtx, cancel := context.WithCancel(ctx)
+
 	a.logger.Info("Starting activator")
 
 	a.handleSignals(aCtx, cancel)
 	a.run(aCtx)
 }
 
-// handleSignals sets up signal handling for graceful shutdown and restart
+// handleSignals sets up signal handling for graceful shutdown and restart.
 func (a *Activator) handleSignals(ctx context.Context, cancel context.CancelFunc) {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
@@ -80,10 +81,11 @@ func (a *Activator) handleSignals(ctx context.Context, cancel context.CancelFunc
 	}()
 }
 
-// restart handles service restart with exponential backoff
+// restart handles service restart with exponential backoff.
 func (a *Activator) restart(ctx context.Context, cancel context.CancelFunc) {
 	a.restartCount++
 	newCtx := context.WithoutCancel(ctx)
+
 	a.stop(cancel)
 
 	if a.restartCount > 5 {
@@ -98,7 +100,7 @@ func (a *Activator) restart(ctx context.Context, cancel context.CancelFunc) {
 	a.Start(newCtx)
 }
 
-// run is the main loop that consumes source events
+// run is the main loop that consumes source events.
 func (a *Activator) run(ctx context.Context) {
 	a.logger.Info("Starting source event consumption")
 
@@ -110,7 +112,7 @@ func (a *Activator) run(ctx context.Context) {
 	a.logger.Info("Activator context cancelled, stopping...")
 }
 
-// processSourceEvents handles incoming source events and triggers workflows
+// processSourceEvents handles incoming source events and triggers workflows.
 func (a *Activator) processSourceEvents(ctx context.Context) {
 	a.logger.Info("Setting up source event subscription")
 
@@ -120,10 +122,12 @@ func (a *Activator) processSourceEvents(ctx context.Context) {
 			"source_id", sourceEvent.SourceID,
 			"provider_id", sourceEvent.ProviderID,
 			"event_type", sourceEvent.EventType)
+
 		return a.handleSourceEvent(ctx, sourceEvent)
 	})
 	if err != nil {
 		a.logger.Error("Failed to register source event handler", "error", err)
+
 		return
 	}
 
@@ -131,13 +135,14 @@ func (a *Activator) processSourceEvents(ctx context.Context) {
 	err = a.sourceEventBus.SubscribeToSourceEvents(ctx)
 	if err != nil {
 		a.logger.Error("Failed to start source event subscription", "error", err)
+
 		return
 	}
 
 	a.logger.Info("Successfully subscribed to source events - waiting for events...")
 }
 
-// handleSourceEvent processes a single source event and triggers matching workflows
+// handleSourceEvent processes a single source event and triggers matching workflows.
 func (a *Activator) handleSourceEvent(ctx context.Context, sourceEvent *events.SourceEvent) error {
 	logger := a.logger.With(
 		"source_id", sourceEvent.SourceID,
@@ -150,6 +155,7 @@ func (a *Activator) handleSourceEvent(ctx context.Context, sourceEvent *events.S
 	// Validate the source event
 	if err := sourceEvent.Validate(); err != nil {
 		logger.Error("Invalid source event", "error", err)
+
 		return err
 	}
 
@@ -157,6 +163,7 @@ func (a *Activator) handleSourceEvent(ctx context.Context, sourceEvent *events.S
 	matchingTriggers, err := a.findTriggersForSourceEvent(ctx, sourceEvent)
 	if err != nil {
 		logger.Error("Failed to find matching triggers", "error", err)
+
 		return err
 	}
 
@@ -171,16 +178,18 @@ func (a *Activator) handleSourceEvent(ctx context.Context, sourceEvent *events.S
 				"error", err)
 		}
 	}
+
 	return nil
 }
 
-// findTriggersForSourceEvent queries the database for triggers that match a source event
+// findTriggersForSourceEvent queries the database for triggers that match a source event.
 func (a *Activator) findTriggersForSourceEvent(ctx context.Context, sourceEvent *events.SourceEvent) ([]*TriggerMatch, error) {
 	workflowRepo := workflow.NewRepository(a.persistence)
 
 	workflows, err := workflowRepo.FetchAll(ctx)
 	if err != nil {
 		a.logger.Error("Failed to fetch workflows", "error", err)
+
 		return nil, err
 	}
 
@@ -206,7 +215,7 @@ func (a *Activator) findTriggersForSourceEvent(ctx context.Context, sourceEvent 
 	return matchingTriggers, nil
 }
 
-// triggerMatchesSourceEvent determines if a workflow trigger should be activated by a source event
+// triggerMatchesSourceEvent determines if a workflow trigger should be activated by a source event.
 func (a *Activator) triggerMatchesSourceEvent(trigger *models.WorkflowTrigger, sourceEvent *events.SourceEvent) bool {
 	// Source ID must match
 	if trigger.SourceID != sourceEvent.SourceID {
@@ -221,7 +230,7 @@ func (a *Activator) triggerMatchesSourceEvent(trigger *models.WorkflowTrigger, s
 	return true
 }
 
-// publishWorkflowTriggered publishes a WorkflowTriggered event for a specific trigger
+// publishWorkflowTriggered publishes a WorkflowTriggered event for a specific trigger.
 func (a *Activator) publishWorkflowTriggered(ctx context.Context, workflowID, triggerID string, sourceData map[string]any) error {
 	logger := a.logger.With("workflow_id", workflowID, "trigger_id", triggerID)
 	logger.Info("Publishing WorkflowTriggered event")
@@ -235,14 +244,16 @@ func (a *Activator) publishWorkflowTriggered(ctx context.Context, workflowID, tr
 
 	if err := a.eventBus.Publish(ctx, workflowID, event); err != nil {
 		logger.Error("Failed to publish WorkflowTriggered event", "error", err)
+
 		return err
 	}
 
 	logger.With("event_id", event.ID).Info("Successfully published WorkflowTriggered event")
+
 	return nil
 }
 
-// stop gracefully shuts down the activator
+// stop gracefully shuts down the activator.
 func (a *Activator) stop(cancel context.CancelFunc) {
 	a.logger.Info("Stopping activator")
 

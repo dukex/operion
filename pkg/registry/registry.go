@@ -163,6 +163,7 @@ func (r *Registry) GetSourceProviders() map[string]protocol.SourceProviderFactor
 	for id, factory := range r.sourceProviderFactories {
 		sourceProviders[id] = factory
 	}
+
 	return sourceProviders
 }
 

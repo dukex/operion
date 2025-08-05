@@ -23,11 +23,12 @@ func NewEventBus(provider string, logger *slog.Logger) eventbus.EventBus {
 	}
 }
 
-// NewSourceEventBus creates a Kafka-based source event bus instance
+// NewSourceEventBus creates a Kafka-based source event bus instance.
 func NewSourceEventBus(logger *slog.Logger) eventbus.SourceEventBus {
 	sourceEventBus, err := eventbus.NewKafkaSourceEventBus(logger)
 	if err != nil {
 		panic(fmt.Errorf("failed to create Kafka source event bus: %w", err))
 	}
+
 	return sourceEventBus
 }

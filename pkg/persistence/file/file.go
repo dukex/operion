@@ -4,6 +4,7 @@ package file
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io/fs"
 	"os"
 	"path"
@@ -132,7 +133,6 @@ func (fp *FilePersistence) Schedules() ([]*models.Schedule, error) {
 	root := os.DirFS(fp.root + "/schedules")
 
 	jsonFiles, err := fs.Glob(root, "*.json")
-
 	if err != nil {
 		return nil, err
 	}
@@ -148,6 +148,7 @@ func (fp *FilePersistence) Schedules() ([]*models.Schedule, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		if schedule != nil {
 			schedules = append(schedules, schedule)
 		}
@@ -159,11 +160,17 @@ func (fp *FilePersistence) Schedules() ([]*models.Schedule, error) {
 func (fp *FilePersistence) ScheduleByID(scheduleID string) (*models.Schedule, error) {
 	filePath := path.Join(fp.root+"/schedules", scheduleID+".json")
 
-	body, err := os.ReadFile(filePath)
+	// Validate that the resolved path is within the expected directory to prevent path traversal
+	if !strings.HasPrefix(filePath, fp.root+"/schedules/") {
+		return nil, errors.New("invalid schedule ID: path traversal detected")
+	}
+
+	body, err := os.ReadFile(filePath) // #nosec G304 -- path is validated above
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
 		}
+
 		return nil, err
 	}
 
@@ -193,7 +200,7 @@ func (fp *FilePersistence) ScheduleBySourceID(sourceID string) (*models.Schedule
 }
 
 func (fp *FilePersistence) SaveSchedule(schedule *models.Schedule) error {
-	err := os.MkdirAll(fp.root+"/schedules", 0755)
+	err := os.MkdirAll(fp.root+"/schedules", 0750)
 	if err != nil {
 		return err
 	}
@@ -211,7 +218,8 @@ func (fp *FilePersistence) SaveSchedule(schedule *models.Schedule) error {
 	}
 
 	filePath := path.Join(fp.root+"/schedules", schedule.ID+".json")
-	return os.WriteFile(filePath, data, 0644)
+
+	return os.WriteFile(filePath, data, 0600)
 }
 
 func (fp *FilePersistence) DeleteSchedule(id string) error {
@@ -222,6 +230,7 @@ func (fp *FilePersistence) DeleteSchedule(id string) error {
 	if err != nil && os.IsNotExist(err) {
 		return nil
 	}
+
 	return err
 }
 
@@ -230,9 +239,11 @@ func (fp *FilePersistence) DeleteScheduleBySourceID(sourceID string) error {
 	if err != nil {
 		return err
 	}
+
 	if schedule == nil {
 		return nil
 	}
+
 	return fp.DeleteSchedule(schedule.ID)
 }
 

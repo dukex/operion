@@ -210,3 +210,4 @@ The project uses GitHub Actions for continuous integration and quality assurance
 ## Development Memories
 
 - **TODO Tracking**: Check the TODO.md file to see if the implementation was described
+- Always run `golangci-lint run --fix <folder or file>`, passing the folder or files that have been edited.
