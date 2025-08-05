@@ -13,18 +13,25 @@ import (
 	"github.com/dukex/operion/pkg/events"
 )
 
+var (
+	errMessageNil           = errors.New("message is nil")
+	errMessageMetadataNil   = errors.New("message metadata is nil")
+	errMessageMetadataNoKey = errors.New("message metadata does not contain 'key'")
+	errKafkaBrokersNotSet   = errors.New("KAFKA_BROKERS environment variable is not set or empty")
+)
+
 func MetadataKey(topic string, msg *message.Message) (string, error) {
 	if msg == nil {
-		return "", errors.New("message is nil")
+		return "", errMessageNil
 	}
 
 	if msg.Metadata == nil || msg.Metadata[events.EventMetadataKey] == "" {
-		return "", errors.New("message metadata is nil")
+		return "", errMessageMetadataNil
 	}
 
 	key, ok := msg.Metadata[events.EventMetadataKey]
 	if !ok || key == "" {
-		return "", errors.New("message metadata does not contain 'key'")
+		return "", errMessageMetadataNoKey
 	}
 
 	return key, nil
@@ -33,7 +40,7 @@ func MetadataKey(topic string, msg *message.Message) (string, error) {
 func CreateChannel(logger watermill.LoggerAdapter, serviceName string) (*kafka.Publisher, *kafka.Subscriber, error) {
 	brokers := strings.Split(os.Getenv("KAFKA_BROKERS"), ",")
 	if len(brokers) == 0 || brokers[0] == "" {
-		return nil, nil, errors.New("KAFKA_BROKERS environment variable is not set or empty")
+		return nil, nil, errKafkaBrokersNotSet
 	}
 
 	saramaSubscriberConfig := kafka.DefaultSaramaSubscriberConfig()

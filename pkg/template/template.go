@@ -30,15 +30,16 @@ func RenderWithContext(input string, executionCtx *models.ExecutionContext) (any
 	return Render(input, enhancedData)
 }
 
-func Render(templateStr string, data any) (any, error) {
+// Parse parses the input string as a template and returns the parsed template.
+func Parse(input string) (*template.Template, error) {
 	tmpl, err := template.
 		New("transform").
 		Funcs(template.FuncMap{
 			"now": func() string {
 				return time.Now().UTC().Format(time.RFC3339)
 			},
-			"rand": func(max int) int {
-				if max <= 0 {
+			"rand": func(maxPossible int32) int32 {
+				if maxPossible <= 0 {
 					return 0
 				}
 				num := make([]byte, 1)
@@ -47,9 +48,19 @@ func Render(templateStr string, data any) (any, error) {
 					return 0
 				}
 
-				return int(num[0]) % max
+				return int32(num[0]) % maxPossible
 			},
-		}).Parse(templateStr)
+		}).Parse(input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse template '%s': %w", input, err)
+	}
+
+	return tmpl, nil
+}
+
+// Render renders the input string as a template with the provided data.
+func Render(templateStr string, data any) (any, error) {
+	tmpl, err := Parse(templateStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse template '%s': %w", templateStr, err)
 	}
@@ -91,7 +102,6 @@ func Render(templateStr string, data any) (any, error) {
 	return result, nil
 }
 
-// getEnvVars returns environment variables as a map.
 func getEnvVars() map[string]any {
 	envMap := make(map[string]any)
 

@@ -15,27 +15,23 @@ import (
 	"github.com/dukex/operion/pkg/protocol"
 )
 
-type KafkaTrigger struct {
+type Trigger struct {
 	Topic         string
 	ConsumerGroup string
 	Brokers       []string
 	consumer      sarama.ConsumerGroup
 	callback      protocol.TriggerCallback
 	logger        *slog.Logger
-	ctx           context.Context
-	cancel        context.CancelFunc
 }
 
-func NewKafkaTrigger(config map[string]any, logger *slog.Logger) (*KafkaTrigger, error) {
+func NewTrigger(ctx context.Context, config map[string]any, logger *slog.Logger) (*Trigger, error) {
 	topic, ok := config["topic"].(string)
 	if !ok || topic == "" {
 		return nil, errors.New("kafka trigger topic is required")
 	}
 
-	// Get consumer group from config or generate default
 	consumerGroup, _ := config["consumer_group"].(string)
 	if consumerGroup == "" {
-		// This will be set when we have access to trigger ID
 		consumerGroup = "operion-triggers-" + "default"
 	}
 
@@ -53,7 +49,7 @@ func NewKafkaTrigger(config map[string]any, logger *slog.Logger) (*KafkaTrigger,
 		brokers[i] = strings.TrimSpace(broker)
 	}
 
-	trigger := &KafkaTrigger{
+	trigger := &Trigger{
 		Topic:         topic,
 		ConsumerGroup: consumerGroup,
 		Brokers:       brokers,
@@ -65,7 +61,7 @@ func NewKafkaTrigger(config map[string]any, logger *slog.Logger) (*KafkaTrigger,
 		),
 	}
 
-	err := trigger.Validate()
+	err := trigger.Validate(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +69,7 @@ func NewKafkaTrigger(config map[string]any, logger *slog.Logger) (*KafkaTrigger,
 	return trigger, nil
 }
 
-func (t *KafkaTrigger) Validate() error {
+func (t *Trigger) Validate(_ context.Context) error {
 	if t.Topic == "" {
 		return errors.New("kafka trigger topic is required")
 	}
@@ -85,85 +81,49 @@ func (t *KafkaTrigger) Validate() error {
 	return nil
 }
 
-func (t *KafkaTrigger) Start(ctx context.Context, callback protocol.TriggerCallback) error {
-	t.logger.Info("Starting Kafka trigger")
+const kafkaSessionTimeout = 10 * time.Second
+const kafkaHeartbeatInterval = 3 * time.Second
+const kafkaRetryInterval = 5 * time.Second
+
+func (t *Trigger) Start(ctx context.Context, callback protocol.TriggerCallback) error {
+	t.logger.InfoContext(ctx, "Starting Kafka trigger")
 	t.callback = callback
-	t.ctx, t.cancel = context.WithCancel(ctx)
+	newCtx, cancel := context.WithCancel(ctx)
 
 	// Configure Kafka consumer
 	config := sarama.NewConfig()
 	config.Version = sarama.V2_6_0_0
-	config.Consumer.Group.Session.Timeout = 10 * time.Second
-	config.Consumer.Group.Heartbeat.Interval = 3 * time.Second
+	config.Consumer.Group.Session.Timeout = kafkaSessionTimeout
+	config.Consumer.Group.Heartbeat.Interval = kafkaHeartbeatInterval
 	config.Consumer.Offsets.Initial = sarama.OffsetNewest
 	config.Consumer.Return.Errors = true
 
 	consumer, err := sarama.NewConsumerGroup(t.Brokers, t.ConsumerGroup, config)
 	if err != nil {
+		cancel()
+		t.logger.ErrorContext(ctx, "Failed to create Kafka consumer group", "error", err)
+
 		return fmt.Errorf("failed to create Kafka consumer group: %w", err)
 	}
 
 	t.consumer = consumer
 
-	// Start consuming in a goroutine
-	go func() {
-		defer func() {
-			err := consumer.Close()
-			if err != nil {
-				t.logger.Error("Error closing Kafka consumer", "error", err)
-			}
-		}()
-
-		handler := &consumerGroupHandler{
-			trigger: t,
-			logger:  t.logger,
-		}
-
-		for {
-			select {
-			case <-t.ctx.Done():
-				t.logger.Info("Kafka trigger context cancelled")
-
-				return
-			default:
-				err := consumer.Consume(t.ctx, []string{t.Topic}, handler)
-				if err != nil {
-					t.logger.Error("Kafka consumer error", "error", err)
-					// Wait before retrying
-					time.Sleep(5 * time.Second)
-				}
-			}
-		}
-	}()
+	// Start consuming
+	go t.consuming(newCtx, cancel)
 
 	// Monitor consumer errors
-	go func() {
-		for {
-			select {
-			case err := <-consumer.Errors():
-				if err != nil {
-					t.logger.Error("Kafka consumer group error", "error", err)
-				}
-			case <-t.ctx.Done():
-				return
-			}
-		}
-	}()
+	go t.monitorConsumerErrors(newCtx)
 
 	return nil
 }
 
-func (t *KafkaTrigger) Stop(ctx context.Context) error {
-	t.logger.Info("Stopping Kafka trigger")
-
-	if t.cancel != nil {
-		t.cancel()
-	}
+func (t *Trigger) Stop(ctx context.Context) error {
+	t.logger.InfoContext(ctx, "Stopping Kafka trigger")
 
 	if t.consumer != nil {
 		err := t.consumer.Close()
 		if err != nil {
-			t.logger.Error("Error closing Kafka consumer", "error", err)
+			t.logger.ErrorContext(ctx, "Error closing Kafka consumer", "error", err)
 
 			return err
 		}
@@ -172,27 +132,75 @@ func (t *KafkaTrigger) Stop(ctx context.Context) error {
 	return nil
 }
 
-// consumerGroupHandler implements sarama.ConsumerGroupHandler.
+func (t *Trigger) consuming(ctx context.Context, cancel context.CancelFunc) {
+	defer func() {
+		err := t.consumer.Close()
+		if err != nil {
+			t.logger.ErrorContext(ctx, "Error closing Kafka consumer", "error", err)
+		}
+
+		cancel()
+	}()
+
+	handler := &consumerGroupHandler{
+		trigger: t,
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			t.logger.InfoContext(ctx, "Kafka trigger context cancelled")
+			cancel()
+
+			return
+		default:
+			err := t.consumer.Consume(ctx, []string{t.Topic}, handler)
+			if err != nil {
+				t.logger.ErrorContext(ctx, "Kafka consumer error", "error", err)
+				time.Sleep(kafkaRetryInterval)
+			}
+		}
+	}
+}
+
+func (t *Trigger) monitorConsumerErrors(ctx context.Context) {
+	for {
+		select {
+		case err := <-t.consumer.Errors():
+			if err != nil {
+				t.logger.ErrorContext(ctx, "Kafka consumer group error", "error", err)
+			}
+
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
 type consumerGroupHandler struct {
-	trigger *KafkaTrigger
-	logger  *slog.Logger
+	trigger *Trigger
 }
 
-func (h *consumerGroupHandler) Setup(sarama.ConsumerGroupSession) error {
-	h.logger.Info("Kafka consumer group session started")
+func (h *consumerGroupHandler) Setup(session sarama.ConsumerGroupSession) error {
+	h.trigger.logger.InfoContext(session.Context(), "Kafka consumer group session started")
 
 	return nil
 }
 
-func (h *consumerGroupHandler) Cleanup(sarama.ConsumerGroupSession) error {
-	h.logger.Info("Kafka consumer group session ended")
+func (h *consumerGroupHandler) Cleanup(session sarama.ConsumerGroupSession) error {
+	h.trigger.logger.InfoContext(session.Context(), "Kafka consumer group session ended")
 
 	return nil
 }
 
-func (h *consumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
+func (h *consumerGroupHandler) ConsumeClaim(
+	session sarama.ConsumerGroupSession,
+	claim sarama.ConsumerGroupClaim,
+) error {
+	ctx := session.Context()
+
 	for message := range claim.Messages() {
-		h.logger.Debug("Received Kafka message",
+		h.trigger.logger.DebugContext(ctx, "Received Kafka message",
 			"topic", message.Topic,
 			"partition", message.Partition,
 			"offset", message.Offset,
@@ -242,9 +250,9 @@ func (h *consumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession,
 
 		// Execute workflow callback
 		go func(data map[string]any) {
-			err := h.trigger.callback(context.Background(), data)
+			err := h.trigger.callback(ctx, data)
 			if err != nil {
-				h.logger.Error("Error executing workflow for Kafka trigger", "error", err)
+				h.trigger.logger.ErrorContext(ctx, "Error executing workflow for Kafka trigger", "error", err)
 			}
 		}(triggerData)
 

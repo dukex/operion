@@ -3,6 +3,7 @@ package workflow
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"maps"
@@ -13,6 +14,11 @@ import (
 	"github.com/dukex/operion/pkg/persistence"
 	"github.com/dukex/operion/pkg/registry"
 	"github.com/google/uuid"
+)
+
+var (
+	errWorkflowNoSteps = errors.New("workflow has no steps")
+	errStepNotFound    = errors.New("step not found in workflow")
 )
 
 type Executor struct {
@@ -30,24 +36,30 @@ func NewExecutor(
 	}
 }
 
-func (s *Executor) Start(ctx context.Context, logger *slog.Logger, workflowID string, triggerData map[string]any) ([]eventbus.Event, error) {
-	logger.Info("Starting execution of workflow")
+// Start initializes the workflow execution process.
+func (s *Executor) Start(
+	ctx context.Context,
+	logger *slog.Logger,
+	workflowID string,
+	triggerData map[string]any,
+) ([]eventbus.Event, error) {
+	logger.InfoContext(ctx, "Starting execution of workflow")
 
 	workflowRepository := NewRepository(s.persistence)
 
-	workflowItem, err := workflowRepository.FetchByID(workflowID)
+	workflowItem, err := workflowRepository.FetchByID(ctx, workflowID)
 	if err != nil {
-		logger.Error("Failed to get workflow", "error", err)
+		logger.ErrorContext(ctx, "Failed to get workflow", "error", err)
 
 		return nil, err
 	}
 
-	logger.Info("Created execution context")
+	logger.InfoContext(ctx, "Created execution context")
 
 	if len(workflowItem.Steps) == 0 {
-		logger.Info("Workflow has no steps to execute")
+		logger.InfoContext(ctx, "Workflow has no steps to execute")
 
-		return nil, fmt.Errorf("workflow %s has no steps", workflowID)
+		return nil, fmt.Errorf("workflow %s: %w", workflowID, errWorkflowNoSteps)
 	}
 
 	// TODO: save it to the database
@@ -69,11 +81,18 @@ func (s *Executor) Start(ctx context.Context, logger *slog.Logger, workflowID st
 	}, nil
 }
 
-func (s *Executor) ExecuteStep(ctx context.Context, logger *slog.Logger, workflow *models.Workflow, executionCtx *models.ExecutionContext, currentStepID string) (
+// ExecuteStep executes a single step in the workflow.
+func (s *Executor) ExecuteStep(
+	ctx context.Context,
+	logger *slog.Logger,
+	workflow *models.Workflow,
+	executionCtx *models.ExecutionContext,
+	currentStepID string,
+) (
 	[]eventbus.Event, error) {
 	step, found := s.findStepByID(workflow.Steps, currentStepID)
 	if !found {
-		return nil, fmt.Errorf("step %s not found in workflow %s", currentStepID, workflow.ID)
+		return nil, fmt.Errorf("step %s not found in workflow %s: %w", currentStepID, workflow.ID, errStepNotFound)
 	}
 
 	logger = logger.With(
@@ -82,18 +101,18 @@ func (s *Executor) ExecuteStep(ctx context.Context, logger *slog.Logger, workflo
 	)
 
 	if !step.Enabled {
-		logger.Info("Step is disabled, skipping")
+		logger.InfoContext(ctx, "Step is disabled, skipping")
 
-		return s.nextStep(step, logger, workflow.ID, executionCtx, true), nil // Treat as success
+		return s.nextStep(ctx, step, logger, workflow.ID, executionCtx, true), nil // Treat as success
 	}
 
-	logger.Info("Executing step action")
+	logger.InfoContext(ctx, "Executing step action")
 
 	result, err := s.executeAction(ctx, logger, step, executionCtx)
 	if err != nil {
-		logger.Error("Failed to execute action for step", "error", err)
+		logger.ErrorContext(ctx, "Failed to execute action for step", "error", err)
 
-		return append(s.nextStep(step, logger, workflow.ID, executionCtx, false),
+		return append(s.nextStep(ctx, step, logger, workflow.ID, executionCtx, false),
 			&events.WorkflowStepFailed{
 				BaseEvent:   events.NewBaseEvent(events.WorkflowStepFailedEvent, workflow.ID),
 				ExecutionID: executionCtx.ID,
@@ -110,9 +129,10 @@ func (s *Executor) ExecuteStep(ctx context.Context, logger *slog.Logger, workflo
 	}
 
 	executionCtx.StepResults[step.UID] = result
-	logger.Info("Step executed successfully", "result", result)
 
-	return append(s.nextStep(step, logger, workflow.ID, executionCtx, true),
+	logger.InfoContext(ctx, "Step executed successfully", "result", result)
+
+	return append(s.nextStep(ctx, step, logger, workflow.ID, executionCtx, true),
 		&events.WorkflowStepFinished{
 			BaseEvent:   events.NewBaseEvent(events.WorkflowStepFinishedEvent, workflow.ID),
 			ExecutionID: executionCtx.ID,
@@ -125,6 +145,7 @@ func (s *Executor) ExecuteStep(ctx context.Context, logger *slog.Logger, workflo
 }
 
 func (s *Executor) nextStep(
+	ctx context.Context,
 	step *models.WorkflowStep,
 	logger *slog.Logger,
 	workflowId string,
@@ -136,7 +157,7 @@ func (s *Executor) nextStep(
 	eventsToDispatcher := make([]eventbus.Event, 0)
 
 	if !found {
-		logger.Info("No next step defined, ending workflow execution")
+		logger.InfoContext(ctx, "No next step defined, ending workflow execution")
 
 		eventsToDispatcher = append(eventsToDispatcher, &events.WorkflowFinished{
 			BaseEvent:   events.NewBaseEvent(events.WorkflowFinishedEvent, workflowId),
@@ -144,7 +165,7 @@ func (s *Executor) nextStep(
 			Result:      executionCtx.StepResults,
 		})
 	} else {
-		logger.Info("Moving to next step", "next_step_id", nextStepID)
+		logger.InfoContext(ctx, "Moving to next step", "next_step_id", nextStepID)
 
 		eventsToDispatcher = append(eventsToDispatcher, &events.WorkflowStepAvailable{
 			BaseEvent:        events.NewBaseEvent(events.WorkflowStepAvailableEvent, workflowId),
@@ -184,7 +205,12 @@ func (s *Executor) findStepByID(steps []*models.WorkflowStep, stepID string) (*m
 	return nil, false
 }
 
-func (s *Executor) executeAction(ctx context.Context, logger *slog.Logger, step *models.WorkflowStep, executionCtx *models.ExecutionContext) (any, error) {
+func (s *Executor) executeAction(
+	ctx context.Context,
+	logger *slog.Logger,
+	step *models.WorkflowStep,
+	executionCtx *models.ExecutionContext,
+) (any, error) {
 	if s.registry == nil {
 		// executionCtx.Logger.Infof("Registry not initialized, skipping action %s", actionItem.ID)
 		return nil, nil
@@ -198,7 +224,7 @@ func (s *Executor) executeAction(ctx context.Context, logger *slog.Logger, step 
 		"action_id", step.ActionID,
 	)
 
-	action, err := s.registry.CreateAction(step.ActionID, config)
+	action, err := s.registry.CreateAction(ctx, step.ActionID, config)
 	if err != nil {
 		// logger.Errorf("Failed to create action: %v", err)
 		return nil, err
@@ -210,7 +236,7 @@ func (s *Executor) executeAction(ctx context.Context, logger *slog.Logger, step 
 		return nil, err
 	}
 
-	logger.Info("Action completed successfully")
+	logger.InfoContext(ctx, "Action completed successfully")
 
 	return result, err
 }

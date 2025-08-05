@@ -1,4 +1,4 @@
-package kafka
+package kafka_test
 
 import (
 	"context"
@@ -8,9 +8,12 @@ import (
 	"time"
 
 	"github.com/dukex/operion/pkg/protocol"
+	"github.com/dukex/operion/pkg/triggers/kafka"
 )
 
 func TestNewKafkaTrigger(t *testing.T) {
+	t.Parallel()
+
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	tests := []struct {
@@ -57,7 +60,9 @@ func TestNewKafkaTrigger(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			trigger, err := NewKafkaTrigger(tt.config, logger)
+			t.Parallel()
+
+			trigger, err := kafka.NewTrigger(t.Context(), tt.config, logger)
 
 			if tt.wantError {
 				if err == nil {
@@ -80,45 +85,49 @@ func TestNewKafkaTrigger(t *testing.T) {
 			}
 
 			// Verify basic properties
-			if trigger.Topic != tt.config["topic"].(string) {
-				t.Errorf("NewKafkaTrigger() topic = %v, want %v", trigger.Topic, tt.config["topic"])
+			topic, ok := tt.config["topic"].(string)
+			if !ok || topic == "" {
+				t.Errorf("NewKafkaTrigger() topic is required in config")
+
+				return
+			}
+
+			if trigger.Topic != topic {
+				t.Errorf("NewKafkaTrigger() topic = %v, want %v", trigger.Topic, topic)
 			}
 		})
 	}
 }
 
 func TestKafkaTriggerValidate(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	t.Parallel()
 
 	tests := []struct {
 		name      string
-		trigger   *KafkaTrigger
+		trigger   *kafka.Trigger
 		wantError bool
 	}{
 		{
 			name: "valid trigger",
-			trigger: &KafkaTrigger{
+			trigger: &kafka.Trigger{
 				Topic:   "test-topic",
 				Brokers: []string{"localhost:9092"},
-				logger:  logger,
 			},
 			wantError: false,
 		},
 		{
 			name: "empty topic",
-			trigger: &KafkaTrigger{
+			trigger: &kafka.Trigger{
 				Topic:   "",
 				Brokers: []string{"localhost:9092"},
-				logger:  logger,
 			},
 			wantError: true,
 		},
 		{
 			name: "empty brokers",
-			trigger: &KafkaTrigger{
+			trigger: &kafka.Trigger{
 				Topic:   "test-topic",
 				Brokers: []string{},
-				logger:  logger,
 			},
 			wantError: true,
 		},
@@ -126,7 +135,9 @@ func TestKafkaTriggerValidate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.trigger.Validate()
+			t.Parallel()
+
+			err := tt.trigger.Validate(t.Context())
 
 			if tt.wantError && err == nil {
 				t.Errorf("Validate() expected error but got none")
@@ -143,14 +154,13 @@ func TestKafkaTriggerEnvironmentBrokers(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	// Test with environment variable
-	os.Setenv("KAFKA_BROKERS", "env-broker1:9092,env-broker2:9092")
-	defer os.Unsetenv("KAFKA_BROKERS")
+	t.Setenv("KAFKA_BROKERS", "env-broker1:9092,env-broker2:9092")
 
 	config := map[string]any{
 		"topic": "test-topic",
 	}
 
-	trigger, err := NewKafkaTrigger(config, logger)
+	trigger, err := kafka.NewTrigger(t.Context(), config, logger)
 	if err != nil {
 		t.Fatalf("NewKafkaTrigger() unexpected error: %v", err)
 	}
@@ -170,13 +180,15 @@ func TestKafkaTriggerEnvironmentBrokers(t *testing.T) {
 }
 
 func TestKafkaTriggerConsumerGroupGeneration(t *testing.T) {
+	t.Parallel()
+
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	config := map[string]any{
 		"topic": "test-topic",
 	}
 
-	trigger, err := NewKafkaTrigger(config, logger)
+	trigger, err := kafka.NewTrigger(t.Context(), config, logger)
 	if err != nil {
 		t.Fatalf("NewKafkaTrigger() unexpected error: %v", err)
 	}
@@ -195,13 +207,15 @@ func TestKafkaTriggerConsumerGroupGeneration(t *testing.T) {
 }
 
 func TestKafkaTriggerStopWithoutStart(t *testing.T) {
+	t.Parallel()
+
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	config := map[string]any{
 		"topic": "test-topic",
 	}
 
-	trigger, err := NewKafkaTrigger(config, logger)
+	trigger, err := kafka.NewTrigger(t.Context(), config, logger)
 	if err != nil {
 		t.Fatalf("NewKafkaTrigger() unexpected error: %v", err)
 	}
@@ -222,6 +236,8 @@ func mockCallback(ctx context.Context, data map[string]any) error {
 }
 
 func TestKafkaTriggerCallbackInterface(t *testing.T) {
+	t.Parallel()
+
 	// Test that our mock callback implements the protocol.TriggerCallback interface
 	var callback protocol.TriggerCallback = mockCallback
 

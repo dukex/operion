@@ -9,7 +9,7 @@ import (
 	"github.com/dukex/operion/pkg/protocol"
 )
 
-type WebhookTrigger struct {
+type Trigger struct {
 	Path     string
 	Method   string
 	Headers  map[string]string
@@ -18,7 +18,7 @@ type WebhookTrigger struct {
 	logger   *slog.Logger
 }
 
-func NewWebhookTrigger(config map[string]any, logger *slog.Logger) (*WebhookTrigger, error) {
+func NewTrigger(ctx context.Context, config map[string]any, logger *slog.Logger) (*Trigger, error) {
 	path, ok := config["path"].(string)
 	if !ok {
 		path = "/webhook"
@@ -30,16 +30,18 @@ func NewWebhookTrigger(config map[string]any, logger *slog.Logger) (*WebhookTrig
 	}
 
 	enabled := true
+	enabledVal, exists := config["enabled"]
 
-	if enabledVal, exists := config["enabled"]; exists {
+	if exists {
 		if enabledBool, ok := enabledVal.(bool); ok {
 			enabled = enabledBool
 		}
 	}
 
 	headers := make(map[string]string)
+	headersConfig, exists := config["headers"]
 
-	if headersConfig, exists := config["headers"]; exists {
+	if exists {
 		if headersMap, ok := headersConfig.(map[string]any); ok {
 			for k, v := range headersMap {
 				if strVal, ok := v.(string); ok {
@@ -49,7 +51,7 @@ func NewWebhookTrigger(config map[string]any, logger *slog.Logger) (*WebhookTrig
 		}
 	}
 
-	trigger := &WebhookTrigger{
+	trigger := &Trigger{
 		Path:    path,
 		Method:  method,
 		Headers: headers,
@@ -62,7 +64,7 @@ func NewWebhookTrigger(config map[string]any, logger *slog.Logger) (*WebhookTrig
 		),
 	}
 
-	err := trigger.Validate()
+	err := trigger.Validate(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +72,7 @@ func NewWebhookTrigger(config map[string]any, logger *slog.Logger) (*WebhookTrig
 	return trigger, nil
 }
 
-func (t *WebhookTrigger) Validate() error {
+func (t *Trigger) Validate(_ context.Context) error {
 	if t.Path == "" {
 		return errors.New("webhook trigger path is required")
 	}
@@ -82,9 +84,9 @@ func (t *WebhookTrigger) Validate() error {
 	return nil
 }
 
-func (t *WebhookTrigger) Start(ctx context.Context, callback protocol.TriggerCallback) error {
+func (t *Trigger) Start(ctx context.Context, callback protocol.TriggerCallback) error {
 	if !t.Enabled {
-		t.logger.Info("WebhookTrigger is disabled.")
+		t.logger.InfoContext(ctx, "WebhookTrigger is disabled.")
 
 		return nil
 	}
@@ -94,39 +96,38 @@ func (t *WebhookTrigger) Start(ctx context.Context, callback protocol.TriggerCal
 		return errors.New("global webhook server manager not initialized")
 	}
 
-	t.logger.Info("Starting WebhookTrigger")
+	t.logger.InfoContext(ctx, "Starting WebhookTrigger")
 	t.callback = callback
 
-	handler := &WebhookHandler{
+	handler := &Handler{
 		TriggerID: t.Path,
 		Callback:  callback,
 		Logger:    t.logger,
 	}
 
-	err := manager.RegisterWebhook(t.Path, handler)
+	err := manager.RegisterWebhook(ctx, t.Path, handler)
 	if err != nil {
 		return err
 	}
 
-	t.logger.Info("WebhookTrigger started", "path", t.Path)
+	t.logger.InfoContext(ctx, "WebhookTrigger started", "path", t.Path)
 
-	// Wait for either context cancellation or server shutdown
 	select {
 	case <-ctx.Done():
-		t.logger.Info("WebhookTrigger context cancelled")
+		t.logger.InfoContext(ctx, "WebhookTrigger context cancelled")
 	case <-manager.Done():
-		t.logger.Info("WebhookTrigger server stopped")
+		t.logger.InfoContext(ctx, "WebhookTrigger server stopped")
 	}
 
 	return nil
 }
 
-func (t *WebhookTrigger) Stop(ctx context.Context) error {
-	t.logger.Info("Stopping WebhookTrigger", "path", t.Path)
+func (t *Trigger) Stop(ctx context.Context) error {
+	t.logger.InfoContext(ctx, "Stopping WebhookTrigger", "path", t.Path)
 
 	manager := GetGlobalWebhookServerManager()
 	if manager != nil {
-		manager.UnregisterWebhook(t.Path)
+		manager.UnregisterWebhook(ctx, t.Path)
 	}
 
 	return nil

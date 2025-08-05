@@ -2,6 +2,7 @@
 package cmd
 
 import (
+	"context"
 	"log/slog"
 
 	"github.com/dukex/operion/pkg/actions/httprequest"
@@ -14,8 +15,8 @@ import (
 	"github.com/dukex/operion/pkg/triggers/webhook"
 )
 
-func registreActionPlugins(reg *registry.Registry, pluginsPath string) {
-	actionPlugins, err := reg.LoadActionPlugins(pluginsPath)
+func registreActionPlugins(ctx context.Context, reg *registry.Registry, pluginsPath string) {
+	actionPlugins, err := reg.LoadActionPlugins(ctx, pluginsPath)
 	if err != nil {
 		panic(err)
 	}
@@ -25,8 +26,8 @@ func registreActionPlugins(reg *registry.Registry, pluginsPath string) {
 	}
 }
 
-func registreTriggerPlugins(reg *registry.Registry, pluginsPath string) {
-	triggerPlugins, err := reg.LoadTriggerPlugins(pluginsPath)
+func registreTriggerPlugins(ctx context.Context, reg *registry.Registry, pluginsPath string) {
+	triggerPlugins, err := reg.LoadTriggerPlugins(ctx, pluginsPath)
 	if err != nil {
 		panic(err)
 	}
@@ -36,34 +37,27 @@ func registreTriggerPlugins(reg *registry.Registry, pluginsPath string) {
 	}
 }
 
-func registerNativeActions(reg *registry.Registry) {
-	reg.RegisterAction(httprequest.NewHTTPRequestActionFactory())
-	reg.RegisterAction(transform.NewTransformActionFactory())
-	reg.RegisterAction(logaction.NewLogActionFactory())
+func registerNativeActions(ctx context.Context, reg *registry.Registry) {
+	reg.RegisterAction(httprequest.NewActionFactory())
+	reg.RegisterAction(transform.NewActionFactory())
+	reg.RegisterAction(logaction.NewActionFactory())
 }
 
-func registerNativeTriggers(reg *registry.Registry) {
-	scheduleTrigger := schedule.NewScheduleTriggerFactory()
-	reg.RegisterTrigger(scheduleTrigger)
-
-	webhookTrigger := webhook.NewWebhookTriggerFactory()
-	reg.RegisterTrigger(webhookTrigger)
-
-	queueTrigger := queue.NewQueueTriggerFactory()
-	reg.RegisterTrigger(queueTrigger)
-
-	kafkaTrigger := kafka.NewKafkaTriggerFactory()
-	reg.RegisterTrigger(kafkaTrigger)
+func registerNativeTriggers(ctx context.Context, reg *registry.Registry) {
+	reg.RegisterTrigger(schedule.NewTriggerFactory())
+	reg.RegisterTrigger(webhook.NewTriggerFactory())
+	reg.RegisterTrigger(queue.NewTriggerFactory())
+	reg.RegisterTrigger(kafka.NewTriggerFactory())
 }
 
-func NewRegistry(log *slog.Logger, pluginsPath string) *registry.Registry {
+func NewRegistry(ctx context.Context, log *slog.Logger, pluginsPath string) *registry.Registry {
 	reg := registry.NewRegistry(log)
 
-	registreActionPlugins(reg, pluginsPath)
-	registreTriggerPlugins(reg, pluginsPath)
+	registreActionPlugins(ctx, reg, pluginsPath)
+	registreTriggerPlugins(ctx, reg, pluginsPath)
 
-	registerNativeTriggers(reg)
-	registerNativeActions(reg)
+	registerNativeTriggers(ctx, reg)
+	registerNativeActions(ctx, reg)
 
 	return reg
 }

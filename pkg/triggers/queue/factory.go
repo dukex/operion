@@ -1,6 +1,7 @@
 package queue
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -8,25 +9,25 @@ import (
 	"github.com/dukex/operion/pkg/protocol"
 )
 
-func NewQueueTriggerFactory() protocol.TriggerFactory {
-	return &QueueTriggerFactory{}
+func NewTriggerFactory() protocol.TriggerFactory {
+	return &TriggerFactory{}
 }
 
-type QueueTriggerFactory struct{}
+type TriggerFactory struct{}
 
-func (f *QueueTriggerFactory) ID() string {
+func (f *TriggerFactory) ID() string {
 	return "queue"
 }
 
-func (f *QueueTriggerFactory) Name() string {
+func (f *TriggerFactory) Name() string {
 	return "Queue"
 }
 
-func (f *QueueTriggerFactory) Description() string {
+func (f *TriggerFactory) Description() string {
 	return "Trigger workflow execution based on message queue events"
 }
 
-func (f *QueueTriggerFactory) Schema() map[string]any {
+func (f *TriggerFactory) Schema() map[string]any {
 	return map[string]any{
 		"type":        "object",
 		"title":       "Queue Trigger Configuration",
@@ -100,12 +101,16 @@ func (f *QueueTriggerFactory) Schema() map[string]any {
 	}
 }
 
-func (f *QueueTriggerFactory) Create(config map[string]any, logger *slog.Logger) (protocol.Trigger, error) {
+func (f *TriggerFactory) Create(
+	ctx context.Context,
+	config map[string]any,
+	logger *slog.Logger,
+) (protocol.Trigger, error) {
 	if config == nil {
 		return nil, errors.New("config cannot be nil")
 	}
 
-	trigger, err := NewQueueTrigger(config, logger)
+	trigger, err := NewTrigger(ctx, config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create queue trigger: %w", err)
 	}

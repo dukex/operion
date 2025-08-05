@@ -9,15 +9,12 @@ import (
 )
 
 type Action interface {
-	// GetID() string
-	// GetType() string
 	Execute(ctx context.Context, executionCtx models.ExecutionContext, logger *slog.Logger) (any, error)
-	// Validate() error
-	// GetConfig() map[string]any
+	Validate(ctx context.Context) error
 }
 
 type ActionFactory interface {
-	Create(config map[string]any) (Action, error)
+	Create(ctx context.Context, config map[string]any) (Action, error)
 	ID() string
 	Name() string
 	Description() string

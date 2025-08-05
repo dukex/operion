@@ -1,13 +1,17 @@
-package webhook
+package webhook_test
 
 import (
 	"context"
 	"log/slog"
 	"testing"
 	"time"
+
+	"github.com/dukex/operion/pkg/triggers/webhook"
 )
 
 func TestWebhookTrigger_Validation(t *testing.T) {
+	t.Parallel()
+
 	logger := slog.Default()
 
 	tests := []struct {
@@ -45,7 +49,9 @@ func TestWebhookTrigger_Validation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := NewWebhookTrigger(tt.config, logger)
+			t.Parallel()
+
+			_, err := webhook.NewTrigger(t.Context(), tt.config, logger)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewWebhookTrigger() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -54,19 +60,21 @@ func TestWebhookTrigger_Validation(t *testing.T) {
 }
 
 func TestWebhookTrigger_StartStop(t *testing.T) {
+	t.Parallel()
+
 	logger := slog.Default()
 
 	// Reset global manager for this test
-	ResetGlobalManager()
+	webhook.ResetGlobalManager()
 
-	manager := GetWebhookServerManager(8081, logger)
+	manager := webhook.GetWebhookServerManager(8081, logger)
 
 	config := map[string]any{
 		"id":   "test-webhook",
 		"path": "/test",
 	}
 
-	trigger, err := NewWebhookTrigger(config, logger)
+	trigger, err := webhook.NewTrigger(t.Context(), config, logger)
 	if err != nil {
 		t.Fatalf("Failed to create webhook trigger: %v", err)
 	}
@@ -117,19 +125,21 @@ func TestWebhookTrigger_StartStop(t *testing.T) {
 }
 
 func TestWebhookTrigger_ServerShutdown(t *testing.T) {
+	t.Parallel()
+
 	logger := slog.Default()
 
 	// Reset global manager for this test
-	ResetGlobalManager()
+	webhook.ResetGlobalManager()
 
-	manager := GetWebhookServerManager(8082, logger)
+	manager := webhook.GetWebhookServerManager(8082, logger)
 
 	config := map[string]any{
 		"id":   "test-webhook-shutdown",
 		"path": "/test-shutdown",
 	}
 
-	trigger, err := NewWebhookTrigger(config, logger)
+	trigger, err := webhook.NewTrigger(t.Context(), config, logger)
 	if err != nil {
 		t.Fatalf("Failed to create webhook trigger: %v", err)
 	}
@@ -172,7 +182,9 @@ func TestWebhookTrigger_ServerShutdown(t *testing.T) {
 }
 
 func TestWebhookTriggerFactory(t *testing.T) {
-	factory := NewWebhookTriggerFactory()
+	t.Parallel()
+
+	factory := webhook.NewTriggerFactory()
 
 	if factory.ID() != "webhook" {
 		t.Errorf("Expected factory ID 'webhook', got '%s'", factory.ID())
@@ -184,7 +196,7 @@ func TestWebhookTriggerFactory(t *testing.T) {
 		"path": "/webhook",
 	}
 
-	trigger, err := factory.Create(config, logger)
+	trigger, err := factory.Create(t.Context(), config, logger)
 	if err != nil {
 		t.Fatalf("Failed to create trigger from factory: %v", err)
 	}

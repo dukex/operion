@@ -85,7 +85,7 @@ func NewAPIHandlers(
 // }
 
 func (h *APIHandlers) GetWorkflows(c fiber.Ctx) error {
-	workflows, err := h.repository.FetchAll()
+	workflows, err := h.repository.FetchAll(c.Context())
 	if err != nil {
 		return internalError(c, err)
 	}
@@ -100,7 +100,7 @@ func (h *APIHandlers) GetWorkflow(c fiber.Ctx) error {
 		return badRequest(c, "Workflow ID is required")
 	}
 
-	workflow, err := h.repository.FetchByID(id)
+	workflow, err := h.repository.FetchByID(c.Context(), id)
 	if err != nil {
 		if err.Error() == "workflow not found" {
 			return notFound(c, "Workflow not found")
@@ -398,7 +398,7 @@ func (h *APIHandlers) GetAvailableTriggers(c fiber.Ctx) error {
 
 func (h *APIHandlers) HealthCheck(c fiber.Ctx) error {
 	registryCheck, regOk := h.registry.HealthCheck()
-	repositoryCheck, repOk := h.repository.HealthCheck()
+	repositoryCheck, repOk := h.repository.HealthCheck(c.Context())
 
 	status := "unhealthy"
 	message := "Operion API is unhealthy"

@@ -18,30 +18,30 @@ func (l *LogAction) Execute(ctx context.Context, ectx models.ExecutionContext, l
 	return nil, nil
 }
 
-type LogActionFactory struct{}
+type ActionFactory struct{}
 
-func (l LogActionFactory) Schema() map[string]any {
+func (l ActionFactory) Schema() map[string]any {
 	return map[string]any{}
 }
 
-func (l LogActionFactory) ID() string {
+func (l ActionFactory) ID() string {
 	return "custom-log"
 }
 
-func (l LogActionFactory) Name() string {
+func (l ActionFactory) Name() string {
 	return "Custom Log"
 }
 
-func (l LogActionFactory) Description() string {
+func (l ActionFactory) Description() string {
 	return "Logs a message to the console or a file based on the configuration provided."
 }
 
-func (l LogActionFactory) Create(config map[string]any) (protocol.Action, error) {
+func (l ActionFactory) Create(config map[string]any) (protocol.Action, error) {
 	return &LogAction{
 		config: config,
 	}, nil
 }
 
-var _ protocol.ActionFactory = LogActionFactory{}
+var _ protocol.ActionFactory = ActionFactory{}
 
-var Action = LogActionFactory{}
+var Action = ActionFactory{}
