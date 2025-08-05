@@ -1,7 +1,9 @@
 package workflow
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/dukex/operion/pkg/models"
@@ -9,22 +11,29 @@ import (
 	"github.com/google/uuid"
 )
 
+var (
+	// ErrWorkflowNotFound is returned when a workflow is not found.
+	ErrWorkflowNotFound = errors.New("workflow not found")
+)
+
 type Repository struct {
 	persistence persistence.Persistence
 }
 
+// NewRepository creates a new workflow repository.
 func NewRepository(persistence persistence.Persistence) *Repository {
 	return &Repository{
 		persistence: persistence,
 	}
 }
 
-func (r *Repository) HealthCheck() (string, bool) {
+// HealthCheck checks the health of the persistence layer.
+func (r *Repository) HealthCheck(ctx context.Context) (string, bool) {
 	if r.persistence == nil {
 		return "Persistence layer not initialized", false
 	}
 
-	err := r.persistence.HealthCheck()
+	err := r.persistence.HealthCheck(ctx)
 	if err != nil {
 		return "Persistence layer is unhealthy: " + err.Error(), false
 	}
@@ -32,8 +41,9 @@ func (r *Repository) HealthCheck() (string, bool) {
 	return "Persistence layer is healthy", true
 }
 
-func (r *Repository) FetchAll() ([]*models.Workflow, error) {
-	workflows, err := r.persistence.Workflows()
+// FetchAll retrieves all workflows.
+func (r *Repository) FetchAll(ctx context.Context) ([]*models.Workflow, error) {
+	workflows, err := r.persistence.Workflows(ctx)
 	if err != nil {
 		return make([]*models.Workflow, 0), err
 	}
@@ -41,25 +51,24 @@ func (r *Repository) FetchAll() ([]*models.Workflow, error) {
 	return workflows, nil
 }
 
-func (r *Repository) FetchByID(id string) (*models.Workflow, error) {
-	workflow, err := r.persistence.WorkflowByID(id)
+// FetchByID retrieves a workflow by its ID.
+func (r *Repository) FetchByID(ctx context.Context, id string) (*models.Workflow, error) {
+	workflow, err := r.persistence.WorkflowByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
 	if workflow == nil {
-		return nil, errors.New("workflow not found")
+		return nil, ErrWorkflowNotFound
 	}
 
 	return workflow, nil
 }
 
-func (r *Repository) Create(workflow *models.Workflow) (*models.Workflow, error) {
-	if workflow.ID == "" {
-		workflow.ID = uuid.New().String()
-	}
-
+// Create adds a new workflow to the repository.
+func (r *Repository) Create(ctx context.Context, workflow *models.Workflow) (*models.Workflow, error) {
 	now := time.Now().UTC()
+	workflow.ID = uuid.New().String()
 	workflow.CreatedAt = now
 	workflow.UpdatedAt = now
 
@@ -67,7 +76,7 @@ func (r *Repository) Create(workflow *models.Workflow) (*models.Workflow, error)
 		workflow.Status = models.WorkflowStatusInactive
 	}
 
-	err := r.persistence.SaveWorkflow(workflow)
+	err := r.persistence.SaveWorkflow(ctx, workflow)
 	if err != nil {
 		return nil, err
 	}
@@ -75,21 +84,26 @@ func (r *Repository) Create(workflow *models.Workflow) (*models.Workflow, error)
 	return workflow, nil
 }
 
-func (r *Repository) Update(id string, workflow *models.Workflow) (*models.Workflow, error) {
-	existing, err := r.persistence.WorkflowByID(id)
+// Update modifies an existing workflow by its ID.
+func (r *Repository) Update(
+	ctx context.Context,
+	workflowID string,
+	workflow *models.Workflow,
+) (*models.Workflow, error) {
+	existing, err := r.persistence.WorkflowByID(ctx, workflowID)
 	if err != nil {
 		return nil, err
 	}
 
 	if existing == nil {
-		return nil, errors.New("workflow not found")
+		return nil, ErrWorkflowNotFound
 	}
 
-	workflow.ID = id
+	workflow.ID = workflowID
 	workflow.CreatedAt = existing.CreatedAt
 	workflow.UpdatedAt = time.Now().UTC()
 
-	err = r.persistence.SaveWorkflow(workflow)
+	err = r.persistence.SaveWorkflow(ctx, workflow)
 	if err != nil {
 		return nil, err
 	}
@@ -97,15 +111,21 @@ func (r *Repository) Update(id string, workflow *models.Workflow) (*models.Workf
 	return workflow, nil
 }
 
-func (r *Repository) Delete(id string) error {
-	existing, err := r.persistence.WorkflowByID(id)
+// Delete removes a workflow by its ID.
+func (r *Repository) Delete(ctx context.Context, workflowID string) error {
+	existing, err := r.persistence.WorkflowByID(ctx, workflowID)
 	if err != nil {
 		return err
 	}
 
 	if existing == nil {
-		return errors.New("workflow not found")
+		return ErrWorkflowNotFound
 	}
 
-	return r.persistence.DeleteWorkflow(id)
+	err = r.persistence.DeleteWorkflow(ctx, workflowID)
+	if err != nil {
+		return fmt.Errorf("failed to delete workflow: %w", err)
+	}
+
+	return nil
 }

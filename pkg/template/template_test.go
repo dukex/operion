@@ -1,7 +1,6 @@
 package template
 
 import (
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -107,16 +106,7 @@ func TestRender_ErrorHandling(t *testing.T) {
 
 func TestRender_EnvironmentVariables(t *testing.T) {
 	// Set test environment variable
-	if err := os.Setenv("TEST_VAR", "test_value"); err != nil {
-		t.Fatal(err)
-	}
-
-	defer func() {
-		err := os.Unsetenv("TEST_VAR")
-		if err != nil {
-			t.Error(err)
-		}
-	}()
+	t.Setenv("TEST_VAR", "test_value")
 
 	// Current implementation doesn't support env vars, but let's test what we expect
 	data := map[string]any{
