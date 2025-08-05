@@ -36,7 +36,7 @@ type Schedule struct {
 	Active bool `json:"active"`
 }
 
-// NewSchedule creates a new Schedule with the next execution time calculated
+// NewSchedule creates a new Schedule with the next execution time calculated.
 func NewSchedule(id, sourceID, cronExpression string) (*Schedule, error) {
 	now := time.Now().UTC()
 	schedule := &Schedule{
@@ -79,12 +79,12 @@ func (s *Schedule) calculateNextDueAt(referenceTime time.Time) error {
 	return nil
 }
 
-// IsDue checks if this schedule is due for execution at the given time
+// IsDue checks if this schedule is due for execution at the given time.
 func (s *Schedule) IsDue(now time.Time) bool {
 	return s.Active && !s.NextDueAt.After(now)
 }
 
-// Validate performs validation on the schedule fields
+// Validate performs validation on the schedule fields.
 func (s *Schedule) Validate() error {
 	if s.ID == "" {
 		return ErrInvalidSchedule
