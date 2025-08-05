@@ -38,7 +38,9 @@ func NewQueueTrigger(config map[string]any, logger *slog.Logger) (*QueueTrigger,
 	consumerGroup, _ := config["consumer_group"].(string)
 
 	connectionConfig, _ := config["connection"].(map[string]any)
+
 	connection := make(map[string]string)
+
 	for k, v := range connectionConfig {
 		if str, ok := v.(string); ok {
 			connection[k] = str
@@ -59,7 +61,8 @@ func NewQueueTrigger(config map[string]any, logger *slog.Logger) (*QueueTrigger,
 		),
 	}
 
-	if err := trigger.Validate(); err != nil {
+	err := trigger.Validate()
+	if err != nil {
 		return nil, err
 	}
 
@@ -70,26 +73,31 @@ func (t *QueueTrigger) Validate() error {
 	if t.Queue == "" {
 		return errors.New("queue trigger queue name is required")
 	}
+
 	if t.Provider != "redis" {
 		return fmt.Errorf("unsupported queue provider: %s (only 'redis' is supported)", t.Provider)
 	}
+
 	return nil
 }
 
 func (t *QueueTrigger) Start(ctx context.Context, callback protocol.TriggerCallback) error {
 	if !t.Enabled {
 		t.logger.Info("QueueTrigger is disabled.")
+
 		return nil
 	}
 
 	t.logger.Info("Starting QueueTrigger")
 	t.callback = callback
 
-	if err := t.initializeClient(); err != nil {
+	err := t.initializeClient()
+	if err != nil {
 		return fmt.Errorf("failed to initialize queue client: %w", err)
 	}
 
 	t.wg.Add(1)
+
 	go t.consume(ctx)
 
 	return nil
@@ -103,6 +111,7 @@ func (t *QueueTrigger) initializeClient() error {
 
 	password := t.Connection["password"]
 	db := 0
+
 	if dbStr := t.Connection["db"]; dbStr != "" {
 		var err error
 		if db, err = t.parseDB(dbStr); err != nil {
@@ -119,17 +128,21 @@ func (t *QueueTrigger) initializeClient() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := t.client.Ping(ctx).Err(); err != nil {
+	err := t.client.Ping(ctx).Err()
+	if err != nil {
 		return fmt.Errorf("failed to connect to Redis: %w", err)
 	}
 
 	t.logger.Info("Connected to Redis", "addr", addr, "db", db)
+
 	return nil
 }
 
 func (t *QueueTrigger) parseDB(dbStr string) (int, error) {
 	var db int
+
 	_, err := fmt.Sscanf(dbStr, "%d", &db)
+
 	return db, err
 }
 
@@ -142,12 +155,15 @@ func (t *QueueTrigger) consume(ctx context.Context) {
 		select {
 		case <-t.stopCh:
 			t.logger.Info("Queue consumer stopped")
+
 			return
 		case <-ctx.Done():
 			t.logger.Info("Context cancelled, stopping queue consumer")
+
 			return
 		default:
-			if err := t.processMessage(ctx); err != nil {
+			err := t.processMessage(ctx)
+			if err != nil {
 				t.logger.Error("Error processing message", "error", err)
 				time.Sleep(1 * time.Second)
 			}
@@ -158,9 +174,10 @@ func (t *QueueTrigger) consume(ctx context.Context) {
 func (t *QueueTrigger) processMessage(ctx context.Context) error {
 	result, err := t.client.BLPop(ctx, 1*time.Second, t.Queue).Result()
 	if err != nil {
-		if err == redis.Nil {
+		if errors.Is(err, redis.Nil) {
 			return nil
 		}
+
 		return fmt.Errorf("failed to pop message from queue: %w", err)
 	}
 
@@ -184,7 +201,8 @@ func (t *QueueTrigger) processMessage(ctx context.Context) error {
 	}
 
 	go func() {
-		if err := t.callback(context.Background(), triggerData); err != nil {
+		err := t.callback(context.Background(), triggerData)
+		if err != nil {
 			t.logger.Error("Error executing workflow for trigger", "error", err)
 		}
 	}()
@@ -199,7 +217,8 @@ func (t *QueueTrigger) Stop(ctx context.Context) error {
 	t.wg.Wait()
 
 	if t.client != nil {
-		if err := t.client.Close(); err != nil {
+		err := t.client.Close()
+		if err != nil {
 			t.logger.Error("Error closing Redis client", "error", err)
 		}
 	}

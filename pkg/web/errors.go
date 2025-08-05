@@ -10,6 +10,7 @@ func badRequest(c fiber.Ctx, detail string) error {
 		WithInstance(c.Path()).
 		WithType("validation_error").
 		WithDetail(detail)
+
 	return c.Status(fiber.StatusBadRequest).JSON(problem)
 }
 
@@ -18,6 +19,7 @@ func notFound(c fiber.Ctx, detail string) error {
 		WithInstance(c.Path()).
 		WithType("not_found").
 		WithDetail(detail)
+
 	return c.Status(fiber.StatusNotFound).JSON(problem)
 }
 
@@ -26,5 +28,6 @@ func internalError(c fiber.Ctx, err error) error {
 		WithInstance(c.Path()).
 		WithType("internal_error").
 		WithError(err)
+
 	return c.Status(fiber.StatusInternalServerError).JSON(problem)
 }

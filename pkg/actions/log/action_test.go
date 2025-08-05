@@ -219,7 +219,7 @@ func TestLogAction_Execute_LargeStepResults(t *testing.T) {
 
 	// Create large step results to test logging performance
 	largeData := make(map[string]any)
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		largeData[string(rune('A'+i%26))+string(rune('a'+i%26))] = map[string]any{
 			"index": i,
 			"value": "test data " + string(rune('0'+i%10)),
@@ -243,6 +243,6 @@ func TestLogAction_Execute_LargeStepResults(t *testing.T) {
 	assert.NotNil(t, result)
 
 	resultMap := result.(map[string]any)
-	assert.Equal(t, "", resultMap["message"])
+	assert.Empty(t, resultMap["message"])
 	assert.Equal(t, "info", resultMap["level"])
 }

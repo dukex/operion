@@ -13,7 +13,6 @@ func NewEventBus(provider string, logger *slog.Logger) eventbus.EventBus {
 	switch provider {
 	case "kafka":
 		pub, sub, err := kafka.CreateChannel(watermill.NewSlogLogger(logger), "operion")
-
 		if err != nil {
 			panic(fmt.Errorf("failed to create Kafka pub/sub: %w", err))
 		}

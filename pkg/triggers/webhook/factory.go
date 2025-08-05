@@ -88,9 +88,11 @@ func (f *WebhookTriggerFactory) Create(config map[string]any, logger *slog.Logge
 	if config == nil {
 		return nil, errors.New("config cannot be nil")
 	}
+
 	trigger, err := NewWebhookTrigger(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create webhook trigger: %w", err)
 	}
+
 	return trigger, nil
 }

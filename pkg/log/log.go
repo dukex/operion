@@ -7,6 +7,7 @@ import (
 
 func Setup(logLevel string) {
 	var level slog.Level
+
 	switch logLevel {
 	case "debug":
 		level = slog.LevelDebug

@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Mock action for testing
+// Mock action for testing.
 type mockAction struct {
 	id     string
 	config map[string]any
@@ -26,7 +26,7 @@ func (m *mockAction) Execute(ctx context.Context, execCtx models.ExecutionContex
 	}, nil
 }
 
-// Mock action factory for testing
+// Mock action factory for testing.
 type mockActionFactory struct {
 	actionType string
 }
@@ -62,7 +62,7 @@ func (f *mockActionFactory) Schema() map[string]any {
 	}
 }
 
-// Mock trigger for testing
+// Mock trigger for testing.
 type mockTrigger struct {
 	id       string
 	config   map[string]any
@@ -71,6 +71,7 @@ type mockTrigger struct {
 
 func (m *mockTrigger) Start(ctx context.Context, callback protocol.TriggerCallback) error {
 	m.callback = callback
+
 	return nil
 }
 
@@ -88,10 +89,11 @@ func (m *mockTrigger) TriggerWorkflow() error {
 			"triggered_by": m.id,
 		})
 	}
+
 	return nil
 }
 
-// Mock trigger factory for testing
+// Mock trigger factory for testing.
 type mockTriggerFactory struct {
 	triggerType string
 }
@@ -372,12 +374,16 @@ func TestMockTrigger_StartStopAndCallback(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	var callbackData map[string]any
-	var callbackCalled bool
+
+	var (
+		callbackData   map[string]any
+		callbackCalled bool
+	)
 
 	callback := func(ctx context.Context, data map[string]any) error {
 		callbackData = data
 		callbackCalled = true
+
 		return nil
 	}
 

@@ -104,9 +104,11 @@ func (f *QueueTriggerFactory) Create(config map[string]any, logger *slog.Logger)
 	if config == nil {
 		return nil, errors.New("config cannot be nil")
 	}
+
 	trigger, err := NewQueueTrigger(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create queue trigger: %w", err)
 	}
+
 	return trigger, nil
 }

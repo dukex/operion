@@ -30,6 +30,7 @@ func NewWebhookTrigger(config map[string]any, logger *slog.Logger) (*WebhookTrig
 	}
 
 	enabled := true
+
 	if enabledVal, exists := config["enabled"]; exists {
 		if enabledBool, ok := enabledVal.(bool); ok {
 			enabled = enabledBool
@@ -37,6 +38,7 @@ func NewWebhookTrigger(config map[string]any, logger *slog.Logger) (*WebhookTrig
 	}
 
 	headers := make(map[string]string)
+
 	if headersConfig, exists := config["headers"]; exists {
 		if headersMap, ok := headersConfig.(map[string]any); ok {
 			for k, v := range headersMap {
@@ -60,7 +62,8 @@ func NewWebhookTrigger(config map[string]any, logger *slog.Logger) (*WebhookTrig
 		),
 	}
 
-	if err := trigger.Validate(); err != nil {
+	err := trigger.Validate()
+	if err != nil {
 		return nil, err
 	}
 
@@ -71,15 +74,18 @@ func (t *WebhookTrigger) Validate() error {
 	if t.Path == "" {
 		return errors.New("webhook trigger path is required")
 	}
+
 	if t.Path[0] != '/' {
 		return errors.New("webhook trigger path must start with '/'")
 	}
+
 	return nil
 }
 
 func (t *WebhookTrigger) Start(ctx context.Context, callback protocol.TriggerCallback) error {
 	if !t.Enabled {
 		t.logger.Info("WebhookTrigger is disabled.")
+
 		return nil
 	}
 
@@ -97,7 +103,8 @@ func (t *WebhookTrigger) Start(ctx context.Context, callback protocol.TriggerCal
 		Logger:    t.logger,
 	}
 
-	if err := manager.RegisterWebhook(t.Path, handler); err != nil {
+	err := manager.RegisterWebhook(t.Path, handler)
+	if err != nil {
 		return err
 	}
 

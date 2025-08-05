@@ -42,16 +42,20 @@ func NewWorkerManager(
 func (w *WorkerManager) Start(ctx context.Context) error {
 	w.logger.Info("Starting worker manager", "worker_id", w.id)
 
-	if err := w.eventBus.Handle(events.WorkflowTriggeredEvent, w.handleWorkflowTriggered); err != nil {
+	err := w.eventBus.Handle(events.WorkflowTriggeredEvent, w.handleWorkflowTriggered)
+	if err != nil {
 		return err
 	}
 
-	if err := w.eventBus.Handle(events.WorkflowStepAvailableEvent, w.handleWorkflowStepAvailable); err != nil {
+	err = w.eventBus.Handle(events.WorkflowStepAvailableEvent, w.handleWorkflowStepAvailable)
+	if err != nil {
 		return err
 	}
 
-	if err := w.eventBus.Subscribe(ctx); err != nil {
+	err = w.eventBus.Subscribe(ctx)
+	if err != nil {
 		w.logger.Error("Failed to subscribe to event bus", "error", err)
+
 		return err
 	}
 
@@ -70,6 +74,7 @@ func (w *WorkerManager) handleWorkflowTriggered(ctx context.Context, event any) 
 	triggeredEvent, ok := event.(*events.WorkflowTriggered)
 	if !ok {
 		w.logger.Error("Invalid event type for WorkflowTriggered")
+
 		return nil
 	}
 
@@ -86,8 +91,8 @@ func (w *WorkerManager) handleWorkflowTriggered(ctx context.Context, event any) 
 	}
 
 	workflowExecutor := workflow.NewExecutor(w.persistence, w.registry)
-	eventsToDispatcher, err := workflowExecutor.Start(ctx, logger, triggeredEvent.WorkflowID, triggerData)
 
+	eventsToDispatcher, err := workflowExecutor.Start(ctx, logger, triggeredEvent.WorkflowID, triggerData)
 	if err != nil {
 		w.logger.Error("Failed to execute workflow", "error", err)
 
@@ -97,7 +102,8 @@ func (w *WorkerManager) handleWorkflowTriggered(ctx context.Context, event any) 
 		}
 		failedEvent.WorkerID = triggeredEvent.WorkerID
 
-		if publishErr := w.eventBus.Publish(ctx, triggeredEvent.WorkflowID, failedEvent); publishErr != nil {
+		publishErr := w.eventBus.Publish(ctx, triggeredEvent.WorkflowID, failedEvent)
+		if publishErr != nil {
 			w.logger.Error("Failed to publish workflow failed event", "error", publishErr)
 		}
 
@@ -105,8 +111,10 @@ func (w *WorkerManager) handleWorkflowTriggered(ctx context.Context, event any) 
 	}
 
 	for _, event := range eventsToDispatcher {
-		if publishErr := w.eventBus.Publish(ctx, triggeredEvent.WorkflowID, event); publishErr != nil {
+		publishErr := w.eventBus.Publish(ctx, triggeredEvent.WorkflowID, event)
+		if publishErr != nil {
 			w.logger.Error("Failed to publish workflow event", "error", publishErr, "event", event)
+
 			return publishErr
 		}
 	}
@@ -120,6 +128,7 @@ func (w *WorkerManager) handleWorkflowStepAvailable(ctx context.Context, event a
 
 	if !ok {
 		w.logger.Error("Invalid event type for WorkflowStepAvailable")
+
 		return nil
 	}
 
@@ -134,11 +143,11 @@ func (w *WorkerManager) handleWorkflowStepAvailable(ctx context.Context, event a
 	workflowItem, err := workflow.NewRepository(w.persistence).FetchByID(workflowStepEvent.WorkflowID)
 	if err != nil {
 		w.logger.Error("Failed to fetch workflow by ID", "error", err, "workflow_id", workflowStepEvent.WorkflowID)
+
 		return err
 	}
 
 	eventsToDispatcher, err := workflowExecutor.ExecuteStep(ctx, logger, workflowItem, workflowStepEvent.ExecutionContext, workflowStepEvent.StepID)
-
 	if err != nil {
 		w.logger.Error("Failed to execute workflow step", "error", err)
 
@@ -157,8 +166,10 @@ func (w *WorkerManager) handleWorkflowStepAvailable(ctx context.Context, event a
 	}
 
 	for _, event := range eventsToDispatcher {
-		if publishErr := w.eventBus.Publish(ctx, workflowStepEvent.WorkflowID, event); publishErr != nil {
+		publishErr := w.eventBus.Publish(ctx, workflowStepEvent.WorkflowID, event)
+		if publishErr != nil {
 			w.logger.Error("Failed to publish workflow event", "error", publishErr, "event", event)
+
 			return publishErr
 		}
 	}
