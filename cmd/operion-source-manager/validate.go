@@ -16,8 +16,8 @@ var validate *validator.Validate
 
 // Static error variables for linter compliance
 var (
-	ErrInvalidTriggers               = errors.New("invalid triggers found")
-	ErrInvalidSourceProviderConfigs  = errors.New("invalid source provider configurations found")
+	ErrInvalidTriggers              = errors.New("invalid triggers found")
+	ErrInvalidSourceProviderConfigs = errors.New("invalid source provider configurations found")
 )
 
 func NewValidateCommand() *cli.Command {
