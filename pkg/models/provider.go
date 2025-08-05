@@ -4,6 +4,6 @@ package models
 // that can be used as triggers. Examples providers: Google Drive,
 // Scheduler, Webhook, Jira, Caju, etc...
 type Provider struct {
-	ID          string `json:"id" validate:"required"`
+	ID          string `json:"id"          validate:"required"`
 	Description string `json:"description"` // optional
 }

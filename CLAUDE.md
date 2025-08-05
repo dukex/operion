@@ -122,6 +122,29 @@ go mod download     # Download dependencies
 go mod tidy         # Clean up dependencies
 ```
 
+### Coding Standards
+
+#### Struct Tag Alignment
+All struct tags within a struct must be vertically aligned for better readability:
+
+```go
+// ✅ Correct - tags are aligned
+type Example struct {
+    ID          string `json:"id"          validate:"required"`
+    Name        string `json:"name"        validate:"required,min=3"`
+    Description string `json:"description"`
+}
+
+// ❌ Incorrect - tags are not aligned  
+type Example struct {
+    ID string `json:"id" validate:"required"`
+    Name string `json:"name" validate:"required,min=3"`
+    Description string `json:"description"`
+}
+```
+
+The `tagalign` linter is configured to enforce this rule automatically. Run `make fmt` after making struct changes to ensure proper formatting.
+
 ### CI/CD Pipeline
 
 The project uses GitHub Actions for continuous integration and quality assurance:

@@ -45,3 +45,9 @@ linters:
       case:
         rules:
           json: snake
+    tagalign:
+      align: true
+      sort: false
+      order:
+        - json
+        - validate
