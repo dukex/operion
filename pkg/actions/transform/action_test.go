@@ -191,6 +191,7 @@ func TestTransformAction_Execute_ArrayTransform(t *testing.T) {
 func TestTransformAction_Execute_ComplexTransform(t *testing.T) {
 	action := &TransformAction{
 		Expression: `{ "price": {{if .step_results.api_response.close}}{{.step_results.api_response.close}}{{else}}{{.step_results.api_response.open}}{{end}}, "currency": "USD", "timestamp": "{{.step_results.api_response.time}}" }`,
+		Expression: `{ "price": {{if .step_results.api_response.close}}{{.step_results.api_response.close}}{{else}}{{.step_results.api_response.open}}{{end}}, "currency": "USD", "timestamp": "{{.step_results.api_response.time}}" }`,
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -254,6 +255,7 @@ func TestTransformAction_Execute_InvalidExpression(t *testing.T) {
 
 func TestTransformAction_Execute_WithCancel(t *testing.T) {
 	action := &TransformAction{
+		Expression: "{{.step_results.data}}",
 		Expression: "{{.step_results.data}}",
 	}
 

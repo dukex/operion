@@ -19,7 +19,6 @@ type KafkaTrigger struct {
 	Topic         string
 	ConsumerGroup string
 	Brokers       []string
-	triggerID     string
 	consumer      sarama.ConsumerGroup
 	callback      protocol.TriggerCallback
 	logger        *slog.Logger

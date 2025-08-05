@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"os"
 	"testing"
@@ -216,7 +215,6 @@ func TestWorkerManager_BasicWorkflowExecution(t *testing.T) {
 	// Execute workflow triggered event
 	ctx := context.Background()
 	err = wm.handleWorkflowTriggered(ctx, mockEvent)
-
 	// Verify execution succeeded (basic workflow functionality should work)
 	// Note: This may still fail due to missing action implementations, but the structure should be valid
 	if err != nil {
@@ -239,19 +237,4 @@ func NewWorkflowRepository(persistence any) *MockWorkflowRepository {
 func (r *MockWorkflowRepository) Create(workflow *models.Workflow) error {
 	r.workflows[workflow.ID] = workflow
 	return nil
-}
-
-func (r *MockWorkflowRepository) FetchByID(id string) (*models.Workflow, error) {
-	if workflow, exists := r.workflows[id]; exists {
-		return workflow, nil
-	}
-	return nil, fmt.Errorf("workflow not found: %s", id)
-}
-
-func (r *MockWorkflowRepository) FetchAll() ([]*models.Workflow, error) {
-	workflows := make([]*models.Workflow, 0, len(r.workflows))
-	for _, workflow := range r.workflows {
-		workflows = append(workflows, workflow)
-	}
-	return workflows, nil
 }

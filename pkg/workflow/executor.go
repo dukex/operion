@@ -87,19 +87,6 @@ func (s *Executor) ExecuteStep(ctx context.Context, logger *slog.Logger, workflo
 
 	logger.Info("Executing step action")
 
-	// TODO: Handle conditionals
-	// 	shouldExecute, err := s.evaluateConditional(step.Conditional, executionCtx)
-	// 	if err != nil {
-	// 		log.Printf("Error evaluating conditional for step %s: %v", step.ID, err)
-	// 		return fmt.Errorf("error evaluating conditional for step %s: %w", step.ID, err)
-	// 	}
-
-	// 	if !shouldExecute {
-	// 		log.Printf("Conditional evaluated to false for step %s, skipping", step.ID)
-	// 		currentStepID = s.getNextStepID(step, true) // Treat as success
-	// 		continue
-	// 	}
-
 	result, err := s.executeAction(ctx, logger, step, executionCtx)
 	if err != nil {
 		logger.Error("Failed to execute action for step", "error", err)
@@ -192,23 +179,6 @@ func (s *Executor) findStepByID(steps []*models.WorkflowStep, stepID string) (*m
 	}
 	return nil, false
 }
-
-// func (s *Executor) evaluateConditional(conditional models.ConditionalExpression, ctx models.ExecutionContext) (bool, error) {
-// 	if conditional.Expression == "" && conditional.Language == "" {
-// 		return true, nil
-// 	}
-
-// 	switch conditional.Language {
-// 	case "simple", "":
-// 		if conditional.Expression == "true" || conditional.Expression == "" {
-// 			return true, nil
-// 		}
-// 		return false, nil
-// 	default:
-// 		// ctx.Logger.Errorf("Unsupported conditional language: %s, defaulting to true", conditional.Language)
-// 		return true, nil
-// 	}
-// }
 
 func (s *Executor) executeAction(ctx context.Context, logger *slog.Logger, step *models.WorkflowStep, executionCtx *models.ExecutionContext) (any, error) {
 	if s.registry == nil {

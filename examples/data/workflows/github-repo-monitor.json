@@ -36,10 +36,6 @@
           "delay": 2
         }
       },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
       "on_success": "fetch-recent-issues",
       "on_failure": "log-repo-error",
       "enabled": true
@@ -59,10 +55,6 @@
           "Accept": "application/vnd.github.v3+json",
           "User-Agent": "Operion-GitHubMonitor/1.0"
         }
-      },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
       },
       "on_success": "fetch-recent-releases",
       "on_failure": "log-issues-error",
@@ -84,10 +76,6 @@
           "User-Agent": "Operion-GitHubMonitor/1.0"
         }
       },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
       "on_success": "process-repo-data",
       "on_failure": "log-releases-error",
       "enabled": true
@@ -100,10 +88,6 @@
       "configuration": {
         "expression": "{\n  \"repository\": {\n    \"name\": steps.repodata.body.full_name,\n    \"description\": steps.repodata.body.description,\n    \"stars\": steps.repodata.body.stargazers_count,\n    \"forks\": steps.repodata.body.forks_count,\n    \"open_issues\": steps.repodata.body.open_issues_count,\n    \"language\": steps.repodata.body.language,\n    \"last_push\": steps.repodata.body.pushed_at\n  },\n  \"recent_issues\": $map(steps.issuesdata.body[0..2], function($issue) {\n    {\n      \"title\": $issue.title,\n      \"state\": $issue.state,\n      \"created\": $issue.created_at,\n      \"updated\": $issue.updated_at,\n      \"author\": $issue.user.login\n    }\n  }),\n  \"latest_releases\": $map(steps.releasesdata.body[0..1], function($release) {\n    {\n      \"name\": $release.name,\n      \"tag\": $release.tag_name,\n      \"published\": $release.published_at,\n      \"author\": $release.author.login\n    }\n  }),\n  \"activity_score\": steps.repodata.body.open_issues_count + $count(steps.issuesdata.body) + $count(steps.releasesdata.body),\n  \"timestamp\": $now()\n}"
       },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
       "on_success": "log-activity",
       "enabled": true
     },
@@ -115,10 +99,6 @@
       "configuration": {
         "message": "\"GitHub Repo \" & steps.reposummary.repository.name & \" - Stars: \" & $string(steps.reposummary.repository.stars) & \", Open Issues: \" & $string(steps.reposummary.repository.open_issues) & \", Activity Score: \" & $string(steps.reposummary.activity_score)"
       },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
       "on_success": "check-high-activity",
       "enabled": true
     },
@@ -129,10 +109,6 @@
       "uid": "activitycheck",
       "configuration": {
         "expression": "{\n  \"high_activity\": steps.reposummary.activity_score > vars.activity_threshold,\n  \"alert_message\": steps.reposummary.activity_score > vars.activity_threshold ? \"High activity detected in \" & steps.reposummary.repository.name : \"Normal activity level\"\n}"
-      },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
       },
       "on_success": "send-activity-report",
       "enabled": true
@@ -153,10 +129,6 @@
         "body": "{\n  \"service\": \"github-monitor\",\n  \"timestamp\": steps.reposummary.timestamp,\n  \"repository\": steps.reposummary.repository,\n  \"recent_activity\": {\n    \"issues\": steps.reposummary.recent_issues,\n    \"releases\": steps.reposummary.latest_releases,\n    \"activity_score\": steps.reposummary.activity_score,\n    \"high_activity_alert\": steps.activitycheck.high_activity\n  },\n  \"alert_message\": steps.activitycheck.alert_message\n}",
         "timeout": 10
       },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
       "on_success": "log-success",
       "on_failure": "log-webhook-error",
       "enabled": true
@@ -169,10 +141,6 @@
       "configuration": {
         "message": "\"GitHub monitoring completed for \" & steps.reposummary.repository.name & \". \" & steps.activitycheck.alert_message"
       },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
       "enabled": true
     },
     {
@@ -182,10 +150,6 @@
       "uid": "repoerrorlog",
       "configuration": {
         "message": "\"Failed to fetch repository data for \" & vars.repo_owner & \"/\" & vars.repo_name"
-      },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
       },
       "enabled": true
     },
@@ -197,10 +161,6 @@
       "configuration": {
         "message": "\"Failed to fetch issues data for \" & vars.repo_owner & \"/\" & vars.repo_name"
       },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
       "enabled": true
     },
     {
@@ -211,10 +171,6 @@
       "configuration": {
         "message": "\"Failed to fetch releases data for \" & vars.repo_owner & \"/\" & vars.repo_name"
       },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
       "enabled": true
     },
     {
@@ -224,10 +180,6 @@
       "uid": "webhookerrorlog",
       "configuration": {
         "message": "\"Failed to send GitHub activity report\""
-      },
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
       },
       "enabled": true
     }

@@ -36,7 +36,7 @@ fmt:
 	go fmt ./...
 
 lint:
-	golangci-lint run
+	golangci-lint run --new-from-rev=origin/main
 
 docs:
 	godoc -http=:6060

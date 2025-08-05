@@ -6,9 +6,10 @@ Implement a feature using the PRP file with validation and analysis.
 
 ## Execution Process
 
-The Agent has Web search capabilities, so passes urls to documentation and examples, the Github tools capabilities, so can search for the AI agent to use.
+The Agent has Web search capabilities, so passes urls to documentation and examples, so can search for the AI agent to use. Also the Agent has the github tools capabilities, via command line `gh` tool.
 
 1. **Load PRP**
+    - Use `gh` command line to find $ARGUMENTS issue in Github
     - Read the specified PRP file from ./.claude/planning/$ARGUMENTS.md
     - Understand all context and requirements
     - Follow all instructions in the PRP and extend the research if needed
@@ -17,7 +18,7 @@ The Agent has Web search capabilities, so passes urls to documentation and examp
 
 2. **ULTRA THINK**
     - Think hard before you execute the plan. Create a comprehensive plan addressing all requirements.
-    - Break down complex tasks into smaller, manageable steps using your todos tools.
+    - Break down complex tasks into smaller, manageable steps using your TODOs tools.
     - Use the TodoWrite tool to create and track your implementation plan.
     - Identify implementation patterns from existing code to follow.
     - **Plan comprehensive test implementation strategy following project patterns**
@@ -65,7 +66,7 @@ The Agent has Web search capabilities, so passes urls to documentation and examp
 
 7. **Reference the PRP**
     - You can always reference the PRP again if needed
-    - Update the Jira issue with the implementation details
+    - Update the Github issue with the implementation details
     - **Document test implementation details and coverage achieved**
 
 ## Critical Testing Implementation Guidelines
@@ -73,6 +74,7 @@ The Agent has Web search capabilities, so passes urls to documentation and examp
 ### Mandatory Test Implementation Steps
 
 1. **Unit Test Creation** (NEVER skip these):
+
    ```go
    func TestNewFeature(t *testing.T) {
        tests := []struct {
@@ -123,6 +125,7 @@ The Agent has Web search capabilities, so passes urls to documentation and examp
    - Ensure test data isolation and cleanup
 
 4. **Mock Verification Patterns**:
+
    ```go
    type MockService struct {
        mock.Mock
@@ -168,3 +171,4 @@ make build                                      # Full build with all checks
 **FAILURE IS NOT ACCEPTABLE**: If any test fails, implementation must be fixed before completion.
 
 Note: If validation fails, use error patterns in PRP to fix and retry.
+
