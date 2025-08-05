@@ -121,7 +121,9 @@ func (fp *FilePersistence) DeleteWorkflow(id string) error {
 
 func (fp *FilePersistence) Schedules() ([]*models.Schedule, error) {
 	root := os.DirFS(fp.root + "/schedules")
+
 	jsonFiles, err := fs.Glob(root, "*.json")
+
 	if err != nil {
 		return nil, err
 	}
@@ -147,6 +149,7 @@ func (fp *FilePersistence) Schedules() ([]*models.Schedule, error) {
 
 func (fp *FilePersistence) ScheduleByID(scheduleID string) (*models.Schedule, error) {
 	filePath := path.Join(fp.root+"/schedules", scheduleID+".json")
+
 	body, err := os.ReadFile(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -156,8 +159,8 @@ func (fp *FilePersistence) ScheduleByID(scheduleID string) (*models.Schedule, er
 	}
 
 	var schedule models.Schedule
-	err = json.Unmarshal(body, &schedule)
 
+	err = json.Unmarshal(body, &schedule)
 	if err != nil {
 		return nil, err
 	}
@@ -190,6 +193,7 @@ func (fp *FilePersistence) SaveSchedule(schedule *models.Schedule) error {
 	if schedule.CreatedAt.IsZero() {
 		schedule.CreatedAt = now
 	}
+
 	schedule.UpdatedAt = now
 
 	data, err := json.MarshalIndent(schedule, "", "  ")
@@ -203,7 +207,9 @@ func (fp *FilePersistence) SaveSchedule(schedule *models.Schedule) error {
 
 func (fp *FilePersistence) DeleteSchedule(id string) error {
 	filePath := path.Join(fp.root+"/schedules", id+".json")
+
 	err := os.Remove(filePath)
+
 	if err != nil && os.IsNotExist(err) {
 		return nil
 	}
@@ -228,6 +234,7 @@ func (fp *FilePersistence) DueSchedules(before time.Time) ([]*models.Schedule, e
 	}
 
 	dueSchedules := make([]*models.Schedule, 0)
+
 	for _, schedule := range schedules {
 		if schedule.IsDue(before) {
 			dueSchedules = append(dueSchedules, schedule)

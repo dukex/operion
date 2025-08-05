@@ -42,6 +42,7 @@ func registerSourceProviderPlugins(reg *registry.Registry, pluginsPath string) {
 	if err != nil {
 		panic(err)
 	}
+
 	for _, plugin := range sourceProviderPlugins {
 		reg.RegisterSourceProvider(plugin)
 	}

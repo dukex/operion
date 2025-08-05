@@ -67,7 +67,6 @@ func (s *Schedule) UpdateNextDueAt() error {
 func (s *Schedule) calculateNextDueAt(referenceTime time.Time) error {
 	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
 	cronSchedule, err := parser.Parse(s.CronExpression)
-
 	if err != nil {
 		return err
 	}

@@ -193,6 +193,7 @@ func (spm *SourceProviderManager) createSchedulesFromWorkflows() error {
 				}
 
 				scheduleCount++
+
 				spm.logger.Info("Created schedule",
 					"source_id", sourceID,
 					"cron", cronStr,
@@ -235,8 +236,10 @@ func (spm *SourceProviderManager) startSourceProviders() error {
 	var wg sync.WaitGroup
 	for _, factory := range providersToStart {
 		wg.Add(1)
+
 		go func(factory protocol.SourceProviderFactory) {
 			defer wg.Done()
+
 			if err := spm.startSourceProvider(factory); err != nil {
 				spm.logger.Error("Failed to start source provider",
 					"provider_id", factory.ID(),
@@ -281,6 +284,7 @@ func (spm *SourceProviderManager) startSourceProvider(factory protocol.SourcePro
 				spm.logger.Error("Missing source_id in config", "provider_id", providerID)
 				continue
 			}
+
 			instanceKey = sourceID
 		}
 
@@ -361,6 +365,7 @@ func (spm *SourceProviderManager) createSourceEventCallback(sourceID string) pro
 
 func (spm *SourceProviderManager) stop() {
 	spm.logger.Info("Stopping source provider manager")
+
 	if spm.cancel != nil {
 		spm.cancel()
 	}
@@ -370,6 +375,7 @@ func (spm *SourceProviderManager) stop() {
 
 	for sourceID, provider := range spm.runningProviders {
 		spm.logger.Info("Stopping source provider", "source_id", sourceID)
+
 		if err := provider.Stop(context.Background()); err != nil {
 			spm.logger.Error("Error stopping source provider",
 				"source_id", sourceID,

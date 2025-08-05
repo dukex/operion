@@ -119,12 +119,14 @@ func (k *kafkaSourceEventBus) SubscribeToSourceEvents(ctx context.Context) error
 
 			// Call all registered handlers
 			success := true
+
 			for _, handler := range k.handlers {
 				if err := handler(ctx, &sourceEvent); err != nil {
 					k.logger.Error("Source event handler failed",
 						"error", err,
 						"source_id", sourceEvent.SourceID,
 						"handler_index", len(k.handlers))
+
 					success = false
 				}
 			}

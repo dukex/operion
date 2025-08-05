@@ -158,6 +158,7 @@ func (s *SchedulerSourceProvider) updateSchedule(schedule *models.Schedule) erro
 	if err := s.persistence.SaveSchedule(schedule); err != nil {
 		return err
 	}
+
 	s.logger.Info("Schedule updated",
 		"source_id", schedule.SourceID,
 		"next_due_at", schedule.NextDueAt)

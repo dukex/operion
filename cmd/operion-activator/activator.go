@@ -181,7 +181,6 @@ func (a *Activator) findTriggersForSourceEvent(sourceEvent *events.SourceEvent) 
 	workflowRepo := workflow.NewRepository(a.persistence)
 
 	workflows, err := workflowRepo.FetchAll()
-
 	if err != nil {
 		a.logger.Error("Failed to fetch workflows", "error", err)
 		return nil, err
