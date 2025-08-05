@@ -3,14 +3,8 @@ linters:
   default: all
   disable:
     # TEMPORARY DISABLE
-    - errcheck
-    - err113
-    - exhaustruct
-    - revive
-    - varnamelen
-    - wrapcheck
-    - noinlineerr
     - cyclop
+    - err113
     - forcetypeassert
     - funcorder
     - funlen
@@ -18,17 +12,21 @@ linters:
     - gocognit
     - gocritic
     - godox
-    - ireturn
     - lll
     - mnd
-    - nestif
     - nilnil
+    - noinlineerr
+    - nolintlint
     - paralleltest
+    - revive
     - tagliatelle
     - testifylint
     - testpackage
     - unparam
+    - varnamelen
+    - wrapcheck
     # END TEMPORARY DISABLE
+    - wsl
   enable:
     - wsl_v5
 
@@ -39,9 +37,26 @@ linters:
           list-mode: lax
           allow:
             - github.com/dukex/operion/pkg/protocol
+    exhaustruct:
+      include:
+        - '.+\.Test'
+      exclude:
+        - '.+/cli\.Command$'
     funlen:
       lines: 120
+    ireturn:
+      allow:
+        - empty
+        - error
+        - stdlib
+        - anon
+        - generic
+        - ^github.com/dukex/operion
     tagliatelle:
       case:
         rules:
           json: snake
+    wsl_v5:
+      allow-first-in-block: true
+      allow-whole-block: false
+      branch-max-lines: 2
