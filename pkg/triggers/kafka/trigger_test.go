@@ -221,7 +221,7 @@ func TestKafkaTriggerStopWithoutStart(t *testing.T) {
 	}
 
 	// Should be safe to stop without starting
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
 	defer cancel()
 
 	err = trigger.Stop(ctx)

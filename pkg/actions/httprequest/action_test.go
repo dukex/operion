@@ -1,7 +1,6 @@
 package httprequest_test
 
 import (
-	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -158,7 +157,7 @@ func TestHTTPRequestAction_Execute_Success(t *testing.T) {
 		Metadata:    make(map[string]any),
 	}
 
-	result, err := action.Execute(context.Background(), execCtx, logger)
+	result, err := action.Execute(t.Context(), execCtx, logger)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -229,7 +228,7 @@ func TestHTTPRequestAction_Execute_POST_WithBody(t *testing.T) {
 		Metadata:    make(map[string]any),
 	}
 
-	result, err := action.Execute(context.Background(), execCtx, logger)
+	result, err := action.Execute(t.Context(), execCtx, logger)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -288,7 +287,7 @@ func TestHTTPRequestAction_Execute_WithRetry(t *testing.T) {
 		Metadata:    make(map[string]any),
 	}
 
-	result, err := action.Execute(context.Background(), execCtx, logger)
+	result, err := action.Execute(t.Context(), execCtx, logger)
 
 	require.NoError(t, err)
 	assert.Equal(t, 3, attempts)
@@ -347,7 +346,7 @@ func TestHTTPRequestAction_Execute_WithTemplating(t *testing.T) {
 		},
 	}
 
-	result, err := action.Execute(context.Background(), execCtx, logger)
+	result, err := action.Execute(t.Context(), execCtx, logger)
 
 	require.NoError(t, err)
 
@@ -388,7 +387,7 @@ func TestHTTPRequestAction_Execute_Timeout(t *testing.T) {
 		Metadata:    make(map[string]any),
 	}
 
-	_, err := action.Execute(context.Background(), execCtx, logger)
+	_, err := action.Execute(t.Context(), execCtx, logger)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "http request failed")
 }
@@ -429,7 +428,7 @@ func TestHTTPRequestAction_Execute_NonJSONResponse(t *testing.T) {
 		Metadata:    make(map[string]any),
 	}
 
-	result, err := action.Execute(context.Background(), execCtx, logger)
+	result, err := action.Execute(t.Context(), execCtx, logger)
 
 	require.NoError(t, err)
 

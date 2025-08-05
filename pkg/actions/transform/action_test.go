@@ -126,7 +126,7 @@ func TestTransformAction_Execute_SimpleTransform(t *testing.T) {
 		},
 	}
 
-	result, err := action.Execute(context.Background(), execCtx, logger)
+	result, err := action.Execute(t.Context(), execCtx, logger)
 
 	require.NoError(t, err)
 	assert.Equal(t, "John Doe", result)
@@ -154,7 +154,7 @@ func TestTransformAction_Execute_ObjectConstruction(t *testing.T) {
 		},
 	}
 
-	result, err := action.Execute(context.Background(), execCtx, logger)
+	result, err := action.Execute(t.Context(), execCtx, logger)
 
 	require.NoError(t, err)
 
@@ -197,7 +197,7 @@ func TestTransformAction_Execute_ArrayTransform(t *testing.T) {
 		},
 	}
 
-	result, err := action.Execute(context.Background(), execCtx, logger)
+	result, err := action.Execute(t.Context(), execCtx, logger)
 
 	require.NoError(t, err)
 	assert.Equal(t, "First User", result)
@@ -232,7 +232,7 @@ func TestTransformAction_Execute_ComplexTransform(t *testing.T) {
 		},
 	}
 
-	result, err := action.Execute(context.Background(), execCtx, logger)
+	result, err := action.Execute(t.Context(), execCtx, logger)
 
 	require.NoError(t, err)
 
@@ -266,7 +266,7 @@ func TestTransformAction_Execute_EmptyExpression(t *testing.T) {
 		},
 	}
 
-	result, err := action.Execute(context.Background(), execCtx, logger)
+	result, err := action.Execute(t.Context(), execCtx, logger)
 
 	// Empty expression should return empty string
 	require.NoError(t, err)
@@ -292,7 +292,7 @@ func TestTransformAction_Execute_InvalidExpression(t *testing.T) {
 		},
 	}
 
-	_, err := action.Execute(context.Background(), execCtx, logger)
+	_, err := action.Execute(t.Context(), execCtx, logger)
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "transformation failed")
@@ -306,7 +306,7 @@ func TestTransformAction_Execute_WithCancel(t *testing.T) {
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	cancel() // Cancel immediately
 
 	execCtx := models.ExecutionContext{

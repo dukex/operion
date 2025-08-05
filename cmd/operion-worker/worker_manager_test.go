@@ -75,8 +75,7 @@ func TestWorkerManager_HandleWorkflowTriggered_InvalidEvent(t *testing.T) {
 	wm := NewWorkerManager("test-worker", persistence, eventBus, logger, registry)
 
 	// Handle invalid event type
-	ctx := context.Background()
-	err := wm.handleWorkflowTriggered(ctx, "invalid-event")
+	err := wm.handleWorkflowTriggered(t.Context(), "invalid-event")
 
 	// Should not return error but log it
 	assert.NoError(t, err)
@@ -103,8 +102,7 @@ func TestWorkerManager_HandleWorkflowTriggered_WorkflowNotFound(t *testing.T) {
 	}
 
 	// Handle the event
-	ctx := context.Background()
-	err := wm.handleWorkflowTriggered(ctx, mockEvent)
+	err := wm.handleWorkflowTriggered(t.Context(), mockEvent)
 
 	// Should return error for non-existent workflow
 	assert.Error(t, err)
@@ -122,8 +120,7 @@ func TestWorkerManager_HandleWorkflowStepAvailable_InvalidEvent(t *testing.T) {
 	wm := NewWorkerManager("test-worker", persistence, eventBus, logger, registry)
 
 	// Handle invalid event type
-	ctx := context.Background()
-	err := wm.handleWorkflowStepAvailable(ctx, "invalid-event")
+	err := wm.handleWorkflowStepAvailable(t.Context(), "invalid-event")
 
 	// Should not return error but log it
 	assert.NoError(t, err)
@@ -159,8 +156,7 @@ func TestWorkerManager_HandleWorkflowStepAvailable_WorkflowNotFound(t *testing.T
 	}
 
 	// Handle the event
-	ctx := context.Background()
-	err := wm.handleWorkflowStepAvailable(ctx, mockEvent)
+	err := wm.handleWorkflowStepAvailable(t.Context(), mockEvent)
 
 	// Should return error for non-existent workflow
 	assert.Error(t, err)
@@ -214,8 +210,7 @@ func TestWorkerManager_BasicWorkflowExecution(t *testing.T) {
 	}
 
 	// Execute workflow triggered event
-	ctx := context.Background()
-	err = wm.handleWorkflowTriggered(ctx, mockEvent)
+	err = wm.handleWorkflowTriggered(t.Context(), mockEvent)
 	// Verify execution succeeded (basic workflow functionality should work)
 	// Note: This may still fail due to missing action implementations, but the structure should be valid
 	if err != nil {

@@ -32,7 +32,7 @@ func TestNewExecutor(t *testing.T) {
 }
 
 func TestExecutor_Start_EmptyWorkflow(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	persistence := file.NewFilePersistence(t.TempDir())
@@ -63,7 +63,7 @@ func TestExecutor_Start_EmptyWorkflow(t *testing.T) {
 }
 
 func TestExecutor_Start_Success(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	persistence := file.NewFilePersistence(t.TempDir())
@@ -115,7 +115,7 @@ func TestExecutor_Start_Success(t *testing.T) {
 }
 
 func TestExecutor_ExecuteStep_LogAction(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	persistence := file.NewFilePersistence(t.TempDir())
@@ -186,7 +186,7 @@ func TestExecutor_ExecuteStep_LogAction(t *testing.T) {
 }
 
 func TestExecutor_ExecuteStep_WithNextStep(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	persistence := file.NewFilePersistence(t.TempDir())
@@ -260,7 +260,7 @@ func TestExecutor_ExecuteStep_WithNextStep(t *testing.T) {
 }
 
 func TestExecutor_ExecuteStep_DisabledStep(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	persistence := file.NewFilePersistence(t.TempDir())
@@ -302,7 +302,7 @@ func TestExecutor_ExecuteStep_DisabledStep(t *testing.T) {
 }
 
 func TestExecutor_ExecuteStep_StepNotFound(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	persistence := file.NewFilePersistence(t.TempDir())
@@ -332,7 +332,7 @@ func TestExecutor_ExecuteStep_StepNotFound(t *testing.T) {
 }
 
 func TestExecutor_ExecuteStep_Action_failure(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	persistence := file.NewFilePersistence(t.TempDir())
@@ -387,7 +387,7 @@ func TestExecutor_ExecuteStep_Action_failure(t *testing.T) {
 }
 
 func TestExecutor_IntegrationWithEventBus(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))

@@ -176,7 +176,7 @@ func TestLogAction_Execute(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			action := logaction.NewLogAction(tt.config)
-			result, err := action.Execute(context.Background(), tt.execCtx, logger)
+			result, err := action.Execute(t.Context(), tt.execCtx, logger)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -200,7 +200,7 @@ func TestLogAction_Execute_WithCancel(t *testing.T) {
 	})
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	cancel() // Cancel immediately
 
 	execCtx := models.ExecutionContext{
@@ -244,7 +244,7 @@ func TestLogAction_Execute_LargeStepResults(t *testing.T) {
 		StepResults: largeData,
 	}
 
-	result, err := action.Execute(context.Background(), execCtx, logger)
+	result, err := action.Execute(t.Context(), execCtx, logger)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
