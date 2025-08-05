@@ -15,6 +15,7 @@ import (
 
 var validate *validator.Validate
 
+// nolint: forbidigo
 func NewValidateCommand() *cli.Command {
 	return &cli.Command{
 		Name:    "validate",
@@ -41,11 +42,11 @@ func NewValidateCommand() *cli.Command {
 				"action", "validate",
 			)
 
-			registry := cmd.NewRegistry(logger, command.String("plugins-path"))
-			persistence := cmd.NewPersistence(logger, command.String("database-url"))
+			registry := cmd.NewRegistry(ctx, logger, command.String("plugins-path"))
+			persistence := cmd.NewPersistence(ctx, logger, command.String("database-url"))
 
 			defer func() {
-				err := persistence.Close()
+				err := persistence.Close(ctx)
 				if err != nil {
 					return
 				}
@@ -53,12 +54,12 @@ func NewValidateCommand() *cli.Command {
 
 			workflowRepository := workflow.NewRepository(persistence)
 
-			workflows, err := workflowRepository.FetchAll()
+			workflows, err := workflowRepository.FetchAll(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to fetch workflows: %w", err)
 			}
 
-			logger.Info("Validating triggers", "workflows", len(workflows))
+			logger.InfoContext(ctx, "Validating triggers", "workflows", len(workflows))
 
 			fmt.Println("Trigger Validation Results:")
 			fmt.Println("===========================")
@@ -86,7 +87,7 @@ func NewValidateCommand() *cli.Command {
 					config["trigger_id"] = workflowTrigger.ID
 					config["id"] = workflowTrigger.ID
 
-					trigger, err := registry.CreateTrigger(workflowTrigger.TriggerID, config)
+					trigger, err := registry.CreateTrigger(ctx, workflowTrigger.TriggerID, config)
 					if err != nil {
 						fmt.Printf("    ❌ INVALID: %v\n", err)
 						invalidTriggers++
@@ -106,7 +107,7 @@ func NewValidateCommand() *cli.Command {
 						continue
 					}
 
-					err = trigger.Validate()
+					err = trigger.Validate(ctx)
 
 					if err != nil {
 						fmt.Printf("    ❌ INVALID: %v\n", err)

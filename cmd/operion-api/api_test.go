@@ -30,12 +30,15 @@ func setupTestApp(tempDir string) *fiber.App {
 }
 
 func TestAPI_RootEndpoint(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 	app := setupTestApp(tempDir)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	resp, err := app.Test(req)
 	require.NoError(t, err)
+
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -45,12 +48,15 @@ func TestAPI_RootEndpoint(t *testing.T) {
 }
 
 func TestAPI_HealthCheck(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 	app := setupTestApp(tempDir)
 
 	req := httptest.NewRequest(http.MethodGet, "/livez", nil)
 	resp, err := app.Test(req)
 	require.NoError(t, err)
+
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -60,6 +66,7 @@ func TestAPI_HealthCheck(t *testing.T) {
 }
 
 func TestAPI_GetWorkflows_Empty(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 	app := setupTestApp(tempDir)
 
@@ -67,6 +74,8 @@ func TestAPI_GetWorkflows_Empty(t *testing.T) {
 	req.Header.Set("Accept", "application/json")
 	resp, err := app.Test(req)
 	require.NoError(t, err)
+
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -78,6 +87,7 @@ func TestAPI_GetWorkflows_Empty(t *testing.T) {
 }
 
 func TestAPI_GetWorkflows_WithData(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 	persistence := file.NewFilePersistence(tempDir)
 
@@ -124,9 +134,9 @@ func TestAPI_GetWorkflows_WithData(t *testing.T) {
 
 	// Save workflows
 	repo := workflow.NewRepository(persistence)
-	_, err := repo.Create(workflow1)
+	createdWorkflow1, err := repo.Create(t.Context(), workflow1)
 	require.NoError(t, err)
-	_, err = repo.Create(workflow2)
+	createdWorkflow2, err := repo.Create(t.Context(), workflow2)
 	require.NoError(t, err)
 
 	app := setupTestApp(tempDir)
@@ -135,6 +145,8 @@ func TestAPI_GetWorkflows_WithData(t *testing.T) {
 	req.Header.Set("Accept", "application/json")
 	resp, err := app.Test(req)
 	require.NoError(t, err)
+
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -146,11 +158,12 @@ func TestAPI_GetWorkflows_WithData(t *testing.T) {
 
 	// Verify workflow data
 	workflowIDs := []string{workflows[0].ID, workflows[1].ID}
-	assert.Contains(t, workflowIDs, "test-workflow-1")
-	assert.Contains(t, workflowIDs, "test-workflow-2")
+	assert.Contains(t, workflowIDs, createdWorkflow1.ID)
+	assert.Contains(t, workflowIDs, createdWorkflow2.ID)
 }
 
 func TestAPI_GetWorkflow_Success(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 	persistence := file.NewFilePersistence(tempDir)
 
@@ -181,15 +194,17 @@ func TestAPI_GetWorkflow_Success(t *testing.T) {
 
 	// Save workflow
 	repo := workflow.NewRepository(persistence)
-	_, err := repo.Create(workflow1)
+	workflowCreated, err := repo.Create(t.Context(), workflow1)
 	require.NoError(t, err)
 
 	app := setupTestApp(tempDir)
 
-	req := httptest.NewRequest(http.MethodGet, "/workflows/test-workflow-specific", nil)
+	req := httptest.NewRequest(http.MethodGet, "/workflows/"+workflowCreated.ID, nil)
 	req.Header.Set("Accept", "application/json")
 	resp, err := app.Test(req)
 	require.NoError(t, err)
+
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -198,7 +213,7 @@ func TestAPI_GetWorkflow_Success(t *testing.T) {
 	err = json.NewDecoder(resp.Body).Decode(&returnedWorkflow)
 	require.NoError(t, err)
 
-	assert.Equal(t, "test-workflow-specific", returnedWorkflow.ID)
+	assert.Equal(t, workflowCreated.ID, returnedWorkflow.ID)
 	assert.Equal(t, "Specific Test Workflow", returnedWorkflow.Name)
 	assert.Equal(t, models.WorkflowStatus("active"), returnedWorkflow.Status)
 	assert.Len(t, returnedWorkflow.Steps, 1)
@@ -207,6 +222,7 @@ func TestAPI_GetWorkflow_Success(t *testing.T) {
 }
 
 func TestAPI_GetWorkflow_NotFound(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 	app := setupTestApp(tempDir)
 
@@ -215,10 +231,13 @@ func TestAPI_GetWorkflow_NotFound(t *testing.T) {
 	resp, err := app.Test(req)
 	require.NoError(t, err)
 
+	defer func() { _ = resp.Body.Close() }()
+
 	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
 }
 
 func TestAPI_GetWorkflow_InvalidID(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 	app := setupTestApp(tempDir)
 
@@ -227,11 +246,14 @@ func TestAPI_GetWorkflow_InvalidID(t *testing.T) {
 	resp, err := app.Test(req)
 	require.NoError(t, err)
 
+	defer func() { _ = resp.Body.Close() }()
+
 	// Should return the list of workflows instead
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
 func TestAPI_CORS_Headers(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 	app := setupTestApp(tempDir)
 
@@ -241,11 +263,14 @@ func TestAPI_CORS_Headers(t *testing.T) {
 	resp, err := app.Test(req)
 	require.NoError(t, err)
 
+	defer func() { _ = resp.Body.Close() }()
+
 	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
 	assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
 }
 
 func TestAPI_ContentType_JSON(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 	app := setupTestApp(tempDir)
 
@@ -254,11 +279,15 @@ func TestAPI_ContentType_JSON(t *testing.T) {
 	resp, err := app.Test(req)
 	require.NoError(t, err)
 
+	defer func() { _ = resp.Body.Close() }()
+
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Contains(t, resp.Header.Get("Content-Type"), "application/json")
 }
 
+// nolint: funlen
 func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 	persistence := file.NewFilePersistence(tempDir)
 
@@ -350,7 +379,7 @@ func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
 
 	// Save workflow
 	repo := workflow.NewRepository(persistence)
-	_, err := repo.Create(complexWorkflow)
+	workflowCreated, err := repo.Create(t.Context(), complexWorkflow)
 	require.NoError(t, err)
 
 	app := setupTestApp(tempDir)
@@ -360,6 +389,9 @@ func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
 	req.Header.Set("Accept", "application/json")
 	resp, err := app.Test(req)
 	require.NoError(t, err)
+
+	defer func() { _ = resp.Body.Close() }()
+
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	var workflows []models.Workflow
@@ -367,13 +399,16 @@ func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
 	err = json.NewDecoder(resp.Body).Decode(&workflows)
 	require.NoError(t, err)
 	assert.Len(t, workflows, 1)
-	assert.Equal(t, "integration-test-workflow", workflows[0].ID)
+	assert.Equal(t, workflowCreated.ID, workflows[0].ID)
 
 	// Test 2: Fetch specific workflow and verify all details
-	req = httptest.NewRequest(http.MethodGet, "/workflows/integration-test-workflow", nil)
+	req = httptest.NewRequest(http.MethodGet, "/workflows/"+workflowCreated.ID, nil)
 	req.Header.Set("Accept", "application/json")
 	resp, err = app.Test(req)
 	require.NoError(t, err)
+
+	defer func() { _ = resp.Body.Close() }()
+
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	var fetchedWorkflow models.Workflow
@@ -382,7 +417,7 @@ func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify workflow structure
-	assert.Equal(t, "integration-test-workflow", fetchedWorkflow.ID)
+	assert.Equal(t, workflowCreated.ID, fetchedWorkflow.ID)
 	assert.Equal(t, "Integration Test Workflow", fetchedWorkflow.Name)
 	assert.Equal(t, "A comprehensive workflow for integration testing", fetchedWorkflow.Description)
 	assert.Equal(t, models.WorkflowStatus("active"), fetchedWorkflow.Status)
@@ -405,7 +440,7 @@ func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
 
 	config, ok := fetchedWorkflow.Variables["config"].(map[string]any)
 	require.True(t, ok)
-	assert.Equal(t, float64(3), config["retry_attempts"])
+	assert.InDelta(t, float64(3), config["retry_attempts"], 0.001)
 
 	// Verify triggers
 	trigger := fetchedWorkflow.WorkflowTriggers[0]
