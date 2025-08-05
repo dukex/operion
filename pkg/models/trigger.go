@@ -6,7 +6,7 @@ type WorkflowTrigger struct {
 	Description string `json:"description" validate:"required"`
 	SourceID    string `json:"source_id" validate:"required"`
 
-	// Deprecated: TriggerID is deprecated, the new way of defining
+	// TriggerID will be deprecated, the new way of defining
 	// a WorkflowTrigger is by defining its Source
 	TriggerID string `json:"trigger_id"`
 
