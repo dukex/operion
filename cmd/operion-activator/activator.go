@@ -28,8 +28,6 @@ type Activator struct {
 	sourceEventBus eventbus.SourceEventBus
 	persistence    persistence.Persistence
 	logger         *slog.Logger
-	ctx            context.Context
-	cancel         context.CancelFunc
 	restartCount   int
 }
 
@@ -52,15 +50,15 @@ func NewActivator(
 
 // Start begins the activator service
 func (a *Activator) Start(ctx context.Context) {
-	a.ctx, a.cancel = context.WithCancel(ctx)
+	aCtx, cancel := context.WithCancel(ctx)
 	a.logger.Info("Starting activator")
 
-	a.handleSignals(ctx)
-	a.run(ctx)
+	a.handleSignals(aCtx, cancel)
+	a.run(aCtx)
 }
 
 // handleSignals sets up signal handling for graceful shutdown and restart
-func (a *Activator) handleSignals(ctx context.Context) {
+func (a *Activator) handleSignals(ctx context.Context, cancel context.CancelFunc) {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
 
@@ -71,10 +69,10 @@ func (a *Activator) handleSignals(ctx context.Context) {
 		switch sig {
 		case syscall.SIGHUP:
 			a.logger.Info("Reloading configuration...")
-			a.restart(ctx)
+			a.restart(ctx, cancel)
 		case syscall.SIGINT, syscall.SIGTERM:
 			a.logger.Info("Shutting down gracefully...")
-			a.stop()
+			a.stop(cancel)
 			os.Exit(0)
 		default:
 			a.logger.Warn("Unhandled signal received", "signal", sig)
@@ -83,10 +81,10 @@ func (a *Activator) handleSignals(ctx context.Context) {
 }
 
 // restart handles service restart with exponential backoff
-func (a *Activator) restart(ctx context.Context) {
+func (a *Activator) restart(ctx context.Context, cancel context.CancelFunc) {
 	a.restartCount++
 	newCtx := context.WithoutCancel(ctx)
-	a.stop()
+	a.stop(cancel)
 
 	if a.restartCount > 5 {
 		a.logger.Error("Restart limit reached, exiting...")
@@ -130,7 +128,7 @@ func (a *Activator) processSourceEvents(ctx context.Context) {
 	}
 
 	// Start subscribing to source events
-	err = a.sourceEventBus.SubscribeToSourceEvents(a.ctx)
+	err = a.sourceEventBus.SubscribeToSourceEvents(ctx)
 	if err != nil {
 		a.logger.Error("Failed to start source event subscription", "error", err)
 		return
@@ -166,7 +164,7 @@ func (a *Activator) handleSourceEvent(ctx context.Context, sourceEvent *events.S
 
 	// Publish WorkflowTriggered event for each matching trigger
 	for _, matchInfo := range matchingTriggers {
-		if err := a.publishWorkflowTriggered(matchInfo.WorkflowID, matchInfo.Trigger.ID, sourceEvent.EventData); err != nil {
+		if err := a.publishWorkflowTriggered(ctx, matchInfo.WorkflowID, matchInfo.Trigger.ID, sourceEvent.EventData); err != nil {
 			logger.Error("Failed to publish WorkflowTriggered event",
 				"workflow_id", matchInfo.WorkflowID,
 				"trigger_id", matchInfo.Trigger.ID,
@@ -224,7 +222,7 @@ func (a *Activator) triggerMatchesSourceEvent(trigger *models.WorkflowTrigger, s
 }
 
 // publishWorkflowTriggered publishes a WorkflowTriggered event for a specific trigger
-func (a *Activator) publishWorkflowTriggered(workflowID, triggerID string, sourceData map[string]any) error {
+func (a *Activator) publishWorkflowTriggered(ctx context.Context, workflowID, triggerID string, sourceData map[string]any) error {
 	logger := a.logger.With("workflow_id", workflowID, "trigger_id", triggerID)
 	logger.Info("Publishing WorkflowTriggered event")
 
@@ -235,7 +233,7 @@ func (a *Activator) publishWorkflowTriggered(workflowID, triggerID string, sourc
 	}
 	event.ID = a.eventBus.GenerateID()
 
-	if err := a.eventBus.Publish(a.ctx, workflowID, event); err != nil {
+	if err := a.eventBus.Publish(ctx, workflowID, event); err != nil {
 		logger.Error("Failed to publish WorkflowTriggered event", "error", err)
 		return err
 	}
@@ -245,10 +243,10 @@ func (a *Activator) publishWorkflowTriggered(workflowID, triggerID string, sourc
 }
 
 // stop gracefully shuts down the activator
-func (a *Activator) stop() {
+func (a *Activator) stop(cancel context.CancelFunc) {
 	a.logger.Info("Stopping activator")
 
-	if a.cancel != nil {
-		a.cancel()
+	if cancel != nil {
+		cancel()
 	}
 }

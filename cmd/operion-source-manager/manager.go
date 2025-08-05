@@ -28,8 +28,6 @@ type SourceProviderManager struct {
 	sourceEventBus   eventbus.SourceEventBus
 	runningProviders map[string]protocol.SourceProvider
 	providerMutex    sync.RWMutex
-	ctx              context.Context
-	cancel           context.CancelFunc
 	logger           *slog.Logger
 	persistence      persistence.Persistence
 	registry         *registry.Registry
@@ -58,14 +56,14 @@ func NewSourceProviderManager(
 }
 
 func (spm *SourceProviderManager) Start(ctx context.Context) {
-	spm.ctx, spm.cancel = context.WithCancel(ctx)
+	spmCtx, cancel := context.WithCancel(ctx)
 	spm.logger.Info("Starting source provider manager")
 
-	spm.handleSignals()
-	spm.run(ctx)
+	spm.handleSignals(spmCtx, cancel)
+	spm.run(ctx, cancel)
 }
 
-func (spm *SourceProviderManager) handleSignals() {
+func (spm *SourceProviderManager) handleSignals(ctx context.Context, cancel context.CancelFunc) {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
 
@@ -76,10 +74,10 @@ func (spm *SourceProviderManager) handleSignals() {
 		switch sig {
 		case syscall.SIGHUP:
 			spm.logger.Info("Reloading configuration...")
-			spm.restart()
+			spm.restart(ctx, cancel)
 		case syscall.SIGINT, syscall.SIGTERM:
 			spm.logger.Info("Shutting down gracefully...")
-			spm.stop()
+			spm.stop(cancel)
 			os.Exit(0)
 		default:
 			spm.logger.Warn("Unhandled signal received", "signal", sig)
@@ -87,10 +85,10 @@ func (spm *SourceProviderManager) handleSignals() {
 	}()
 }
 
-func (spm *SourceProviderManager) restart() {
+func (spm *SourceProviderManager) restart(ctx context.Context, cancel context.CancelFunc) {
 	spm.restartCount++
-	ctx := context.WithoutCancel(spm.ctx)
-	spm.stop()
+	spmCtx := context.WithoutCancel(ctx)
+	spm.stop(cancel)
 
 	if spm.restartCount > 5 {
 		spm.logger.Error("Restart limit reached, exiting...")
@@ -101,28 +99,28 @@ func (spm *SourceProviderManager) restart() {
 	spm.logger.Info("Restarting source provider manager...", "backoff", backoff)
 	time.Sleep(backoff)
 
-	spm.Start(ctx)
+	spm.Start(spmCtx)
 }
 
-func (spm *SourceProviderManager) run(ctx context.Context) {
+func (spm *SourceProviderManager) run(ctx context.Context, cancel context.CancelFunc) {
 	// First, create schedules from workflows
 	if err := spm.createSchedulesFromWorkflows(ctx); err != nil {
 		spm.logger.Error("Failed to create schedules from workflows", "error", err)
-		spm.restart()
+		spm.restart(ctx, cancel)
 		return
 	}
 
 	// Then start source providers
 	if err := spm.startSourceProviders(ctx); err != nil {
 		spm.logger.Error("Failed to start source providers", "error", err)
-		spm.restart()
+		spm.restart(ctx, cancel)
 		return
 	}
 
 	spm.logger.Info("Source provider manager started successfully")
 
 	// Keep running until context is cancelled
-	<-spm.ctx.Done()
+	<-ctx.Done()
 
 	spm.logger.Info("Source provider manager stopped")
 }
@@ -309,7 +307,7 @@ func (spm *SourceProviderManager) startSourceProvider(ctx context.Context, facto
 			callback = spm.createSourceEventCallback(instanceKey)
 		}
 
-		if err := provider.Start(spm.ctx, callback); err != nil {
+		if err := provider.Start(ctx, callback); err != nil {
 			spm.logger.Error("Failed to start source provider",
 				"provider_id", providerID,
 				"instance_key", instanceKey,
@@ -363,11 +361,11 @@ func (spm *SourceProviderManager) createSourceEventCallback(sourceID string) pro
 	}
 }
 
-func (spm *SourceProviderManager) stop() {
+func (spm *SourceProviderManager) stop(cancel context.CancelFunc) {
 	spm.logger.Info("Stopping source provider manager")
 
-	if spm.cancel != nil {
-		spm.cancel()
+	if cancel != nil {
+		cancel()
 	}
 
 	spm.providerMutex.Lock()
