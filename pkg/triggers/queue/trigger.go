@@ -11,11 +11,31 @@ import (
 	"time"
 
 	"github.com/dukex/operion/pkg/protocol"
-	"github.com/redis/go-redis/v9"
+	redis "github.com/redis/go-redis/v9"
 )
 
-type QueueTrigger struct {
-	Provider      string
+type Provider int
+
+const (
+	RedisProvider Provider = iota
+)
+
+var providerName = map[Provider]string{
+	RedisProvider: "redis",
+}
+
+func getProviderByName(name string) (Provider, error) {
+	for p, n := range providerName {
+		if n == name {
+			return p, nil
+		}
+	}
+
+	return 0, fmt.Errorf("unsupported queue provider: %s", name)
+}
+
+type Trigger struct {
+	Provider      Provider
 	Connection    map[string]string
 	Queue         string
 	ConsumerGroup string
@@ -28,10 +48,10 @@ type QueueTrigger struct {
 	wg       sync.WaitGroup
 }
 
-func NewQueueTrigger(config map[string]any, logger *slog.Logger) (*QueueTrigger, error) {
+func NewTrigger(ctx context.Context, config map[string]any, logger *slog.Logger) (*Trigger, error) {
 	provider, _ := config["provider"].(string)
 	if provider == "" {
-		provider = "redis"
+		provider = providerName[RedisProvider]
 	}
 
 	queue, _ := config["queue"].(string)
@@ -40,15 +60,19 @@ func NewQueueTrigger(config map[string]any, logger *slog.Logger) (*QueueTrigger,
 	connectionConfig, _ := config["connection"].(map[string]any)
 
 	connection := make(map[string]string)
-
 	for k, v := range connectionConfig {
 		if str, ok := v.(string); ok {
 			connection[k] = str
 		}
 	}
 
-	trigger := &QueueTrigger{
-		Provider:      provider,
+	providerEnum, err := getProviderByName(provider)
+	if err != nil {
+		return nil, err
+	}
+
+	trigger := &Trigger{
+		Provider:      providerEnum,
 		Connection:    connection,
 		Queue:         queue,
 		ConsumerGroup: consumerGroup,
@@ -61,7 +85,7 @@ func NewQueueTrigger(config map[string]any, logger *slog.Logger) (*QueueTrigger,
 		),
 	}
 
-	err := trigger.Validate()
+	err = trigger.Validate(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -69,29 +93,25 @@ func NewQueueTrigger(config map[string]any, logger *slog.Logger) (*QueueTrigger,
 	return trigger, nil
 }
 
-func (t *QueueTrigger) Validate() error {
+func (t *Trigger) Validate(_ context.Context) error {
 	if t.Queue == "" {
 		return errors.New("queue trigger queue name is required")
-	}
-
-	if t.Provider != "redis" {
-		return fmt.Errorf("unsupported queue provider: %s (only 'redis' is supported)", t.Provider)
 	}
 
 	return nil
 }
 
-func (t *QueueTrigger) Start(ctx context.Context, callback protocol.TriggerCallback) error {
+func (t *Trigger) Start(ctx context.Context, callback protocol.TriggerCallback) error {
 	if !t.Enabled {
-		t.logger.Info("QueueTrigger is disabled.")
+		t.logger.InfoContext(ctx, "QueueTrigger is disabled.")
 
 		return nil
 	}
 
-	t.logger.Info("Starting QueueTrigger")
+	t.logger.InfoContext(ctx, "Starting QueueTrigger")
 	t.callback = callback
 
-	err := t.initializeClient()
+	err := t.initializeClient(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to initialize queue client: %w", err)
 	}
@@ -103,7 +123,7 @@ func (t *QueueTrigger) Start(ctx context.Context, callback protocol.TriggerCallb
 	return nil
 }
 
-func (t *QueueTrigger) initializeClient() error {
+func (t *Trigger) initializeClient(ctx context.Context) error {
 	addr := t.Connection["addr"]
 	if addr == "" {
 		addr = "localhost:6379"
@@ -125,7 +145,7 @@ func (t *QueueTrigger) initializeClient() error {
 		DB:       db,
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	err := t.client.Ping(ctx).Err()
@@ -133,12 +153,12 @@ func (t *QueueTrigger) initializeClient() error {
 		return fmt.Errorf("failed to connect to Redis: %w", err)
 	}
 
-	t.logger.Info("Connected to Redis", "addr", addr, "db", db)
+	t.logger.InfoContext(ctx, "Connected to Redis", "addr", addr, "db", db)
 
 	return nil
 }
 
-func (t *QueueTrigger) parseDB(dbStr string) (int, error) {
+func (t *Trigger) parseDB(dbStr string) (int, error) {
 	var db int
 
 	_, err := fmt.Sscanf(dbStr, "%d", &db)
@@ -146,32 +166,32 @@ func (t *QueueTrigger) parseDB(dbStr string) (int, error) {
 	return db, err
 }
 
-func (t *QueueTrigger) consume(ctx context.Context) {
+func (t *Trigger) consume(ctx context.Context) {
 	defer t.wg.Done()
 
-	t.logger.Info("Starting queue consumer", "queue", t.Queue)
+	t.logger.InfoContext(ctx, "Starting queue consumer", "queue", t.Queue)
 
 	for {
 		select {
 		case <-t.stopCh:
-			t.logger.Info("Queue consumer stopped")
+			t.logger.InfoContext(ctx, "Queue consumer stopped")
 
 			return
 		case <-ctx.Done():
-			t.logger.Info("Context cancelled, stopping queue consumer")
+			t.logger.InfoContext(ctx, "Context cancelled, stopping queue consumer")
 
 			return
 		default:
 			err := t.processMessage(ctx)
 			if err != nil {
-				t.logger.Error("Error processing message", "error", err)
+				t.logger.ErrorContext(ctx, "Error processing message", "error", err)
 				time.Sleep(1 * time.Second)
 			}
 		}
 	}
 }
 
-func (t *QueueTrigger) processMessage(ctx context.Context) error {
+func (t *Trigger) processMessage(ctx context.Context) error {
 	result, err := t.client.BLPop(ctx, 1*time.Second, t.Queue).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
@@ -186,7 +206,7 @@ func (t *QueueTrigger) processMessage(ctx context.Context) error {
 	}
 
 	message := result[1]
-	t.logger.Info("Received message from queue", "message", message)
+	t.logger.InfoContext(ctx, "Received message from queue", "message", message)
 
 	var triggerData map[string]any
 	if err := json.Unmarshal([]byte(message), &triggerData); err != nil {
@@ -201,17 +221,17 @@ func (t *QueueTrigger) processMessage(ctx context.Context) error {
 	}
 
 	go func() {
-		err := t.callback(context.Background(), triggerData)
+		err := t.callback(ctx, triggerData)
 		if err != nil {
-			t.logger.Error("Error executing workflow for trigger", "error", err)
+			t.logger.ErrorContext(ctx, "Error executing workflow for trigger", "error", err)
 		}
 	}()
 
 	return nil
 }
 
-func (t *QueueTrigger) Stop(ctx context.Context) error {
-	t.logger.Info("Stopping QueueTrigger")
+func (t *Trigger) Stop(ctx context.Context) error {
+	t.logger.InfoContext(ctx, "Stopping QueueTrigger")
 
 	close(t.stopCh)
 	t.wg.Wait()
@@ -219,7 +239,7 @@ func (t *QueueTrigger) Stop(ctx context.Context) error {
 	if t.client != nil {
 		err := t.client.Close()
 		if err != nil {
-			t.logger.Error("Error closing Redis client", "error", err)
+			t.logger.ErrorContext(ctx, "Error closing Redis client", "error", err)
 		}
 	}
 

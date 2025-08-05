@@ -1,6 +1,7 @@
 package webhook
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -8,25 +9,25 @@ import (
 	"github.com/dukex/operion/pkg/protocol"
 )
 
-func NewWebhookTriggerFactory() protocol.TriggerFactory {
-	return &WebhookTriggerFactory{}
+type TriggerFactory struct{}
+
+func NewTriggerFactory() protocol.TriggerFactory {
+	return &TriggerFactory{}
 }
 
-type WebhookTriggerFactory struct{}
-
-func (f *WebhookTriggerFactory) ID() string {
+func (f *TriggerFactory) ID() string {
 	return "webhook"
 }
 
-func (f *WebhookTriggerFactory) Name() string {
+func (f *TriggerFactory) Name() string {
 	return "Webhook"
 }
 
-func (f *WebhookTriggerFactory) Description() string {
+func (f *TriggerFactory) Description() string {
 	return "Trigger workflow execution via HTTP webhook endpoints"
 }
 
-func (f *WebhookTriggerFactory) Schema() map[string]any {
+func (f *TriggerFactory) Schema() map[string]any {
 	return map[string]any{
 		"type":        "object",
 		"title":       "Webhook Trigger Configuration",
@@ -84,12 +85,16 @@ func (f *WebhookTriggerFactory) Schema() map[string]any {
 	}
 }
 
-func (f *WebhookTriggerFactory) Create(config map[string]any, logger *slog.Logger) (protocol.Trigger, error) {
+func (f *TriggerFactory) Create(
+	ctx context.Context,
+	config map[string]any,
+	logger *slog.Logger,
+) (protocol.Trigger, error) {
 	if config == nil {
 		return nil, errors.New("config cannot be nil")
 	}
 
-	trigger, err := NewWebhookTrigger(config, logger)
+	trigger, err := NewTrigger(ctx, config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create webhook trigger: %w", err)
 	}
