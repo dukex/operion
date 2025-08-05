@@ -1,6 +1,7 @@
 package kafka
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -8,25 +9,26 @@ import (
 	"github.com/dukex/operion/pkg/protocol"
 )
 
-func NewKafkaTriggerFactory() protocol.TriggerFactory {
-	return &KafkaTriggerFactory{}
+type TriggerFactory struct{}
+
+func NewTriggerFactory() protocol.TriggerFactory {
+	return &TriggerFactory{}
 }
 
-type KafkaTriggerFactory struct{}
-
-func (f *KafkaTriggerFactory) ID() string {
+func (f *TriggerFactory) ID() string {
 	return "kafka"
 }
 
-func (f *KafkaTriggerFactory) Name() string {
+func (f *TriggerFactory) Name() string {
 	return "Kafka"
 }
 
-func (f *KafkaTriggerFactory) Description() string {
+func (f *TriggerFactory) Description() string {
 	return "Trigger workflow execution when messages are received on Kafka topics"
 }
 
-func (f *KafkaTriggerFactory) Schema() map[string]any {
+// nolint: lll
+func (f *TriggerFactory) Schema() map[string]any {
 	return map[string]any{
 		"type":        "object",
 		"title":       "Kafka Trigger Configuration",
@@ -79,12 +81,16 @@ func (f *KafkaTriggerFactory) Schema() map[string]any {
 	}
 }
 
-func (f *KafkaTriggerFactory) Create(config map[string]any, logger *slog.Logger) (protocol.Trigger, error) {
+func (f *TriggerFactory) Create(
+	ctx context.Context,
+	config map[string]any,
+	logger *slog.Logger,
+) (protocol.Trigger, error) {
 	if config == nil {
 		return nil, errors.New("config cannot be nil")
 	}
 
-	trigger, err := NewKafkaTrigger(config, logger)
+	trigger, err := NewTrigger(ctx, config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kafka trigger: %w", err)
 	}

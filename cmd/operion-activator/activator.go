@@ -55,12 +55,12 @@ func (a *Activator) Start(ctx context.Context) {
 	a.ctx, a.cancel = context.WithCancel(ctx)
 	a.logger.Info("Starting activator")
 
-	a.handleSignals()
-	a.run()
+	a.handleSignals(ctx)
+	a.run(ctx)
 }
 
 // handleSignals sets up signal handling for graceful shutdown and restart
-func (a *Activator) handleSignals() {
+func (a *Activator) handleSignals(ctx context.Context) {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
 
@@ -71,7 +71,7 @@ func (a *Activator) handleSignals() {
 		switch sig {
 		case syscall.SIGHUP:
 			a.logger.Info("Reloading configuration...")
-			a.restart()
+			a.restart(ctx)
 		case syscall.SIGINT, syscall.SIGTERM:
 			a.logger.Info("Shutting down gracefully...")
 			a.stop()
@@ -83,9 +83,9 @@ func (a *Activator) handleSignals() {
 }
 
 // restart handles service restart with exponential backoff
-func (a *Activator) restart() {
+func (a *Activator) restart(ctx context.Context) {
 	a.restartCount++
-	ctx := context.WithoutCancel(a.ctx)
+	newCtx := context.WithoutCancel(ctx)
 	a.stop()
 
 	if a.restartCount > 5 {
@@ -97,23 +97,23 @@ func (a *Activator) restart() {
 	a.logger.Info("Restarting activator...", "backoff", backoff)
 	time.Sleep(backoff)
 
-	a.Start(ctx)
+	a.Start(newCtx)
 }
 
 // run is the main loop that consumes source events
-func (a *Activator) run() {
+func (a *Activator) run(ctx context.Context) {
 	a.logger.Info("Starting source event consumption")
 
 	// Set up source event subscription
-	a.processSourceEvents()
+	a.processSourceEvents(ctx)
 
 	// Wait for context cancellation - the subscription runs in background goroutines
-	<-a.ctx.Done()
+	<-ctx.Done()
 	a.logger.Info("Activator context cancelled, stopping...")
 }
 
 // processSourceEvents handles incoming source events and triggers workflows
-func (a *Activator) processSourceEvents() {
+func (a *Activator) processSourceEvents(ctx context.Context) {
 	a.logger.Info("Setting up source event subscription")
 
 	// Register handler for source events
@@ -122,7 +122,7 @@ func (a *Activator) processSourceEvents() {
 			"source_id", sourceEvent.SourceID,
 			"provider_id", sourceEvent.ProviderID,
 			"event_type", sourceEvent.EventType)
-		return a.handleSourceEvent(sourceEvent)
+		return a.handleSourceEvent(ctx, sourceEvent)
 	})
 	if err != nil {
 		a.logger.Error("Failed to register source event handler", "error", err)
@@ -140,7 +140,7 @@ func (a *Activator) processSourceEvents() {
 }
 
 // handleSourceEvent processes a single source event and triggers matching workflows
-func (a *Activator) handleSourceEvent(sourceEvent *events.SourceEvent) error {
+func (a *Activator) handleSourceEvent(ctx context.Context, sourceEvent *events.SourceEvent) error {
 	logger := a.logger.With(
 		"source_id", sourceEvent.SourceID,
 		"provider_id", sourceEvent.ProviderID,
@@ -156,7 +156,7 @@ func (a *Activator) handleSourceEvent(sourceEvent *events.SourceEvent) error {
 	}
 
 	// Find triggers that match this source event
-	matchingTriggers, err := a.findTriggersForSourceEvent(sourceEvent)
+	matchingTriggers, err := a.findTriggersForSourceEvent(ctx, sourceEvent)
 	if err != nil {
 		logger.Error("Failed to find matching triggers", "error", err)
 		return err
@@ -177,10 +177,10 @@ func (a *Activator) handleSourceEvent(sourceEvent *events.SourceEvent) error {
 }
 
 // findTriggersForSourceEvent queries the database for triggers that match a source event
-func (a *Activator) findTriggersForSourceEvent(sourceEvent *events.SourceEvent) ([]*TriggerMatch, error) {
+func (a *Activator) findTriggersForSourceEvent(ctx context.Context, sourceEvent *events.SourceEvent) ([]*TriggerMatch, error) {
 	workflowRepo := workflow.NewRepository(a.persistence)
 
-	workflows, err := workflowRepo.FetchAll()
+	workflows, err := workflowRepo.FetchAll(ctx)
 	if err != nil {
 		a.logger.Error("Failed to fetch workflows", "error", err)
 		return nil, err

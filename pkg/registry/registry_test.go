@@ -26,6 +26,10 @@ func (m *mockAction) Execute(ctx context.Context, execCtx models.ExecutionContex
 	}, nil
 }
 
+func (m *mockAction) Validate(_ context.Context) error {
+	return nil
+}
+
 // Mock action factory for testing.
 type mockActionFactory struct {
 	actionType string
@@ -43,7 +47,7 @@ func (f *mockActionFactory) Description() string {
 	return "This is a mock action for testing purposes."
 }
 
-func (f *mockActionFactory) Create(config map[string]any) (protocol.Action, error) {
+func (f *mockActionFactory) Create(_ context.Context, config map[string]any) (protocol.Action, error) {
 	return &mockAction{
 		id:     f.actionType,
 		config: config,
@@ -67,6 +71,7 @@ type mockTrigger struct {
 	id       string
 	config   map[string]any
 	callback protocol.TriggerCallback
+	logger   *slog.Logger
 }
 
 func (m *mockTrigger) Start(ctx context.Context, callback protocol.TriggerCallback) error {
@@ -79,7 +84,7 @@ func (m *mockTrigger) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (m *mockTrigger) Validate() error {
+func (m *mockTrigger) Validate(_ context.Context) error {
 	return nil
 }
 
@@ -121,10 +126,15 @@ func (f *mockTriggerFactory) Schema() map[string]any {
 	}
 }
 
-func (f *mockTriggerFactory) Create(config map[string]any, logger *slog.Logger) (protocol.Trigger, error) {
+func (f *mockTriggerFactory) Create(
+	_ context.Context,
+	config map[string]any,
+	logger *slog.Logger,
+) (protocol.Trigger, error) {
 	return &mockTrigger{
 		id:     f.triggerType,
 		config: config,
+		logger: logger,
 	}, nil
 }
 
@@ -158,7 +168,7 @@ func TestRegistry_RegisterAndCreateAction(t *testing.T) {
 		"param2": 42,
 	}
 
-	action, err := registry.CreateAction("test-action", config)
+	action, err := registry.CreateAction(t.Context(), "test-action", config)
 	require.NoError(t, err)
 	assert.NotNil(t, action)
 
@@ -194,7 +204,7 @@ func TestRegistry_RegisterAndCreateTrigger(t *testing.T) {
 		"enabled":  true,
 	}
 
-	trigger, err := registry.CreateTrigger("test-trigger", config)
+	trigger, err := registry.CreateTrigger(t.Context(), "test-trigger", config)
 	require.NoError(t, err)
 	assert.NotNil(t, trigger)
 
@@ -216,7 +226,7 @@ func TestRegistry_CreateAction_NotRegistered(t *testing.T) {
 	registry := NewRegistry(logger)
 
 	// Try to create action that's not registered
-	action, err := registry.CreateAction("non-existent-action", map[string]any{})
+	action, err := registry.CreateAction(t.Context(), "non-existent-action", map[string]any{})
 
 	assert.Error(t, err)
 	assert.Nil(t, action)
@@ -228,7 +238,7 @@ func TestRegistry_CreateTrigger_NotRegistered(t *testing.T) {
 	registry := NewRegistry(logger)
 
 	// Try to create trigger that's not registered
-	trigger, err := registry.CreateTrigger("non-existent-trigger", map[string]any{})
+	trigger, err := registry.CreateTrigger(t.Context(), "non-existent-trigger", map[string]any{})
 
 	assert.Error(t, err)
 	assert.Nil(t, trigger)
@@ -258,19 +268,19 @@ func TestRegistry_MultipleActionsAndTriggers(t *testing.T) {
 	assert.Len(t, registry.triggerFactories, 2)
 
 	// Create instances of each
-	action1, err := registry.CreateAction("action-1", map[string]any{})
+	action1, err := registry.CreateAction(t.Context(), "action-1", map[string]any{})
 	require.NoError(t, err)
 	assert.NotNil(t, action1)
 
-	action2, err := registry.CreateAction("action-2", map[string]any{})
+	action2, err := registry.CreateAction(t.Context(), "action-2", map[string]any{})
 	require.NoError(t, err)
 	assert.NotNil(t, action2)
 
-	trigger1, err := registry.CreateTrigger("trigger-1", map[string]any{})
+	trigger1, err := registry.CreateTrigger(t.Context(), "trigger-1", map[string]any{})
 	require.NoError(t, err)
 	assert.NotNil(t, trigger1)
 
-	trigger2, err := registry.CreateTrigger("trigger-2", map[string]any{})
+	trigger2, err := registry.CreateTrigger(t.Context(), "trigger-2", map[string]any{})
 	require.NoError(t, err)
 	assert.NotNil(t, trigger2)
 }
@@ -291,7 +301,7 @@ func TestRegistry_OverwriteRegistration(t *testing.T) {
 	assert.Len(t, registry.actionFactories, 1)
 
 	// The second factory should be used
-	action, err := registry.CreateAction("same-action", map[string]any{})
+	action, err := registry.CreateAction(t.Context(), "same-action", map[string]any{})
 	require.NoError(t, err)
 	assert.NotNil(t, action)
 }
@@ -301,7 +311,7 @@ func TestRegistry_LoadActionPlugins_NonExistentPath(t *testing.T) {
 	registry := NewRegistry(logger)
 
 	// Try to load plugins from non-existent path
-	factories, err := registry.LoadActionPlugins("/non/existent/path")
+	factories, err := registry.LoadActionPlugins(t.Context(), "/non/existent/path")
 
 	// Should not fail, but return empty slice
 	assert.NoError(t, err)
@@ -313,7 +323,7 @@ func TestRegistry_LoadTriggerPlugins_NonExistentPath(t *testing.T) {
 	registry := NewRegistry(logger)
 
 	// Try to load plugins from non-existent path
-	factories, err := registry.LoadTriggerPlugins("/non/existent/path")
+	factories, err := registry.LoadTriggerPlugins(t.Context(), "/non/existent/path")
 
 	// Should not fail, but return empty slice
 	assert.NoError(t, err)
@@ -325,14 +335,14 @@ func TestRegistry_LoadPlugins_EmptyDirectory(t *testing.T) {
 	registry := NewRegistry(logger)
 
 	// Create temporary empty directory
-	tmpDir := os.TempDir()
+	tmpDir := t.TempDir()
 
 	// Try to load plugins from empty directory
-	actionFactories, err := registry.LoadActionPlugins(tmpDir)
+	actionFactories, err := registry.LoadActionPlugins(t.Context(), tmpDir)
 	assert.NoError(t, err)
 	assert.Empty(t, actionFactories)
 
-	triggerFactories, err := registry.LoadTriggerPlugins(tmpDir)
+	triggerFactories, err := registry.LoadTriggerPlugins(t.Context(), tmpDir)
 	assert.NoError(t, err)
 	assert.Empty(t, triggerFactories)
 }

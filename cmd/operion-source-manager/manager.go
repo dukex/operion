@@ -62,7 +62,7 @@ func (spm *SourceProviderManager) Start(ctx context.Context) {
 	spm.logger.Info("Starting source provider manager")
 
 	spm.handleSignals()
-	spm.run()
+	spm.run(ctx)
 }
 
 func (spm *SourceProviderManager) handleSignals() {
@@ -104,16 +104,16 @@ func (spm *SourceProviderManager) restart() {
 	spm.Start(ctx)
 }
 
-func (spm *SourceProviderManager) run() {
+func (spm *SourceProviderManager) run(ctx context.Context) {
 	// First, create schedules from workflows
-	if err := spm.createSchedulesFromWorkflows(); err != nil {
+	if err := spm.createSchedulesFromWorkflows(ctx); err != nil {
 		spm.logger.Error("Failed to create schedules from workflows", "error", err)
 		spm.restart()
 		return
 	}
 
 	// Then start source providers
-	if err := spm.startSourceProviders(); err != nil {
+	if err := spm.startSourceProviders(ctx); err != nil {
 		spm.logger.Error("Failed to start source providers", "error", err)
 		spm.restart()
 		return
@@ -127,10 +127,10 @@ func (spm *SourceProviderManager) run() {
 	spm.logger.Info("Source provider manager stopped")
 }
 
-func (spm *SourceProviderManager) createSchedulesFromWorkflows() error {
+func (spm *SourceProviderManager) createSchedulesFromWorkflows(ctx context.Context) error {
 	workflowRepo := workflow.NewRepository(spm.persistence)
 
-	workflows, err := workflowRepo.FetchAll()
+	workflows, err := workflowRepo.FetchAll(ctx)
 	if err != nil {
 		return err
 	}
@@ -206,7 +206,7 @@ func (spm *SourceProviderManager) createSchedulesFromWorkflows() error {
 	return nil
 }
 
-func (spm *SourceProviderManager) startSourceProviders() error {
+func (spm *SourceProviderManager) startSourceProviders(ctx context.Context) error {
 	// Get available source providers from registry
 	availableProviders := spm.registry.GetAvailableSourceProviders()
 
@@ -240,7 +240,7 @@ func (spm *SourceProviderManager) startSourceProviders() error {
 		go func(factory protocol.SourceProviderFactory) {
 			defer wg.Done()
 
-			if err := spm.startSourceProvider(factory); err != nil {
+			if err := spm.startSourceProvider(ctx, factory); err != nil {
 				spm.logger.Error("Failed to start source provider",
 					"provider_id", factory.ID(),
 					"error", err)
@@ -252,7 +252,7 @@ func (spm *SourceProviderManager) startSourceProviders() error {
 	return nil
 }
 
-func (spm *SourceProviderManager) startSourceProvider(factory protocol.SourceProviderFactory) error {
+func (spm *SourceProviderManager) startSourceProvider(ctx context.Context, factory protocol.SourceProviderFactory) error {
 	providerID := factory.ID()
 
 	// Create provider configuration
@@ -288,7 +288,7 @@ func (spm *SourceProviderManager) startSourceProvider(factory protocol.SourcePro
 			instanceKey = sourceID
 		}
 
-		provider, err := spm.registry.CreateSourceProvider(providerID, config)
+		provider, err := spm.registry.CreateSourceProvider(ctx, providerID, config)
 		if err != nil {
 			spm.logger.Error("Failed to create source provider",
 				"provider_id", providerID,

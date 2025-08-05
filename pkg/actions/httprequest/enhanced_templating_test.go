@@ -1,4 +1,4 @@
-package httprequest
+package httprequest_test
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dukex/operion/pkg/actions/httprequest"
 	"github.com/dukex/operion/pkg/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,56 +19,48 @@ import (
 
 func TestHTTPRequestAction_EnhancedTemplating(t *testing.T) {
 	// Set up test environment variables
-	if err := os.Setenv("TEST_API_TOKEN", "secret123"); err != nil {
-		t.Fatal(err)
-	}
-
-	defer func() {
-		err := os.Unsetenv("TEST_API_TOKEN")
-		if err != nil {
-			t.Error(err)
-		}
-	}()
+	t.Setenv("TEST_API_TOKEN", "secret123")
 
 	// Create a test HTTP server
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		// Verify URL was templated correctly
-		assert.Equal(t, "/users/123/orders", r.URL.Path)
+		assert.Equal(t, "/users/123/orders", request.URL.Path)
 
 		// Verify headers were templated correctly
-		assert.Equal(t, "Bearer secret123", r.Header.Get("Authorization"))
-		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
-		assert.Equal(t, "test-workflow", r.Header.Get("X-Workflow-Id"))
+		assert.Equal(t, "Bearer secret123", request.Header.Get("Authorization"))
+		assert.Equal(t, "application/json", request.Header.Get("Content-Type"))
+		assert.Equal(t, "test-workflow", request.Header.Get("X-Workflow-Id"))
 
 		// Verify body was templated correctly
-		if r.Method == http.MethodPost {
+		if request.Method == http.MethodPost {
 			var body map[string]any
 
-			err := json.NewDecoder(r.Body).Decode(&body)
-			require.NoError(t, err)
+			err := json.NewDecoder(request.Body).Decode(&body)
+			assert.NoError(t, err)
 
 			assert.Equal(t, "123", body["user_id"])
 			assert.Equal(t, "test-workflow", body["workflow_id"])
 			assert.Equal(t, "api.example.com", body["api_endpoint"])
-			assert.Equal(t, 100.0, body["order_total"])
+			assert.InEpsilon(t, 100.0, body["order_total"], 0.01)
 		}
 
 		// Return success response
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
+		writer.Header().Set("Content-Type", "application/json")
+		writer.WriteHeader(http.StatusOK)
 
-		err := json.NewEncoder(w).Encode(map[string]any{
+		err := json.NewEncoder(writer).Encode(map[string]any{
 			"success":  true,
 			"order_id": "ORD-456",
 		})
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(writer, err.Error(), http.StatusInternalServerError)
 		}
 	}))
 	defer server.Close()
 
 	// Create HTTP request action with enhanced templating
-	action := &HTTPRequestAction{
+	action := &httprequest.Action{
+		ID:       "test-templating",
 		Method:   "POST",
 		Host:     strings.Split(server.URL, "://")[1], // Extract host from URL
 		Protocol: strings.Split(server.URL, "://")[0], // Extract protocol from URL
@@ -84,7 +77,7 @@ func TestHTTPRequestAction_EnhancedTemplating(t *testing.T) {
 			"order_total": {{ .step_results.price_calculation.total }}
 		}`,
 		Timeout: 10 * time.Second, // Increase timeout
-		Retry: RetryConfig{
+		Retry: httprequest.RetryConfig{
 			Attempts: 1,
 			Delay:    0,
 		},
@@ -132,14 +125,14 @@ func TestHTTPRequestAction_EnhancedTemplating(t *testing.T) {
 	require.NotNil(t, result)
 
 	// Verify response data
-	resultMap, ok := result.(map[string]any)
-	require.True(t, ok)
+	resultMap, isMap := result.(map[string]any)
+	require.True(t, isMap)
 
 	// Check if body was parsed as JSON
 	body, bodyExists := resultMap["body"]
 	require.True(t, bodyExists, "Response body should exist")
 
-	if bodyMap, ok := body.(map[string]any); ok {
+	if bodyMap, isBodyMap := body.(map[string]any); isBodyMap {
 		assert.Equal(t, true, bodyMap["success"])
 		assert.Equal(t, "ORD-456", bodyMap["order_id"])
 	} else {
@@ -150,48 +143,45 @@ func TestHTTPRequestAction_EnhancedTemplating(t *testing.T) {
 
 func TestHTTPRequestAction_EnvironmentVariableAccess(t *testing.T) {
 	// Simple test just to verify env variable access without complex networking
-	if err := os.Setenv("TEST_API_KEY", "test-key-123"); err != nil {
-		t.Fatal(err)
-	}
+	t.Setenv("TEST_API_KEY", "test-key-123")
 
-	defer func() {
-		err := os.Unsetenv("TEST_API_KEY")
-		if err != nil {
-			t.Error(err)
-		}
-	}()
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		// Verify header was templated with environment variable
-		assert.Equal(t, "Bearer test-key-123", r.Header.Get("Authorization"))
+		assert.Equal(t, "Bearer test-key-123", request.Header.Get("Authorization"))
 
-		w.WriteHeader(http.StatusOK)
+		writer.WriteHeader(http.StatusOK)
 
-		err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+		err := json.NewEncoder(writer).Encode(map[string]string{"status": "ok"})
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(writer, err.Error(), http.StatusInternalServerError)
 		}
 	}))
 	defer server.Close()
 
-	action := &HTTPRequestAction{
+	action := &httprequest.Action{
+		ID:       "test-env-templating",
 		Method:   "GET",
 		Host:     strings.Split(server.URL, "://")[1], // Extract host from URL
 		Protocol: strings.Split(server.URL, "://")[0], // Extract protocol from URL
 		Path:     "/",
+		Body:     "",
 		Headers: map[string]string{
 			"Authorization": "Bearer {{ .env.TEST_API_KEY }}",
 		},
 		Timeout: 10 * time.Second,
-		Retry: RetryConfig{
+		Retry: httprequest.RetryConfig{
 			Attempts: 1,
 			Delay:    0,
 		},
 	}
 
 	executionCtx := models.ExecutionContext{
-		ID:         "env-test",
-		WorkflowID: "env-test-workflow",
+		ID:          "env-test",
+		WorkflowID:  "env-test-workflow",
+		TriggerData: make(map[string]any),
+		Variables:   make(map[string]any),
+		StepResults: make(map[string]any),
+		Metadata:    make(map[string]any),
 	}
 
 	ctx := context.Background()
@@ -202,14 +192,14 @@ func TestHTTPRequestAction_EnvironmentVariableAccess(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
-	resultMap, ok := result.(map[string]any)
-	require.True(t, ok)
+	resultMap, isMap := result.(map[string]any)
+	require.True(t, isMap)
 
 	// Check if body was parsed as JSON
 	body, bodyExists := resultMap["body"]
 	require.True(t, bodyExists, "Response body should exist")
 
-	if bodyMap, ok := body.(map[string]any); ok {
+	if bodyMap, isBodyMap := body.(map[string]any); isBodyMap {
 		assert.Equal(t, "ok", bodyMap["status"])
 	} else {
 		t.Logf("Body is not a map, got: %T %+v", body, body)

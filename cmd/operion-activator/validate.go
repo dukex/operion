@@ -41,17 +41,17 @@ func NewValidateCommand() *cli.Command {
 				"action", "validate",
 			)
 
-			persistence := cmd.NewPersistence(logger, command.String("database-url"))
+			persistence := cmd.NewPersistence(ctx, logger, command.String("database-url"))
 
 			defer func() {
-				if err := persistence.Close(); err != nil {
+				if err := persistence.Close(ctx); err != nil {
 					return
 				}
 			}()
 
 			workflowRepository := workflow.NewRepository(persistence)
 
-			workflows, err := workflowRepository.FetchAll()
+			workflows, err := workflowRepository.FetchAll(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to fetch workflows: %w", err)
 			}

@@ -6,11 +6,10 @@ import (
 
 	"github.com/dukex/operion/pkg/cmd"
 	"github.com/dukex/operion/pkg/log"
-	"github.com/go-playground/validator/v10"
 	cli "github.com/urfave/cli/v3"
 )
 
-var validate *validator.Validate
+const defaultPort = 9091
 
 func main() {
 	logger := log.WithModule("api")
@@ -24,7 +23,7 @@ func main() {
 				Name:    "port",
 				Aliases: []string{"p"},
 				Usage:   "Port to run the API server on",
-				Value:   9091,
+				Value:   defaultPort,
 				Sources: cli.EnvVars("PORT"),
 			},
 			&cli.StringFlag{
@@ -49,15 +48,15 @@ func main() {
 		Action: func(ctx context.Context, command *cli.Command) error {
 			log.Setup(command.String("log-level"))
 
-			logger.Info("Initializing Operion API")
+			logger.InfoContext(ctx, "Initializing Operion API")
 
-			registry := cmd.NewRegistry(logger, command.String("plugins-path"))
-			persistence := cmd.NewPersistence(logger, command.String("database-url"))
+			registry := cmd.NewRegistry(ctx, logger, command.String("plugins-path"))
+			persistence := cmd.NewPersistence(ctx, logger, command.String("database-url"))
 
 			defer func() {
-				err := persistence.Close()
+				err := persistence.Close(ctx)
 				if err != nil {
-					logger.Error("Failed to close persistence", "error", err)
+					logger.ErrorContext(ctx, "Failed to close persistence", "error", err)
 				}
 			}()
 
@@ -69,7 +68,7 @@ func main() {
 
 			err := api.Start(command.Int("port"))
 			if err != nil {
-				logger.Error("Failed to start event-driven worker", "error", err)
+				logger.ErrorContext(ctx, "Failed to start event-driven worker", "error", err)
 			}
 
 			return nil

@@ -89,7 +89,7 @@ func main() {
 				"manager_id", managerID,
 				"providers", providerFilter)
 
-			registry := cmd.NewRegistry(logger, command.String("plugins-path"))
+			registry := cmd.NewRegistry(ctx, logger, command.String("plugins-path"))
 
 			sourceEventBus := cmd.NewSourceEventBus(logger)
 			defer func() {
@@ -98,9 +98,9 @@ func main() {
 				}
 			}()
 
-			persistence := cmd.NewPersistence(logger, command.String("database-url"))
+			persistence := cmd.NewPersistence(ctx, logger, command.String("database-url"))
 			defer func() {
-				if err := persistence.Close(); err != nil {
+				if err := persistence.Close(ctx); err != nil {
 					logger.Error("Failed to close persistence", "error", err)
 				}
 			}()

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"log/slog"
 	"strings"
 
@@ -10,25 +11,28 @@ import (
 
 var supportedPersistenceProviders = []string{"file", "mysql", "postgresql", "mongodb", "redis"}
 
-func NewPersistence(logger *slog.Logger, databaseUrl string) persistence.Persistence {
-	provider := parsePersistenceProvider(databaseUrl)
+// NewPersistence creates a new persistence layer based on the provided database URL.
+func NewPersistence(ctx context.Context, logger *slog.Logger, databaseURL string) persistence.Persistence {
+	provider := parsePersistenceProvider(databaseURL)
+
+	logger.InfoContext(ctx, "Using persistence provider", "provider", provider)
 
 	switch provider {
 	// case "mysql":
-	// 	return persistence.NewMySQLPersistence(databaseUrl)
+	// 	return persistence.NewMySQLPersistence(databaseURL)
 	// case "postgresql":
-	// 	return persistence.NewPostgreSQLPersistence(databaseUrl)
+	// 	return persistence.NewPostgreSQLPersistence(databaseURL)
 	// case "mongodb":
-	// 	return persistence.NewMongoDBPersistence(databaseUrl)
+	// 	return persistence.NewMongoDBPersistence(databaseURL)
 	// case "redis":
-	// 	return persistence.NewRedisPersistence(databaseUrl)
+	// 	return persistence.NewRedisPersistence(databaseURL)
 	default:
-		return file.NewFilePersistence(databaseUrl)
+		return file.NewFilePersistence(databaseURL)
 	}
 }
 
-func parsePersistenceProvider(databaseUrl string) string {
-	parts := strings.Split(databaseUrl, "://")
+func parsePersistenceProvider(databaseURL string) string {
+	parts := strings.Split(databaseURL, "://")
 
 	provider := parts[0]
 	for _, supported := range supportedPersistenceProviders {

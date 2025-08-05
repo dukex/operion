@@ -1,4 +1,4 @@
-package httprequest
+package httprequest_test
 
 import (
 	"context"
@@ -11,16 +11,19 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dukex/operion/pkg/actions/httprequest"
 	"github.com/dukex/operion/pkg/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNewHTTPRequestAction(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		config   map[string]any
-		expected *HTTPRequestAction
+		expected *httprequest.Action
 	}{
 		{
 			name: "basic GET request",
@@ -31,7 +34,7 @@ func TestNewHTTPRequestAction(t *testing.T) {
 				"path":     "/data",
 				"protocol": "https",
 			},
-			expected: &HTTPRequestAction{
+			expected: &httprequest.Action{
 				ID:       "test-1",
 				Method:   "GET",
 				Host:     "api.example.com",
@@ -40,7 +43,7 @@ func TestNewHTTPRequestAction(t *testing.T) {
 				Headers:  map[string]string{},
 				Body:     "",
 				Timeout:  30 * time.Second,
-				Retry:    RetryConfig{Attempts: 1, Delay: 0},
+				Retry:    httprequest.RetryConfig{Attempts: 1, Delay: 0},
 			},
 		},
 		{
@@ -61,7 +64,7 @@ func TestNewHTTPRequestAction(t *testing.T) {
 					"delay":    5.0,
 				},
 			},
-			expected: &HTTPRequestAction{
+			expected: &httprequest.Action{
 				ID:       "test-2",
 				Method:   "POST",
 				Host:     "api.example.com",
@@ -73,7 +76,7 @@ func TestNewHTTPRequestAction(t *testing.T) {
 					"Authorization": "Bearer token123",
 				},
 				Timeout: 30 * time.Second,
-				Retry:   RetryConfig{Attempts: 3, Delay: 5},
+				Retry:   httprequest.RetryConfig{Attempts: 3, Delay: 5},
 			},
 		},
 		{
@@ -84,7 +87,7 @@ func TestNewHTTPRequestAction(t *testing.T) {
 				"path":     "/default",
 				"protocol": "https",
 			},
-			expected: &HTTPRequestAction{
+			expected: &httprequest.Action{
 				ID:       "test-3",
 				Method:   "GET",
 				Host:     "api.example.com",
@@ -93,43 +96,48 @@ func TestNewHTTPRequestAction(t *testing.T) {
 				Headers:  map[string]string{},
 				Body:     "",
 				Timeout:  30 * time.Second,
-				Retry:    RetryConfig{Attempts: 1, Delay: 0},
+				Retry:    httprequest.RetryConfig{Attempts: 1, Delay: 0},
 			},
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			action, err := NewHTTPRequestAction(tt.config)
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+
+			action, err := httprequest.NewAction(testCase.config)
 			require.NoError(t, err)
-			assert.Equal(t, tt.expected, action)
+			assert.Equal(t, testCase.expected, action)
 		})
 	}
 }
 
 func TestHTTPRequestAction_Execute_Success(t *testing.T) {
+	t.Parallel()
+
 	// Create test server
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "GET", r.Method)
-		assert.Equal(t, "application/json", r.Header.Get("Accept"))
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		assert.Equal(t, "GET", request.Method)
+		assert.Equal(t, "application/json", request.Header.Get("Accept"))
 
 		response := map[string]any{
 			"status": "success",
 			"data":   "test response",
 		}
 
-		w.Header().Set("Content-Type", "application/json")
+		writer.Header().Set("Content-Type", "application/json")
 
-		err := json.NewEncoder(w).Encode(response)
+		err := json.NewEncoder(writer).Encode(response)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(writer, err.Error(), http.StatusInternalServerError)
 		}
 	}))
 	defer server.Close()
 
-	action := &HTTPRequestAction{
+	action := &httprequest.Action{
 		ID:       "test-http",
 		Method:   "GET",
+		Body:     "",
 		Host:     strings.Split(server.URL, "://")[1],
 		Protocol: strings.Split(server.URL, "://")[0],
 		Path:     "/",
@@ -137,12 +145,17 @@ func TestHTTPRequestAction_Execute_Success(t *testing.T) {
 			"Accept": "application/json",
 		},
 		Timeout: 30 * time.Second,
-		Retry:   RetryConfig{Attempts: 1, Delay: 0},
+		Retry:   httprequest.RetryConfig{Attempts: 1, Delay: 0},
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
+		ID:          "test-execution",
+		WorkflowID:  "test-workflow",
+		TriggerData: make(map[string]any),
+		Variables:   make(map[string]any),
 		StepResults: make(map[string]any),
+		Metadata:    make(map[string]any),
 	}
 
 	result, err := action.Execute(context.Background(), execCtx, logger)
@@ -150,28 +163,32 @@ func TestHTTPRequestAction_Execute_Success(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
-	resultMap := result.(map[string]any)
+	resultMap, isMap := result.(map[string]any)
+	assert.True(t, isMap, "result should be a map[string]any")
 	assert.Equal(t, 200, resultMap["status_code"])
 	assert.NotNil(t, resultMap["body"])
 	assert.NotNil(t, resultMap["headers"])
 
 	// Check the parsed JSON body
-	body := resultMap["body"].(map[string]any)
+	body, isBodyMap := resultMap["body"].(map[string]any)
+	assert.True(t, isBodyMap, "body should be a map[string]any")
 	assert.Equal(t, "success", body["status"])
 	assert.Equal(t, "test response", body["data"])
 }
 
 func TestHTTPRequestAction_Execute_POST_WithBody(t *testing.T) {
+	t.Parallel()
+
 	// Create test server that expects POST with JSON body
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "POST", r.Method)
-		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		assert.Equal(t, "POST", request.Method)
+		assert.Equal(t, "application/json", request.Header.Get("Content-Type"))
 
 		// Read and verify body
 		var body map[string]any
 
-		err := json.NewDecoder(r.Body).Decode(&body)
-		require.NoError(t, err)
+		err := json.NewDecoder(request.Body).Decode(&body)
+		assert.NoError(t, err)
 		assert.Equal(t, "test value", body["key"])
 
 		response := map[string]any{
@@ -179,15 +196,16 @@ func TestHTTPRequestAction_Execute_POST_WithBody(t *testing.T) {
 			"id":      123,
 		}
 
-		w.Header().Set("Content-Type", "application/json")
+		writer.Header().Set("Content-Type", "application/json")
 
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		err = json.NewEncoder(writer).Encode(response)
+		if err != nil {
+			http.Error(writer, err.Error(), http.StatusInternalServerError)
 		}
 	}))
 	defer server.Close()
 
-	action := &HTTPRequestAction{
+	action := &httprequest.Action{
 		ID:       "test-http-post",
 		Method:   "POST",
 		Host:     strings.Split(server.URL, "://")[1],
@@ -198,12 +216,17 @@ func TestHTTPRequestAction_Execute_POST_WithBody(t *testing.T) {
 			"Content-Type": "application/json",
 		},
 		Timeout: 30 * time.Second,
-		Retry:   RetryConfig{Attempts: 1, Delay: 0},
+		Retry:   httprequest.RetryConfig{Attempts: 1, Delay: 0},
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
+		ID:          "test-execution",
+		WorkflowID:  "test-workflow",
+		TriggerData: make(map[string]any),
+		Variables:   make(map[string]any),
 		StepResults: make(map[string]any),
+		Metadata:    make(map[string]any),
 	}
 
 	result, err := action.Execute(context.Background(), execCtx, logger)
@@ -211,47 +234,58 @@ func TestHTTPRequestAction_Execute_POST_WithBody(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
-	resultMap := result.(map[string]any)
+	resultMap, isMap := result.(map[string]any)
+	assert.True(t, isMap, "result should be a map[string]any")
 	assert.Equal(t, 200, resultMap["status_code"])
 
-	body := resultMap["body"].(map[string]any)
+	body, isBodyMap := resultMap["body"].(map[string]any)
+	assert.True(t, isBodyMap, "body should be a map[string]any")
 	assert.Equal(t, true, body["created"])
-	assert.Equal(t, float64(123), body["id"])
+	assert.InEpsilon(t, 123, body["id"], 0.01)
 }
 
 func TestHTTPRequestAction_Execute_WithRetry(t *testing.T) {
+	t.Parallel()
+
 	attempts := 0
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 		attempts++
 		if attempts < 3 {
-			w.WriteHeader(http.StatusInternalServerError)
+			writer.WriteHeader(http.StatusInternalServerError)
 
 			return
 		}
 		// Success on third attempt
-		w.WriteHeader(http.StatusOK)
+		writer.WriteHeader(http.StatusOK)
 
-		err := json.NewEncoder(w).Encode(map[string]string{"status": "success"})
+		err := json.NewEncoder(writer).Encode(map[string]string{"status": "success"})
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(writer, err.Error(), http.StatusInternalServerError)
 		}
 	}))
 	defer server.Close()
 
-	action := &HTTPRequestAction{
+	action := &httprequest.Action{
 		ID:       "test-retry",
 		Method:   "GET",
 		Host:     strings.Split(server.URL, "://")[1],
 		Protocol: strings.Split(server.URL, "://")[0],
 		Path:     "/",
+		Headers:  make(map[string]string),
+		Body:     "",
 		Timeout:  5 * time.Second,
-		Retry:    RetryConfig{Attempts: 3, Delay: 0}, // No delay for faster test
+		Retry:    httprequest.RetryConfig{Attempts: 3, Delay: 0}, // No delay for faster test
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
+		ID:          "test-execution",
+		WorkflowID:  "test-workflow",
+		TriggerData: make(map[string]any),
+		Variables:   make(map[string]any),
 		StepResults: make(map[string]any),
+		Metadata:    make(map[string]any),
 	}
 
 	result, err := action.Execute(context.Background(), execCtx, logger)
@@ -259,29 +293,33 @@ func TestHTTPRequestAction_Execute_WithRetry(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 3, attempts)
 
-	resultMap := result.(map[string]any)
+	resultMap, isMap := result.(map[string]any)
+	assert.True(t, isMap, "result should be a map[string]any")
 	assert.Equal(t, 200, resultMap["status_code"])
 }
 
 func TestHTTPRequestAction_Execute_WithTemplating(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		var body map[string]any
 
-		err := json.NewDecoder(r.Body).Decode(&body)
-		require.NoError(t, err)
+		err := json.NewDecoder(request.Body).Decode(&body)
+		assert.NoError(t, err)
 
 		// Verify templated data was used
 		assert.Equal(t, "user123", body["user_id"])
 
-		w.WriteHeader(http.StatusOK)
+		writer.WriteHeader(http.StatusOK)
 
-		if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		err = json.NewEncoder(writer).Encode(map[string]string{"status": "ok"})
+		if err != nil {
+			http.Error(writer, err.Error(), http.StatusInternalServerError)
 		}
 	}))
 	defer server.Close()
 
-	action := &HTTPRequestAction{
+	action := &httprequest.Action{
 		ID:       "test-template",
 		Method:   "POST",
 		Host:     strings.Split(server.URL, "://")[1],
@@ -292,11 +330,16 @@ func TestHTTPRequestAction_Execute_WithTemplating(t *testing.T) {
 			"Content-Type": "application/json",
 		},
 		Timeout: 30 * time.Second,
-		Retry:   RetryConfig{Attempts: 1, Delay: 0},
+		Retry:   httprequest.RetryConfig{Attempts: 1, Delay: 0},
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
+		ID:          "test-execution",
+		WorkflowID:  "test-workflow",
+		TriggerData: make(map[string]any),
+		Variables:   make(map[string]any),
+		Metadata:    make(map[string]any),
 		StepResults: map[string]any{
 			"previous_step": map[string]any{
 				"user_id": "user123",
@@ -308,31 +351,41 @@ func TestHTTPRequestAction_Execute_WithTemplating(t *testing.T) {
 
 	require.NoError(t, err)
 
-	resultMap := result.(map[string]any)
+	resultMap, isMap := result.(map[string]any)
+	assert.True(t, isMap, "result should be a map[string]any")
 	assert.Equal(t, 200, resultMap["status_code"])
 }
 
 func TestHTTPRequestAction_Execute_Timeout(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		// Simulate slow response
 		time.Sleep(2 * time.Second)
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
 
-	action := &HTTPRequestAction{
+	action := &httprequest.Action{
 		ID:       "test-timeout",
 		Method:   "GET",
 		Host:     strings.Split(server.URL, "://")[1],
 		Protocol: strings.Split(server.URL, "://")[0],
 		Path:     "/",
+		Headers:  make(map[string]string),
+		Body:     "",
 		Timeout:  100 * time.Millisecond, // Very short timeout
-		Retry:    RetryConfig{Attempts: 1, Delay: 0},
+		Retry:    httprequest.RetryConfig{Attempts: 1, Delay: 0},
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
+		ID:          "test-execution",
+		WorkflowID:  "test-workflow",
+		TriggerData: make(map[string]any),
+		Variables:   make(map[string]any),
 		StepResults: make(map[string]any),
+		Metadata:    make(map[string]any),
 	}
 
 	_, err := action.Execute(context.Background(), execCtx, logger)
@@ -341,36 +394,47 @@ func TestHTTPRequestAction_Execute_Timeout(t *testing.T) {
 }
 
 func TestHTTPRequestAction_Execute_NonJSONResponse(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain")
-		w.WriteHeader(http.StatusOK)
+	t.Parallel()
 
-		if _, err := w.Write([]byte("plain text response")); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		writer.Header().Set("Content-Type", "text/plain")
+		writer.WriteHeader(http.StatusOK)
+
+		_, err := writer.Write([]byte("plain text response"))
+		if err != nil {
+			http.Error(writer, err.Error(), http.StatusInternalServerError)
 		}
 	}))
 	defer server.Close()
 
-	action := &HTTPRequestAction{
+	action := &httprequest.Action{
 		ID:       "test-text",
 		Method:   "GET",
 		Host:     strings.Split(server.URL, "://")[1],
 		Protocol: strings.Split(server.URL, "://")[0],
 		Path:     "/",
+		Headers:  make(map[string]string),
+		Body:     "",
 		Timeout:  30 * time.Second,
-		Retry:    RetryConfig{Attempts: 1, Delay: 0},
+		Retry:    httprequest.RetryConfig{Attempts: 1, Delay: 0},
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
+		ID:          "test-execution",
+		WorkflowID:  "test-workflow",
+		TriggerData: make(map[string]any),
+		Variables:   make(map[string]any),
 		StepResults: make(map[string]any),
+		Metadata:    make(map[string]any),
 	}
 
 	result, err := action.Execute(context.Background(), execCtx, logger)
 
 	require.NoError(t, err)
 
-	resultMap := result.(map[string]any)
+	resultMap, isMap := result.(map[string]any)
+	assert.True(t, isMap, "result should be a map[string]any")
 	assert.Equal(t, 200, resultMap["status_code"])
 	assert.Equal(t, "plain text response", resultMap["body"])
 }

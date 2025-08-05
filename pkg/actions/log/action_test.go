@@ -1,4 +1,4 @@
-package log
+package log_test
 
 import (
 	"context"
@@ -6,19 +6,24 @@ import (
 	"os"
 	"testing"
 
+	logaction "github.com/dukex/operion/pkg/actions/log"
 	"github.com/dukex/operion/pkg/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewLogActionFactory(t *testing.T) {
-	factory := NewLogActionFactory()
+func TestNewActionFactory(t *testing.T) {
+	t.Parallel()
+
+	factory := logaction.NewActionFactory()
 	assert.NotNil(t, factory)
 	assert.Equal(t, "log", factory.ID())
 }
 
-func TestLogActionFactory_Create(t *testing.T) {
-	factory := NewLogActionFactory()
+func TestActionFactory_Create(t *testing.T) {
+	t.Parallel()
+
+	factory := logaction.NewActionFactory()
 
 	tests := []struct {
 		name   string
@@ -43,10 +48,12 @@ func TestLogActionFactory_Create(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			action, err := factory.Create(tt.config)
+			t.Parallel()
+
+			action, err := factory.Create(t.Context(), tt.config)
 			require.NoError(t, err)
 			assert.NotNil(t, action)
-			assert.IsType(t, &LogAction{}, action)
+			assert.IsType(t, &logaction.LogAction{Message: "test message", Level: "info"}, action)
 		})
 	}
 }
@@ -91,7 +98,7 @@ func TestNewLogAction(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			action := NewLogAction(tt.config)
+			action := logaction.NewLogAction(tt.config)
 			assert.NotNil(t, action)
 			assert.Equal(t, tt.expectedMsg, action.Message)
 			assert.Equal(t, tt.expectedLevel, action.Level)
@@ -168,7 +175,7 @@ func TestLogAction_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			action := NewLogAction(tt.config)
+			action := logaction.NewLogAction(tt.config)
 			result, err := action.Execute(context.Background(), tt.execCtx, logger)
 
 			if tt.expectError {
@@ -188,7 +195,7 @@ func TestLogAction_Execute(t *testing.T) {
 }
 
 func TestLogAction_Execute_WithCancel(t *testing.T) {
-	action := NewLogAction(map[string]any{
+	action := logaction.NewLogAction(map[string]any{
 		"message": "Test message",
 	})
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -214,7 +221,7 @@ func TestLogAction_Execute_WithCancel(t *testing.T) {
 }
 
 func TestLogAction_Execute_LargeStepResults(t *testing.T) {
-	action := NewLogAction(map[string]any{})
+	action := logaction.NewLogAction(map[string]any{})
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	// Create large step results to test logging performance

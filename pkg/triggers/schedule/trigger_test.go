@@ -1,4 +1,4 @@
-package schedule
+package schedule_test
 
 import (
 	"context"
@@ -9,18 +9,21 @@ import (
 	"time"
 
 	"github.com/dukex/operion/pkg/protocol"
+	"github.com/dukex/operion/pkg/triggers/schedule"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNewScheduleTrigger(t *testing.T) {
+	t.Parallel()
+
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	tests := []struct {
 		name        string
 		config      map[string]any
 		expectError bool
-		expected    *ScheduleTrigger
+		expected    *schedule.Trigger
 	}{
 		{
 			name: "valid cron expression",
@@ -30,7 +33,7 @@ func TestNewScheduleTrigger(t *testing.T) {
 				"workflow_id": "workflow-123",
 			},
 			expectError: false,
-			expected: &ScheduleTrigger{
+			expected: &schedule.Trigger{
 				CronExpr: "*/5 * * * *",
 				Enabled:  true,
 			},
@@ -43,7 +46,7 @@ func TestNewScheduleTrigger(t *testing.T) {
 				"workflow_id": "workflow-456",
 			},
 			expectError: false,
-			expected: &ScheduleTrigger{
+			expected: &schedule.Trigger{
 				CronExpr: "0 0 * * *",
 				Enabled:  true,
 			},
@@ -56,7 +59,7 @@ func TestNewScheduleTrigger(t *testing.T) {
 				"workflow_id": "workflow-789",
 			},
 			expectError: false,
-			expected: &ScheduleTrigger{
+			expected: &schedule.Trigger{
 				CronExpr: "* * * * *",
 				Enabled:  true,
 			},
@@ -76,7 +79,7 @@ func TestNewScheduleTrigger(t *testing.T) {
 				"cron": "*/5 * * * *",
 			},
 			expectError: false,
-			expected: &ScheduleTrigger{
+			expected: &schedule.Trigger{
 				CronExpr: "*/5 * * * *",
 				Enabled:  true,
 			},
@@ -96,93 +99,100 @@ func TestNewScheduleTrigger(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			trigger, err := NewScheduleTrigger(tt.config, logger)
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
 
-			if tt.expectError {
-				assert.Error(t, err)
+			trigger, err := schedule.NewTrigger(t.Context(), testCase.config, logger)
+
+			if testCase.expectError {
+				require.Error(t, err)
 				assert.Nil(t, trigger)
 			} else {
 				require.NoError(t, err)
 				require.NotNil(t, trigger)
-				assert.Equal(t, tt.expected.CronExpr, trigger.CronExpr)
-				assert.Equal(t, tt.expected.Enabled, trigger.Enabled)
-				assert.NotNil(t, trigger.logger)
+				assert.Equal(t, testCase.expected.CronExpr, trigger.CronExpr)
+				assert.Equal(t, testCase.expected.Enabled, trigger.Enabled)
 			}
 		})
 	}
 }
 
 func TestScheduleTrigger_Validate(t *testing.T) {
+	t.Parallel()
+
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	tests := []struct {
 		name        string
-		trigger     *ScheduleTrigger
+		config      map[string]any
 		expectError bool
 	}{
 		{
-			name: "valid trigger",
-			trigger: &ScheduleTrigger{
-				CronExpr: "*/5 * * * *",
-				Enabled:  true,
-				logger:   logger,
+			name: "valid trigger config",
+			config: map[string]any{
+				"cron":        "*/5 * * * *",
+				"enabled":     true,
+				"workflow_id": "test-workflow",
 			},
 			expectError: false,
 		},
 		{
 			name: "empty cron expression",
-			trigger: &ScheduleTrigger{
-				CronExpr: "",
-				Enabled:  true,
-				logger:   logger,
+			config: map[string]any{
+				"cron":        "",
+				"enabled":     true,
+				"workflow_id": "test-workflow",
 			},
 			expectError: true,
 		},
 		{
 			name: "invalid cron expression",
-			trigger: &ScheduleTrigger{
-				CronExpr: "invalid-cron",
-				Enabled:  true,
-				logger:   logger,
+			config: map[string]any{
+				"cron":        "invalid-cron",
+				"enabled":     true,
+				"workflow_id": "test-workflow",
 			},
 			expectError: true,
 		},
 		{
-			name: "invalid cron expression",
-			trigger: &ScheduleTrigger{
-				CronExpr: "invalid * cron * expression",
-				Enabled:  true,
-				logger:   logger,
+			name: "invalid cron expression complex",
+			config: map[string]any{
+				"cron":        "invalid * cron * expression",
+				"enabled":     true,
+				"workflow_id": "test-workflow",
 			},
 			expectError: true,
 		},
 		{
-			name: "valid but complex cron",
-			trigger: &ScheduleTrigger{
-				CronExpr: "30 14 * * 1-5", // weekdays at 2:30 PM
-				Enabled:  true,
-				logger:   logger,
+			name: "valid complex cron",
+			config: map[string]any{
+				"cron":        "30 14 * * 1-5", // weekdays at 2:30 PM
+				"enabled":     true,
+				"workflow_id": "test-workflow",
 			},
 			expectError: false,
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := tt.trigger.Validate()
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
 
-			if tt.expectError {
+			_, err := schedule.NewTrigger(t.Context(), testCase.config, logger)
+
+			if testCase.expectError {
 				assert.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}
 }
 
 func TestScheduleTrigger_StartStop(t *testing.T) {
+	t.Parallel()
+
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	config := map[string]any{
@@ -191,7 +201,7 @@ func TestScheduleTrigger_StartStop(t *testing.T) {
 		"workflow_id": "workflow-start-stop",
 	}
 
-	trigger, err := NewScheduleTrigger(config, logger)
+	trigger, err := schedule.NewTrigger(t.Context(), config, logger)
 	require.NoError(t, err)
 	require.NotNil(t, trigger)
 
@@ -200,15 +210,15 @@ func TestScheduleTrigger_StartStop(t *testing.T) {
 
 	var (
 		callbackCount int
-		mu            sync.Mutex
+		mutex         sync.Mutex
 	)
 
-	callback := func(ctx context.Context, data map[string]any) error {
-		mu.Lock()
+	callback := func(_ context.Context, _ map[string]any) error {
+		mutex.Lock()
 
 		callbackCount++
 
-		mu.Unlock()
+		mutex.Unlock()
 
 		return nil
 	}
@@ -224,11 +234,11 @@ func TestScheduleTrigger_StartStop(t *testing.T) {
 	err = trigger.Stop(ctx)
 	require.NoError(t, err)
 
-	mu.Lock()
+	mutex.Lock()
 
 	finalCount := callbackCount
 
-	mu.Unlock()
+	mutex.Unlock()
 
 	// May not execute since cron only runs every minute
 	assert.GreaterOrEqual(t, finalCount, 0)
@@ -236,17 +246,19 @@ func TestScheduleTrigger_StartStop(t *testing.T) {
 	// Wait a bit more and ensure no more executions
 	time.Sleep(2 * time.Second)
 
-	mu.Lock()
+	mutex.Lock()
 
 	afterStopCount := callbackCount
 
-	mu.Unlock()
+	mutex.Unlock()
 
 	// Count should not have increased after stop
 	assert.Equal(t, finalCount, afterStopCount)
 }
 
 func TestScheduleTrigger_CallbackWithData(t *testing.T) {
+	t.Parallel()
+
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	config := map[string]any{
@@ -255,24 +267,24 @@ func TestScheduleTrigger_CallbackWithData(t *testing.T) {
 		"workflow_id": "workflow-callback",
 	}
 
-	trigger, err := NewScheduleTrigger(config, logger)
+	trigger, err := schedule.NewTrigger(t.Context(), config, logger)
 	require.NoError(t, err)
 
 	ctx := context.Background()
 
 	var (
 		receivedData map[string]any
-		mu           sync.Mutex
+		mutex        sync.Mutex
 		called       bool
 	)
 
-	callback := func(ctx context.Context, data map[string]any) error {
-		mu.Lock()
+	callback := func(_ context.Context, data map[string]any) error {
+		mutex.Lock()
 
 		receivedData = data
 		called = true
 
-		mu.Unlock()
+		mutex.Unlock()
 
 		return nil
 	}
@@ -286,8 +298,8 @@ func TestScheduleTrigger_CallbackWithData(t *testing.T) {
 	err = trigger.Stop(ctx)
 	require.NoError(t, err)
 
-	mu.Lock()
-	defer mu.Unlock()
+	mutex.Lock()
+	defer mutex.Unlock()
 
 	// Note: may not be called since cron runs every minute and test is short
 	if called {
@@ -306,6 +318,8 @@ func TestScheduleTrigger_CallbackWithData(t *testing.T) {
 }
 
 func TestScheduleTrigger_DisabledTrigger(t *testing.T) {
+	t.Parallel()
+
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	config := map[string]any{
@@ -314,7 +328,7 @@ func TestScheduleTrigger_DisabledTrigger(t *testing.T) {
 		"workflow_id": "workflow-disabled",
 	}
 
-	trigger, err := NewScheduleTrigger(config, logger)
+	trigger, err := schedule.NewTrigger(t.Context(), config, logger)
 	require.NoError(t, err)
 
 	// Disable the trigger
@@ -324,15 +338,15 @@ func TestScheduleTrigger_DisabledTrigger(t *testing.T) {
 
 	var (
 		called bool
-		mu     sync.Mutex
+		mutex  sync.Mutex
 	)
 
-	callback := func(ctx context.Context, data map[string]any) error {
-		mu.Lock()
+	callback := func(_ context.Context, _ map[string]any) error {
+		mutex.Lock()
 
 		called = true
 
-		mu.Unlock()
+		mutex.Unlock()
 
 		return nil
 	}
@@ -346,14 +360,16 @@ func TestScheduleTrigger_DisabledTrigger(t *testing.T) {
 	err = trigger.Stop(ctx)
 	require.NoError(t, err)
 
-	mu.Lock()
-	defer mu.Unlock()
+	mutex.Lock()
+	defer mutex.Unlock()
 
 	// Should not have been called since trigger is disabled
 	assert.False(t, called)
 }
 
 func TestScheduleTrigger_CallbackError(t *testing.T) {
+	t.Parallel()
+
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	config := map[string]any{
@@ -362,22 +378,22 @@ func TestScheduleTrigger_CallbackError(t *testing.T) {
 		"workflow_id": "workflow-error",
 	}
 
-	trigger, err := NewScheduleTrigger(config, logger)
+	trigger, err := schedule.NewTrigger(t.Context(), config, logger)
 	require.NoError(t, err)
 
 	ctx := context.Background()
 
 	var (
 		callCount int
-		mu        sync.Mutex
+		mutex     sync.Mutex
 	)
 
-	callback := func(ctx context.Context, data map[string]any) error {
-		mu.Lock()
+	callback := func(_ context.Context, _ map[string]any) error {
+		mutex.Lock()
 
 		callCount++
 
-		mu.Unlock()
+		mutex.Unlock()
 
 		return assert.AnError // Return an error
 	}
@@ -391,14 +407,16 @@ func TestScheduleTrigger_CallbackError(t *testing.T) {
 	err = trigger.Stop(ctx)
 	require.NoError(t, err)
 
-	mu.Lock()
-	defer mu.Unlock()
+	mutex.Lock()
+	defer mutex.Unlock()
 
 	// May not have been called since cron runs every minute
 	assert.GreaterOrEqual(t, callCount, 0)
 }
 
 func TestScheduleTrigger_ConcurrentStartStop(t *testing.T) {
+	t.Parallel()
+
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	config := map[string]any{
@@ -407,18 +425,18 @@ func TestScheduleTrigger_ConcurrentStartStop(t *testing.T) {
 		"workflow_id": "workflow-concurrent",
 	}
 
-	trigger, err := NewScheduleTrigger(config, logger)
+	trigger, err := schedule.NewTrigger(t.Context(), config, logger)
 	require.NoError(t, err)
 
 	ctx := context.Background()
-	callback := func(ctx context.Context, data map[string]any) error {
+	callback := func(_ context.Context, _ map[string]any) error {
 		return nil
 	}
 
 	// Start multiple times (should not cause issues)
 	for range 3 {
 		err = trigger.Start(ctx, callback)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	// Stop multiple times (should not cause issues)
@@ -429,6 +447,8 @@ func TestScheduleTrigger_ConcurrentStartStop(t *testing.T) {
 }
 
 func TestScheduleTrigger_Interface(t *testing.T) {
+	t.Parallel()
+
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	config := map[string]any{
@@ -437,7 +457,7 @@ func TestScheduleTrigger_Interface(t *testing.T) {
 		"workflow_id": "workflow-interface",
 	}
 
-	trigger, err := NewScheduleTrigger(config, logger)
+	trigger, err := schedule.NewTrigger(t.Context(), config, logger)
 	require.NoError(t, err)
 
 	// Verify it implements the Trigger interface

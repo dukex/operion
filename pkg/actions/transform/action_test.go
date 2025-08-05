@@ -1,4 +1,4 @@
-package transform
+package transform_test
 
 import (
 	"context"
@@ -6,19 +6,24 @@ import (
 	"os"
 	"testing"
 
+	"github.com/dukex/operion/pkg/actions/transform"
 	"github.com/dukex/operion/pkg/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNewTransformActionFactory(t *testing.T) {
-	factory := NewTransformActionFactory()
+	t.Parallel()
+
+	factory := transform.NewActionFactory()
 	assert.NotNil(t, factory)
 	assert.Equal(t, "transform", factory.ID())
 }
 
 func TestTransformActionFactory_Create(t *testing.T) {
-	factory := NewTransformActionFactory()
+	t.Parallel()
+
+	factory := transform.NewActionFactory()
 
 	tests := []struct {
 		name   string
@@ -42,19 +47,23 @@ func TestTransformActionFactory_Create(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			action, err := factory.Create(tt.config)
+			t.Parallel()
+
+			action, err := factory.Create(t.Context(), tt.config)
 			require.NoError(t, err)
 			assert.NotNil(t, action)
-			assert.IsType(t, &TransformAction{}, action)
+			assert.IsType(t, &transform.Action{Expression: ""}, action)
 		})
 	}
 }
 
 func TestNewTransformAction(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		config   map[string]any
-		expected *TransformAction
+		expected *transform.Action
 	}{
 		{
 			name: "basic transform",
@@ -62,14 +71,14 @@ func TestNewTransformAction(t *testing.T) {
 				"id":         "test-1",
 				"expression": "{{ .field }}",
 			},
-			expected: &TransformAction{
+			expected: &transform.Action{
 				Expression: "{{ .field }}",
 			},
 		},
 		{
 			name:   "empty config",
 			config: map[string]any{},
-			expected: &TransformAction{
+			expected: &transform.Action{
 				Expression: "",
 			},
 		},
@@ -78,28 +87,37 @@ func TestNewTransformAction(t *testing.T) {
 			config: map[string]any{
 				"expression": "{ \"name\": {{ .name }}, \"age\": {{ .age }} }",
 			},
-			expected: &TransformAction{
+			expected: &transform.Action{
 				Expression: "{ \"name\": {{ .name }}, \"age\": {{ .age }} }",
 			},
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			action, err := NewTransformAction(tt.config)
+	for _, testingChild := range tests {
+		t.Run(testingChild.name, func(t *testing.T) {
+			t.Parallel()
+
+			action, err := transform.NewAction(testingChild.config)
 			require.NoError(t, err)
-			assert.Equal(t, tt.expected, action)
+			assert.Equal(t, testingChild.expected, action)
 		})
 	}
 }
 
 func TestTransformAction_Execute_SimpleTransform(t *testing.T) {
-	action := &TransformAction{
+	t.Parallel()
+
+	action := &transform.Action{
 		Expression: "{{.step_results.user.name}}",
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
+		ID:          "test-exec-1",
+		TriggerData: map[string]any{},
+		Metadata:    map[string]any{},
+		Variables:   map[string]any{},
+		WorkflowID:  "test-workflow-1",
 		StepResults: map[string]any{
 			"user": map[string]any{
 				"name": "John Doe",
@@ -115,7 +133,7 @@ func TestTransformAction_Execute_SimpleTransform(t *testing.T) {
 }
 
 func TestTransformAction_Execute_WithInput(t *testing.T) {
-	action := &TransformAction{
+	action := &transform.Action{
 		Expression: "{{.step_results.step1.data.temperature}}",
 	}
 
@@ -138,12 +156,19 @@ func TestTransformAction_Execute_WithInput(t *testing.T) {
 }
 
 func TestTransformAction_Execute_ObjectConstruction(t *testing.T) {
-	action := &TransformAction{
+	t.Parallel()
+
+	action := &transform.Action{
 		Expression: `{ "name": "{{.step_results.user.name}}", "status": "active", "age": {{.step_results.user.age}} }`,
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
+		ID:          "test-exec-1",
+		TriggerData: map[string]any{},
+		Metadata:    map[string]any{},
+		Variables:   map[string]any{},
+		WorkflowID:  "test-workflow-1",
 		StepResults: map[string]any{
 			"user": map[string]any{
 				"name": "Alice",
@@ -156,19 +181,31 @@ func TestTransformAction_Execute_ObjectConstruction(t *testing.T) {
 
 	require.NoError(t, err)
 
-	resultMap := result.(map[string]any)
+	resultMap, ok := result.(map[string]any)
+	require.True(t, ok)
+
+	age, ok := resultMap["age"].(float64)
+	require.True(t, ok)
+
 	assert.Equal(t, "Alice", resultMap["name"])
 	assert.Equal(t, "active", resultMap["status"])
-	assert.Equal(t, float64(25), resultMap["age"]) // JSON numbers are parsed as float64
+	assert.InEpsilon(t, float64(25), age, 0.001) // JSON numbers are parsed as float64
 }
 
 func TestTransformAction_Execute_ArrayTransform(t *testing.T) {
-	action := &TransformAction{
+	t.Parallel()
+
+	action := &transform.Action{
 		Expression: "{{index .step_results.users 0 \"name\"}}",
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
+		ID:          "test-exec-1",
+		TriggerData: map[string]any{},
+		Metadata:    map[string]any{},
+		Variables:   map[string]any{},
+		WorkflowID:  "test-workflow-1",
 		StepResults: map[string]any{
 			"users": []any{
 				map[string]any{
@@ -190,12 +227,23 @@ func TestTransformAction_Execute_ArrayTransform(t *testing.T) {
 }
 
 func TestTransformAction_Execute_ComplexTransform(t *testing.T) {
-	action := &TransformAction{
-		Expression: `{ "price": {{if .step_results.api_response.close}}{{.step_results.api_response.close}}{{else}}{{.step_results.api_response.open}}{{end}}, "currency": "USD", "timestamp": "{{.step_results.api_response.time}}" }`,
+	t.Parallel()
+
+	action := &transform.Action{
+		Expression: `{ "price": {{if .step_results.api_response.close}}
+		{{.step_results.api_response.close}}
+		{{else}}
+		{{.step_results.api_response.open}}
+		{{end}}, "currency": "USD", "timestamp": "{{.step_results.api_response.time}}" }`,
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
+		ID:          "test-exec-1",
+		TriggerData: map[string]any{},
+		Metadata:    map[string]any{},
+		Variables:   map[string]any{},
+		WorkflowID:  "test-workflow-1",
 		StepResults: map[string]any{
 			"api_response": map[string]any{
 				"open":  45000.0,
@@ -211,19 +259,31 @@ func TestTransformAction_Execute_ComplexTransform(t *testing.T) {
 
 	require.NoError(t, err)
 
-	resultMap := result.(map[string]any)
-	assert.Equal(t, float64(46000), resultMap["price"]) // JSON numbers are parsed as float64
+	resultMap, ok := result.(map[string]any)
+	assert.True(t, ok)
+
+	price, ok := resultMap["price"].(float64)
+	require.True(t, ok)
+
+	assert.InEpsilon(t, float64(46000), price, 0.001) // JSON numbers are parsed as float64
 	assert.Equal(t, "USD", resultMap["currency"])
 	assert.Equal(t, "2023-10-01T10:00:00Z", resultMap["timestamp"])
 }
 
 func TestTransformAction_Execute_EmptyExpression(t *testing.T) {
-	action := &TransformAction{
+	t.Parallel()
+
+	action := &transform.Action{
 		Expression: "",
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
+		ID:          "test-exec-1",
+		TriggerData: map[string]any{},
+		Metadata:    map[string]any{},
+		Variables:   map[string]any{},
+		WorkflowID:  "test-workflow-1",
 		StepResults: map[string]any{
 			"data": "test",
 		},
@@ -237,12 +297,19 @@ func TestTransformAction_Execute_EmptyExpression(t *testing.T) {
 }
 
 func TestTransformAction_Execute_InvalidExpression(t *testing.T) {
-	action := &TransformAction{
+	t.Parallel()
+
+	action := &transform.Action{
 		Expression: "{{.invalid..syntax}}",
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
+		ID:          "test-exec-1",
+		TriggerData: map[string]any{},
+		Metadata:    map[string]any{},
+		Variables:   map[string]any{},
+		WorkflowID:  "test-workflow-1",
 		StepResults: map[string]any{
 			"data": "test",
 		},
@@ -255,7 +322,9 @@ func TestTransformAction_Execute_InvalidExpression(t *testing.T) {
 }
 
 func TestTransformAction_Execute_WithCancel(t *testing.T) {
-	action := &TransformAction{
+	t.Parallel()
+
+	action := &transform.Action{
 		Expression: "{{.step_results.data}}",
 	}
 
@@ -264,6 +333,11 @@ func TestTransformAction_Execute_WithCancel(t *testing.T) {
 	cancel() // Cancel immediately
 
 	execCtx := models.ExecutionContext{
+		ID:          "test-exec-1",
+		TriggerData: map[string]any{},
+		Metadata:    map[string]any{},
+		Variables:   map[string]any{},
+		WorkflowID:  "test-workflow-1",
 		StepResults: map[string]any{
 			"data": "test value",
 		},

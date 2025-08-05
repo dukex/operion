@@ -2,10 +2,12 @@
 package file
 
 import (
+	"context"
 	"encoding/json"
 	"io/fs"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -23,11 +25,13 @@ func NewFilePersistence(root string) persistence.Persistence {
 	}
 }
 
-func (fp *FilePersistence) Close() error {
+// Close performs any necessary cleanup. For file-based persistence, there is nothing to clean up.
+func (fp *FilePersistence) Close(_ context.Context) error {
 	return nil
 }
 
-func (fp *FilePersistence) HealthCheck() error {
+// HealthCheck checks if the file persistence layer is healthy by verifying the root directory exists.
+func (fp *FilePersistence) HealthCheck(_ context.Context) error {
 	if _, err := os.Stat(fp.root); os.IsNotExist(err) {
 		return os.ErrNotExist
 	}
@@ -35,7 +39,8 @@ func (fp *FilePersistence) HealthCheck() error {
 	return nil
 }
 
-func (fp *FilePersistence) Workflows() ([]*models.Workflow, error) {
+// Workflows retrieves all workflows from the file system.
+func (fp *FilePersistence) Workflows(ctx context.Context) ([]*models.Workflow, error) {
 	root := os.DirFS(fp.root + "/workflows")
 
 	jsonFiles, err := fs.Glob(root, "*.json")
@@ -50,7 +55,7 @@ func (fp *FilePersistence) Workflows() ([]*models.Workflow, error) {
 	workflows := make([]*models.Workflow, 0, len(jsonFiles))
 
 	for _, file := range jsonFiles {
-		workflow, err := fp.WorkflowByID(file[:len(file)-5])
+		workflow, err := fp.WorkflowByID(ctx, file[:len(file)-5])
 		if err != nil {
 			return nil, err
 		}
@@ -61,8 +66,9 @@ func (fp *FilePersistence) Workflows() ([]*models.Workflow, error) {
 	return workflows, nil
 }
 
-func (fp *FilePersistence) WorkflowByID(workflowID string) (*models.Workflow, error) {
-	filePath := path.Join(fp.root+"/workflows", workflowID+".json")
+// WorkflowByID retrieves a workflow by its ID from the file system.
+func (fp *FilePersistence) WorkflowByID(_ context.Context, workflowID string) (*models.Workflow, error) {
+	filePath := filepath.Clean(path.Join(fp.root, "workflows", workflowID+".json"))
 
 	body, err := os.ReadFile(filePath)
 	if err != nil {
@@ -83,8 +89,9 @@ func (fp *FilePersistence) WorkflowByID(workflowID string) (*models.Workflow, er
 	return &workflow, nil
 }
 
-func (fp *FilePersistence) SaveWorkflow(workflow *models.Workflow) error {
-	err := os.MkdirAll(fp.root+"/workflows", 0755)
+// SaveWorkflow saves a workflow to the file system.
+func (fp *FilePersistence) SaveWorkflow(_ context.Context, workflow *models.Workflow) error {
+	err := os.MkdirAll(fp.root+"/workflows", 0750)
 	if err != nil {
 		return err
 	}
@@ -103,13 +110,15 @@ func (fp *FilePersistence) SaveWorkflow(workflow *models.Workflow) error {
 
 	filePath := path.Join(fp.root+"/workflows", workflow.ID+".json")
 
-	return os.WriteFile(filePath, data, 0644)
+	return os.WriteFile(filePath, data, 0600)
 }
 
-func (fp *FilePersistence) DeleteWorkflow(id string) error {
+// DeleteWorkflow removes a workflow by its ID.
+func (fp *FilePersistence) DeleteWorkflow(_ context.Context, id string) error {
 	filePath := path.Join(fp.root+"/workflows", id+".json")
 
 	err := os.Remove(filePath)
+
 	if err != nil && os.IsNotExist(err) {
 		return nil
 	}

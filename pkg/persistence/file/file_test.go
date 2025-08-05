@@ -1,7 +1,6 @@
 package file
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -25,19 +24,12 @@ func TestNewFilePersistence(t *testing.T) {
 
 func TestFilePersistence_Close(t *testing.T) {
 	persistence := NewFilePersistence("./test-data")
-	err := persistence.Close()
+	err := persistence.Close(t.Context())
 	assert.NoError(t, err)
 }
 
 func TestFilePersistence_SaveWorkflow(t *testing.T) {
-	testDir := "./test-persistence"
-
-	defer func() {
-		err := os.RemoveAll(testDir)
-		if err != nil {
-			t.Error(err)
-		}
-	}()
+	testDir := t.TempDir()
 
 	persistence := NewFilePersistence(testDir)
 
@@ -61,7 +53,7 @@ func TestFilePersistence_SaveWorkflow(t *testing.T) {
 	}
 
 	// Save workflow
-	err := persistence.SaveWorkflow(workflow)
+	err := persistence.SaveWorkflow(t.Context(), workflow)
 	require.NoError(t, err)
 
 	// Verify file was created
@@ -74,14 +66,7 @@ func TestFilePersistence_SaveWorkflow(t *testing.T) {
 }
 
 func TestFilePersistence_SaveWorkflow_UpdatesTimestamp(t *testing.T) {
-	testDir := "./test-persistence-update"
-
-	defer func() {
-		err := os.RemoveAll(testDir)
-		if err != nil {
-			t.Error(err)
-		}
-	}()
+	testDir := t.TempDir()
 
 	persistence := NewFilePersistence(testDir)
 
@@ -92,7 +77,7 @@ func TestFilePersistence_SaveWorkflow_UpdatesTimestamp(t *testing.T) {
 	}
 
 	// Save workflow
-	err := persistence.SaveWorkflow(workflow)
+	err := persistence.SaveWorkflow(t.Context(), workflow)
 	require.NoError(t, err)
 
 	// Verify CreatedAt was preserved and UpdatedAt was set
@@ -101,14 +86,7 @@ func TestFilePersistence_SaveWorkflow_UpdatesTimestamp(t *testing.T) {
 }
 
 func TestFilePersistence_WorkflowByID(t *testing.T) {
-	testDir := "./test-persistence-fetch"
-
-	defer func() {
-		err := os.RemoveAll(testDir)
-		if err != nil {
-			t.Error(err)
-		}
-	}()
+	testDir := t.TempDir()
 
 	persistence := NewFilePersistence(testDir)
 
@@ -133,11 +111,11 @@ func TestFilePersistence_WorkflowByID(t *testing.T) {
 	}
 
 	// Save workflow
-	err := persistence.SaveWorkflow(originalWorkflow)
+	err := persistence.SaveWorkflow(t.Context(), originalWorkflow)
 	require.NoError(t, err)
 
 	// Fetch workflow
-	fetchedWorkflow, err := persistence.WorkflowByID("fetch-workflow")
+	fetchedWorkflow, err := persistence.WorkflowByID(t.Context(), "fetch-workflow")
 	require.NoError(t, err)
 	require.NotNil(t, fetchedWorkflow)
 
@@ -151,32 +129,18 @@ func TestFilePersistence_WorkflowByID(t *testing.T) {
 }
 
 func TestFilePersistence_WorkflowByID_NotFound(t *testing.T) {
-	testDir := "./test-persistence-notfound"
-
-	defer func() {
-		err := os.RemoveAll(testDir)
-		if err != nil {
-			t.Error(err)
-		}
-	}()
+	testDir := t.TempDir()
 
 	persistence := NewFilePersistence(testDir)
 
 	// Try to fetch non-existent workflow
-	workflow, err := persistence.WorkflowByID("non-existent")
+	workflow, err := persistence.WorkflowByID(t.Context(), "non-existent")
 	assert.NoError(t, err)
 	assert.Nil(t, workflow)
 }
 
 func TestFilePersistence_Workflows(t *testing.T) {
-	testDir := "./test-persistence-list"
-
-	defer func() {
-		err := os.RemoveAll(testDir)
-		if err != nil {
-			t.Error(err)
-		}
-	}()
+	testDir := t.TempDir()
 
 	persistence := NewFilePersistence(testDir)
 
@@ -201,12 +165,12 @@ func TestFilePersistence_Workflows(t *testing.T) {
 
 	// Save all workflows
 	for _, workflow := range workflows {
-		err := persistence.SaveWorkflow(workflow)
+		err := persistence.SaveWorkflow(t.Context(), workflow)
 		require.NoError(t, err)
 	}
 
 	// Fetch all workflows
-	fetchedWorkflows, err := persistence.Workflows()
+	fetchedWorkflows, err := persistence.Workflows(t.Context())
 	require.NoError(t, err)
 	require.Len(t, fetchedWorkflows, 3)
 
@@ -222,55 +186,30 @@ func TestFilePersistence_Workflows(t *testing.T) {
 }
 
 func TestFilePersistence_Workflows_EmptyDirectory(t *testing.T) {
-	testDir := "./test-persistence-empty"
-
-	defer func() {
-		err := os.RemoveAll(testDir)
-		if err != nil {
-			t.Error(err)
-		}
-	}()
+	testDir := t.TempDir()
 
 	persistence := NewFilePersistence(testDir)
 
-	// Create workflows directory but leave it empty
-	err := os.MkdirAll(filepath.Join(testDir, "workflows"), 0755)
-	require.NoError(t, err)
-
 	// Fetch workflows from empty directory
-	workflows, err := persistence.Workflows()
+	workflows, err := persistence.Workflows(t.Context())
 	require.NoError(t, err)
 	assert.Empty(t, workflows)
 }
 
 func TestFilePersistence_Workflows_NoDirectory(t *testing.T) {
-	testDir := "./test-persistence-nodir"
-
-	defer func() {
-		err := os.RemoveAll(testDir)
-		if err != nil {
-			t.Error(err)
-		}
-	}()
+	testDir := t.TempDir()
 
 	persistence := NewFilePersistence(testDir)
 
 	// Try to fetch workflows without creating directory first
-	workflows, err := persistence.Workflows()
+	workflows, err := persistence.Workflows(t.Context())
 	// fs.Glob on a non-existent directory returns empty slice with no error
 	assert.NoError(t, err)
 	assert.Empty(t, workflows)
 }
 
 func TestFilePersistence_DeleteWorkflow(t *testing.T) {
-	testDir := "./test-persistence-delete"
-
-	defer func() {
-		err := os.RemoveAll(testDir)
-		if err != nil {
-			t.Error(err)
-		}
-	}()
+	testDir := t.TempDir()
 
 	persistence := NewFilePersistence(testDir)
 
@@ -281,7 +220,7 @@ func TestFilePersistence_DeleteWorkflow(t *testing.T) {
 	}
 
 	// Save workflow
-	err := persistence.SaveWorkflow(workflow)
+	err := persistence.SaveWorkflow(t.Context(), workflow)
 	require.NoError(t, err)
 
 	// Verify file exists
@@ -289,7 +228,7 @@ func TestFilePersistence_DeleteWorkflow(t *testing.T) {
 	assert.FileExists(t, filePath)
 
 	// Delete workflow
-	err = persistence.DeleteWorkflow("delete-workflow")
+	err = persistence.DeleteWorkflow(t.Context(), "delete-workflow")
 	require.NoError(t, err)
 
 	// Verify file was deleted
@@ -297,18 +236,11 @@ func TestFilePersistence_DeleteWorkflow(t *testing.T) {
 }
 
 func TestFilePersistence_DeleteWorkflow_NotFound(t *testing.T) {
-	testDir := "./test-persistence-delete-notfound"
-
-	defer func() {
-		err := os.RemoveAll(testDir)
-		if err != nil {
-			t.Error(err)
-		}
-	}()
+	testDir := t.TempDir()
 
 	persistence := NewFilePersistence(testDir)
 
 	// Try to delete non-existent workflow (should not error)
-	err := persistence.DeleteWorkflow("non-existent")
+	err := persistence.DeleteWorkflow(t.Context(), "non-existent")
 	assert.NoError(t, err)
 }

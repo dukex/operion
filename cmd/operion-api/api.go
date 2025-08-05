@@ -1,3 +1,4 @@
+// Package main provides the Operion API server implementation.
 package main
 
 import (
@@ -19,6 +20,7 @@ type API struct {
 	logger      *slog.Logger
 	persistence persistence.Persistence
 	registry    *registry.Registry
+	validate    *validator.Validate
 }
 
 func NewAPI(
@@ -30,14 +32,14 @@ func NewAPI(
 		persistence: persistence,
 		logger:      logger,
 		registry:    registry,
+		validate:    validator.New(validator.WithRequiredStructEnabled()),
 	}
 }
 
 func (a *API) App() *fiber.App {
 	workflowRepository := workflow.NewRepository(a.persistence)
-	validate = validator.New(validator.WithRequiredStructEnabled())
 
-	handlers := web.NewAPIHandlers(workflowRepository, validate, a.registry)
+	handlers := web.NewAPIHandlers(workflowRepository, a.validate, a.registry)
 
 	app := fiber.New()
 	app.Use(cors.New())
@@ -73,6 +75,7 @@ func (a *API) App() *fiber.App {
 
 func (a *API) Start(port int) error {
 	app := a.App()
+
 	err := app.Listen(":" + strconv.Itoa(port))
 
 	return err

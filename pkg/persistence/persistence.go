@@ -2,17 +2,13 @@
 package persistence
 
 import (
+	"context"
 	"time"
 
 	"github.com/dukex/operion/pkg/models"
 )
 
 type Persistence interface {
-	Workflows() ([]*models.Workflow, error)
-	SaveWorkflow(workflow *models.Workflow) error
-	WorkflowByID(id string) (*models.Workflow, error)
-	DeleteWorkflow(id string) error
-
 	// Schedule operations
 	Schedules() ([]*models.Schedule, error)
 	SaveSchedule(schedule *models.Schedule) error
@@ -22,6 +18,12 @@ type Persistence interface {
 	DeleteScheduleBySourceID(sourceID string) error
 	DueSchedules(before time.Time) ([]*models.Schedule, error)
 
-	HealthCheck() error
-	Close() error
+	// Workflows operations
+	Workflows(ctx context.Context) ([]*models.Workflow, error)
+	SaveWorkflow(ctx context.Context, workflow *models.Workflow) error
+	WorkflowByID(ctx context.Context, id string) (*models.Workflow, error)
+	DeleteWorkflow(ctx context.Context, id string) error
+	HealthCheck(ctx context.Context) error
+
+	Close(ctx context.Context) error
 }

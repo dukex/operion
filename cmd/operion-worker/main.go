@@ -59,23 +59,23 @@ func main() {
 
 			logger := log.WithModule("operion-worker").With("workerId", workerID)
 
-			logger.Info("Initializing Operion Worker")
+			logger.InfoContext(ctx, "Initializing Operion Worker")
 
-			registry := cmd.NewRegistry(logger, command.String("plugins-path"))
+			registry := cmd.NewRegistry(ctx, logger, command.String("plugins-path"))
 
 			eventBus := cmd.NewEventBus(command.String("event-bus"), logger)
 			defer func() {
 				err := eventBus.Close()
 				if err != nil {
-					logger.Error("Failed to close event bus", "error", err)
+					logger.ErrorContext(ctx, "Failed to close event bus", "error", err)
 				}
 			}()
 
-			persistence := cmd.NewPersistence(logger, command.String("database-url"))
+			persistence := cmd.NewPersistence(ctx, logger, command.String("database-url"))
 			defer func() {
-				err := persistence.Close()
+				err := persistence.Close(ctx)
 				if err != nil {
-					logger.Error("Failed to close persistence", "error", err)
+					logger.ErrorContext(ctx, "Failed to close persistence", "error", err)
 				}
 			}()
 
@@ -89,7 +89,7 @@ func main() {
 
 			err := worker.Start(ctx)
 			if err != nil {
-				logger.Error("Failed to start event-driven worker", "error", err)
+				logger.ErrorContext(ctx, "Failed to start event-driven worker", "error", err)
 			}
 
 			return nil

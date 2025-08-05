@@ -3,6 +3,7 @@ package log
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -16,12 +17,29 @@ type LogAction struct {
 	Level   string
 }
 
+type LogLevel int
+
+const (
+	Debug LogLevel = iota
+	Info
+	Warn
+	Error
+)
+
+var logLevelName = map[LogLevel]string{
+	Debug: "debug",
+	Info:  "info",
+	Warn:  "warn",
+	Error: "error",
+}
+
+// NewLogAction creates a new LogAction instance with the provided configuration.
 func NewLogAction(config map[string]any) *LogAction {
 	message, _ := config["message"].(string)
 	level, _ := config["level"].(string)
 
 	if level == "" {
-		level = "info"
+		level = logLevelName[Info]
 	}
 
 	return &LogAction{
@@ -30,7 +48,12 @@ func NewLogAction(config map[string]any) *LogAction {
 	}
 }
 
-func (a *LogAction) Execute(ctx context.Context, executionCtx models.ExecutionContext, logger *slog.Logger) (any, error) {
+// Execute performs the logging action, rendering the message with templating if needed.
+func (a *LogAction) Execute(
+	ctx context.Context,
+	executionCtx models.ExecutionContext,
+	logger *slog.Logger,
+) (any, error) {
 	logger = logger.With("action_type", "log")
 
 	// Render the message with templating if needed
@@ -43,16 +66,16 @@ func (a *LogAction) Execute(ctx context.Context, executionCtx models.ExecutionCo
 
 	// Log the message at the specified level
 	switch a.Level {
-	case "debug":
-		logger.Debug(message)
-	case "info":
-		logger.Info(message)
-	case "warn", "warning":
-		logger.Warn(message)
-	case "error":
-		logger.Error(message)
+	case logLevelName[Debug]:
+		logger.DebugContext(ctx, message)
+	case logLevelName[Info]:
+		logger.InfoContext(ctx, message)
+	case logLevelName[Warn]:
+		logger.WarnContext(ctx, message)
+	case logLevelName[Error]:
+		logger.ErrorContext(ctx, message)
 	default:
-		logger.Info(message)
+		logger.InfoContext(ctx, message)
 	}
 
 	result := map[string]any{
@@ -61,4 +84,23 @@ func (a *LogAction) Execute(ctx context.Context, executionCtx models.ExecutionCo
 	}
 
 	return result, nil
+}
+
+var errMessageInvalid = errors.New("message is required")
+var errLevelInvalid = errors.New("level is required")
+
+// Validate checks if the LogAction configuration is valid.
+func (a *LogAction) Validate(_ context.Context) error {
+	if a.Message == "" {
+		return errMessageInvalid
+	}
+
+	if a.Level != logLevelName[Debug] &&
+		a.Level != logLevelName[Info] &&
+		a.Level != logLevelName[Warn] &&
+		a.Level != logLevelName[Error] {
+		return fmt.Errorf("invalid log level '%s': %w", a.Level, errLevelInvalid)
+	}
+
+	return nil
 }

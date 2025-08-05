@@ -2,6 +2,7 @@
 package cmd
 
 import (
+	"context"
 	"log/slog"
 
 	"github.com/dukex/operion/pkg/actions/httprequest"
@@ -15,8 +16,8 @@ import (
 	"github.com/dukex/operion/pkg/triggers/webhook"
 )
 
-func registreActionPlugins(reg *registry.Registry, pluginsPath string) {
-	actionPlugins, err := reg.LoadActionPlugins(pluginsPath)
+func registreActionPlugins(ctx context.Context, reg *registry.Registry, pluginsPath string) {
+	actionPlugins, err := reg.LoadActionPlugins(ctx, pluginsPath)
 	if err != nil {
 		panic(err)
 	}
@@ -26,8 +27,8 @@ func registreActionPlugins(reg *registry.Registry, pluginsPath string) {
 	}
 }
 
-func registreTriggerPlugins(reg *registry.Registry, pluginsPath string) {
-	triggerPlugins, err := reg.LoadTriggerPlugins(pluginsPath)
+func registreTriggerPlugins(ctx context.Context, reg *registry.Registry, pluginsPath string) {
+	triggerPlugins, err := reg.LoadTriggerPlugins(ctx, pluginsPath)
 	if err != nil {
 		panic(err)
 	}
@@ -37,8 +38,8 @@ func registreTriggerPlugins(reg *registry.Registry, pluginsPath string) {
 	}
 }
 
-func registerSourceProviderPlugins(reg *registry.Registry, pluginsPath string) {
-	sourceProviderPlugins, err := reg.LoadSourceProviderPlugins(pluginsPath)
+func registerSourceProviderPlugins(ctx context.Context, reg *registry.Registry, pluginsPath string) {
+	sourceProviderPlugins, err := reg.LoadSourceProviderPlugins(ctx, pluginsPath)
 	if err != nil {
 		panic(err)
 	}
@@ -49,23 +50,16 @@ func registerSourceProviderPlugins(reg *registry.Registry, pluginsPath string) {
 }
 
 func registerNativeActions(reg *registry.Registry) {
-	reg.RegisterAction(httprequest.NewHTTPRequestActionFactory())
-	reg.RegisterAction(transform.NewTransformActionFactory())
-	reg.RegisterAction(logaction.NewLogActionFactory())
+	reg.RegisterAction(httprequest.NewActionFactory())
+	reg.RegisterAction(transform.NewActionFactory())
+	reg.RegisterAction(logaction.NewActionFactory())
 }
 
 func registerNativeTriggers(reg *registry.Registry) {
-	scheduleTrigger := schedule.NewScheduleTriggerFactory()
-	reg.RegisterTrigger(scheduleTrigger)
-
-	webhookTrigger := webhook.NewWebhookTriggerFactory()
-	reg.RegisterTrigger(webhookTrigger)
-
-	queueTrigger := queue.NewQueueTriggerFactory()
-	reg.RegisterTrigger(queueTrigger)
-
-	kafkaTrigger := kafka.NewKafkaTriggerFactory()
-	reg.RegisterTrigger(kafkaTrigger)
+	reg.RegisterTrigger(schedule.NewTriggerFactory())
+	reg.RegisterTrigger(webhook.NewTriggerFactory())
+	reg.RegisterTrigger(queue.NewTriggerFactory())
+	reg.RegisterTrigger(kafka.NewTriggerFactory())
 }
 
 func registerNativeSourceProviders(reg *registry.Registry) {
@@ -73,15 +67,15 @@ func registerNativeSourceProviders(reg *registry.Registry) {
 	reg.RegisterSourceProvider(schedulerProvider)
 }
 
-func NewRegistry(log *slog.Logger, pluginsPath string) *registry.Registry {
+func NewRegistry(ctx context.Context, log *slog.Logger, pluginsPath string) *registry.Registry {
 	reg := registry.NewRegistry(log)
 
-	registreActionPlugins(reg, pluginsPath)
-	registreTriggerPlugins(reg, pluginsPath)
-	registerSourceProviderPlugins(reg, pluginsPath)
+	registreActionPlugins(ctx, reg, pluginsPath)
+	registreTriggerPlugins(ctx, reg, pluginsPath)
+	registerSourceProviderPlugins(ctx, reg, pluginsPath)
 
-	registerNativeActions(reg)
 	registerNativeTriggers(reg)
+	registerNativeActions(reg)
 	registerNativeSourceProviders(reg)
 
 	return reg

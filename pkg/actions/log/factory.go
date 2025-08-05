@@ -1,28 +1,36 @@
 package log
 
 import (
+	"context"
+
 	"github.com/dukex/operion/pkg/protocol"
 )
 
-func NewLogActionFactory() *LogActionFactory {
-	return &LogActionFactory{}
+// ActionFactory is the factory for creating LogAction instances.
+type ActionFactory struct{}
+
+// NewActionFactory creates a new instance of ActionFactory.
+func NewActionFactory() *ActionFactory {
+	return &ActionFactory{}
 }
 
-type LogActionFactory struct{}
-
-func (*LogActionFactory) ID() string {
+// ID returns the unique identifier for the action factory.
+func (*ActionFactory) ID() string {
 	return "log"
 }
 
-func (*LogActionFactory) Name() string {
+// Name returns the name of the action factory.
+func (*ActionFactory) Name() string {
 	return "Log"
 }
 
-func (*LogActionFactory) Description() string {
+// Description returns a brief description of the action.
+func (*ActionFactory) Description() string {
 	return "Logs a message at a specified level. Supports templating for dynamic content."
 }
 
-func (f *LogActionFactory) Create(config map[string]any) (protocol.Action, error) {
+// Create creates a new LogAction instance with the provided configuration.
+func (f *ActionFactory) Create(_ context.Context, config map[string]any) (protocol.Action, error) {
 	if config == nil {
 		config = map[string]any{}
 	}
@@ -30,7 +38,8 @@ func (f *LogActionFactory) Create(config map[string]any) (protocol.Action, error
 	return NewLogAction(config), nil
 }
 
-func (f *LogActionFactory) Schema() map[string]any {
+// Schema returns the JSON schema for the action configuration.
+func (f *ActionFactory) Schema() map[string]any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{

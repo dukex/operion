@@ -72,7 +72,7 @@ func main() {
 			defer func() {
 				err := tracerProvider.Shutdown(ctx)
 				if err != nil {
-					slog.Error("Failed to shutdown tracer provider", "error", err)
+					slog.ErrorContext(ctx, "Failed to shutdown tracer provider", "error", err)
 				}
 			}()
 
@@ -83,23 +83,23 @@ func main() {
 
 			logger := log.WithModule("operion-dispatcher").With("dispatcher_id", dispatcherID)
 
-			logger.Info("Initializing Operion Dispatcher", "dispatcher_id", dispatcherID)
+			logger.InfoContext(ctx, "Initializing Operion Dispatcher", "dispatcher_id", dispatcherID)
 
-			registry := cmd.NewRegistry(logger, command.String("plugins-path"))
+			registry := cmd.NewRegistry(ctx, logger, command.String("plugins-path"))
 
 			eventBus := cmd.NewEventBus(command.String("event-bus"), logger)
 			defer func() {
 				err := eventBus.Close()
 				if err != nil {
-					logger.Error("Failed to close event bus", "error", err)
+					logger.ErrorContext(ctx, "Failed to close event bus", "error", err)
 				}
 			}()
 
-			persistence := cmd.NewPersistence(logger, command.String("database-url"))
+			persistence := cmd.NewPersistence(ctx, logger, command.String("database-url"))
 			defer func() {
-				err := persistence.Close()
+				err := persistence.Close(ctx)
 				if err != nil {
-					logger.Error("Failed to close persistence", "error", err)
+					logger.ErrorContext(ctx, "Failed to close persistence", "error", err)
 				}
 			}()
 

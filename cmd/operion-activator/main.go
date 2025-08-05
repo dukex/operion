@@ -84,9 +84,9 @@ func main() {
 				}
 			}()
 
-			persistence := cmd.NewPersistence(logger, command.String("database-url"))
+			persistence := cmd.NewPersistence(ctx, logger, command.String("database-url"))
 			defer func() {
-				if err := persistence.Close(); err != nil {
+				if err := persistence.Close(ctx); err != nil {
 					logger.Error("Failed to close persistence", "error", err)
 				}
 			}()

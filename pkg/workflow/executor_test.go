@@ -9,9 +9,7 @@ import (
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/dukex/operion/pkg/actions/httprequest"
 	logaction "github.com/dukex/operion/pkg/actions/log"
-	"github.com/dukex/operion/pkg/actions/transform"
 	"github.com/dukex/operion/pkg/channels/gochannel"
 	"github.com/dukex/operion/pkg/eventbus"
 	"github.com/dukex/operion/pkg/events"
@@ -23,7 +21,7 @@ import (
 )
 
 func TestNewExecutor(t *testing.T) {
-	persistence := file.NewFilePersistence("./test-data")
+	persistence := file.NewFilePersistence(t.TempDir())
 	registry := createTestRegistry()
 
 	executor := NewExecutor(persistence, registry)
@@ -31,49 +29,44 @@ func TestNewExecutor(t *testing.T) {
 	assert.NotNil(t, executor)
 	assert.Equal(t, persistence, executor.persistence)
 	assert.Equal(t, registry, executor.registry)
-
-	cleanupTestDirectory("./test-data")
 }
 
 func TestExecutor_Start_EmptyWorkflow(t *testing.T) {
 	ctx := context.Background()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	persistence := file.NewFilePersistence("./test-data")
+	persistence := file.NewFilePersistence(t.TempDir())
 	registry := createTestRegistry()
 	executor := NewExecutor(persistence, registry)
 
 	// Create workflow with no steps
 	workflow := &models.Workflow{
-		ID:    "empty-workflow",
 		Name:  "Empty Test Workflow",
 		Steps: []*models.WorkflowStep{},
 	}
 
 	// Save workflow
 	repo := NewRepository(persistence)
-	_, err := repo.Create(workflow)
+	workflowCreated, err := repo.Create(t.Context(), workflow)
 	require.NoError(t, err)
 
 	// Start execution
-	events, err := executor.Start(ctx, logger, "empty-workflow", map[string]any{})
+	events, err := executor.Start(ctx, logger, workflowCreated.ID, map[string]any{})
 
 	assert.Error(t, err)
 	assert.Nil(t, events)
 	assert.Contains(t, err.Error(), "has no steps")
 
 	// Clean up
-	err = repo.Delete("empty-workflow")
+	err = repo.Delete(t.Context(), workflowCreated.ID)
 	assert.NoError(t, err)
-
-	cleanupTestDirectory("./test-data")
 }
 
 func TestExecutor_Start_Success(t *testing.T) {
 	ctx := context.Background()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	persistence := file.NewFilePersistence("./test-data")
+	persistence := file.NewFilePersistence(t.TempDir())
 	registry := createTestRegistry()
 	executor := NewExecutor(persistence, registry)
 
@@ -97,11 +90,11 @@ func TestExecutor_Start_Success(t *testing.T) {
 
 	// Save workflow
 	repo := NewRepository(persistence)
-	_, err := repo.Create(workflow)
+	workflowCreated, err := repo.Create(t.Context(), workflow)
 	require.NoError(t, err)
 
 	// Start execution
-	eventList, err := executor.Start(ctx, logger, "single-step-workflow", map[string]any{
+	eventList, err := executor.Start(ctx, logger, workflowCreated.ID, map[string]any{
 		"trigger": "test",
 	})
 
@@ -111,22 +104,21 @@ func TestExecutor_Start_Success(t *testing.T) {
 	// Verify the returned event
 	stepAvailableEvent := eventList[0].(*events.WorkflowStepAvailable)
 	assert.Equal(t, events.WorkflowStepAvailableEvent, stepAvailableEvent.GetType())
-	assert.Equal(t, "single-step-workflow", stepAvailableEvent.WorkflowID)
+	assert.Equal(t, workflowCreated.ID, stepAvailableEvent.WorkflowID)
 	assert.Equal(t, "step-1", stepAvailableEvent.StepID)
 	assert.NotNil(t, stepAvailableEvent.ExecutionContext)
 	assert.Equal(t, "test", stepAvailableEvent.ExecutionContext.TriggerData["trigger"])
 
 	// Clean up
-	err = repo.Delete("single-step-workflow")
+	err = repo.Delete(t.Context(), workflowCreated.ID)
 	assert.NoError(t, err)
-	cleanupTestDirectory("./test-data")
 }
 
 func TestExecutor_ExecuteStep_LogAction(t *testing.T) {
 	ctx := context.Background()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	persistence := file.NewFilePersistence("./test-data")
+	persistence := file.NewFilePersistence(t.TempDir())
 	registry := createTestRegistry()
 	executor := NewExecutor(persistence, registry)
 
@@ -191,15 +183,13 @@ func TestExecutor_ExecuteStep_LogAction(t *testing.T) {
 
 	// Verify execution context was updated
 	assert.Contains(t, execCtx.StepResults, "log_action")
-
-	cleanupTestDirectory("./test-data")
 }
 
 func TestExecutor_ExecuteStep_WithNextStep(t *testing.T) {
 	ctx := context.Background()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	persistence := file.NewFilePersistence("./test-data")
+	persistence := file.NewFilePersistence(t.TempDir())
 	registry := createTestRegistry()
 	executor := NewExecutor(persistence, registry)
 
@@ -238,11 +228,10 @@ func TestExecutor_ExecuteStep_WithNextStep(t *testing.T) {
 		Metadata:    make(map[string]any),
 	}
 
-	// Execute first step
 	eventList, err := executor.ExecuteStep(ctx, logger, workflow, execCtx, "step-1")
 
 	require.NoError(t, err)
-	require.Len(t, eventList, 2) // StepFinished + StepAvailable
+	require.Len(t, eventList, 2)
 
 	// Events can be in different order, so check by type
 	var (
@@ -268,15 +257,13 @@ func TestExecutor_ExecuteStep_WithNextStep(t *testing.T) {
 	assert.Equal(t, events.WorkflowStepAvailableEvent, stepAvailableEvent.GetType())
 	assert.Equal(t, "step-2", stepAvailableEvent.StepID)
 	assert.Equal(t, execCtx, stepAvailableEvent.ExecutionContext)
-
-	cleanupTestDirectory("./test-data")
 }
 
 func TestExecutor_ExecuteStep_DisabledStep(t *testing.T) {
 	ctx := context.Background()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	persistence := file.NewFilePersistence("./test-data")
+	persistence := file.NewFilePersistence(t.TempDir())
 	registry := createTestRegistry()
 	executor := NewExecutor(persistence, registry)
 
@@ -312,15 +299,13 @@ func TestExecutor_ExecuteStep_DisabledStep(t *testing.T) {
 	// Verify workflow finished event (disabled step treated as success)
 	workflowFinishedEvent := eventList[0].(*events.WorkflowFinished)
 	assert.Equal(t, events.WorkflowFinishedEvent, workflowFinishedEvent.GetType())
-
-	cleanupTestDirectory("./test-data")
 }
 
 func TestExecutor_ExecuteStep_StepNotFound(t *testing.T) {
 	ctx := context.Background()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	persistence := file.NewFilePersistence("./test-data")
+	persistence := file.NewFilePersistence(t.TempDir())
 	registry := createTestRegistry()
 	executor := NewExecutor(persistence, registry)
 
@@ -344,15 +329,13 @@ func TestExecutor_ExecuteStep_StepNotFound(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, eventList)
 	assert.Contains(t, err.Error(), "step non-existent-step not found")
-
-	cleanupTestDirectory("./test-data")
 }
 
 func TestExecutor_ExecuteStep_Action_failure(t *testing.T) {
 	ctx := context.Background()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	persistence := file.NewFilePersistence("./test-data")
+	persistence := file.NewFilePersistence(t.TempDir())
 	registry := createTestRegistry()
 	executor := NewExecutor(persistence, registry)
 
@@ -401,8 +384,6 @@ func TestExecutor_ExecuteStep_Action_failure(t *testing.T) {
 	assert.Equal(t, "failing-step", stepFailedEvent.StepID)
 	assert.Equal(t, "non-existent-action", stepFailedEvent.ActionID)
 	assert.Contains(t, stepFailedEvent.Error, "not registered")
-
-	cleanupTestDirectory("./test-data")
 }
 
 func TestExecutor_IntegrationWithEventBus(t *testing.T) {
@@ -419,7 +400,7 @@ func TestExecutor_IntegrationWithEventBus(t *testing.T) {
 	eventBus := eventbus.NewWatermillEventBus(pub, sub)
 
 	// Create test components
-	persistence := file.NewFilePersistence("./test-data")
+	persistence := file.NewFilePersistence(t.TempDir())
 	registry := createTestRegistry()
 	executor := NewExecutor(persistence, registry)
 
@@ -429,7 +410,6 @@ func TestExecutor_IntegrationWithEventBus(t *testing.T) {
 		Name: "Integration Test Workflow",
 		Steps: []*models.WorkflowStep{
 			{
-				ID:       "step-1",
 				Name:     "First Step",
 				ActionID: "log",
 				UID:      "first_step",
@@ -443,7 +423,7 @@ func TestExecutor_IntegrationWithEventBus(t *testing.T) {
 
 	// Save workflow
 	repo := NewRepository(persistence)
-	_, err = repo.Create(workflow)
+	workflowCreated, err := repo.Create(t.Context(), workflow)
 	require.NoError(t, err)
 
 	// Set up event handling
@@ -487,7 +467,7 @@ func TestExecutor_IntegrationWithEventBus(t *testing.T) {
 	require.NoError(t, err)
 
 	// Start workflow execution
-	eventList, err := executor.Start(ctx, logger, "integration-workflow", map[string]any{
+	eventList, err := executor.Start(ctx, logger, workflowCreated.ID, map[string]any{
 		"integration": "test",
 	})
 	require.NoError(t, err)
@@ -495,7 +475,7 @@ func TestExecutor_IntegrationWithEventBus(t *testing.T) {
 
 	// Publish the initial event
 	for _, event := range eventList {
-		err = eventBus.Publish(ctx, "integration-workflow", event)
+		err = eventBus.Publish(ctx, workflowCreated.ID, event)
 		require.NoError(t, err)
 	}
 
@@ -512,10 +492,8 @@ func TestExecutor_IntegrationWithEventBus(t *testing.T) {
 	err = eventBus.Close()
 	assert.NoError(t, err)
 
-	err = repo.Delete("integration-workflow")
+	err = repo.Delete(t.Context(), workflowCreated.ID)
 	assert.NoError(t, err)
-
-	cleanupTestDirectory("./test-data")
 }
 
 // Helper function to create a test registry with native actions.
@@ -524,9 +502,7 @@ func createTestRegistry() *registry.Registry {
 	reg := registry.NewRegistry(logger)
 
 	// Register native actions
-	reg.RegisterAction(logaction.NewLogActionFactory())
-	reg.RegisterAction(transform.NewTransformActionFactory())
-	reg.RegisterAction(httprequest.NewHTTPRequestActionFactory())
+	reg.RegisterAction(logaction.NewActionFactory())
 
 	return reg
 }

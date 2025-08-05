@@ -1,32 +1,41 @@
 package httprequest
 
 import (
+	"context"
+
 	"github.com/dukex/operion/pkg/protocol"
 )
 
-func NewHTTPRequestActionFactory() *HTTPRequestActionFactory {
-	return &HTTPRequestActionFactory{}
+// ActionFactory creates HTTPRequestAction instances.
+type ActionFactory struct{}
+
+// NewActionFactory creates a new HTTPRequestActionFactory.
+func NewActionFactory() *ActionFactory {
+	return &ActionFactory{}
 }
 
-type HTTPRequestActionFactory struct{}
-
-func (h *HTTPRequestActionFactory) Create(config map[string]any) (protocol.Action, error) {
-	return NewHTTPRequestAction(config)
+// Create creates a new HTTPRequestAction from the given configuration.
+func (h *ActionFactory) Create(_ context.Context, config map[string]any) (protocol.Action, error) {
+	return NewAction(config)
 }
 
-func (h *HTTPRequestActionFactory) ID() string {
+// ID returns the unique identifier for the action.
+func (h *ActionFactory) ID() string {
 	return "http_request"
 }
 
-func (h *HTTPRequestActionFactory) Name() string {
+// Name returns the name of the action.
+func (h *ActionFactory) Name() string {
 	return "HTTP Request"
 }
 
-func (h *HTTPRequestActionFactory) Description() string {
+// Description returns a brief description of the action.
+func (h *ActionFactory) Description() string {
 	return "Performs an HTTP request to a specified URL with optional headers and body."
 }
 
-func (h *HTTPRequestActionFactory) Schema() map[string]any {
+// Schema returns the JSON schema for configuring this action.
+func (h *ActionFactory) Schema() map[string]any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -83,24 +92,24 @@ func (h *HTTPRequestActionFactory) Schema() map[string]any {
 						"description": "Number of retry attempts on failure",
 						"default":     0,
 						"minimum":     0,
-						"maximum":     5,
+						"maximum":     5, //nolint:mnd // example value
 					},
 					"delay": map[string]any{
 						"type":        "integer",
 						"description": "Delay between retry attempts in milliseconds",
-						"default":     1000,
-						"minimum":     100,
-						"maximum":     30000,
+						"default":     1000,  //nolint:mnd // example value
+						"minimum":     100,   //nolint:mnd // example value
+						"maximum":     30000, //nolint:mnd // example value
 					},
 				},
 				"examples": []map[string]any{
 					{
-						"attempts": 3,
-						"delay":    1000,
+						"attempts": 3,    //nolint:mnd // example value
+						"delay":    1000, //nolint:mnd // example value
 					},
 					{
-						"attempts": 2,
-						"delay":    2000,
+						"attempts": 2,    //nolint:mnd // example value
+						"delay":    2000, //nolint:mnd // example value
 					},
 				},
 			},
