@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -12,6 +13,12 @@ import (
 )
 
 var validate *validator.Validate
+
+// Static error variables for linter compliance
+var (
+	ErrInvalidTriggers = errors.New("invalid triggers found")
+	ErrInvalidSteps    = errors.New("invalid steps found")
+)
 
 func NewValidateCommand() *cli.Command {
 	return &cli.Command{
@@ -119,11 +126,11 @@ func NewValidateCommand() *cli.Command {
 			fmt.Printf("  Invalid steps: %d\n", invalidSteps)
 
 			if invalidTriggers > 0 {
-				return fmt.Errorf("found %d invalid triggers", invalidTriggers)
+				return fmt.Errorf("%w: %d", ErrInvalidTriggers, invalidTriggers)
 			}
 
 			if invalidSteps > 0 {
-				return fmt.Errorf("found %d invalid steps", invalidSteps)
+				return fmt.Errorf("%w: %d", ErrInvalidSteps, invalidSteps)
 			}
 
 			fmt.Println("All triggers and steps are valid for activator processing! ✅")

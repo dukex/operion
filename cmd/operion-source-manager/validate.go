@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -12,6 +13,12 @@ import (
 )
 
 var validate *validator.Validate
+
+// Static error variables for linter compliance
+var (
+	ErrInvalidTriggers               = errors.New("invalid triggers found")
+	ErrInvalidSourceProviderConfigs  = errors.New("invalid source provider configurations found")
+)
 
 func NewValidateCommand() *cli.Command {
 	return &cli.Command{
@@ -139,11 +146,11 @@ func NewValidateCommand() *cli.Command {
 			fmt.Printf("  Invalid source providers: %d\n", invalidProviders)
 
 			if invalidTriggers > 0 {
-				return fmt.Errorf("found %d invalid triggers", invalidTriggers)
+				return fmt.Errorf("%w: %d", ErrInvalidTriggers, invalidTriggers)
 			}
 
 			if invalidProviders > 0 {
-				return fmt.Errorf("found %d invalid source provider configurations", invalidProviders)
+				return fmt.Errorf("%w: %d", ErrInvalidSourceProviderConfigs, invalidProviders)
 			}
 
 			fmt.Println("All source provider configurations are valid! ✅")
