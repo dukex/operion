@@ -19,17 +19,17 @@ import (
 )
 
 type SourceProviderManager struct {
-	id                   string
-	sourceEventBus       eventbus.SourceEventBus
-	runningProviders     map[string]protocol.SourceProvider
-	providerMutex        sync.RWMutex
-	ctx                  context.Context
-	cancel               context.CancelFunc
-	logger               *slog.Logger
-	persistence          persistence.Persistence
-	registry             *registry.Registry
-	restartCount         int
-	providerFilter       []string
+	id               string
+	sourceEventBus   eventbus.SourceEventBus
+	runningProviders map[string]protocol.SourceProvider
+	providerMutex    sync.RWMutex
+	ctx              context.Context
+	cancel           context.CancelFunc
+	logger           *slog.Logger
+	persistence      persistence.Persistence
+	registry         *registry.Registry
+	restartCount     int
+	providerFilter   []string
 }
 
 func NewSourceProviderManager(
@@ -139,8 +139,8 @@ func (spm *SourceProviderManager) createSchedulesFromWorkflows() error {
 			if cronExpr, exists := trigger.Configuration["cron_expression"]; exists {
 				sourceID := trigger.SourceID
 				if sourceID == "" {
-					spm.logger.Warn("Trigger has cron_expression but no source_id", 
-						"workflow_id", wf.ID, 
+					spm.logger.Warn("Trigger has cron_expression but no source_id",
+						"workflow_id", wf.ID,
 						"trigger_id", trigger.ID)
 					continue
 				}
@@ -148,8 +148,8 @@ func (spm *SourceProviderManager) createSchedulesFromWorkflows() error {
 				// Check if schedule already exists
 				existingSchedule, err := spm.persistence.ScheduleBySourceID(sourceID)
 				if err != nil {
-					spm.logger.Error("Failed to check existing schedule", 
-						"source_id", sourceID, 
+					spm.logger.Error("Failed to check existing schedule",
+						"source_id", sourceID,
 						"error", err)
 					continue
 				}
@@ -162,31 +162,31 @@ func (spm *SourceProviderManager) createSchedulesFromWorkflows() error {
 				// Create new schedule
 				cronStr, ok := cronExpr.(string)
 				if !ok {
-					spm.logger.Warn("Invalid cron_expression type", 
-						"source_id", sourceID, 
+					spm.logger.Warn("Invalid cron_expression type",
+						"source_id", sourceID,
 						"type", cronExpr)
 					continue
 				}
 
 				schedule, err := models.NewSchedule(sourceID, sourceID, cronStr)
 				if err != nil {
-					spm.logger.Error("Failed to create schedule", 
-						"source_id", sourceID, 
-						"cron", cronStr, 
+					spm.logger.Error("Failed to create schedule",
+						"source_id", sourceID,
+						"cron", cronStr,
 						"error", err)
 					continue
 				}
 
 				if err := spm.persistence.SaveSchedule(schedule); err != nil {
-					spm.logger.Error("Failed to save schedule", 
-						"source_id", sourceID, 
+					spm.logger.Error("Failed to save schedule",
+						"source_id", sourceID,
 						"error", err)
 					continue
 				}
 
-				spm.logger.Info("Created schedule", 
-					"source_id", sourceID, 
-					"cron", cronStr, 
+				spm.logger.Info("Created schedule",
+					"source_id", sourceID,
+					"cron", cronStr,
 					"next_due_at", schedule.NextDueAt)
 				scheduleCount++
 			}
@@ -200,9 +200,9 @@ func (spm *SourceProviderManager) createSchedulesFromWorkflows() error {
 func (spm *SourceProviderManager) startSourceProviders() error {
 	// Get available source providers from registry
 	availableProviders := spm.registry.GetAvailableSourceProviders()
-	
+
 	var providersToStart []protocol.SourceProviderFactory
-	
+
 	if len(spm.providerFilter) == 0 {
 		// No filter - start all available providers
 		providersToStart = availableProviders
@@ -218,7 +218,7 @@ func (spm *SourceProviderManager) startSourceProviders() error {
 		}
 	}
 
-	spm.logger.Info("Starting source providers", 
+	spm.logger.Info("Starting source providers",
 		"available_count", len(availableProviders),
 		"filtered_count", len(providersToStart),
 		"filter", spm.providerFilter)
@@ -229,8 +229,8 @@ func (spm *SourceProviderManager) startSourceProviders() error {
 		go func(factory protocol.SourceProviderFactory) {
 			defer wg.Done()
 			if err := spm.startSourceProvider(factory); err != nil {
-				spm.logger.Error("Failed to start source provider", 
-					"provider_id", factory.ID(), 
+				spm.logger.Error("Failed to start source provider",
+					"provider_id", factory.ID(),
 					"error", err)
 			}
 		}(factory)
@@ -242,10 +242,10 @@ func (spm *SourceProviderManager) startSourceProviders() error {
 
 func (spm *SourceProviderManager) startSourceProvider(factory protocol.SourceProviderFactory) error {
 	providerID := factory.ID()
-	
+
 	// Create provider configuration
 	var sourceConfigs []map[string]any
-	
+
 	if providerID == "scheduler" {
 		// Create single orchestrator instance (no source-specific configuration)
 		config := map[string]any{
@@ -274,12 +274,12 @@ func (spm *SourceProviderManager) startSourceProvider(factory protocol.SourcePro
 			}
 			instanceKey = sourceID
 		}
-		
+
 		provider, err := spm.registry.CreateSourceProvider(providerID, config)
 		if err != nil {
-			spm.logger.Error("Failed to create source provider", 
-				"provider_id", providerID, 
-				"instance_key", instanceKey, 
+			spm.logger.Error("Failed to create source provider",
+				"provider_id", providerID,
+				"instance_key", instanceKey,
 				"error", err)
 			continue
 		}
@@ -291,15 +291,15 @@ func (spm *SourceProviderManager) startSourceProvider(factory protocol.SourcePro
 		// Create callback - scheduler orchestrator handles all sources, others handle specific source
 		var callback protocol.SourceEventCallback
 		if providerID == "scheduler" {
-			callback = spm.createSourceEventCallback("")  // Empty source_id for orchestrator
+			callback = spm.createSourceEventCallback("") // Empty source_id for orchestrator
 		} else {
 			callback = spm.createSourceEventCallback(instanceKey)
 		}
 
 		if err := provider.Start(spm.ctx, callback); err != nil {
-			spm.logger.Error("Failed to start source provider", 
-				"provider_id", providerID, 
-				"instance_key", instanceKey, 
+			spm.logger.Error("Failed to start source provider",
+				"provider_id", providerID,
+				"instance_key", instanceKey,
 				"error", err)
 
 			spm.providerMutex.Lock()
@@ -308,8 +308,8 @@ func (spm *SourceProviderManager) startSourceProvider(factory protocol.SourcePro
 			continue
 		}
 
-		spm.logger.Info("Started source provider", 
-			"provider_id", providerID, 
+		spm.logger.Info("Started source provider",
+			"provider_id", providerID,
 			"instance_key", instanceKey)
 	}
 
@@ -319,10 +319,10 @@ func (spm *SourceProviderManager) startSourceProvider(factory protocol.SourcePro
 func (spm *SourceProviderManager) createSourceEventCallback(sourceID string) protocol.SourceEventCallback {
 	return func(ctx context.Context, sourceID, providerType, eventType string, data map[string]any) error {
 		logger := spm.logger.With(
-			"source_id", sourceID, 
-			"provider_type", providerType, 
+			"source_id", sourceID,
+			"provider_type", providerType,
 			"event_type", eventType)
-		
+
 		logger.Info("Source event received, publishing to source event bus")
 
 		// Create SourceEvent
@@ -335,11 +335,11 @@ func (spm *SourceProviderManager) createSourceEventCallback(sourceID string) pro
 		}
 
 		// Publish to source event bus
-		logger.Info("Publishing source event", 
+		logger.Info("Publishing source event",
 			"source_id", sourceEvent.SourceID,
 			"provider_id", sourceEvent.ProviderID,
 			"event_type", sourceEvent.EventType)
-			
+
 		if err := spm.sourceEventBus.PublishSourceEvent(ctx, sourceEvent); err != nil {
 			logger.Error("Failed to publish source event", "error", err)
 			return err
@@ -362,8 +362,8 @@ func (spm *SourceProviderManager) stop() {
 	for sourceID, provider := range spm.runningProviders {
 		spm.logger.Info("Stopping source provider", "source_id", sourceID)
 		if err := provider.Stop(context.Background()); err != nil {
-			spm.logger.Error("Error stopping source provider", 
-				"source_id", sourceID, 
+			spm.logger.Error("Error stopping source provider",
+				"source_id", sourceID,
 				"error", err)
 		}
 	}

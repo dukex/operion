@@ -3,7 +3,7 @@ package persistence
 
 import (
 	"time"
-	
+
 	"github.com/dukex/operion/pkg/models"
 )
 

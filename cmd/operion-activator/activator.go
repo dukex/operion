@@ -23,14 +23,14 @@ type TriggerMatch struct {
 
 // Activator consumes source events and triggers workflows based on registered triggers
 type Activator struct {
-	id              string
-	eventBus        eventbus.EventBus
-	sourceEventBus  eventbus.SourceEventBus
-	persistence     persistence.Persistence
-	logger          *slog.Logger
-	ctx             context.Context
-	cancel          context.CancelFunc
-	restartCount    int
+	id             string
+	eventBus       eventbus.EventBus
+	sourceEventBus eventbus.SourceEventBus
+	persistence    persistence.Persistence
+	logger         *slog.Logger
+	ctx            context.Context
+	cancel         context.CancelFunc
+	restartCount   int
 }
 
 // NewActivator creates a new Activator instance
@@ -96,7 +96,7 @@ func (a *Activator) restart() {
 	backoff := time.Duration(a.restartCount) * time.Second
 	a.logger.Info("Restarting activator...", "backoff", backoff)
 	time.Sleep(backoff)
-	
+
 	a.Start(ctx)
 }
 
@@ -106,7 +106,7 @@ func (a *Activator) run() {
 
 	// Set up source event subscription
 	a.processSourceEvents()
-	
+
 	// Wait for context cancellation - the subscription runs in background goroutines
 	<-a.ctx.Done()
 	a.logger.Info("Activator context cancelled, stopping...")
@@ -115,28 +115,28 @@ func (a *Activator) run() {
 // processSourceEvents handles incoming source events and triggers workflows
 func (a *Activator) processSourceEvents() {
 	a.logger.Info("Setting up source event subscription")
-	
+
 	// Register handler for source events
 	err := a.sourceEventBus.HandleSourceEvents(func(ctx context.Context, sourceEvent *events.SourceEvent) error {
-		a.logger.Info("Received source event", 
+		a.logger.Info("Received source event",
 			"source_id", sourceEvent.SourceID,
 			"provider_id", sourceEvent.ProviderID,
 			"event_type", sourceEvent.EventType)
 		return a.handleSourceEvent(sourceEvent)
 	})
-	
+
 	if err != nil {
 		a.logger.Error("Failed to register source event handler", "error", err)
 		return
 	}
-	
+
 	// Start subscribing to source events
 	err = a.sourceEventBus.SubscribeToSourceEvents(a.ctx)
 	if err != nil {
 		a.logger.Error("Failed to start source event subscription", "error", err)
 		return
 	}
-	
+
 	a.logger.Info("Successfully subscribed to source events - waiting for events...")
 }
 
@@ -168,9 +168,9 @@ func (a *Activator) handleSourceEvent(sourceEvent *events.SourceEvent) error {
 	// Publish WorkflowTriggered event for each matching trigger
 	for _, matchInfo := range matchingTriggers {
 		if err := a.publishWorkflowTriggered(matchInfo.WorkflowID, matchInfo.Trigger.ID, sourceEvent.EventData); err != nil {
-			logger.Error("Failed to publish WorkflowTriggered event", 
-				"workflow_id", matchInfo.WorkflowID, 
-				"trigger_id", matchInfo.Trigger.ID, 
+			logger.Error("Failed to publish WorkflowTriggered event",
+				"workflow_id", matchInfo.WorkflowID,
+				"trigger_id", matchInfo.Trigger.ID,
 				"error", err)
 			// Continue processing other triggers even if one fails
 		}

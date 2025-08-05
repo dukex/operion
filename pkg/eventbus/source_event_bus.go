@@ -27,4 +27,3 @@ type SourceEventBus interface {
 	SourceEventSubscriber
 	Close() error
 }
-

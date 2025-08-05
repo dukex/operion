@@ -13,17 +13,17 @@ import (
 )
 
 type Registry struct {
-	logger                 *slog.Logger
-	actionFactories        map[string]protocol.ActionFactory
-	triggerFactories       map[string]protocol.TriggerFactory
+	logger                  *slog.Logger
+	actionFactories         map[string]protocol.ActionFactory
+	triggerFactories        map[string]protocol.TriggerFactory
 	sourceProviderFactories map[string]protocol.SourceProviderFactory
 }
 
 func NewRegistry(log *slog.Logger) *Registry {
 	return &Registry{
-		logger:                 log,
-		actionFactories:        make(map[string]protocol.ActionFactory),
-		triggerFactories:       make(map[string]protocol.TriggerFactory),
+		logger:                  log,
+		actionFactories:         make(map[string]protocol.ActionFactory),
+		triggerFactories:        make(map[string]protocol.TriggerFactory),
 		sourceProviderFactories: make(map[string]protocol.SourceProviderFactory),
 	}
 }

@@ -56,7 +56,7 @@ func (k *kafkaSourceEventBus) PublishSourceEvent(ctx context.Context, sourceEven
 	msg.Metadata.Set("provider_id", sourceEvent.ProviderID)
 	msg.Metadata.Set("event_type", string(sourceEvent.EventType))
 
-	k.logger.Debug("Publishing source event to Kafka", 
+	k.logger.Debug("Publishing source event to Kafka",
 		"source_id", sourceEvent.SourceID,
 		"provider_id", sourceEvent.ProviderID,
 		"event_type", sourceEvent.EventType,
@@ -118,7 +118,7 @@ func (k *kafkaSourceEventBus) SubscribeToSourceEvents(ctx context.Context) error
 			success := true
 			for _, handler := range k.handlers {
 				if err := handler(ctx, &sourceEvent); err != nil {
-					k.logger.Error("Source event handler failed", 
+					k.logger.Error("Source event handler failed",
 						"error", err,
 						"source_id", sourceEvent.SourceID,
 						"handler_index", len(k.handlers))
@@ -144,16 +144,16 @@ func (k *kafkaSourceEventBus) SubscribeToSourceEvents(ctx context.Context) error
 // Close shuts down the Kafka source event bus
 func (k *kafkaSourceEventBus) Close() error {
 	k.logger.Info("Closing Kafka source event bus")
-	
+
 	var publisherErr, subscriberErr error
-	
+
 	if k.publisher != nil {
 		publisherErr = k.publisher.Close()
 		if publisherErr != nil {
 			k.logger.Error("Failed to close Kafka publisher", "error", publisherErr)
 		}
 	}
-	
+
 	if k.subscriber != nil {
 		subscriberErr = k.subscriber.Close()
 		if subscriberErr != nil {

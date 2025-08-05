@@ -85,7 +85,6 @@ func (s *SchedulerSourceProvider) Validate() error {
 	return nil
 }
 
-
 // pollSchedules is the centralized poller that runs every minute
 func (s *SchedulerSourceProvider) pollSchedules(ctx context.Context) {
 	for {
@@ -104,7 +103,7 @@ func (s *SchedulerSourceProvider) pollSchedules(ctx context.Context) {
 // This is the core orchestrator method that handles schedules with different cron expressions
 func (s *SchedulerSourceProvider) processDueSchedules() {
 	now := time.Now().UTC()
-	
+
 	// Query database for ALL schedules that are due, regardless of cron expression
 	dueSchedules, err := s.getDueSchedules(now)
 	if err != nil {
@@ -117,31 +116,31 @@ func (s *SchedulerSourceProvider) processDueSchedules() {
 	}
 
 	for _, schedule := range dueSchedules {
-		s.logger.Info("Processing due schedule", 
-			"source_id", schedule.SourceID, 
+		s.logger.Info("Processing due schedule",
+			"source_id", schedule.SourceID,
 			"cron_expression", schedule.CronExpression,
 			"due_at", schedule.NextDueAt)
 
 		// Publish source event (includes schedule's own cron expression)
 		if err := s.publishScheduleEvent(schedule); err != nil {
-			s.logger.Error("Failed to publish schedule event", 
-				"source_id", schedule.SourceID, 
+			s.logger.Error("Failed to publish schedule event",
+				"source_id", schedule.SourceID,
 				"error", err)
 			continue
 		}
 
 		// Update next execution time using schedule's own cron expression
 		if err := schedule.UpdateNextDueAt(); err != nil {
-			s.logger.Error("Failed to update next due at", 
-				"source_id", schedule.SourceID, 
+			s.logger.Error("Failed to update next due at",
+				"source_id", schedule.SourceID,
 				"error", err)
 			continue
 		}
 
 		// Save updated schedule back to database
 		if err := s.updateSchedule(schedule); err != nil {
-			s.logger.Error("Failed to update schedule", 
-				"source_id", schedule.SourceID, 
+			s.logger.Error("Failed to update schedule",
+				"source_id", schedule.SourceID,
 				"error", err)
 		}
 	}
@@ -157,8 +156,8 @@ func (s *SchedulerSourceProvider) updateSchedule(schedule *models.Schedule) erro
 	if err := s.persistence.SaveSchedule(schedule); err != nil {
 		return err
 	}
-	s.logger.Info("Schedule updated", 
-		"source_id", schedule.SourceID, 
+	s.logger.Info("Schedule updated",
+		"source_id", schedule.SourceID,
 		"next_due_at", schedule.NextDueAt)
 	return nil
 }
@@ -166,7 +165,7 @@ func (s *SchedulerSourceProvider) updateSchedule(schedule *models.Schedule) erro
 // publishScheduleEvent publishes a source event for a due schedule
 func (s *SchedulerSourceProvider) publishScheduleEvent(schedule *models.Schedule) error {
 	now := time.Now()
-	
+
 	eventData := map[string]any{
 		"cron_expression": schedule.CronExpression,
 		"due_at":          schedule.NextDueAt.Format("2006-01-02 15:04"),

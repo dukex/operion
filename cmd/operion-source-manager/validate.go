@@ -111,13 +111,13 @@ func NewValidateCommand() *cli.Command {
 						// Validate that the source provider exists
 						if factory, exists := sourceProviders[sourceProviderType]; exists {
 							fmt.Printf("    ✅ VALID: Source provider '%s' found\n", sourceProviderType)
-							
+
 							// Validate configuration schema if possible
 							schema := factory.Schema()
 							if schema != nil {
 								fmt.Printf("    📋 Configuration schema available\n")
 							}
-							
+
 							validProviders++
 						} else {
 							fmt.Printf("    ❌ INVALID: Source provider '%s' not found\n", sourceProviderType)

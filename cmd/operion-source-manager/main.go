@@ -85,7 +85,7 @@ func main() {
 
 			logger := log.WithModule("operion-source-manager").With("manager_id", managerID)
 
-			logger.Info("Initializing Operion Source Provider Manager", 
+			logger.Info("Initializing Operion Source Provider Manager",
 				"manager_id", managerID,
 				"providers", providerFilter)
 
