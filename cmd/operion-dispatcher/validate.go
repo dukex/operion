@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"maps"
@@ -44,7 +45,8 @@ func NewValidateCommand() *cli.Command {
 			persistence := cmd.NewPersistence(logger, command.String("database-url"))
 
 			defer func() {
-				if err := persistence.Close(); err != nil {
+				err := persistence.Close()
+				if err != nil {
 					return
 				}
 			}()
@@ -71,6 +73,7 @@ func NewValidateCommand() *cli.Command {
 				if len(workflow.WorkflowTriggers) == 0 {
 					fmt.Printf("    ❌ INVALID: No trigger found for this workflow.\n")
 					invalidTriggers++
+
 					continue
 				}
 
@@ -91,9 +94,15 @@ func NewValidateCommand() *cli.Command {
 
 					err = validate.Struct(workflowTrigger)
 					if err != nil {
-						validationErrors := err.(validator.ValidationErrors)
+						validationErrors := func() validator.ValidationErrors {
+							var target validator.ValidationErrors
+							_ = errors.As(err, &target)
+
+							return target
+						}()
 						fmt.Printf("    ❌ INVALID: %v\n", validationErrors)
 						invalidTriggers++
+
 						continue
 					}
 
@@ -114,7 +123,12 @@ func NewValidateCommand() *cli.Command {
 					err = validate.Struct(step)
 
 					if err != nil {
-						validationErrors := err.(validator.ValidationErrors)
+						validationErrors := func() validator.ValidationErrors {
+							var target validator.ValidationErrors
+							_ = errors.As(err, &target)
+
+							return target
+						}()
 
 						fmt.Printf("    ❌ INVALID: %v\n", validationErrors)
 						invalidSteps++
@@ -142,6 +156,7 @@ func NewValidateCommand() *cli.Command {
 			}
 
 			fmt.Println("All triggers and steps are valid! ✅")
+
 			return nil
 		},
 	}

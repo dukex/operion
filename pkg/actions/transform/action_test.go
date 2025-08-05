@@ -132,6 +132,7 @@ func TestTransformAction_Execute_ObjectConstruction(t *testing.T) {
 	result, err := action.Execute(context.Background(), execCtx, logger)
 
 	require.NoError(t, err)
+
 	resultMap := result.(map[string]any)
 	assert.Equal(t, "Alice", resultMap["name"])
 	assert.Equal(t, "active", resultMap["status"])
@@ -186,6 +187,7 @@ func TestTransformAction_Execute_ComplexTransform(t *testing.T) {
 	result, err := action.Execute(context.Background(), execCtx, logger)
 
 	require.NoError(t, err)
+
 	resultMap := result.(map[string]any)
 	assert.Equal(t, float64(46000), resultMap["price"]) // JSON numbers are parsed as float64
 	assert.Equal(t, "USD", resultMap["currency"])
@@ -208,7 +210,7 @@ func TestTransformAction_Execute_EmptyExpression(t *testing.T) {
 
 	// Empty expression should return empty string
 	require.NoError(t, err)
-	assert.Equal(t, "", result)
+	assert.Empty(t, result)
 }
 
 func TestTransformAction_Execute_InvalidExpression(t *testing.T) {

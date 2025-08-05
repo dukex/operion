@@ -21,8 +21,10 @@ func TestHTTPRequestAction_EnhancedTemplating(t *testing.T) {
 	if err := os.Setenv("TEST_API_TOKEN", "secret123"); err != nil {
 		t.Fatal(err)
 	}
+
 	defer func() {
-		if err := os.Unsetenv("TEST_API_TOKEN"); err != nil {
+		err := os.Unsetenv("TEST_API_TOKEN")
+		if err != nil {
 			t.Error(err)
 		}
 	}()
@@ -35,11 +37,12 @@ func TestHTTPRequestAction_EnhancedTemplating(t *testing.T) {
 		// Verify headers were templated correctly
 		assert.Equal(t, "Bearer secret123", r.Header.Get("Authorization"))
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
-		assert.Equal(t, "test-workflow", r.Header.Get("X-Workflow-ID"))
+		assert.Equal(t, "test-workflow", r.Header.Get("X-Workflow-Id"))
 
 		// Verify body was templated correctly
-		if r.Method == "POST" {
+		if r.Method == http.MethodPost {
 			var body map[string]any
+
 			err := json.NewDecoder(r.Body).Decode(&body)
 			require.NoError(t, err)
 
@@ -52,10 +55,12 @@ func TestHTTPRequestAction_EnhancedTemplating(t *testing.T) {
 		// Return success response
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		if err := json.NewEncoder(w).Encode(map[string]any{
+
+		err := json.NewEncoder(w).Encode(map[string]any{
 			"success":  true,
 			"order_id": "ORD-456",
-		}); err != nil {
+		})
+		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	}))
@@ -148,8 +153,10 @@ func TestHTTPRequestAction_EnvironmentVariableAccess(t *testing.T) {
 	if err := os.Setenv("TEST_API_KEY", "test-key-123"); err != nil {
 		t.Fatal(err)
 	}
+
 	defer func() {
-		if err := os.Unsetenv("TEST_API_KEY"); err != nil {
+		err := os.Unsetenv("TEST_API_KEY")
+		if err != nil {
 			t.Error(err)
 		}
 	}()
@@ -159,7 +166,9 @@ func TestHTTPRequestAction_EnvironmentVariableAccess(t *testing.T) {
 		assert.Equal(t, "Bearer test-key-123", r.Header.Get("Authorization"))
 
 		w.WriteHeader(http.StatusOK)
-		if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
+
+		err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	}))

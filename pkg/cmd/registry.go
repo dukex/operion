@@ -18,8 +18,8 @@ func registreActionPlugins(reg *registry.Registry, pluginsPath string) {
 	actionPlugins, err := reg.LoadActionPlugins(pluginsPath)
 	if err != nil {
 		panic(err)
-
 	}
+
 	for _, plugin := range actionPlugins {
 		reg.RegisterAction(plugin)
 	}
@@ -30,6 +30,7 @@ func registreTriggerPlugins(reg *registry.Registry, pluginsPath string) {
 	if err != nil {
 		panic(err)
 	}
+
 	for _, plugin := range triggerPlugins {
 		reg.RegisterTrigger(plugin)
 	}

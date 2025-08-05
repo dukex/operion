@@ -24,7 +24,8 @@ func (r *Repository) HealthCheck() (string, bool) {
 		return "Persistence layer not initialized", false
 	}
 
-	if err := r.persistence.HealthCheck(); err != nil {
+	err := r.persistence.HealthCheck()
+	if err != nil {
 		return "Persistence layer is unhealthy: " + err.Error(), false
 	}
 
@@ -33,7 +34,6 @@ func (r *Repository) HealthCheck() (string, bool) {
 
 func (r *Repository) FetchAll() ([]*models.Workflow, error) {
 	workflows, err := r.persistence.Workflows()
-
 	if err != nil {
 		return make([]*models.Workflow, 0), err
 	}
@@ -43,7 +43,6 @@ func (r *Repository) FetchAll() ([]*models.Workflow, error) {
 
 func (r *Repository) FetchByID(id string) (*models.Workflow, error) {
 	workflow, err := r.persistence.WorkflowByID(id)
-
 	if err != nil {
 		return nil, err
 	}

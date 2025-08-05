@@ -45,6 +45,7 @@ func NewDispatcherManager(
 	webhookPort int,
 ) *DispatcherManager {
 	webhookManager := webhook.GetWebhookServerManager(webhookPort, logger)
+
 	return &DispatcherManager{
 		id:              id,
 		logger:          logger.With("module", "operion-dispatcher", "dispatcher_id", id),
@@ -101,24 +102,30 @@ func (dm *DispatcherManager) run() {
 
 		time.Sleep(5 * time.Second)
 		dm.restart()
+
 		return
 	}
 
 	var wg sync.WaitGroup
 
 	dm.logger.Info("Fetched workflows", "count", len(workflows))
+
 	for _, workflow := range workflows {
 		dm.logger.Info("Processing workflow", "workflow_id", workflow.ID, "workflow_name", workflow.Name)
 
 		if workflow.Status != models.WorkflowStatusActive {
 			dm.logger.With("workflow_id", workflow.ID).Info("Skipping inactive workflow")
+
 			continue
 		}
 
 		wg.Add(1)
+
 		go func(wf *models.Workflow) {
 			defer wg.Done()
-			if err := dm.startWorkflowTriggers(wf); err != nil {
+
+			err := dm.startWorkflowTriggers(wf)
+			if err != nil {
 				dm.logger.Error("Failed to start triggers for workflow", "workflow_id", wf.ID, "error", err)
 			}
 		}(workflow)
@@ -131,8 +138,10 @@ func (dm *DispatcherManager) Start(ctx context.Context) {
 	dm.ctx, dm.cancel = context.WithCancel(ctx)
 	dm.logger.Info("Starting dispatcher manager")
 
-	if err := dm.webhookManager.Start(dm.ctx); err != nil {
+	err := dm.webhookManager.Start(dm.ctx)
+	if err != nil {
 		dm.logger.Error("Failed to start webhook server manager", "error", err)
+
 		return
 	}
 
@@ -158,6 +167,7 @@ func (dm *DispatcherManager) startWorkflowTriggers(workflow *models.Workflow) er
 		trigger, err := dm.registry.CreateTrigger(workflowTrigger.TriggerID, config)
 		if err != nil {
 			wtLogger.Error("Failed to create trigger", "error", err)
+
 			continue
 		}
 
@@ -173,12 +183,15 @@ func (dm *DispatcherManager) startWorkflowTriggers(workflow *models.Workflow) er
 			dm.triggerMutex.Lock()
 			delete(dm.runningTriggers, workflowTrigger.TriggerID)
 			dm.triggerMutex.Unlock()
+
 			continue
 		}
 
 		logger.Info("Started trigger successfully")
 	}
+
 	<-dm.ctx.Done()
+
 	return nil
 }
 
@@ -194,12 +207,15 @@ func (tm *DispatcherManager) createTriggerCallback(workflowID, triggerID string)
 		}
 		event.ID = tm.eventBus.GenerateID()
 
-		if err := tm.eventBus.Publish(ctx, workflowID, event); err != nil {
+		err := tm.eventBus.Publish(ctx, workflowID, event)
+		if err != nil {
 			logger.Error("Failed to publish trigger event", "error", err)
+
 			return err
 		}
 
 		logger.With("event_id", event.ID).Info("Successfully published trigger event")
+
 		return nil
 	}
 }
@@ -213,12 +229,15 @@ func (dm *DispatcherManager) stop() {
 
 	for triggerID, trigger := range dm.runningTriggers {
 		dm.logger.Info("Stopping trigger", "triggerId", triggerID)
-		if err := trigger.Stop(context.Background()); err != nil {
+
+		err := trigger.Stop(context.Background())
+		if err != nil {
 			dm.logger.Error("Error stopping trigger %s: %v", triggerID, err)
 		}
 	}
 
-	if err := dm.webhookManager.Stop(context.Background()); err != nil {
+	err := dm.webhookManager.Stop(context.Background())
+	if err != nil {
 		dm.logger.Error("Error stopping webhook server manager", "error", err)
 	}
 

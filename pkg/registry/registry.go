@@ -55,6 +55,7 @@ func (r *Registry) CreateAction(actionType string, config map[string]any) (proto
 	if !ok {
 		return nil, fmt.Errorf("action type '%s' not registered", actionType)
 	}
+
 	return factory.Create(config)
 }
 
@@ -63,10 +64,11 @@ func (r *Registry) CreateTrigger(triggerID string, config map[string]any) (proto
 	if !ok {
 		return nil, fmt.Errorf("trigger ID '%s' not registered", triggerID)
 	}
+
 	return factory.Create(config, r.logger)
 }
 
-// GetAvailableActions returns all available action types sorted by ID
+// GetAvailableActions returns all available action types sorted by ID.
 func (r *Registry) GetAvailableActions() []protocol.ActionFactory {
 	actions := make([]protocol.ActionFactory, 0, len(r.actionFactories))
 	for _, action := range r.actionFactories {
@@ -76,12 +78,13 @@ func (r *Registry) GetAvailableActions() []protocol.ActionFactory {
 	return actions
 }
 
-// GetAvailableTriggers returns all available trigger types
+// GetAvailableTriggers returns all available trigger types.
 func (r *Registry) GetAvailableTriggers() []protocol.TriggerFactory {
 	triggers := make([]protocol.TriggerFactory, 0, len(r.triggerFactories))
 	for _, trigger := range r.triggerFactories {
 		triggers = append(triggers, trigger)
 	}
+
 	return triggers
 }
 
@@ -135,6 +138,7 @@ func (r *Registry) GetAvailableTriggers() []protocol.TriggerFactory {
 func loadPlugin[T any](logger *slog.Logger, pluginsPath string, symbolName string) ([]T, error) {
 	rootPath := pluginsPath + "/" + strings.ToLower(symbolName) + "s"
 	root := os.DirFS(rootPath)
+
 	pluginPathList, err := fs.Glob(root, "**/*.so")
 	if err != nil {
 		return nil, err
@@ -144,6 +148,7 @@ func loadPlugin[T any](logger *slog.Logger, pluginsPath string, symbolName strin
 	l.Info("Loading plugins")
 
 	pluginList := make([]T, 0, len(pluginPathList))
+
 	for _, p := range pluginPathList {
 		plg, err := plugin.Open(rootPath + "/" + p)
 		if err != nil {

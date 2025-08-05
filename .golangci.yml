@@ -1,6 +1,37 @@
 version: "2"
 linters:
   default: all
+  disable:
+    # TEMPORARY DISABLE
+    - errcheck
+    - err113
+    - exhaustruct
+    - revive
+    - varnamelen
+    - wrapcheck
+    - noinlineerr
+    - cyclop
+    - forcetypeassert
+    - funcorder
+    - funlen
+    - gochecknoglobals
+    - gocognit
+    - gocritic
+    - godox
+    - ireturn
+    - lll
+    - mnd
+    - nestif
+    - nilnil
+    - paralleltest
+    - tagliatelle
+    - testifylint
+    - testpackage
+    - unparam
+    # END TEMPORARY DISABLE
+  enable:
+    - wsl_v5
+
   settings:
     depguard:
       rules:

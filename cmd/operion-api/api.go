@@ -74,5 +74,6 @@ func (a *API) App() *fiber.App {
 func (a *API) Start(port int) error {
 	app := a.App()
 	err := app.Listen(":" + strconv.Itoa(port))
+
 	return err
 }

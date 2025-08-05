@@ -60,7 +60,6 @@ func TestRender_ComplexExpression(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, "Alice", resultMap["user_name"])
 	assert.Equal(t, 2.0, resultMap["total_orders"])
-
 }
 
 func TestRender_WithStepResults(t *testing.T) {
@@ -111,8 +110,10 @@ func TestRender_EnvironmentVariables(t *testing.T) {
 	if err := os.Setenv("TEST_VAR", "test_value"); err != nil {
 		t.Fatal(err)
 	}
+
 	defer func() {
-		if err := os.Unsetenv("TEST_VAR"); err != nil {
+		err := os.Unsetenv("TEST_VAR")
+		if err != nil {
 			t.Error(err)
 		}
 	}()
@@ -127,7 +128,7 @@ func TestRender_EnvironmentVariables(t *testing.T) {
 	assert.Error(t, err) // Expected to fail with current implementation
 }
 
-// Test for workflow variables integration
+// Test for workflow variables integration.
 func TestRender_WorkflowVariables(t *testing.T) {
 	// Simulate complete execution context with variables
 	data := map[string]any{

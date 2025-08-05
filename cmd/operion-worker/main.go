@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 
 	"github.com/dukex/operion/pkg/cmd"
@@ -55,7 +54,7 @@ func main() {
 
 			workerID := command.String("worker-id")
 			if workerID == "" {
-				workerID = fmt.Sprintf("worker-%s", uuid.New().String()[:8])
+				workerID = "worker-" + uuid.New().String()[:8]
 			}
 
 			logger := log.WithModule("operion-worker").With("workerId", workerID)
@@ -66,14 +65,16 @@ func main() {
 
 			eventBus := cmd.NewEventBus(command.String("event-bus"), logger)
 			defer func() {
-				if err := eventBus.Close(); err != nil {
+				err := eventBus.Close()
+				if err != nil {
 					logger.Error("Failed to close event bus", "error", err)
 				}
 			}()
 
 			persistence := cmd.NewPersistence(logger, command.String("database-url"))
 			defer func() {
-				if err := persistence.Close(); err != nil {
+				err := persistence.Close()
+				if err != nil {
 					logger.Error("Failed to close persistence", "error", err)
 				}
 			}()
@@ -86,7 +87,8 @@ func main() {
 				registry,
 			)
 
-			if err := worker.Start(ctx); err != nil {
+			err := worker.Start(ctx)
+			if err != nil {
 				logger.Error("Failed to start event-driven worker", "error", err)
 			}
 
@@ -94,7 +96,8 @@ func main() {
 		},
 	}
 
-	if err := cmd.Run(context.Background(), os.Args); err != nil {
+	err := cmd.Run(context.Background(), os.Args)
+	if err != nil {
 		panic(err)
 	}
 }

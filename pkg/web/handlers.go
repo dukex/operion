@@ -89,6 +89,7 @@ func (h *APIHandlers) GetWorkflows(c fiber.Ctx) error {
 	if err != nil {
 		return internalError(c, err)
 	}
+
 	return c.JSON(workflows)
 }
 
@@ -104,6 +105,7 @@ func (h *APIHandlers) GetWorkflow(c fiber.Ctx) error {
 		if err.Error() == "workflow not found" {
 			return notFound(c, "Workflow not found")
 		}
+
 		return internalError(c, err)
 	}
 

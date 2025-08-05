@@ -4,6 +4,7 @@ package httprequest
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -15,7 +16,7 @@ import (
 	"github.com/dukex/operion/pkg/template"
 )
 
-// HTTPRequestAction performs an HTTP request
+// HTTPRequestAction performs an HTTP request.
 type HTTPRequestAction struct {
 	ID       string
 	Method   string
@@ -36,21 +37,26 @@ type RetryConfig struct {
 func NewHTTPRequestAction(config map[string]any) (*HTTPRequestAction, error) {
 	id, _ := config["id"].(string)
 	method, _ := config["method"].(string)
+
 	host, ok := config["host"].(string)
 	if !ok {
-		return nil, fmt.Errorf("missing or invalid 'host' in configuration")
+		return nil, errors.New("missing or invalid 'host' in configuration")
 	}
+
 	path, _ := config["path"].(string)
 	if len(path) == 0 {
 		path = "/"
 	}
+
 	protocol, _ := config["protocol"].(string)
 	if protocol == "" {
 		protocol = "http"
 	}
+
 	body, _ := config["body"].(string)
 
 	headers := make(map[string]string)
+
 	if headersConfig, exists := config["headers"]; exists {
 		if headersMap, ok := headersConfig.(map[string]any); ok {
 			for k, v := range headersMap {
@@ -62,11 +68,13 @@ func NewHTTPRequestAction(config map[string]any) (*HTTPRequestAction, error) {
 	}
 
 	retry := RetryConfig{Attempts: 1, Delay: 0}
+
 	if retryConfig, exists := config["retry"]; exists {
 		if retryMap, ok := retryConfig.(map[string]any); ok {
 			if attempts, ok := retryMap["attempts"].(float64); ok {
 				retry.Attempts = int(attempts)
 			}
+
 			if delay, ok := retryMap["delay"].(float64); ok {
 				retry.Delay = int(delay)
 			}
@@ -96,8 +104,10 @@ func (a *HTTPRequestAction) Execute(ctx context.Context, executionCtx models.Exe
 	)
 	logger.Info("Executing HTTPRequestAction")
 
-	var lastErr error
-	var resp *http.Response
+	var (
+		lastErr error
+		resp    *http.Response
+	)
 
 	for attempt := 1; attempt <= a.Retry.Attempts; attempt++ {
 		if attempt > 1 {
@@ -108,10 +118,12 @@ func (a *HTTPRequestAction) Execute(ctx context.Context, executionCtx models.Exe
 		reqCtx, cancel := context.WithTimeout(ctx, a.Timeout)
 
 		var bodyReader io.Reader
+
 		if a.Body != "" {
 			body, err := template.RenderWithContext(a.Body, &executionCtx)
 			if err != nil {
 				cancel()
+
 				return nil, fmt.Errorf("failed to render body template: %w", err)
 			}
 
@@ -122,6 +134,7 @@ func (a *HTTPRequestAction) Execute(ctx context.Context, executionCtx models.Exe
 				bodyBytes, err = json.Marshal(body)
 				if err != nil {
 					cancel()
+
 					return nil, fmt.Errorf("failed to marshal body: %w", err)
 				}
 			}
@@ -133,8 +146,10 @@ func (a *HTTPRequestAction) Execute(ctx context.Context, executionCtx models.Exe
 		pathResult, err := template.RenderWithContext(a.Path, &executionCtx)
 		if err != nil {
 			cancel()
+
 			return nil, fmt.Errorf("failed to render path template: %w", err)
 		}
+
 		path := fmt.Sprintf("%v", pathResult)
 
 		url := fmt.Sprintf("%s://%s%s", a.Protocol, a.Host, path)
@@ -144,7 +159,9 @@ func (a *HTTPRequestAction) Execute(ctx context.Context, executionCtx models.Exe
 		req, err := http.NewRequestWithContext(reqCtx, a.Method, url, bodyReader)
 		if err != nil {
 			cancel()
+
 			lastErr = fmt.Errorf("failed to create http request: %w", err)
+
 			continue
 		}
 
@@ -152,9 +169,12 @@ func (a *HTTPRequestAction) Execute(ctx context.Context, executionCtx models.Exe
 			headerResult, err := template.RenderWithContext(value, &executionCtx)
 			if err != nil {
 				cancel()
+
 				lastErr = fmt.Errorf("failed to render header '%s' template: %w", key, err)
+
 				continue
 			}
+
 			headerValue := fmt.Sprintf("%v", headerResult)
 
 			req.Header.Set(key, headerValue)
@@ -162,10 +182,12 @@ func (a *HTTPRequestAction) Execute(ctx context.Context, executionCtx models.Exe
 
 		client := &http.Client{}
 		resp, err = client.Do(req)
+
 		cancel()
 
 		if err != nil {
 			lastErr = fmt.Errorf("http request failed: %w", err)
+
 			continue
 		}
 
@@ -176,6 +198,7 @@ func (a *HTTPRequestAction) Execute(ctx context.Context, executionCtx models.Exe
 			}
 
 			lastErr = fmt.Errorf("server error (status %d), retrying", resp.StatusCode)
+
 			continue
 		}
 
@@ -185,6 +208,7 @@ func (a *HTTPRequestAction) Execute(ctx context.Context, executionCtx models.Exe
 	if resp == nil {
 		return nil, fmt.Errorf("all retry attempts failed, last error: %w", lastErr)
 	}
+
 	defer func() {
 		_ = resp.Body.Close()
 	}()
@@ -195,9 +219,11 @@ func (a *HTTPRequestAction) Execute(ctx context.Context, executionCtx models.Exe
 	}
 
 	var body any
+
 	err = json.Unmarshal(bodyBytes, &body)
 	if err != nil {
 		body = string(bodyBytes)
+
 		logger.Warn("Failed to parse response as JSON, returning as string", "error", err)
 	}
 
@@ -208,5 +234,6 @@ func (a *HTTPRequestAction) Execute(ctx context.Context, executionCtx models.Exe
 	}
 
 	logger.Info(fmt.Sprintf("HTTPRequestAction completed with status %d, body length: %d", resp.StatusCode, len(bodyBytes)))
+
 	return result, nil
 }

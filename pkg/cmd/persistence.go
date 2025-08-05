@@ -25,7 +25,6 @@ func NewPersistence(logger *slog.Logger, databaseUrl string) persistence.Persist
 	default:
 		return file.NewFilePersistence(databaseUrl)
 	}
-
 }
 
 func parsePersistenceProvider(databaseUrl string) string {

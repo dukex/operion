@@ -198,12 +198,18 @@ func TestScheduleTrigger_StartStop(t *testing.T) {
 	// Test start and stop
 	ctx := context.Background()
 
-	var callbackCount int
-	var mu sync.Mutex
+	var (
+		callbackCount int
+		mu            sync.Mutex
+	)
+
 	callback := func(ctx context.Context, data map[string]any) error {
 		mu.Lock()
+
 		callbackCount++
+
 		mu.Unlock()
+
 		return nil
 	}
 
@@ -219,7 +225,9 @@ func TestScheduleTrigger_StartStop(t *testing.T) {
 	require.NoError(t, err)
 
 	mu.Lock()
+
 	finalCount := callbackCount
+
 	mu.Unlock()
 
 	// May not execute since cron only runs every minute
@@ -229,7 +237,9 @@ func TestScheduleTrigger_StartStop(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	mu.Lock()
+
 	afterStopCount := callbackCount
+
 	mu.Unlock()
 
 	// Count should not have increased after stop
@@ -249,15 +259,21 @@ func TestScheduleTrigger_CallbackWithData(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx := context.Background()
-	var receivedData map[string]any
-	var mu sync.Mutex
-	var called bool
+
+	var (
+		receivedData map[string]any
+		mu           sync.Mutex
+		called       bool
+	)
 
 	callback := func(ctx context.Context, data map[string]any) error {
 		mu.Lock()
+
 		receivedData = data
 		called = true
+
 		mu.Unlock()
+
 		return nil
 	}
 
@@ -305,13 +321,19 @@ func TestScheduleTrigger_DisabledTrigger(t *testing.T) {
 	trigger.Enabled = false
 
 	ctx := context.Background()
-	var called bool
-	var mu sync.Mutex
+
+	var (
+		called bool
+		mu     sync.Mutex
+	)
 
 	callback := func(ctx context.Context, data map[string]any) error {
 		mu.Lock()
+
 		called = true
+
 		mu.Unlock()
+
 		return nil
 	}
 
@@ -344,13 +366,19 @@ func TestScheduleTrigger_CallbackError(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx := context.Background()
-	var callCount int
-	var mu sync.Mutex
+
+	var (
+		callCount int
+		mu        sync.Mutex
+	)
 
 	callback := func(ctx context.Context, data map[string]any) error {
 		mu.Lock()
+
 		callCount++
+
 		mu.Unlock()
+
 		return assert.AnError // Return an error
 	}
 

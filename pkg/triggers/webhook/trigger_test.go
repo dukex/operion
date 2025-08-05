@@ -58,6 +58,7 @@ func TestWebhookTrigger_StartStop(t *testing.T) {
 
 	// Reset global manager for this test
 	ResetGlobalManager()
+
 	manager := GetWebhookServerManager(8081, logger)
 
 	config := map[string]any{
@@ -83,6 +84,7 @@ func TestWebhookTrigger_StartStop(t *testing.T) {
 
 	// Start trigger in a goroutine since it now blocks
 	startDone := make(chan error, 1)
+
 	go func() {
 		startDone <- trigger.Start(ctx, callback)
 	}()
@@ -119,6 +121,7 @@ func TestWebhookTrigger_ServerShutdown(t *testing.T) {
 
 	// Reset global manager for this test
 	ResetGlobalManager()
+
 	manager := GetWebhookServerManager(8082, logger)
 
 	config := map[string]any{
@@ -143,6 +146,7 @@ func TestWebhookTrigger_ServerShutdown(t *testing.T) {
 
 	// Start trigger in a goroutine since it blocks
 	startDone := make(chan error, 1)
+
 	go func() {
 		startDone <- trigger.Start(ctx, callback)
 	}()

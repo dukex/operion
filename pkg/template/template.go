@@ -46,15 +46,16 @@ func Render(templateStr string, data any) (any, error) {
 				if err != nil {
 					return 0
 				}
+
 				return int(num[0]) % max
 			},
 		}).Parse(templateStr)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse template '%s': %w", templateStr, err)
 	}
 
 	var buf strings.Builder
+
 	err = tmpl.Execute(&buf, data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute template '%s': %w", templateStr, err)
@@ -69,7 +70,6 @@ func Render(templateStr string, data any) (any, error) {
 		var jsonResult any
 
 		err := json.Unmarshal([]byte(result), &jsonResult)
-
 		if err == nil {
 			return jsonResult, nil
 		}
@@ -91,7 +91,7 @@ func Render(templateStr string, data any) (any, error) {
 	return result, nil
 }
 
-// getEnvVars returns environment variables as a map
+// getEnvVars returns environment variables as a map.
 func getEnvVars() map[string]any {
 	envMap := make(map[string]any)
 

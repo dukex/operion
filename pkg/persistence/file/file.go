@@ -31,13 +31,14 @@ func (fp *FilePersistence) HealthCheck() error {
 	if _, err := os.Stat(fp.root); os.IsNotExist(err) {
 		return os.ErrNotExist
 	}
+
 	return nil
 }
 
 func (fp *FilePersistence) Workflows() ([]*models.Workflow, error) {
 	root := os.DirFS(fp.root + "/workflows")
-	jsonFiles, err := fs.Glob(root, "*.json")
 
+	jsonFiles, err := fs.Glob(root, "*.json")
 	if err != nil {
 		return nil, err
 	}
@@ -53,6 +54,7 @@ func (fp *FilePersistence) Workflows() ([]*models.Workflow, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		workflows = append(workflows, workflow)
 	}
 
@@ -61,15 +63,18 @@ func (fp *FilePersistence) Workflows() ([]*models.Workflow, error) {
 
 func (fp *FilePersistence) WorkflowByID(workflowID string) (*models.Workflow, error) {
 	filePath := path.Join(fp.root+"/workflows", workflowID+".json")
+
 	body, err := os.ReadFile(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
 		}
+
 		return nil, err
 	}
 
 	var workflow models.Workflow
+
 	err = json.Unmarshal(body, &workflow)
 	if err != nil {
 		return nil, err
@@ -88,6 +93,7 @@ func (fp *FilePersistence) SaveWorkflow(workflow *models.Workflow) error {
 	if workflow.CreatedAt.IsZero() {
 		workflow.CreatedAt = now
 	}
+
 	workflow.UpdatedAt = now
 
 	data, err := json.MarshalIndent(workflow, "", "  ")
@@ -96,14 +102,17 @@ func (fp *FilePersistence) SaveWorkflow(workflow *models.Workflow) error {
 	}
 
 	filePath := path.Join(fp.root+"/workflows", workflow.ID+".json")
+
 	return os.WriteFile(filePath, data, 0644)
 }
 
 func (fp *FilePersistence) DeleteWorkflow(id string) error {
 	filePath := path.Join(fp.root+"/workflows", id+".json")
+
 	err := os.Remove(filePath)
 	if err != nil && os.IsNotExist(err) {
 		return nil
 	}
+
 	return err
 }

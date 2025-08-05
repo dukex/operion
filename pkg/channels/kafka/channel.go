@@ -55,6 +55,7 @@ func CreateChannel(logger watermill.LoggerAdapter, serviceName string) (*kafka.P
 
 	saramaPublisherConfig := sarama.NewConfig()
 	saramaPublisherConfig.Producer.Return.Successes = true
+
 	publisher, err := kafka.NewPublisher(
 		kafka.PublisherConfig{
 			Brokers:               brokers,
@@ -64,7 +65,6 @@ func CreateChannel(logger watermill.LoggerAdapter, serviceName string) (*kafka.P
 		},
 		logger,
 	)
-
 	if err != nil {
 		return nil, nil, err
 	}

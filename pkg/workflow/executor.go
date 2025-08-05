@@ -34,10 +34,11 @@ func (s *Executor) Start(ctx context.Context, logger *slog.Logger, workflowID st
 	logger.Info("Starting execution of workflow")
 
 	workflowRepository := NewRepository(s.persistence)
-	workflowItem, err := workflowRepository.FetchByID(workflowID)
 
+	workflowItem, err := workflowRepository.FetchByID(workflowID)
 	if err != nil {
 		logger.Error("Failed to get workflow", "error", err)
+
 		return nil, err
 	}
 
@@ -45,6 +46,7 @@ func (s *Executor) Start(ctx context.Context, logger *slog.Logger, workflowID st
 
 	if len(workflowItem.Steps) == 0 {
 		logger.Info("Workflow has no steps to execute")
+
 		return nil, fmt.Errorf("workflow %s has no steps", workflowID)
 	}
 
@@ -106,6 +108,7 @@ func (s *Executor) ExecuteStep(ctx context.Context, logger *slog.Logger, workflo
 	if executionCtx.StepResults == nil {
 		executionCtx.StepResults = make(map[string]any)
 	}
+
 	executionCtx.StepResults[step.UID] = result
 	logger.Info("Step executed successfully", "result", result)
 
@@ -177,6 +180,7 @@ func (s *Executor) findStepByID(steps []*models.WorkflowStep, stepID string) (*m
 			return step, true
 		}
 	}
+
 	return nil, false
 }
 
@@ -207,6 +211,7 @@ func (s *Executor) executeAction(ctx context.Context, logger *slog.Logger, step 
 	}
 
 	logger.Info("Action completed successfully")
+
 	return result, err
 }
 
@@ -222,5 +227,5 @@ func (s *Executor) getNextStepID(step *models.WorkflowStep, success bool) (strin
 }
 
 func generateExecutionID() string {
-	return fmt.Sprintf("exec-%s", uuid.New().String()[:8])
+	return "exec-" + uuid.New().String()[:8]
 }

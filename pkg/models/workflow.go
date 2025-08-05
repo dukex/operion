@@ -14,12 +14,12 @@ const (
 
 type Workflow struct {
 	ID               string             `json:"id"`
-	Name             string             `json:"name" validate:"required,min=3"`
-	Description      string             `json:"description" validate:"required"`
-	WorkflowTriggers []*WorkflowTrigger `json:"workflow_triggers" validate:"required,dive,required"`
-	Steps            []*WorkflowStep    `json:"steps" validate:"required,dive,required"`
+	Name             string             `json:"name"                 validate:"required,min=3"`
+	Description      string             `json:"description"          validate:"required"`
+	WorkflowTriggers []*WorkflowTrigger `json:"workflow_triggers"    validate:"required,dive,required"`
+	Steps            []*WorkflowStep    `json:"steps"                validate:"required,dive,required"`
 	Variables        map[string]any     `json:"variables"`
-	Status           WorkflowStatus     `json:"status" validate:"required,oneof=active inactive paused error"`
+	Status           WorkflowStatus     `json:"status"               validate:"required,oneof=active inactive paused error"`
 	Metadata         map[string]any     `json:"metadata,omitempty"`
 	Owner            string             `json:"owner"`
 	CreatedAt        time.Time          `json:"created_at"`
