@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 
 	"github.com/dukex/operion/pkg/cmd"
 	"github.com/dukex/operion/pkg/workflow"
@@ -57,8 +58,8 @@ func NewValidateCommand() *cli.Command {
 
 			logger.Info("Validating source triggers", "workflows", len(workflows))
 
-			fmt.Println("Source Trigger Validation Results:")
-			fmt.Println("==================================")
+			fmt.Fprintln(os.Stdout, "Source Trigger Validation Results:")
+			fmt.Fprintln(os.Stdout, "==================================")
 
 			validTriggers := 0
 			invalidTriggers := 0
@@ -66,24 +67,24 @@ func NewValidateCommand() *cli.Command {
 			invalidSteps := 0
 
 			for _, workflow := range workflows {
-				fmt.Printf("\nWorkflow: %s (%s)\n", workflow.Name, workflow.ID)
+				fmt.Fprintf(os.Stdout, "\nWorkflow: %s (%s)\n", workflow.Name, workflow.ID)
 				if len(workflow.WorkflowTriggers) == 0 {
-					fmt.Printf("    ❌ INVALID: No triggers found for this workflow.\n")
+					fmt.Fprintf(os.Stdout, "    ❌ INVALID: No triggers found for this workflow.\n")
 					invalidTriggers++
 					continue
 				}
 
 				for _, workflowTrigger := range workflow.WorkflowTriggers {
-					fmt.Printf("  WorkflowTrigger: %s (SourceID: %s)\n", workflowTrigger.ID, workflowTrigger.SourceID)
+					fmt.Fprintf(os.Stdout, "  WorkflowTrigger: %s (SourceID: %s)\n", workflowTrigger.ID, workflowTrigger.SourceID)
 
 					// Validate struct fields
 					err = validate.Struct(workflowTrigger)
 					if err != nil {
 						var validationErrors validator.ValidationErrors
 						if errors.As(err, &validationErrors) {
-							fmt.Printf("    ❌ INVALID: %v\n", validationErrors)
+							fmt.Fprintf(os.Stdout, "    ❌ INVALID: %v\n", validationErrors)
 						} else {
-							fmt.Printf("    ❌ INVALID: %v\n", err)
+							fmt.Fprintf(os.Stdout, "    ❌ INVALID: %v\n", err)
 						}
 						invalidTriggers++
 						continue
@@ -91,7 +92,7 @@ func NewValidateCommand() *cli.Command {
 
 					// Validate that SourceID is not empty (required for activator)
 					if workflowTrigger.SourceID == "" {
-						fmt.Printf("    ❌ INVALID: SourceID is required for activator-based triggers\n")
+						fmt.Fprintf(os.Stdout, "    ❌ INVALID: SourceID is required for activator-based triggers\n")
 						invalidTriggers++
 						continue
 					}
@@ -100,37 +101,37 @@ func NewValidateCommand() *cli.Command {
 					// This could validate that the trigger configuration includes valid event types
 					// that the activator can process
 
-					fmt.Printf("    ✅ VALID\n")
+					fmt.Fprintf(os.Stdout, "    ✅ VALID\n")
 					validTriggers++
 				}
 
 				for _, step := range workflow.Steps {
-					fmt.Printf("  Step: %s\n", step.Name)
+					fmt.Fprintf(os.Stdout, "  Step: %s\n", step.Name)
 
 					err = validate.Struct(step)
 
 					if err != nil {
 						var validationErrors validator.ValidationErrors
 						if errors.As(err, &validationErrors) {
-							fmt.Printf("    ❌ INVALID: %v\n", validationErrors)
+							fmt.Fprintf(os.Stdout, "    ❌ INVALID: %v\n", validationErrors)
 						} else {
-							fmt.Printf("    ❌ INVALID: %v\n", err)
+							fmt.Fprintf(os.Stdout, "    ❌ INVALID: %v\n", err)
 						}
 						invalidSteps++
 					} else {
 						validSteps++
-						fmt.Printf("    ✅ VALID\n")
+						fmt.Fprintf(os.Stdout, "    ✅ VALID\n")
 					}
 				}
 			}
 
-			fmt.Printf("\nValidation Summary:\n")
-			fmt.Printf("  Total triggers: %d\n", invalidTriggers+validTriggers)
-			fmt.Printf("  Valid triggers: %d\n", validTriggers)
-			fmt.Printf("  Invalid triggers: %d\n", invalidTriggers)
-			fmt.Printf("  Total steps: %d\n", invalidSteps+validSteps)
-			fmt.Printf("  Valid steps: %d\n", validSteps)
-			fmt.Printf("  Invalid steps: %d\n", invalidSteps)
+			fmt.Fprintf(os.Stdout, "\nValidation Summary:\n")
+			fmt.Fprintf(os.Stdout, "  Total triggers: %d\n", invalidTriggers+validTriggers)
+			fmt.Fprintf(os.Stdout, "  Valid triggers: %d\n", validTriggers)
+			fmt.Fprintf(os.Stdout, "  Invalid triggers: %d\n", invalidTriggers)
+			fmt.Fprintf(os.Stdout, "  Total steps: %d\n", invalidSteps+validSteps)
+			fmt.Fprintf(os.Stdout, "  Valid steps: %d\n", validSteps)
+			fmt.Fprintf(os.Stdout, "  Invalid steps: %d\n", invalidSteps)
 
 			if invalidTriggers > 0 {
 				return fmt.Errorf("%w: %d", ErrInvalidTriggers, invalidTriggers)
@@ -140,7 +141,7 @@ func NewValidateCommand() *cli.Command {
 				return fmt.Errorf("%w: %d", ErrInvalidSteps, invalidSteps)
 			}
 
-			fmt.Println("All triggers and steps are valid for activator processing! ✅")
+			fmt.Fprintln(os.Stdout, "All triggers and steps are valid for activator processing! ✅")
 			return nil
 		},
 	}
