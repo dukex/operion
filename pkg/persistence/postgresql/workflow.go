@@ -130,6 +130,7 @@ func (r *WorkflowRepository) Save(ctx context.Context, workflow *models.Workflow
 		if err != nil {
 			return fmt.Errorf("failed to generate workflow ID: %w", err)
 		}
+
 		workflow.ID = id.String()
 	}
 
@@ -184,7 +185,6 @@ variables, status, metadata, owner, created_at, updated_at, deleted_at)
 		workflow.UpdatedAt,
 		workflow.DeletedAt,
 	)
-
 	if err != nil {
 		return fmt.Errorf("failed to save workflow base: %w", err)
 	}
@@ -378,6 +378,7 @@ func (r *WorkflowRepository) saveWorkflowTriggers(ctx context.Context, tx *sql.T
 			if err != nil {
 				return fmt.Errorf("failed to generate trigger ID: %w", err)
 			}
+
 			trigger.ID = id.String()
 		}
 
@@ -409,11 +410,13 @@ func (r *WorkflowRepository) saveWorkflowSteps(ctx context.Context, tx *sql.Tx, 
 		if err != nil {
 			return fmt.Errorf("failed to marshal step configuration: %w", err)
 		}
+
 		if step.ID == "" {
 			id, err := uuid.NewV7()
 			if err != nil {
 				return fmt.Errorf("failed to generate step ID: %w", err)
 			}
+
 			step.ID = id.String()
 		}
 

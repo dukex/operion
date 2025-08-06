@@ -19,7 +19,9 @@ import (
 
 var postgresContainer *postgres.PostgresContainer
 
-func dropDb(ctx context.Context, t *testing.T, databaseURL string) error {
+func dropDb(ctx context.Context, t *testing.T, databaseURL string) {
+	t.Helper()
+
 	db, err := sql.Open("postgres", databaseURL)
 	require.NoError(t, err)
 
@@ -30,15 +32,16 @@ func dropDb(ctx context.Context, t *testing.T, databaseURL string) error {
 
 	err = db.Close()
 	require.NoError(t, err)
-
-	return err
 }
 
 func setupTestDB(t *testing.T) (*postgresql.Persistence, context.Context, string) {
+	t.Helper()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 
 	if postgresContainer == nil || !postgresContainer.IsRunning() {
 		var err error
+
 		postgresContainer, err = postgres.Run(ctx,
 			"postgres:16-alpine",
 			postgres.WithDatabase("operion_test"),
@@ -60,8 +63,7 @@ func setupTestDB(t *testing.T) (*postgresql.Persistence, context.Context, string
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		err := dropDb(ctx, t, databaseURL)
-		require.NoError(t, err)
+		dropDb(ctx, t, databaseURL)
 
 		err = persistence.Close(ctx)
 		require.NoError(t, err)
