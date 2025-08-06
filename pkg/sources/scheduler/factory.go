@@ -3,8 +3,6 @@ package scheduler
 import (
 	"log/slog"
 
-	"github.com/dukex/operion/pkg/events"
-	"github.com/dukex/operion/pkg/persistence"
 	"github.com/dukex/operion/pkg/protocol"
 )
 
@@ -18,17 +16,11 @@ func NewSchedulerSourceProviderFactory() *SchedulerSourceProviderFactory {
 
 // Create instantiates a new centralized SchedulerSourceProvider orchestrator.
 func (f *SchedulerSourceProviderFactory) Create(config map[string]any, logger *slog.Logger) (protocol.SourceProvider, error) {
-	// Get persistence from config (passed by source provider manager)
-	persistence, ok := config["persistence"].(persistence.Persistence)
-	if !ok || persistence == nil {
-		return nil, events.ErrInvalidEventData
-	}
-
 	// Create single orchestrator instance (no source-specific configuration required)
+	// Persistence will be initialized during the Initialize lifecycle method
 	return &SchedulerSourceProvider{
-		config:      config,
-		logger:      logger.With("module", "centralized_scheduler"),
-		persistence: persistence,
+		config: config,
+		logger: logger.With("module", "centralized_scheduler"),
 	}, nil
 }
 

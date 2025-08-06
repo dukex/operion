@@ -11,11 +11,9 @@ import (
 
 	"github.com/dukex/operion/pkg/eventbus"
 	"github.com/dukex/operion/pkg/events"
-	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/persistence"
 	"github.com/dukex/operion/pkg/protocol"
 	"github.com/dukex/operion/pkg/registry"
-	"github.com/dukex/operion/pkg/workflow"
 )
 
 // Constants for source provider types.
@@ -104,15 +102,7 @@ func (spm *SourceProviderManager) restart(ctx context.Context, cancel context.Ca
 }
 
 func (spm *SourceProviderManager) run(ctx context.Context, cancel context.CancelFunc) {
-	// First, create schedules from workflows
-	if err := spm.createSchedulesFromWorkflows(ctx); err != nil {
-		spm.logger.Error("Failed to create schedules from workflows", "error", err)
-		spm.restart(ctx, cancel)
-
-		return
-	}
-
-	// Then start source providers
+	// Start source providers with lifecycle management
 	if err := spm.startSourceProviders(ctx); err != nil {
 		spm.logger.Error("Failed to start source providers", "error", err)
 		spm.restart(ctx, cancel)
@@ -126,34 +116,6 @@ func (spm *SourceProviderManager) run(ctx context.Context, cancel context.Cancel
 	<-ctx.Done()
 
 	spm.logger.Info("Source provider manager stopped")
-}
-
-func (spm *SourceProviderManager) createSchedulesFromWorkflows(ctx context.Context) error {
-	workflowRepo := workflow.NewRepository(spm.persistence)
-
-	workflows, err := workflowRepo.FetchAll(ctx)
-	if err != nil {
-		return err
-	}
-
-	scheduleCount := 0
-
-	for _, wf := range workflows {
-		if wf.Status != models.WorkflowStatusActive {
-			continue
-		}
-
-		for _, trigger := range wf.WorkflowTriggers {
-			// Check if this trigger needs a schedule (scheduler source provider)
-			if cronExpr, exists := trigger.Configuration["cron_expression"]; exists {
-				spm.processScheduleTrigger(wf.ID, trigger, cronExpr)
-			}
-		}
-	}
-
-	spm.logger.Info("Schedule creation completed", "created_count", scheduleCount)
-
-	return nil
 }
 
 func (spm *SourceProviderManager) startSourceProviders(ctx context.Context) error {
@@ -211,9 +173,7 @@ func (spm *SourceProviderManager) startSourceProvider(ctx context.Context, facto
 
 	if providerID == SchedulerProviderType {
 		// Create single orchestrator instance (no source-specific configuration)
-		config := map[string]any{
-			"persistence": spm.persistence,
-		}
+		config := map[string]any{}
 		sourceConfigs = []map[string]any{config}
 	}
 	// Add other provider types as needed
@@ -251,6 +211,53 @@ func (spm *SourceProviderManager) startSourceProvider(ctx context.Context, facto
 			continue
 		}
 
+		// Execute complete lifecycle if provider supports it
+		if lifecycle, ok := provider.(protocol.ProviderLifecycle); ok {
+			deps := protocol.Dependencies{
+				Logger: spm.logger,
+			}
+
+			// Step 1: Initialize dependencies
+			if err := lifecycle.Initialize(ctx, deps); err != nil {
+				spm.logger.Error("Failed to initialize provider",
+					"provider_id", providerID,
+					"instance_key", instanceKey,
+					"error", err)
+
+				continue
+			}
+
+			// Step 2: Configure with current workflows
+			workflows, err := spm.persistence.Workflows(ctx)
+			if err != nil {
+				spm.logger.Error("Failed to get workflows for configuration",
+					"provider_id", providerID,
+					"instance_key", instanceKey,
+					"error", err)
+
+				continue
+			}
+
+			if err := lifecycle.Configure(workflows); err != nil {
+				spm.logger.Error("Failed to configure provider",
+					"provider_id", providerID,
+					"instance_key", instanceKey,
+					"error", err)
+
+				continue
+			}
+
+			// Step 3: Prepare for startup
+			if err := lifecycle.Prepare(ctx); err != nil {
+				spm.logger.Error("Failed to prepare provider",
+					"provider_id", providerID,
+					"instance_key", instanceKey,
+					"error", err)
+
+				continue
+			}
+		}
+
 		spm.providerMutex.Lock()
 		spm.runningProviders[instanceKey] = provider
 		spm.providerMutex.Unlock()
@@ -263,6 +270,7 @@ func (spm *SourceProviderManager) startSourceProvider(ctx context.Context, facto
 			callback = spm.createSourceEventCallback(instanceKey)
 		}
 
+		// Step 4: Start the provider
 		if err := provider.Start(ctx, callback); err != nil {
 			spm.logger.Error("Failed to start source provider",
 				"provider_id", providerID,
@@ -343,68 +351,4 @@ func (spm *SourceProviderManager) stop(ctx context.Context, cancel context.Cance
 
 	spm.runningProviders = make(map[string]protocol.SourceProvider)
 	spm.logger.Info("All source providers stopped")
-}
-
-// processScheduleTrigger handles the creation of a schedule for a trigger with cron_expression.
-// Returns true if a schedule was successfully created, false otherwise.
-func (spm *SourceProviderManager) processScheduleTrigger(workflowID string, trigger *models.WorkflowTrigger, cronExpr any) bool {
-	sourceID := trigger.SourceID
-	if sourceID == "" {
-		spm.logger.Warn("Trigger has cron_expression but no source_id",
-			"workflow_id", workflowID,
-			"trigger_id", trigger.ID)
-
-		return false
-	}
-
-	// Check if schedule already exists
-	existingSchedule, err := spm.persistence.ScheduleBySourceID(sourceID)
-	if err != nil {
-		spm.logger.Error("Failed to check existing schedule",
-			"source_id", sourceID,
-			"error", err)
-
-		return false
-	}
-
-	if existingSchedule != nil {
-		spm.logger.Debug("Schedule already exists", "source_id", sourceID)
-
-		return false
-	}
-
-	// Create new schedule
-	cronStr, ok := cronExpr.(string)
-	if !ok {
-		spm.logger.Warn("Invalid cron_expression type",
-			"source_id", sourceID,
-			"type", cronExpr)
-
-		return false
-	}
-
-	schedule, err := models.NewSchedule(sourceID, sourceID, cronStr)
-	if err != nil {
-		spm.logger.Error("Failed to create schedule",
-			"source_id", sourceID,
-			"cron", cronStr,
-			"error", err)
-
-		return false
-	}
-
-	if err := spm.persistence.SaveSchedule(schedule); err != nil {
-		spm.logger.Error("Failed to save schedule",
-			"source_id", sourceID,
-			"error", err)
-
-		return false
-	}
-
-	spm.logger.Info("Created schedule",
-		"source_id", sourceID,
-		"cron", cronStr,
-		"next_due_at", schedule.NextDueAt)
-
-	return true
 }

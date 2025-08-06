@@ -2,27 +2,29 @@ package scheduler
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"sync"
 	"time"
 
 	"github.com/dukex/operion/pkg/events"
 	"github.com/dukex/operion/pkg/models"
-	"github.com/dukex/operion/pkg/persistence"
 	"github.com/dukex/operion/pkg/protocol"
+	schedulerModels "github.com/dukex/operion/pkg/sources/scheduler/models"
+	schedulerPersistence "github.com/dukex/operion/pkg/sources/scheduler/persistence"
 )
 
 // SchedulerSourceProvider implements a centralized cron-based scheduler orchestrator
 // that polls the database for due schedules and processes them regardless of their individual cron expressions.
 type SchedulerSourceProvider struct {
-	config      map[string]any
-	logger      *slog.Logger
-	persistence persistence.Persistence
-	callback    protocol.SourceEventCallback
-	ticker      *time.Ticker
-	done        chan bool
-	started     bool
-	mu          sync.RWMutex
+	config               map[string]any
+	logger               *slog.Logger
+	schedulerPersistence schedulerPersistence.SchedulerPersistence
+	callback             protocol.SourceEventCallback
+	ticker               *time.Ticker
+	done                 chan bool
+	started              bool
+	mu                   sync.RWMutex
 }
 
 // Start begins the centralized scheduler orchestrator.
@@ -78,7 +80,7 @@ func (s *SchedulerSourceProvider) Stop(ctx context.Context) error {
 // Validate checks if the scheduler orchestrator configuration is valid.
 func (s *SchedulerSourceProvider) Validate() error {
 	// Orchestrator validation: ensure persistence is available
-	if s.persistence == nil {
+	if s.schedulerPersistence == nil {
 		return events.ErrInvalidEventData
 	}
 
@@ -152,13 +154,13 @@ func (s *SchedulerSourceProvider) processDueSchedules(ctx context.Context) {
 }
 
 // getDueSchedules retrieves schedules that are due for execution.
-func (s *SchedulerSourceProvider) getDueSchedules(now time.Time) ([]*models.Schedule, error) {
-	return s.persistence.DueSchedules(now)
+func (s *SchedulerSourceProvider) getDueSchedules(now time.Time) ([]*schedulerModels.Schedule, error) {
+	return s.schedulerPersistence.DueSchedules(now)
 }
 
 // updateSchedule saves the updated schedule back to the database.
-func (s *SchedulerSourceProvider) updateSchedule(schedule *models.Schedule) error {
-	if err := s.persistence.SaveSchedule(schedule); err != nil {
+func (s *SchedulerSourceProvider) updateSchedule(schedule *schedulerModels.Schedule) error {
+	if err := s.schedulerPersistence.SaveSchedule(schedule); err != nil {
 		return err
 	}
 
@@ -170,7 +172,7 @@ func (s *SchedulerSourceProvider) updateSchedule(schedule *models.Schedule) erro
 }
 
 // publishScheduleEvent publishes a source event for a due schedule.
-func (s *SchedulerSourceProvider) publishScheduleEvent(ctx context.Context, schedule *models.Schedule) error {
+func (s *SchedulerSourceProvider) publishScheduleEvent(ctx context.Context, schedule *schedulerModels.Schedule) error {
 	now := time.Now()
 
 	eventData := map[string]any{
@@ -180,4 +182,124 @@ func (s *SchedulerSourceProvider) publishScheduleEvent(ctx context.Context, sche
 	}
 
 	return s.callback(ctx, schedule.SourceID, "scheduler", "ScheduleDue", eventData)
+}
+
+// ProviderLifecycle interface implementation
+
+// Initialize sets up the provider with required dependencies.
+func (s *SchedulerSourceProvider) Initialize(ctx context.Context, deps protocol.Dependencies) error {
+	s.logger = deps.Logger
+
+	// Initialize scheduler-specific persistence
+	persistence, err := schedulerPersistence.NewFilePersistence("./data/scheduler")
+	if err != nil {
+		return err
+	}
+
+	s.schedulerPersistence = persistence
+
+	return nil
+}
+
+// Configure configures the provider based on current workflow definitions.
+func (s *SchedulerSourceProvider) Configure(workflows []*models.Workflow) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.logger.Info("Configuring scheduler provider with workflows", "workflow_count", len(workflows))
+
+	scheduleCount := 0
+
+	for _, wf := range workflows {
+		if wf.Status != models.WorkflowStatusActive {
+			continue
+		}
+
+		for _, trigger := range wf.WorkflowTriggers {
+			if cronExpr, exists := trigger.Configuration["cron_expression"]; exists {
+				if s.processScheduleTrigger(wf.ID, trigger, cronExpr) {
+					scheduleCount++
+				}
+			}
+		}
+	}
+
+	s.logger.Info("Scheduler configuration completed", "created_schedules", scheduleCount)
+
+	return nil
+}
+
+// Prepare performs final preparation before starting the provider.
+func (s *SchedulerSourceProvider) Prepare(ctx context.Context) error {
+	if s.schedulerPersistence == nil {
+		return errors.New("scheduler persistence not initialized")
+	}
+
+	s.logger.Info("Scheduler provider prepared and ready")
+
+	return nil
+}
+
+// processScheduleTrigger handles the creation of a schedule for a trigger with cron_expression.
+// Returns true if a schedule was successfully created, false otherwise.
+func (s *SchedulerSourceProvider) processScheduleTrigger(workflowID string, trigger *models.WorkflowTrigger, cronExpr any) bool {
+	sourceID := trigger.SourceID
+	if sourceID == "" {
+		s.logger.Warn("Trigger has cron_expression but no source_id",
+			"workflow_id", workflowID,
+			"trigger_id", trigger.ID)
+
+		return false
+	}
+
+	// Check if schedule already exists
+	existingSchedule, err := s.schedulerPersistence.ScheduleBySourceID(sourceID)
+	if err != nil {
+		s.logger.Error("Failed to check existing schedule",
+			"source_id", sourceID,
+			"error", err)
+
+		return false
+	}
+
+	if existingSchedule != nil {
+		s.logger.Debug("Schedule already exists", "source_id", sourceID)
+
+		return false
+	}
+
+	// Create new schedule
+	cronStr, ok := cronExpr.(string)
+	if !ok {
+		s.logger.Warn("Invalid cron_expression type",
+			"source_id", sourceID,
+			"type", cronExpr)
+
+		return false
+	}
+
+	schedule, err := schedulerModels.NewSchedule(sourceID, sourceID, cronStr)
+	if err != nil {
+		s.logger.Error("Failed to create schedule",
+			"source_id", sourceID,
+			"cron", cronStr,
+			"error", err)
+
+		return false
+	}
+
+	if err := s.schedulerPersistence.SaveSchedule(schedule); err != nil {
+		s.logger.Error("Failed to save schedule",
+			"source_id", sourceID,
+			"error", err)
+
+		return false
+	}
+
+	s.logger.Info("Created schedule",
+		"source_id", sourceID,
+		"cron", cronStr,
+		"next_due_at", schedule.NextDueAt)
+
+	return true
 }

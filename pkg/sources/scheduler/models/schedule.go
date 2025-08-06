@@ -7,7 +7,7 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
-// Schedule represents a scheduled task entry stored in the database.
+// Schedule represents a scheduled task entry stored in the scheduler's persistence layer.
 // It contains the cron expression and precomputed next execution time
 // to enable efficient centralized scheduling without individual timers.
 type Schedule struct {
