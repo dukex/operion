@@ -126,7 +126,6 @@ func (fp *FilePersistence) DeleteWorkflow(_ context.Context, id string) error {
 	return err
 }
 
-
 // WorkflowTriggersBySourceID returns workflow triggers that match a specific source ID and workflow status.
 func (fp *FilePersistence) WorkflowTriggersBySourceID(ctx context.Context, sourceID string, status models.WorkflowStatus) ([]*models.TriggerMatch, error) {
 	workflows, err := fp.Workflows(ctx)

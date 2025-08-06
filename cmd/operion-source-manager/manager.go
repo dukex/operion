@@ -16,7 +16,6 @@ import (
 	"github.com/dukex/operion/pkg/registry"
 )
 
-
 type SourceProviderManager struct {
 	id               string
 	sourceEventBus   eventbus.SourceEventBus
@@ -164,7 +163,7 @@ func (spm *SourceProviderManager) startSourceProviders(ctx context.Context) erro
 func (spm *SourceProviderManager) startSourceProvider(ctx context.Context, factory protocol.SourceProviderFactory) error {
 	providerID := factory.ID()
 
-	// Create default provider configuration  
+	// Create default provider configuration
 	// All providers get a default empty configuration and handle their own setup via lifecycle
 	config := map[string]any{}
 	sourceConfigs := []map[string]any{config}
