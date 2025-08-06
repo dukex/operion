@@ -1,7 +1,6 @@
 package httprequest_test
 
 import (
-	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -115,10 +114,9 @@ func TestHTTPRequestAction_EnhancedTemplating(t *testing.T) {
 	}
 
 	// Execute the action
-	ctx := context.Background()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	result, err := action.Execute(ctx, executionCtx, logger)
+	result, err := action.Execute(t.Context(), executionCtx, logger)
 
 	// Verify execution succeeded
 	require.NoError(t, err)
@@ -184,10 +182,9 @@ func TestHTTPRequestAction_EnvironmentVariableAccess(t *testing.T) {
 		Metadata:    make(map[string]any),
 	}
 
-	ctx := context.Background()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	result, err := action.Execute(ctx, executionCtx, logger)
+	result, err := action.Execute(t.Context(), executionCtx, logger)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)

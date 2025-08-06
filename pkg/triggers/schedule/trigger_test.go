@@ -206,7 +206,7 @@ func TestScheduleTrigger_StartStop(t *testing.T) {
 	require.NotNil(t, trigger)
 
 	// Test start and stop
-	ctx := context.Background()
+	ctx := t.Context()
 
 	var (
 		callbackCount int
@@ -270,7 +270,7 @@ func TestScheduleTrigger_CallbackWithData(t *testing.T) {
 	trigger, err := schedule.NewTrigger(t.Context(), config, logger)
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	var (
 		receivedData map[string]any
@@ -334,7 +334,7 @@ func TestScheduleTrigger_DisabledTrigger(t *testing.T) {
 	// Disable the trigger
 	trigger.Enabled = false
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	var (
 		called bool
@@ -381,7 +381,7 @@ func TestScheduleTrigger_CallbackError(t *testing.T) {
 	trigger, err := schedule.NewTrigger(t.Context(), config, logger)
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	var (
 		callCount int
@@ -428,7 +428,7 @@ func TestScheduleTrigger_ConcurrentStartStop(t *testing.T) {
 	trigger, err := schedule.NewTrigger(t.Context(), config, logger)
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	callback := func(_ context.Context, _ map[string]any) error {
 		return nil
 	}

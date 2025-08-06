@@ -88,9 +88,9 @@ func (m *mockTrigger) Validate(_ context.Context) error {
 	return nil
 }
 
-func (m *mockTrigger) TriggerWorkflow() error {
+func (m *mockTrigger) TriggerWorkflow(ctx context.Context) error {
 	if m.callback != nil {
-		return m.callback(context.Background(), map[string]any{
+		return m.callback(ctx, map[string]any{
 			"triggered_by": m.id,
 		})
 	}
@@ -177,7 +177,7 @@ func TestRegistry_RegisterAndCreateAction(t *testing.T) {
 		StepResults: make(map[string]any),
 	}
 
-	result, err := action.Execute(context.Background(), execCtx, logger)
+	result, err := action.Execute(t.Context(), execCtx, logger)
 	require.NoError(t, err)
 
 	resultMap := result.(map[string]any)
@@ -209,15 +209,14 @@ func TestRegistry_RegisterAndCreateTrigger(t *testing.T) {
 	assert.NotNil(t, trigger)
 
 	// Verify trigger can be started and stopped
-	ctx := context.Background()
 	callback := func(ctx context.Context, data map[string]any) error {
 		return nil
 	}
 
-	err = trigger.Start(ctx, callback)
+	err = trigger.Start(t.Context(), callback)
 	assert.NoError(t, err)
 
-	err = trigger.Stop(ctx)
+	err = trigger.Stop(t.Context())
 	assert.NoError(t, err)
 }
 
@@ -365,7 +364,7 @@ func TestMockAction_Execute(t *testing.T) {
 		},
 	}
 
-	result, err := action.Execute(context.Background(), execCtx, logger)
+	result, err := action.Execute(t.Context(), execCtx, logger)
 
 	require.NoError(t, err)
 	assert.NotNil(t, result)
@@ -383,7 +382,7 @@ func TestMockTrigger_StartStopAndCallback(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	var (
 		callbackData   map[string]any
@@ -402,7 +401,7 @@ func TestMockTrigger_StartStopAndCallback(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Trigger workflow manually
-	err = trigger.TriggerWorkflow()
+	err = trigger.TriggerWorkflow(t.Context())
 	assert.NoError(t, err)
 	assert.True(t, callbackCalled)
 	assert.Equal(t, "test-mock-trigger", callbackData["triggered_by"])

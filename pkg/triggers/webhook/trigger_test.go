@@ -83,7 +83,7 @@ func TestWebhookTrigger_StartStop(t *testing.T) {
 		return nil
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	if err := manager.Start(ctx); err != nil {
@@ -113,12 +113,12 @@ func TestWebhookTrigger_StartStop(t *testing.T) {
 		t.Error("Trigger Start did not return within timeout")
 	}
 
-	err = trigger.Stop(context.Background())
+	err = trigger.Stop(t.Context())
 	if err != nil {
 		t.Errorf("Failed to stop webhook trigger: %v", err)
 	}
 
-	err = manager.Stop(context.Background())
+	err = manager.Stop(t.Context())
 	if err != nil {
 		t.Errorf("Failed to stop webhook server manager: %v", err)
 	}
@@ -148,7 +148,7 @@ func TestWebhookTrigger_ServerShutdown(t *testing.T) {
 		return nil
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	if err := manager.Start(ctx); err != nil {
 		t.Fatalf("Failed to start webhook server manager: %v", err)
@@ -165,7 +165,7 @@ func TestWebhookTrigger_ServerShutdown(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// Stop the server manager
-	err = manager.Stop(context.Background())
+	err = manager.Stop(t.Context())
 	if err != nil {
 		t.Errorf("Failed to stop webhook server manager: %v", err)
 	}
