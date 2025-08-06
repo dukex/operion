@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"log/slog"
 	"time"
 
@@ -317,7 +316,7 @@ func (r *WorkflowRepository) loadWorkflowTriggersAndSteps(ctx context.Context, w
 	defer func() {
 		err := rows.Close()
 		if err != nil {
-			log.Printf("failed to close rows: %v", err)
+			r.logger.Error("failed to close rows", "error", err)
 		}
 	}()
 
