@@ -163,8 +163,7 @@ func (spm *SourceProviderManager) startSourceProviders(ctx context.Context) erro
 func (spm *SourceProviderManager) startSourceProvider(ctx context.Context, factory protocol.SourceProviderFactory) error {
 	providerID := factory.ID()
 
-	// Create default provider configuration
-	// All providers get a default empty configuration and handle their own setup via lifecycle
+	// Create default empty configuration - providers handle their own setup
 	config := map[string]any{}
 	sourceConfigs := []map[string]any{config}
 

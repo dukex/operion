@@ -83,12 +83,13 @@ LOG_LEVEL=info         # Log level: debug, info, warn, error (default: info)
 
 #### Source Manager Service (operion-source-manager)
 ```bash
-SOURCE_MANAGER_ID      # Custom source manager ID (auto-generated if not provided)
-DATABASE_URL           # Database connection URL (required)
-KAFKA_BROKERS          # Kafka broker addresses (required)
-PLUGINS_PATH=./plugins # Path to source provider plugins directory (default: ./plugins)
-SOURCE_PROVIDERS       # Comma-separated list of providers to run (e.g., 'scheduler,webhook')
-LOG_LEVEL=info         # Log level: debug, info, warn, error (default: info)
+SOURCE_MANAGER_ID         # Custom source manager ID (auto-generated if not provided)
+DATABASE_URL              # Database connection URL (required)
+KAFKA_BROKERS             # Kafka broker addresses (required)
+PLUGINS_PATH=./plugins    # Path to source provider plugins directory (default: ./plugins)
+SOURCE_PROVIDERS          # Comma-separated list of providers to run (e.g., 'scheduler,webhook')
+SCHEDULER_PERSISTENCE_URL # Scheduler persistence URL (required if using scheduler): file://./data/scheduler, postgres://..., mysql://...
+LOG_LEVEL=info            # Log level: debug, info, warn, error (default: info)
 ```
 
 #### Activator Service (operion-activator)

@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -190,8 +192,13 @@ func (s *SchedulerSourceProvider) publishScheduleEvent(ctx context.Context, sche
 func (s *SchedulerSourceProvider) Initialize(ctx context.Context, deps protocol.Dependencies) error {
 	s.logger = deps.Logger
 
-	// Initialize scheduler-specific persistence
-	persistence, err := schedulerPersistence.NewFilePersistence("./data/scheduler")
+	// Initialize scheduler-specific persistence based on URL
+	persistenceURL := os.Getenv("SCHEDULER_PERSISTENCE_URL")
+	if persistenceURL == "" {
+		return errors.New("scheduler provider requires SCHEDULER_PERSISTENCE_URL environment variable (e.g., file://./data/scheduler, postgres://...)")
+	}
+	
+	persistence, err := s.createPersistence(persistenceURL)
 	if err != nil {
 		return err
 	}
@@ -302,4 +309,40 @@ func (s *SchedulerSourceProvider) processScheduleTrigger(workflowID string, trig
 		"next_due_at", schedule.NextDueAt)
 
 	return true
+}
+
+// createPersistence creates the appropriate persistence implementation based on URL scheme
+func (s *SchedulerSourceProvider) createPersistence(persistenceURL string) (schedulerPersistence.SchedulerPersistence, error) {
+	scheme := s.parsePersistenceScheme(persistenceURL)
+	
+	s.logger.Info("Initializing scheduler persistence", "scheme", scheme, "url", persistenceURL)
+
+	switch scheme {
+	case "file":
+		// Extract path from file://path
+		path := strings.TrimPrefix(persistenceURL, "file://")
+		return schedulerPersistence.NewFilePersistence(path)
+		
+	case "postgres", "postgresql":
+		// Future: implement database persistence
+		// return schedulerPersistence.NewPostgresPersistence(persistenceURL)
+		return nil, errors.New("postgres persistence for scheduler not yet implemented")
+		
+	case "mysql":
+		// Future: implement database persistence  
+		// return schedulerPersistence.NewMySQLPersistence(persistenceURL)
+		return nil, errors.New("mysql persistence for scheduler not yet implemented")
+		
+	default:
+		return nil, errors.New("unsupported scheduler persistence scheme: " + scheme + " (supported: file, postgres, mysql)")
+	}
+}
+
+// parsePersistenceScheme extracts the scheme from a persistence URL
+func (s *SchedulerSourceProvider) parsePersistenceScheme(persistenceURL string) string {
+	parts := strings.Split(persistenceURL, "://")
+	if len(parts) < 2 {
+		return "file" // default to file if no scheme
+	}
+	return parts[0]
 }

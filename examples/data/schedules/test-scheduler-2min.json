@@ -1,9 +1,0 @@
-{
-  "id": "test-scheduler-2min",
-  "source_id": "test-scheduler-2min",
-  "cron_expression": "*/2 * * * *",
-  "next_due_at": "2025-08-04T22:34:00Z",
-  "created_at": "2025-08-04T14:53:38.291741Z",
-  "updated_at": "2025-08-04T22:32:43.968546Z",
-  "active": true
-}
