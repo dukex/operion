@@ -158,7 +158,7 @@ The project uses GitHub Actions for continuous integration and quality assurance
   - Trigger data includes: topic, partition, offset, timestamp, key, message, headers
 
 ### Available Actions
-- **HTTP Request** (`pkg/actions/http_request/`) - Make HTTP calls with retry logic and templating support
+- **HTTP Request** (`pkg/actions/httprequest/`) - Make HTTP calls with retry logic and templating support
   - Schema includes: url (required), method, headers, body, retries (object with attempts/delay)
   - Templating examples: `{{.step_results.get_user_id.user_id}}`, `{{.trigger_data.webhook.url}}/callback`
   - Retry config: `{"attempts": 3, "delay": 1000}` (attempts: 0-5, delay: 100-30000ms)
