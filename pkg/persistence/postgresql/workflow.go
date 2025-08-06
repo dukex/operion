@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/dukex/operion/pkg/models"
+	"github.com/google/uuid"
 )
 
 // WorkflowRepository handles workflow-related database operations.
@@ -101,7 +102,7 @@ func (r *WorkflowRepository) GetByID(ctx context.Context, id string) (*models.Wo
 	workflow, err := r.scanWorkflowBase(row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("workflow with ID %s not found: %w", id, err)
+			return nil, nil
 		}
 
 		return nil, fmt.Errorf("failed to scan workflow: %w", err)
@@ -123,6 +124,14 @@ func (r *WorkflowRepository) Save(ctx context.Context, workflow *models.Workflow
 	}
 
 	workflow.UpdatedAt = now
+
+	if workflow.ID == "" {
+		id, err := uuid.NewV7()
+		if err != nil {
+			return fmt.Errorf("failed to generate workflow ID: %w", err)
+		}
+		workflow.ID = id.String()
+	}
 
 	// Start transaction
 	tx, err := r.db.BeginTx(ctx, nil)
@@ -175,6 +184,7 @@ variables, status, metadata, owner, created_at, updated_at, deleted_at)
 		workflow.UpdatedAt,
 		workflow.DeletedAt,
 	)
+
 	if err != nil {
 		return fmt.Errorf("failed to save workflow base: %w", err)
 	}
@@ -363,6 +373,14 @@ func (r *WorkflowRepository) saveWorkflowTriggers(ctx context.Context, tx *sql.T
 			return fmt.Errorf("failed to marshal trigger configuration: %w", err)
 		}
 
+		if len(trigger.ID) == 0 {
+			id, err := uuid.NewV7()
+			if err != nil {
+				return fmt.Errorf("failed to generate trigger ID: %w", err)
+			}
+			trigger.ID = id.String()
+		}
+
 		query := `
 			INSERT INTO workflow_triggers (id, workflow_id, name, description, trigger_id, configuration)
 			VALUES ($1, $2, $3, $4, $5, $6)
@@ -391,11 +409,19 @@ func (r *WorkflowRepository) saveWorkflowSteps(ctx context.Context, tx *sql.Tx, 
 		if err != nil {
 			return fmt.Errorf("failed to marshal step configuration: %w", err)
 		}
+		if step.ID == "" {
+			id, err := uuid.NewV7()
+			if err != nil {
+				return fmt.Errorf("failed to generate step ID: %w", err)
+			}
+			step.ID = id.String()
+		}
 
 		query := `
 			INSERT INTO workflow_steps (id, workflow_id, uid, name, action_id, configuration,
 			                          on_success, on_failure, enabled)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		
 		`
 
 		_, err = tx.ExecContext(ctx, query,

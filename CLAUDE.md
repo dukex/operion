@@ -186,6 +186,7 @@ The project uses GitHub Actions for continuous integration and quality assurance
 - **workflow_triggers** table stores trigger definitions with foreign key to workflows
 - **workflow_steps** table stores step definitions with foreign key to workflows and unique constraint on workflow_id + uid
 - **schema_migrations** table tracks migration versions and timestamps
+- **UUID v7 Support** - All table IDs use time-ordered UUID v7 with auto-generation for better performance and natural sorting
 - Comprehensive indexes on foreign keys, status, owner, creation time, and deletion timestamp for performance
 - Cascade deletes ensure referential integrity when workflows are deleted
 

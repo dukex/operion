@@ -1,6 +1,7 @@
 package postgresql_test
 
 import (
+	"context"
 	"database/sql"
 	"log/slog"
 	"os"
@@ -10,66 +11,75 @@ import (
 	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/persistence/postgresql"
 	"github.com/google/uuid"
+	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go/modules/postgres"
 )
+
+var postgresContainer *postgres.PostgresContainer
+
+func dropDb(ctx context.Context, t *testing.T, databaseURL string) error {
+	db, err := sql.Open("postgres", databaseURL)
+	require.NoError(t, err)
+
+	for _, table := range []string{"workflow_steps", "workflow_triggers", "workflows", "schema_migrations"} {
+		_, err = db.ExecContext(ctx, "DROP TABLE IF EXISTS "+table)
+		require.NoError(t, err)
+	}
+
+	err = db.Close()
+	require.NoError(t, err)
+
+	return err
+}
+
+func setupTestDB(t *testing.T) (*postgresql.Persistence, context.Context, string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+
+	if postgresContainer == nil || !postgresContainer.IsRunning() {
+		var err error
+		postgresContainer, err = postgres.Run(ctx,
+			"postgres:16-alpine",
+			postgres.WithDatabase("operion_test"),
+			postgres.WithUsername("operion"),
+			postgres.WithPassword("operion"),
+			postgres.BasicWaitStrategies(),
+		)
+		require.NoError(t, err)
+	}
+
+	databaseURL, err := postgresContainer.ConnectionString(ctx, "sslmode=disable")
+	require.NoError(t, err)
+
+	dropDb(ctx, t, databaseURL)
+
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+
+	persistence, err := postgresql.NewPersistence(ctx, logger, databaseURL)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		err := dropDb(ctx, t, databaseURL)
+		require.NoError(t, err)
+
+		err = persistence.Close(ctx)
+		require.NoError(t, err)
+
+		cancel()
+	})
+
+	return persistence, ctx, databaseURL
+}
 
 // Helper function to create string pointers.
 func stringPtr(s string) *string {
 	return &s
 }
 
-func getTestDatabaseURL() string {
-	url := os.Getenv("TEST_DATABASE_URL")
-	if url == "" {
-		// Skip tests if no test database URL is provided
-		return ""
-	}
-
-	return url
-}
-
-func setupTestDB(t *testing.T) *postgresql.Persistence {
-	t.Helper()
-
-	databaseURL := getTestDatabaseURL()
-	if databaseURL == "" {
-		t.Skip("Skipping PostgreSQL tests - TEST_DATABASE_URL not set")
-	}
-
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-
-	persistence, err := postgresql.NewPersistence(t.Context(), logger, databaseURL)
-	require.NoError(t, err)
-
-	t.Cleanup(func() {
-		for _, table := range []string{"workflows", "schema_migrations"} {
-			db, err := sql.Open("postgres", databaseURL)
-			require.NoError(t, err)
-
-			_, err = db.ExecContext(t.Context(), "TRUNCATE TABLE "+table)
-			require.NoError(t, err)
-
-			err = db.Close()
-			require.NoError(t, err)
-		}
-
-		err = persistence.Close(t.Context())
-		require.NoError(t, err)
-	})
-
-	return persistence
-}
-
 func TestNewPersistence_Migrations(t *testing.T) {
-	if getTestDatabaseURL() == "" {
-		t.Skip("Skipping PostgreSQL tests - TEST_DATABASE_URL not set")
-	}
+	_, ctx, databaseURL := setupTestDB(t)
 
-	databaseURL := getTestDatabaseURL()
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-
-	// Connect directly to database to test migration
 	db, err := sql.Open("postgres", databaseURL)
 	require.NoError(t, err)
 
@@ -78,62 +88,37 @@ func TestNewPersistence_Migrations(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	// Drop tables to test fresh migration
-	_, _ = db.ExecContext(t.Context(), "DROP TABLE IF EXISTS workflows")
-	_, _ = db.ExecContext(t.Context(), "DROP TABLE IF EXISTS schema_migrations")
-
-	// Create new persistence instance (should run migrations)
-	persistence, err := postgresql.NewPersistence(t.Context(), logger, databaseURL)
-	require.NoError(t, err)
-
-	defer func() {
-		err := persistence.Close(t.Context())
-		require.NoError(t, err)
-	}()
-
 	// Verify tables were created
 	var exists bool
 
-	err = db.QueryRowContext(t.Context(), `SELECT EXISTS (SELECT FROM
+	err = db.QueryRowContext(ctx, `SELECT EXISTS (SELECT FROM
 information_schema.tables WHERE table_name = 'workflows')`).Scan(&exists)
 	require.NoError(t, err)
 	assert.True(t, exists, "workflows table should exist")
 
-	err = db.QueryRowContext(t.Context(), `SELECT EXISTS (SELECT FROM
+	err = db.QueryRowContext(ctx, `SELECT EXISTS (SELECT FROM
 information_schema.tables WHERE table_name = 'schema_migrations')`).Scan(&exists)
 	require.NoError(t, err)
 	assert.True(t, exists, "schema_migrations table should exist")
 
-	// Verify migration version was recorded
 	var version int
 
-	err = db.QueryRowContext(t.Context(), "SELECT version FROM schema_migrations WHERE version = 1").Scan(&version)
+	err = db.QueryRowContext(ctx, "SELECT version FROM schema_migrations WHERE version = 1").Scan(&version)
 	require.NoError(t, err)
 	assert.Equal(t, 1, version)
 }
 
 func TestNewPersistence_HealthCheck(t *testing.T) {
-	p := setupTestDB(t)
+	p, ctx, _ := setupTestDB(t)
 
-	defer func() {
-		err := p.Close(t.Context())
-		require.NoError(t, err)
-	}()
-
-	err := p.HealthCheck(t.Context())
+	err := p.HealthCheck(ctx)
 	assert.NoError(t, err)
 }
 
 func TestNewPersistence_SaveAndRetrieveWorkflow(t *testing.T) {
-	p := setupTestDB(t)
-
-	defer func() {
-		err := p.Close(t.Context())
-		require.NoError(t, err)
-	}()
+	p, ctx, _ := setupTestDB(t)
 
 	workflow := &models.Workflow{
-		ID:          "test-workflow-1",
 		Name:        "Test Workflow",
 		Description: "A test workflow",
 		WorkflowTriggers: []*models.WorkflowTrigger{
@@ -169,14 +154,13 @@ func TestNewPersistence_SaveAndRetrieveWorkflow(t *testing.T) {
 		Owner: "test-user",
 	}
 
-	// Test saving workflow
-	err := p.SaveWorkflow(t.Context(), workflow)
+	err := p.SaveWorkflow(ctx, workflow)
 	require.NoError(t, err)
 	assert.False(t, workflow.CreatedAt.IsZero())
 	assert.False(t, workflow.UpdatedAt.IsZero())
 
 	// Test retrieving workflow by ID
-	retrieved, err := p.WorkflowByID(t.Context(), "test-workflow-1")
+	retrieved, err := p.WorkflowByID(ctx, workflow.ID)
 	require.NoError(t, err)
 	require.NotNil(t, retrieved)
 
@@ -191,21 +175,15 @@ func TestNewPersistence_SaveAndRetrieveWorkflow(t *testing.T) {
 	assert.Equal(t, workflow.Metadata["created_by"], retrieved.Metadata["created_by"])
 
 	// Test retrieving non-existent workflow
-	notFound, err := p.WorkflowByID(t.Context(), "non-existent")
+	notFound, err := p.WorkflowByID(ctx, uuid.NewString())
 	require.NoError(t, err)
 	assert.Nil(t, notFound)
 }
 
 func TestNewPersistence_UpdateWorkflow(t *testing.T) {
-	p := setupTestDB(t)
-
-	defer func() {
-		err := p.Close(t.Context())
-		require.NoError(t, err)
-	}()
+	p, ctx, _ := setupTestDB(t)
 
 	workflow := &models.Workflow{
-		ID:          "test-workflow-2",
 		Name:        "Test Workflow",
 		Description: "A test workflow",
 		WorkflowTriggers: []*models.WorkflowTrigger{
@@ -235,8 +213,7 @@ func TestNewPersistence_UpdateWorkflow(t *testing.T) {
 		Owner:  "test-user",
 	}
 
-	// Save initial workflow
-	err := p.SaveWorkflow(t.Context(), workflow)
+	err := p.SaveWorkflow(ctx, workflow)
 	require.NoError(t, err)
 
 	initialUpdatedAt := workflow.UpdatedAt
@@ -249,11 +226,11 @@ func TestNewPersistence_UpdateWorkflow(t *testing.T) {
 	workflow.Description = "An updated test workflow"
 	workflow.Status = models.WorkflowStatusPaused
 
-	err = p.SaveWorkflow(t.Context(), workflow)
+	err = p.SaveWorkflow(ctx, workflow)
 	require.NoError(t, err)
 
 	// Verify update
-	retrieved, err := p.WorkflowByID(t.Context(), "test-workflow-2")
+	retrieved, err := p.WorkflowByID(ctx, workflow.ID)
 	require.NoError(t, err)
 	require.NotNil(t, retrieved)
 
@@ -264,17 +241,10 @@ func TestNewPersistence_UpdateWorkflow(t *testing.T) {
 }
 
 func TestNewPersistence_ListWorkflows(t *testing.T) {
-	p := setupTestDB(t)
+	p, ctx, _ := setupTestDB(t)
 
-	defer func() {
-		err := p.Close(t.Context())
-		require.NoError(t, err)
-	}()
-
-	// Create multiple test workflows
 	workflows := []*models.Workflow{
 		{
-			ID:          "test-workflow-3",
 			Name:        "Test Workflow 3",
 			Description: "Description 3",
 			WorkflowTriggers: []*models.WorkflowTrigger{
@@ -300,7 +270,7 @@ func TestNewPersistence_ListWorkflows(t *testing.T) {
 			Owner:  "test-user",
 		},
 		{
-			ID:          "test-workflow-4",
+
 			Name:        "Test Workflow 4",
 			Description: "Description 4",
 			WorkflowTriggers: []*models.WorkflowTrigger{
@@ -327,38 +297,21 @@ func TestNewPersistence_ListWorkflows(t *testing.T) {
 		},
 	}
 
-	// Save workflows
 	for _, workflow := range workflows {
-		err := p.SaveWorkflow(t.Context(), workflow)
+		err := p.SaveWorkflow(ctx, workflow)
 		require.NoError(t, err)
 	}
 
-	// Retrieve all workflows
-	retrieved, err := p.Workflows(t.Context())
+	retrieved, err := p.Workflows(ctx)
 	require.NoError(t, err)
 
-	// Should have at least our test workflows
-	var testWorkflows []*models.Workflow
-
-	for _, w := range retrieved {
-		if w.ID == "test-workflow-3" || w.ID == "test-workflow-4" {
-			testWorkflows = append(testWorkflows, w)
-		}
-	}
-
-	assert.Len(t, testWorkflows, 2)
+	assert.Len(t, retrieved, len(workflows))
 }
 
 func TestNewPersistence_DeleteWorkflow(t *testing.T) {
-	p := setupTestDB(t)
-
-	defer func() {
-		err := p.Close(t.Context())
-		require.NoError(t, err)
-	}()
+	p, ctx, _ := setupTestDB(t)
 
 	workflow := &models.Workflow{
-		ID:          "test-workflow-5",
 		Name:        "Test Workflow to Delete",
 		Description: "A test workflow for deletion",
 		WorkflowTriggers: []*models.WorkflowTrigger{
@@ -388,38 +341,32 @@ func TestNewPersistence_DeleteWorkflow(t *testing.T) {
 	}
 
 	// Save workflow
-	err := p.SaveWorkflow(t.Context(), workflow)
+	err := p.SaveWorkflow(ctx, workflow)
 	require.NoError(t, err)
 
 	// Verify it exists
-	retrieved, err := p.WorkflowByID(t.Context(), "test-workflow-5")
+	retrieved, err := p.WorkflowByID(ctx, workflow.ID)
 	require.NoError(t, err)
 	require.NotNil(t, retrieved)
 
 	// Delete workflow
-	err = p.DeleteWorkflow(t.Context(), "test-workflow-5")
+	err = p.DeleteWorkflow(ctx, workflow.ID)
 	require.NoError(t, err)
 
 	// Verify it's gone (soft delete)
-	deleted, err := p.WorkflowByID(t.Context(), "test-workflow-5")
+	deleted, err := p.WorkflowByID(ctx, workflow.ID)
 	require.NoError(t, err)
 	assert.Nil(t, deleted)
 
 	// Delete non-existent workflow (should not error)
-	err = p.DeleteWorkflow(t.Context(), "non-existent")
+	err = p.DeleteWorkflow(ctx, uuid.NewString())
 	assert.NoError(t, err)
 }
 
 func TestNewPersistence_ComplexWorkflow(t *testing.T) {
-	p := setupTestDB(t)
-
-	defer func() {
-		err := p.Close(t.Context())
-		require.NoError(t, err)
-	}()
+	p, ctx, _ := setupTestDB(t)
 
 	workflow := &models.Workflow{
-		ID:          "test-complex-workflow",
 		Name:        "Complex Test Workflow",
 		Description: "A complex workflow with multiple triggers and steps",
 		WorkflowTriggers: []*models.WorkflowTrigger{
@@ -502,12 +449,11 @@ func TestNewPersistence_ComplexWorkflow(t *testing.T) {
 		Owner: "test-user",
 	}
 
-	// Save complex workflow
-	err := p.SaveWorkflow(t.Context(), workflow)
+	err := p.SaveWorkflow(ctx, workflow)
 	require.NoError(t, err)
 
 	// Retrieve and verify
-	retrieved, err := p.WorkflowByID(t.Context(), "test-complex-workflow")
+	retrieved, err := p.WorkflowByID(ctx, workflow.ID)
 	require.NoError(t, err)
 	require.NotNil(t, retrieved)
 
@@ -517,18 +463,43 @@ func TestNewPersistence_ComplexWorkflow(t *testing.T) {
 	assert.Len(t, retrieved.Steps, len(workflow.Steps))
 
 	// Verify first trigger
-	trigger1 := retrieved.WorkflowTriggers[0]
-	assert.Equal(t, "schedule", trigger1.TriggerID)
-	assert.Equal(t, "0 0 * * *", trigger1.Configuration["cron"])
-	assert.Equal(t, true, trigger1.Configuration["enabled"])
+	assert.Len(t, retrieved.WorkflowTriggers, 2)
 
-	// Verify first step
-	step1 := retrieved.Steps[0]
-	assert.Equal(t, "fetch_data", step1.UID)
-	assert.Equal(t, "http_request", step1.ActionID)
-	assert.Equal(t, "https://api.example.com/data", step1.Configuration["url"])
-	assert.NotNil(t, step1.OnSuccess)
-	assert.Equal(t, "transform_data", *step1.OnSuccess)
+	for _, trigger := range retrieved.WorkflowTriggers {
+		switch trigger.TriggerID {
+		case "schedule":
+			assert.Equal(t, "0 0 * * *", trigger.Configuration["cron"])
+			assert.Equal(t, true, trigger.Configuration["enabled"])
+		case "webhook":
+			assert.Equal(t, "/webhook/test", trigger.Configuration["path"])
+			assert.Equal(t, "POST", trigger.Configuration["method"])
+		}
+	}
+
+	assert.Len(t, retrieved.Steps, len(workflow.Steps))
+
+	for _, step := range retrieved.Steps {
+		switch step.UID {
+		case "fetch_data":
+			assert.Equal(t, "http_request", step.ActionID)
+			assert.Equal(t, "https://api.example.com/data", step.Configuration["url"])
+			assert.Equal(t, "GET", step.Configuration["method"])
+			assert.NotNil(t, step.OnSuccess)
+			assert.Equal(t, "transform_data", *step.OnSuccess)
+		case "transform_data":
+			assert.Equal(t, "transform", step.ActionID)
+			assert.Equal(t, "$.data", step.Configuration["expression"])
+			assert.Equal(t, "{{steps.fetch_data.body}}", step.Configuration["input"])
+			assert.NotNil(t, step.OnSuccess)
+			assert.Equal(t, "log_result", *step.OnSuccess)
+		case "log_result":
+			assert.Equal(t, "log", step.ActionID)
+			assert.Equal(t, "Processing completed: {{steps.transform_data.result}}", step.Configuration["message"])
+		case "error_handler":
+			assert.Equal(t, "log", step.ActionID)
+			assert.Equal(t, "Error occurred: {{steps.fetch_data.error}}", step.Configuration["message"])
+		}
+	}
 
 	// Verify variables and metadata
 	assert.Equal(t, "https://api.example.com", retrieved.Variables["api_base_url"])

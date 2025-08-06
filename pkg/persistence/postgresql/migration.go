@@ -5,7 +5,7 @@ func migrations() map[int]string {
 		1: `
 			-- Create workflows table
 			CREATE TABLE workflows (
-				id VARCHAR(255) PRIMARY KEY,
+				id UUID PRIMARY KEY,
 				name VARCHAR(255) NOT NULL,
 				description TEXT NOT NULL,
 				variables JSONB,
@@ -24,8 +24,8 @@ func migrations() map[int]string {
 
 			-- Create workflow_triggers table
 			CREATE TABLE workflow_triggers (
-				id VARCHAR(255) PRIMARY KEY,
-				workflow_id VARCHAR(255) NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
+				id UUID PRIMARY KEY,
+				workflow_id UUID NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
 				name VARCHAR(255) NOT NULL,
 				description TEXT NOT NULL,
 				trigger_id VARCHAR(255) NOT NULL,
@@ -39,8 +39,8 @@ func migrations() map[int]string {
 
 			-- Create workflow_steps table
 			CREATE TABLE workflow_steps (
-				id VARCHAR(255) PRIMARY KEY,
-				workflow_id VARCHAR(255) NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
+				id UUID PRIMARY KEY,
+				workflow_id UUID NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
 				uid VARCHAR(255) NOT NULL,
 				name VARCHAR(255) NOT NULL,
 				action_id VARCHAR(255) NOT NULL,

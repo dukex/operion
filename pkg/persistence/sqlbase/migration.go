@@ -63,9 +63,17 @@ func (m *MigrationManager) createMigrationsTable(ctx context.Context) error {
 			applied_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 		);
 	`
-	_, err := m.db.ExecContext(ctx, createMigrationsSQL)
 
-	return fmt.Errorf("failed to create schema_migrations table: %w", err)
+	_, err := m.db.ExecContext(ctx, createMigrationsSQL)
+	if err != nil {
+		m.logger.ErrorContext(ctx, "Failed to create schema_migrations table", "error", err)
+
+		return fmt.Errorf("failed to create schema_migrations table: %w", err)
+	}
+
+	m.logger.InfoContext(ctx, "Schema migrations table created successfully")
+
+	return nil
 }
 
 // getCurrentSchemaVersion returns the current schema version.

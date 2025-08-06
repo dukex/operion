@@ -9,6 +9,8 @@ import (
 
 	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/persistence/sqlbase"
+
+	_ "github.com/lib/pq"
 )
 
 // Persistence implements the persistence layer for PostgreSQL.
