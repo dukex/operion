@@ -16,10 +16,6 @@ import (
 	"github.com/dukex/operion/pkg/registry"
 )
 
-// Constants for source provider types.
-const (
-	SchedulerProviderType = "scheduler"
-)
 
 type SourceProviderManager struct {
 	id               string
@@ -168,38 +164,15 @@ func (spm *SourceProviderManager) startSourceProviders(ctx context.Context) erro
 func (spm *SourceProviderManager) startSourceProvider(ctx context.Context, factory protocol.SourceProviderFactory) error {
 	providerID := factory.ID()
 
-	// Create provider configuration
-	var sourceConfigs []map[string]any
-
-	if providerID == SchedulerProviderType {
-		// Create single orchestrator instance (no source-specific configuration)
-		config := map[string]any{}
-		sourceConfigs = []map[string]any{config}
-	}
-	// Add other provider types as needed
-
-	if len(sourceConfigs) == 0 {
-		spm.logger.Info("No configuration found for provider", "provider_id", providerID)
-
-		return nil
-	}
+	// Create default provider configuration  
+	// All providers get a default empty configuration and handle their own setup via lifecycle
+	config := map[string]any{}
+	sourceConfigs := []map[string]any{config}
 
 	// Start a provider instance for each source configuration
 	for _, config := range sourceConfigs {
-		// Generate provider instance key (scheduler uses orchestrator key, others use source_id)
-		var instanceKey string
-		if providerID == SchedulerProviderType {
-			instanceKey = SchedulerProviderType + "-orchestrator"
-		} else {
-			sourceID, ok := config["source_id"].(string)
-			if !ok {
-				spm.logger.Error("Missing source_id in config", "provider_id", providerID)
-
-				continue
-			}
-
-			instanceKey = sourceID
-		}
+		// Generate provider instance key using provider ID
+		instanceKey := providerID
 
 		provider, err := spm.registry.CreateSourceProvider(ctx, providerID, config)
 		if err != nil {
@@ -262,13 +235,8 @@ func (spm *SourceProviderManager) startSourceProvider(ctx context.Context, facto
 		spm.runningProviders[instanceKey] = provider
 		spm.providerMutex.Unlock()
 
-		// Create callback - scheduler orchestrator handles all sources, others handle specific source
-		var callback protocol.SourceEventCallback
-		if providerID == SchedulerProviderType {
-			callback = spm.createSourceEventCallback("") // Empty source_id for orchestrator
-		} else {
-			callback = spm.createSourceEventCallback(instanceKey)
-		}
+		// Create callback for the provider
+		callback := spm.createSourceEventCallback("")
 
 		// Step 4: Start the provider
 		if err := provider.Start(ctx, callback); err != nil {
