@@ -12,14 +12,7 @@ import (
 	"github.com/dukex/operion/pkg/events"
 	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/persistence"
-	"github.com/dukex/operion/pkg/workflow"
 )
-
-// TriggerMatch represents a workflow trigger that matches a source event.
-type TriggerMatch struct {
-	WorkflowID string
-	Trigger    *models.WorkflowTrigger
-}
 
 // Activator consumes source events and triggers workflows based on registered triggers.
 type Activator struct {
@@ -183,36 +176,28 @@ func (a *Activator) handleSourceEvent(ctx context.Context, sourceEvent *events.S
 }
 
 // findTriggersForSourceEvent queries the database for triggers that match a source event.
-func (a *Activator) findTriggersForSourceEvent(ctx context.Context, sourceEvent *events.SourceEvent) ([]*TriggerMatch, error) {
-	workflowRepo := workflow.NewRepository(a.persistence)
-
-	workflows, err := workflowRepo.FetchAll(ctx)
+func (a *Activator) findTriggersForSourceEvent(ctx context.Context, sourceEvent *events.SourceEvent) ([]*models.TriggerMatch, error) {
+	// Use the new persistence method to find triggers by source ID and active status
+	// This enables database implementations to use proper queries and indexes
+	matchingTriggers, err := a.persistence.WorkflowTriggersBySourceID(ctx, sourceEvent.SourceID, models.WorkflowStatusActive)
 	if err != nil {
-		a.logger.Error("Failed to fetch workflows", "error", err)
+		a.logger.Error("Failed to fetch matching triggers", "error", err)
 
 		return nil, err
 	}
 
-	var matchingTriggers []*TriggerMatch
+	// Filter triggers based on additional matching criteria
+	// Note: For now we accept all triggers from the matching source
+	// TODO: Add event type filtering when triggers support event type specification
+	var filteredTriggers []*models.TriggerMatch
 
-	for _, wf := range workflows {
-		// Only process active workflows
-		if wf.Status != models.WorkflowStatusActive {
-			continue
-		}
-
-		for _, trigger := range wf.WorkflowTriggers {
-			// Check if this trigger matches the source event
-			if a.triggerMatchesSourceEvent(trigger, sourceEvent) {
-				matchingTriggers = append(matchingTriggers, &TriggerMatch{
-					WorkflowID: wf.ID,
-					Trigger:    trigger,
-				})
-			}
+	for _, match := range matchingTriggers {
+		if a.triggerMatchesSourceEvent(match.Trigger, sourceEvent) {
+			filteredTriggers = append(filteredTriggers, match)
 		}
 	}
 
-	return matchingTriggers, nil
+	return filteredTriggers, nil
 }
 
 // triggerMatchesSourceEvent determines if a workflow trigger should be activated by a source event.

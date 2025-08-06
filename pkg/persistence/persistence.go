@@ -25,5 +25,9 @@ type Persistence interface {
 	DeleteWorkflow(ctx context.Context, id string) error
 	HealthCheck(ctx context.Context) error
 
+	// Trigger operations
+	WorkflowTriggersBySourceID(ctx context.Context, sourceID string, status models.WorkflowStatus) ([]*models.TriggerMatch, error)
+	WorkflowTriggersBySourceAndEvent(ctx context.Context, sourceID, eventType string, status models.WorkflowStatus) ([]*models.TriggerMatch, error)
+
 	Close(ctx context.Context) error
 }

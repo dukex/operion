@@ -263,3 +263,68 @@ func (fp *FilePersistence) DueSchedules(before time.Time) ([]*models.Schedule, e
 
 	return dueSchedules, nil
 }
+
+// WorkflowTriggersBySourceID returns workflow triggers that match a specific source ID and workflow status.
+func (fp *FilePersistence) WorkflowTriggersBySourceID(ctx context.Context, sourceID string, status models.WorkflowStatus) ([]*models.TriggerMatch, error) {
+	workflows, err := fp.Workflows(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var matchingTriggers []*models.TriggerMatch
+
+	for _, wf := range workflows {
+		// Only process workflows with the specified status
+		if wf.Status != status {
+			continue
+		}
+
+		for _, trigger := range wf.WorkflowTriggers {
+			// Check if this trigger matches the source ID
+			if trigger.SourceID == sourceID {
+				matchingTriggers = append(matchingTriggers, &models.TriggerMatch{
+					WorkflowID: wf.ID,
+					Trigger:    trigger,
+				})
+			}
+		}
+	}
+
+	return matchingTriggers, nil
+}
+
+// WorkflowTriggersBySourceAndEvent returns workflow triggers that match a specific source ID, event type, and workflow status.
+func (fp *FilePersistence) WorkflowTriggersBySourceAndEvent(ctx context.Context, sourceID, eventType string, status models.WorkflowStatus) ([]*models.TriggerMatch, error) {
+	workflows, err := fp.Workflows(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var matchingTriggers []*models.TriggerMatch
+
+	for _, wf := range workflows {
+		// Only process workflows with the specified status
+		if wf.Status != status {
+			continue
+		}
+
+		for _, trigger := range wf.WorkflowTriggers {
+			// Check if this trigger matches the source ID
+			if trigger.SourceID != sourceID {
+				continue
+			}
+
+			// TODO: Add event type filtering based on trigger configuration
+			// For now, any event from the matching source will trigger the workflow
+			// Future enhancement: triggers could specify which event types they're interested in
+			// via their Configuration map, e.g., trigger.Configuration["event_types"] = ["ScheduleDue", "ScheduleOverdue"]
+
+			matchingTriggers = append(matchingTriggers, &models.TriggerMatch{
+				WorkflowID: wf.ID,
+				Trigger:    trigger,
+			})
+		}
+	}
+
+	return matchingTriggers, nil
+}
