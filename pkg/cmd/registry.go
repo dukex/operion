@@ -10,6 +10,7 @@ import (
 	"github.com/dukex/operion/pkg/actions/transform"
 	"github.com/dukex/operion/pkg/registry"
 	"github.com/dukex/operion/pkg/sources/scheduler"
+	webhookSource "github.com/dukex/operion/pkg/sources/webhook"
 	"github.com/dukex/operion/pkg/triggers/kafka"
 	"github.com/dukex/operion/pkg/triggers/queue"
 	"github.com/dukex/operion/pkg/triggers/schedule"
@@ -65,6 +66,9 @@ func registerNativeTriggers(reg *registry.Registry) {
 func registerNativeSourceProviders(reg *registry.Registry) {
 	schedulerProvider := scheduler.NewSchedulerSourceProviderFactory()
 	reg.RegisterSourceProvider(schedulerProvider)
+
+	webhookProvider := webhookSource.NewWebhookSourceProviderFactory()
+	reg.RegisterSourceProvider(webhookProvider)
 }
 
 func NewRegistry(ctx context.Context, log *slog.Logger, pluginsPath string) *registry.Registry {

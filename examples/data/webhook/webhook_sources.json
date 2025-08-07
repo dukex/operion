@@ -1,0 +1,38 @@
+[
+  {
+    "id": "message-webhook-source",
+    "source_id": "message-webhook-source",
+    "uuid": "944a601f-35d7-467f-94f3-3a6a7b5e77a2",
+    "json_schema": {
+      "additionalProperties": true,
+      "properties": {
+        "message": {
+          "description": "The message content to be logged",
+          "type": "string"
+        }
+      },
+      "required": [
+        "message"
+      ],
+      "type": "object"
+    },
+    "configuration": {
+      "json_schema": {
+        "additionalProperties": true,
+        "properties": {
+          "message": {
+            "description": "The message content to be logged",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "type": "object"
+      }
+    },
+    "active": true,
+    "created_at": "2025-08-07T19:41:58Z",
+    "updated_at": "2025-08-07T19:41:58Z"
+  }
+]
