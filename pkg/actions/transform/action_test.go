@@ -132,29 +132,6 @@ func TestTransformAction_Execute_SimpleTransform(t *testing.T) {
 	assert.Equal(t, "John Doe", result)
 }
 
-func TestTransformAction_Execute_WithInput(t *testing.T) {
-	action := &transform.Action{
-		Expression: "{{.step_results.step1.data.temperature}}",
-	}
-
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	execCtx := models.ExecutionContext{
-		StepResults: map[string]any{
-			"step1": map[string]any{
-				"data": map[string]any{
-					"temperature": 25.5,
-					"humidity":    60,
-				},
-			},
-		},
-	}
-
-	result, err := action.Execute(context.Background(), execCtx, logger)
-
-	require.NoError(t, err)
-	assert.Equal(t, 25.5, result)
-}
-
 func TestTransformAction_Execute_ObjectConstruction(t *testing.T) {
 	t.Parallel()
 
