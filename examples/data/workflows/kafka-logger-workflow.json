@@ -1,0 +1,48 @@
+{
+  "id": "kafka-logger-workflow",
+  "name": "Kafka Event Logger", 
+  "description": "Simple workflow that logs events from custom Kafka topics",
+  "workflow_triggers": [
+    {
+      "id": "kafka-trigger",
+      "name": "Kafka Source Trigger",
+      "description": "Receives events from Kafka topics tp_employee and tp_allowance_order",
+      "source_id": "custom",
+      "trigger_id": "",
+      "configuration": {}
+    }
+  ],
+  "steps": [
+    {
+      "id": "log-kafka-event",
+      "action_id": "log",
+      "configuration": {
+        "message": "🔔 Kafka Event Received - Topic: {{.trigger_data.topic}}, Partition: {{.trigger_data.partition}}, Offset: {{.trigger_data.offset}}, Key: {{.trigger_data.key}}, Value: {{.trigger_data.value}}"
+      },
+      "uid": "kafka_event_logger",
+      "name": "Log Kafka Event",
+      "enabled": true
+    }
+  ],
+  "variables": {},
+  "status": "active",
+  "metadata": {
+    "author": "Custom Kafka Plugin Example",
+    "description": "Logs all events received from custom Kafka source provider",
+    "tags": [
+      "kafka",
+      "source-provider", 
+      "logging",
+      "custom"
+    ],
+    "version": "1.0",
+    "usage_instructions": [
+      "1. Start source manager: CUSTOM_KAFKA_CONFIG='../examples/plugins/sourceproviders/custom-kafka/config.json' ./bin/operion-source-manager --plugins-path='./examples/plugins' --providers='custom-kafka'",
+      "2. Publish messages to tp_employee or tp_allowance_order topics on localhost:29092",
+      "3. Check workflow execution logs to see the Kafka events"
+    ]
+  },
+  "owner": "system",
+  "created_at": "2025-08-09T12:00:00Z",
+  "updated_at": "2025-08-09T12:00:00Z"
+}

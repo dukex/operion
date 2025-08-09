@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"os"
 	"plugin"
+	"reflect"
 	"strings"
 
 	"github.com/dukex/operion/pkg/protocol"
@@ -122,7 +123,7 @@ func (r *Registry) CreateSourceProvider(
 
 	created, err := factory.Create(config, r.logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create trigger '%s': %w", providerID, err)
+		return nil, fmt.Errorf("failed to create source provider '%s': %w", providerID, err)
 	}
 
 	return created, nil
@@ -192,9 +193,24 @@ func loadPlugin[T any](ctx context.Context, logger *slog.Logger, pluginsPath str
 			panic(err)
 		}
 
-		castV, ok := v.(T)
-		if !ok {
-			panic("Could not cast plugin")
+		// Handle pointer-to-interface case that occurs with Go plugins
+		var castV T
+		var ok bool
+
+		// Try direct cast first
+		if castV, ok = v.(T); ok {
+			// Direct cast worked
+		} else {
+			// Try dereferencing if it's a pointer to interface
+			rv := reflect.ValueOf(v)
+			if rv.Kind() == reflect.Ptr && !rv.IsNil() {
+				deref := rv.Elem().Interface()
+				if castV, ok = deref.(T); !ok {
+					panic(fmt.Sprintf("Could not cast plugin: got %T, expected %T", v, (*T)(nil)))
+				}
+			} else {
+				panic(fmt.Sprintf("Could not cast plugin: got %T, expected %T", v, (*T)(nil)))
+			}
 		}
 
 		pluginList = append(pluginList, castV)

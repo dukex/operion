@@ -1,0 +1,16 @@
+{
+  "brokers": [
+    "localhost:29092"
+  ],
+  "consumer_group": "cg-operion-custom-kafka",
+  "topics": [
+    {
+      "name": "tp_employee",
+      "source_id": "custom"
+    },
+    {
+      "name": "tp_allowance_order",
+      "source_id": "custom"
+    }
+  ]
+}
