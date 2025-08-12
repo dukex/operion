@@ -40,7 +40,7 @@ type WebhookServer struct {
 
 // WebhookPersistence defines minimal interface needed by server for webhook operations.
 type WebhookPersistence interface {
-	WebhookSourceByUUID(uuid string) (*models.WebhookSource, error)
+	WebhookSourceByExternalID(externalID string) (*models.WebhookSource, error)
 	WebhookSources() ([]*models.WebhookSource, error)
 }
 
@@ -61,8 +61,8 @@ func (s *WebhookServer) SetPersistence(persistence WebhookPersistence) {
 // RegisterSource logs webhook source registration (sources are now managed via persistence).
 func (s *WebhookServer) RegisterSource(source *models.WebhookSource) error {
 	s.logger.Info("Webhook source available for requests",
-		"source_id", source.SourceID,
-		"uuid", source.UUID,
+		"source_id", source.ID,
+		"external_id", source.ExternalID,
 		"url", source.GetWebhookURL())
 
 	return nil
@@ -70,7 +70,7 @@ func (s *WebhookServer) RegisterSource(source *models.WebhookSource) error {
 
 // UnregisterSource logs webhook source unregistration (sources are now managed via persistence).
 func (s *WebhookServer) UnregisterSource(uuid string) {
-	s.logger.Info("Webhook source unregistered", "uuid", uuid)
+	s.logger.Info("Webhook source unregistered", "external_id", uuid)
 }
 
 // SetCallback sets the callback function for publishing source events.
@@ -180,7 +180,7 @@ func (s *WebhookServer) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Find webhook source by UUID from persistence
-	source, err := s.persistence.WebhookSourceByUUID(uuid)
+	source, err := s.persistence.WebhookSourceByExternalID(uuid)
 	if err != nil {
 		s.logger.Error("Error checking persistence for webhook UUID", "uuid", uuid, "error", err)
 		s.writeErrorResponse(w, http.StatusInternalServerError, "Error processing webhook")
@@ -197,7 +197,7 @@ func (s *WebhookServer) handleWebhook(w http.ResponseWriter, r *http.Request) {
 
 	// Check if source is active
 	if !source.Active {
-		s.logger.Warn("Webhook request for inactive source", "source_id", source.SourceID, "uuid", uuid)
+		s.logger.Warn("Webhook request for inactive source", "source_id", source.ID, "external_id", uuid)
 		s.writeErrorResponse(w, http.StatusNotFound, "Webhook not found")
 
 		return
@@ -209,7 +209,7 @@ func (s *WebhookServer) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	// Read and parse request body
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		s.logger.Error("Error reading request body", "source_id", source.SourceID, "error", err)
+		s.logger.Error("Error reading request body", "source_id", source.ID, "error", err)
 		s.writeErrorResponse(w, http.StatusBadRequest, "Error reading request body")
 
 		return
@@ -219,7 +219,7 @@ func (s *WebhookServer) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	var eventData map[string]any
 	if len(body) > 0 {
 		if err := json.Unmarshal(body, &eventData); err != nil {
-			s.logger.Error("Error parsing JSON body", "source_id", source.SourceID, "error", err)
+			s.logger.Error("Error parsing JSON body", "source_id", source.ID, "error", err)
 			s.writeErrorResponse(w, http.StatusBadRequest, "Invalid JSON in request body")
 
 			return
@@ -231,7 +231,7 @@ func (s *WebhookServer) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	// Validate against JSON schema if configured
 	if source.HasJSONSchema() {
 		if err := s.validateJSONSchema(eventData, source.JSONSchema); err != nil {
-			s.logger.Warn("JSON schema validation failed", "source_id", source.SourceID, "error", err)
+			s.logger.Warn("JSON schema validation failed", "source_id", source.ID, "error", err)
 			s.writeErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("Schema validation failed: %v", err))
 
 			return
@@ -244,8 +244,8 @@ func (s *WebhookServer) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	// Publish source event if callback is available
 	if s.callback != nil {
 		ctx := r.Context()
-		if err := s.callback(ctx, source.SourceID, "webhook", "WebhookReceived", enrichedEventData); err != nil {
-			s.logger.Error("Error publishing source event", "source_id", source.SourceID, "error", err)
+		if err := s.callback(ctx, source.ID, "webhook", "WebhookReceived", enrichedEventData); err != nil {
+			s.logger.Error("Error publishing source event", "source_id", source.ID, "error", err)
 			s.writeErrorResponse(w, http.StatusInternalServerError, "Error processing webhook")
 
 			return
@@ -254,8 +254,8 @@ func (s *WebhookServer) handleWebhook(w http.ResponseWriter, r *http.Request) {
 
 	// Log successful webhook processing
 	s.logger.Info("Webhook processed successfully",
-		"source_id", source.SourceID,
-		"uuid", uuid,
+		"source_id", source.ID,
+		"external_id", uuid,
 		"remote_addr", r.RemoteAddr,
 		"user_agent", r.UserAgent(),
 		"content_length", r.ContentLength)

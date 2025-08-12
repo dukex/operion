@@ -59,27 +59,13 @@ func (fp *FilePersistence) WebhookSourceByID(id string) (*models.WebhookSource, 
 	return source, nil
 }
 
-// WebhookSourceByUUID retrieves a webhook source by its UUID.
-func (fp *FilePersistence) WebhookSourceByUUID(uuid string) (*models.WebhookSource, error) {
+// WebhookSourceByExternalID retrieves a webhook source by its external ID.
+func (fp *FilePersistence) WebhookSourceByExternalID(externalID string) (*models.WebhookSource, error) {
 	fp.mu.RLock()
 	defer fp.mu.RUnlock()
 
 	for _, source := range fp.webhookSources {
-		if source.UUID == uuid {
-			return source, nil
-		}
-	}
-
-	return nil, nil
-}
-
-// WebhookSourceBySourceID retrieves a webhook source by its source ID.
-func (fp *FilePersistence) WebhookSourceBySourceID(sourceID string) (*models.WebhookSource, error) {
-	fp.mu.RLock()
-	defer fp.mu.RUnlock()
-
-	for _, source := range fp.webhookSources {
-		if source.SourceID == sourceID {
+		if source.ExternalID.String() == externalID {
 			return source, nil
 		}
 	}
@@ -122,22 +108,6 @@ func (fp *FilePersistence) DeleteWebhookSource(id string) error {
 	defer fp.mu.Unlock()
 
 	delete(fp.webhookSources, id)
-
-	return fp.saveWebhookSourcesToFile()
-}
-
-// DeleteWebhookSourceBySourceID removes a webhook source by its source ID.
-func (fp *FilePersistence) DeleteWebhookSourceBySourceID(sourceID string) error {
-	fp.mu.Lock()
-	defer fp.mu.Unlock()
-
-	for id, source := range fp.webhookSources {
-		if source.SourceID == sourceID {
-			delete(fp.webhookSources, id)
-
-			break
-		}
-	}
 
 	return fp.saveWebhookSourcesToFile()
 }

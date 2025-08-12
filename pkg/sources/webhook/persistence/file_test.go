@@ -46,20 +46,13 @@ func TestFilePersistence_SaveAndRetrieve(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, retrieved)
 	assert.Equal(t, source.ID, retrieved.ID)
-	assert.Equal(t, source.UUID, retrieved.UUID)
-	assert.Equal(t, source.SourceID, retrieved.SourceID)
+	assert.Equal(t, source.ExternalID, retrieved.ExternalID)
 
-	// Retrieve by UUID
-	retrievedByUUID, err := fp.WebhookSourceByUUID(source.UUID)
+	// Retrieve by ExternalID
+	retrievedByExternalID, err := fp.WebhookSourceByExternalID(source.ExternalID.String())
 	require.NoError(t, err)
-	require.NotNil(t, retrievedByUUID)
-	assert.Equal(t, source.UUID, retrievedByUUID.UUID)
-
-	// Retrieve by SourceID
-	retrievedBySourceID, err := fp.WebhookSourceBySourceID(source.SourceID)
-	require.NoError(t, err)
-	require.NotNil(t, retrievedBySourceID)
-	assert.Equal(t, source.SourceID, retrievedBySourceID.SourceID)
+	require.NotNil(t, retrievedByExternalID)
+	assert.Equal(t, source.ExternalID, retrievedByExternalID.ExternalID)
 }
 
 func TestFilePersistence_ListSources(t *testing.T) {
@@ -101,7 +94,7 @@ func TestFilePersistence_ListSources(t *testing.T) {
 	activeSources, err := fp.ActiveWebhookSources()
 	require.NoError(t, err)
 	assert.Len(t, activeSources, 1)
-	assert.Equal(t, "source-1", activeSources[0].SourceID)
+	assert.Equal(t, "source-1", activeSources[0].ID)
 }
 
 func TestFilePersistence_DeleteSources(t *testing.T) {
@@ -132,8 +125,8 @@ func TestFilePersistence_DeleteSources(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, retrieved)
 
-	// Delete by source ID
-	err = fp.DeleteWebhookSourceBySourceID(source.SourceID)
+	// Delete by ID
+	err = fp.DeleteWebhookSource(source.ID)
 	require.NoError(t, err)
 
 	// Verify source is deleted
@@ -171,11 +164,11 @@ func TestFilePersistence_LoadExistingData(t *testing.T) {
 	}()
 
 	// Verify data was loaded
-	retrieved, err := fp2.WebhookSourceBySourceID("persistent-source")
+	retrieved, err := fp2.WebhookSourceByID("persistent-source")
 	require.NoError(t, err)
 	require.NotNil(t, retrieved)
-	assert.Equal(t, "persistent-source", retrieved.SourceID)
-	assert.Equal(t, source.UUID, retrieved.UUID)
+	assert.Equal(t, "persistent-source", retrieved.ID)
+	assert.Equal(t, source.ExternalID, retrieved.ExternalID)
 }
 
 func TestFilePersistence_HealthCheck(t *testing.T) {

@@ -63,12 +63,11 @@ func TestNewWebhookSource_ValidConfiguration(t *testing.T) {
 
 			// Verify basic fields
 			assert.Equal(t, tc.sourceID, source.ID)
-			assert.Equal(t, tc.sourceID, source.SourceID)
 			assert.True(t, source.Active)
 
-			// Verify UUID is valid
-			assert.NotEmpty(t, source.UUID)
-			_, err = uuid.Parse(source.UUID)
+			// Verify ExternalID is valid
+			assert.NotEmpty(t, source.ExternalID.String())
+			_, err = uuid.Parse(source.ExternalID.String())
 			assert.NoError(t, err)
 
 			// Verify timestamps are reasonable
@@ -96,7 +95,7 @@ func TestNewWebhookSource_ValidConfiguration(t *testing.T) {
 	}
 }
 
-func TestNewWebhookSource_InvalidSourceID(t *testing.T) {
+func TestNewWebhookSource_InvalidID(t *testing.T) {
 	testCases := []struct {
 		name     string
 		sourceID string
@@ -123,8 +122,7 @@ func TestNewWebhookSource_InvalidSourceID(t *testing.T) {
 func TestWebhookSource_Validate_Success(t *testing.T) {
 	source := &WebhookSource{
 		ID:            "test-id",
-		SourceID:      "source-123",
-		UUID:          uuid.New().String(),
+		ExternalID:    uuid.New(),
 		Configuration: map[string]any{},
 		CreatedAt:     time.Now().UTC(),
 		UpdatedAt:     time.Now().UTC(),
@@ -144,8 +142,7 @@ func TestWebhookSource_Validate_MissingFields(t *testing.T) {
 			name: "missing ID",
 			source: &WebhookSource{
 				ID:            "",
-				SourceID:      "source-123",
-				UUID:          uuid.New().String(),
+				ExternalID:    uuid.New(),
 				Configuration: map[string]any{},
 				CreatedAt:     time.Now().UTC(),
 				UpdatedAt:     time.Now().UTC(),
@@ -153,23 +150,10 @@ func TestWebhookSource_Validate_MissingFields(t *testing.T) {
 			},
 		},
 		{
-			name: "missing SourceID",
+			name: "missing ExternalID",
 			source: &WebhookSource{
 				ID:            "test-id",
-				SourceID:      "",
-				UUID:          uuid.New().String(),
-				Configuration: map[string]any{},
-				CreatedAt:     time.Now().UTC(),
-				UpdatedAt:     time.Now().UTC(),
-				Active:        true,
-			},
-		},
-		{
-			name: "missing UUID",
-			source: &WebhookSource{
-				ID:            "test-id",
-				SourceID:      "source-123",
-				UUID:          "",
+				ExternalID:    uuid.Nil,
 				Configuration: map[string]any{},
 				CreatedAt:     time.Now().UTC(),
 				UpdatedAt:     time.Now().UTC(),
@@ -187,11 +171,10 @@ func TestWebhookSource_Validate_MissingFields(t *testing.T) {
 	}
 }
 
-func TestWebhookSource_Validate_InvalidUUID(t *testing.T) {
+func TestWebhookSource_Validate_InvalidExternalID(t *testing.T) {
 	source := &WebhookSource{
 		ID:            "test-id",
-		SourceID:      "source-123",
-		UUID:          "invalid-uuid-format",
+		ExternalID:    uuid.Nil, // Invalid ExternalID
 		Configuration: map[string]any{},
 		CreatedAt:     time.Now().UTC(),
 		UpdatedAt:     time.Now().UTC(),
@@ -200,18 +183,18 @@ func TestWebhookSource_Validate_InvalidUUID(t *testing.T) {
 
 	err := source.Validate()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid UUID format")
+	assert.Equal(t, ErrInvalidWebhookSource, err)
 }
 
 // Method Tests
 
 func TestWebhookSource_GetWebhookURL(t *testing.T) {
-	testUUID := uuid.New().String()
+	testExternalID := uuid.New()
 	source := &WebhookSource{
-		UUID: testUUID,
+		ExternalID: testExternalID,
 	}
 
-	expectedURL := "/webhook/" + testUUID
+	expectedURL := "/webhook/" + testExternalID.String()
 	assert.Equal(t, expectedURL, source.GetWebhookURL())
 }
 
@@ -309,9 +292,8 @@ func TestWebhookSource_JSONMarshaling(t *testing.T) {
 		{
 			name: "complete source",
 			source: &WebhookSource{
-				ID:       "test-id",
-				SourceID: "source-123",
-				UUID:     uuid.New().String(),
+				ID:         "test-id",
+				ExternalID: uuid.New(),
 				JSONSchema: map[string]any{
 					"type": "object",
 				},
@@ -327,8 +309,7 @@ func TestWebhookSource_JSONMarshaling(t *testing.T) {
 			name: "minimal source",
 			source: &WebhookSource{
 				ID:            "minimal-id",
-				SourceID:      "minimal-source",
-				UUID:          uuid.New().String(),
+				ExternalID:    uuid.New(),
 				Configuration: map[string]any{},
 				CreatedAt:     time.Now().UTC(),
 				UpdatedAt:     time.Now().UTC(),
@@ -369,8 +350,7 @@ func TestWebhookSource_JSONMarshaling(t *testing.T) {
 
 			// Verify all fields match (compare timestamps with tolerance)
 			assert.Equal(t, tc.source.ID, unmarshaled.ID)
-			assert.Equal(t, tc.source.SourceID, unmarshaled.SourceID)
-			assert.Equal(t, tc.source.UUID, unmarshaled.UUID)
+			assert.Equal(t, tc.source.ExternalID, unmarshaled.ExternalID)
 			assert.Equal(t, tc.source.JSONSchema, unmarshaled.JSONSchema)
 			// Note: JSON unmarshaling converts all numbers to float64, so we need to handle this
 			// For configuration comparison, we'll verify the general structure rather than exact types
@@ -395,10 +375,9 @@ func TestWebhookSource_JSONMarshaling(t *testing.T) {
 
 func TestWebhookSource_JSONMarshal_EmptyTimestamps(t *testing.T) {
 	source := &WebhookSource{
-		ID:       "test-id",
-		SourceID: "source-123",
-		UUID:     uuid.New().String(),
-		Active:   true,
+		ID:         "test-id",
+		ExternalID: uuid.New(),
+		Active:     true,
 		// CreatedAt and UpdatedAt are zero values
 	}
 
@@ -412,32 +391,30 @@ func TestWebhookSource_JSONMarshal_EmptyTimestamps(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, source.ID, unmarshaled.ID)
-	assert.Equal(t, source.SourceID, unmarshaled.SourceID)
-	assert.Equal(t, source.UUID, unmarshaled.UUID)
+	assert.Equal(t, source.ExternalID, unmarshaled.ExternalID)
 	assert.Equal(t, source.Active, unmarshaled.Active)
 }
 
 // Edge Cases and Integration Tests
 
-func TestWebhookSource_UUIDUniqueness(t *testing.T) {
+func TestWebhookSource_ExternalIDUniqueness(t *testing.T) {
 	const numSources = 1000
 
-	uuids := make(map[string]bool)
+	externalIDs := make(map[uuid.UUID]bool)
 
 	for i := range numSources {
 		source, err := NewWebhookSource("source-"+string(rune(i)), map[string]any{})
 		require.NoError(t, err)
 
-		// Verify UUID is unique
-		assert.False(t, uuids[source.UUID], "Duplicate UUID generated: %s", source.UUID)
-		uuids[source.UUID] = true
+		// Verify ExternalID is unique
+		assert.False(t, externalIDs[source.ExternalID], "Duplicate ExternalID generated: %s", source.ExternalID)
+		externalIDs[source.ExternalID] = true
 
-		// Verify UUID is valid format
-		_, err = uuid.Parse(source.UUID)
-		assert.NoError(t, err)
+		// Verify ExternalID is not nil
+		assert.NotEqual(t, uuid.Nil, source.ExternalID)
 	}
 
-	assert.Len(t, uuids, numSources)
+	assert.Len(t, externalIDs, numSources)
 }
 
 func TestWebhookSource_ConfigurationEdgeCases(t *testing.T) {

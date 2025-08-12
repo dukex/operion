@@ -94,7 +94,7 @@ func TestWebhookSourceProviderFactory_Description(t *testing.T) {
 
 	assert.NotEmpty(t, description)
 	assert.Contains(t, description, "centralized webhook")
-	assert.Contains(t, description, "UUID-based security")
+	assert.Contains(t, description, "external ID-based security")
 	assert.Contains(t, description, "HTTP POST")
 	assert.Contains(t, description, "source events")
 }

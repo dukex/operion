@@ -11,17 +11,14 @@ import (
 // ErrInvalidWebhookSource is returned when webhook source validation fails.
 var ErrInvalidWebhookSource = errors.New("invalid webhook source")
 
-// WebhookSource represents a webhook endpoint configuration with UUID-based security mapping.
-// Each webhook source maps an external UUID to an internal source ID for security.
+// WebhookSource represents a webhook endpoint configuration with external ID-based security mapping.
+// Each webhook source maps an external ID to an internal source ID for security.
 type WebhookSource struct {
 	// ID is the internal source identifier used in workflows
 	ID string `json:"id" validate:"required"`
 
-	// SourceID is the source ID from workflow triggers (same as ID for consistency)
-	SourceID string `json:"source_id" validate:"required"`
-
-	// UUID is the external UUID used in webhook URLs for security obfuscation
-	UUID string `json:"uuid" validate:"required"`
+	// ExternalID is the external UUID used in webhook URLs for security obfuscation
+	ExternalID uuid.UUID `json:"external_id" validate:"required"`
 
 	// JSONSchema contains optional JSON schema for request body validation
 	JSONSchema map[string]any `json:"json_schema,omitempty"`
@@ -50,14 +47,11 @@ func NewWebhookSource(sourceID string, configuration map[string]any) (*WebhookSo
 		configuration = make(map[string]any)
 	}
 
-	// Generate random UUID for external access
-	webhookUUID := uuid.New().String()
 	now := time.Now().UTC()
 
 	source := &WebhookSource{
 		ID:            sourceID,
-		SourceID:      sourceID,
-		UUID:          webhookUUID,
+		ExternalID:    uuid.New(),
 		Configuration: configuration,
 		CreatedAt:     now,
 		UpdatedAt:     now,
@@ -80,17 +74,8 @@ func (ws *WebhookSource) Validate() error {
 		return ErrInvalidWebhookSource
 	}
 
-	if ws.SourceID == "" {
+	if ws.ExternalID == uuid.Nil {
 		return ErrInvalidWebhookSource
-	}
-
-	if ws.UUID == "" {
-		return ErrInvalidWebhookSource
-	}
-
-	// Validate UUID format
-	if _, err := uuid.Parse(ws.UUID); err != nil {
-		return errors.New("invalid UUID format")
 	}
 
 	return nil
@@ -98,7 +83,7 @@ func (ws *WebhookSource) Validate() error {
 
 // GetWebhookURL returns the webhook URL path for this source.
 func (ws *WebhookSource) GetWebhookURL() string {
-	return "/webhook/" + ws.UUID
+	return "/webhook/" + ws.ExternalID.String()
 }
 
 // HasJSONSchema returns true if this webhook source has JSON schema validation configured.

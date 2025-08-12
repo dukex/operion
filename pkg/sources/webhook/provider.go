@@ -186,8 +186,8 @@ func (w *WebhookSourceProvider) Prepare(ctx context.Context) error {
 	for _, source := range sources {
 		if err := w.server.RegisterSource(source); err != nil {
 			w.logger.Error("Failed to register webhook source",
-				"source_id", source.SourceID,
-				"uuid", source.UUID,
+				"source_id", source.ID,
+				"external_id", source.ExternalID.String(),
 				"error", err)
 
 			return err
@@ -212,8 +212,8 @@ func (w *WebhookSourceProvider) processWebhookTrigger(workflowID string, trigger
 		return false
 	}
 
-	// Check if source already exists by source ID (not UUID)
-	existingSource, err := w.webhookPersistence.WebhookSourceBySourceID(sourceID)
+	// Check if source already exists by source ID (not ExternalID)
+	existingSource, err := w.webhookPersistence.WebhookSourceByID(sourceID)
 	if err != nil {
 		w.logger.Error("Failed to check existing webhook source",
 			"source_id", sourceID,
@@ -258,7 +258,7 @@ func (w *WebhookSourceProvider) processWebhookTrigger(workflowID string, trigger
 
 	w.logger.Info("Created webhook source",
 		"source_id", sourceID,
-		"uuid", source.UUID,
+		"external_id", source.ExternalID.String(),
 		"webhook_url", source.GetWebhookURL())
 
 	return true
@@ -302,10 +302,10 @@ func (w *WebhookSourceProvider) GetRegisteredSources() map[string]*webhookModels
 		return make(map[string]*webhookModels.WebhookSource)
 	}
 
-	// Convert slice to map with UUID as key
+	// Convert slice to map with ExternalID as key
 	result := make(map[string]*webhookModels.WebhookSource)
 	for _, source := range sources {
-		result[source.UUID] = source
+		result[source.ExternalID.String()] = source
 	}
 
 	return result
@@ -313,7 +313,7 @@ func (w *WebhookSourceProvider) GetRegisteredSources() map[string]*webhookModels
 
 // GetWebhookURL returns the webhook URL for a given source ID.
 func (w *WebhookSourceProvider) GetWebhookURL(sourceID string) string {
-	source, err := w.webhookPersistence.WebhookSourceBySourceID(sourceID)
+	source, err := w.webhookPersistence.WebhookSourceByID(sourceID)
 	if err != nil || source == nil {
 		return ""
 	}

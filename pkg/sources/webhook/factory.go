@@ -35,7 +35,7 @@ func (f *WebhookSourceProviderFactory) Name() string {
 
 // Description returns a detailed description of what this source provider does.
 func (f *WebhookSourceProviderFactory) Description() string {
-	return "A centralized webhook orchestrator that manages HTTP webhook endpoints with UUID-based security. Receives HTTP POST requests and converts them to source events for workflow triggering. Supports optional JSON schema validation and automatic source registration from workflow triggers."
+	return "A centralized webhook orchestrator that manages HTTP webhook endpoints with external ID-based security. Receives HTTP POST requests and converts them to source events for workflow triggering. Supports optional JSON schema validation and automatic source registration from workflow triggers."
 }
 
 // Schema returns a JSON Schema that describes the orchestrator configuration.

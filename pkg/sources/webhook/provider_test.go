@@ -275,11 +275,11 @@ func TestWebhookSourceProvider_Configure(t *testing.T) {
 						found := false
 
 						for _, source := range sources {
-							if source.SourceID == trigger.SourceID {
+							if source.ID == trigger.SourceID {
 								found = true
 
 								assert.Equal(t, trigger.Configuration, source.Configuration)
-								assert.NotEmpty(t, source.UUID)
+								assert.NotEmpty(t, source.ExternalID.String())
 								assert.True(t, source.Active)
 
 								break
@@ -463,7 +463,7 @@ func TestWebhookSourceProvider_GetWebhookURL(t *testing.T) {
 
 	// Test existing source
 	url := provider.GetWebhookURL("source-123")
-	assert.Equal(t, "/webhook/"+source.UUID, url)
+	assert.Equal(t, "/webhook/"+source.ExternalID.String(), url)
 
 	// Test non-existing source
 	url = provider.GetWebhookURL("non-existing")
@@ -500,8 +500,8 @@ func TestWebhookSourceProvider_GetRegisteredSources(t *testing.T) {
 
 	// Should return sources from persistence
 	assert.Len(t, sources, 2)
-	assert.Contains(t, sources, source1.UUID)
-	assert.Contains(t, sources, source2.UUID)
+	assert.Contains(t, sources, source1.ExternalID.String())
+	assert.Contains(t, sources, source2.ExternalID.String())
 }
 
 // Port Configuration Tests
