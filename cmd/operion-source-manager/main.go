@@ -50,6 +50,12 @@ func main() {
 				Sources: cli.EnvVars("SOURCE_PROVIDERS"),
 			},
 			&cli.StringFlag{
+				Name:     "event-bus",
+				Usage:    "Event bus type (kafka, rabbitmq, etc.)",
+				Required: true,
+				Sources:  cli.EnvVars("EVENT_BUS_TYPE"),
+			},
+			&cli.StringFlag{
 				Name:    "log-level",
 				Usage:   "Log level (debug, info, warn, error)",
 				Value:   "info",
@@ -91,7 +97,7 @@ func main() {
 
 			registry := cmd.NewRegistry(ctx, logger, command.String("plugins-path"))
 
-			sourceEventBus := cmd.NewSourceEventBus(logger)
+			sourceEventBus := cmd.NewSourceEventBus(command.String("event-bus"), logger)
 			defer func() {
 				if err := sourceEventBus.Close(); err != nil {
 					logger.Error("Failed to close source event bus", "error", err)

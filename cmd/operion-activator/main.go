@@ -77,7 +77,7 @@ func main() {
 				}
 			}()
 
-			sourceEventBus := cmd.NewSourceEventBus(logger)
+			sourceEventBus := cmd.NewSourceEventBus(command.String("event-bus"), logger)
 			defer func() {
 				if err := sourceEventBus.Close(); err != nil {
 					logger.Error("Failed to close source event bus", "error", err)
