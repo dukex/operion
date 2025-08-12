@@ -17,7 +17,7 @@ import (
 	"github.com/dukex/operion/pkg/triggers/webhook"
 )
 
-func registreActionPlugins(ctx context.Context, reg *registry.Registry, pluginsPath string) {
+func registerActionPlugins(ctx context.Context, reg *registry.Registry, pluginsPath string) {
 	actionPlugins, err := reg.LoadActionPlugins(ctx, pluginsPath)
 	if err != nil {
 		panic(err)
@@ -28,7 +28,7 @@ func registreActionPlugins(ctx context.Context, reg *registry.Registry, pluginsP
 	}
 }
 
-func registreTriggerPlugins(ctx context.Context, reg *registry.Registry, pluginsPath string) {
+func registerTriggerPlugins(ctx context.Context, reg *registry.Registry, pluginsPath string) {
 	triggerPlugins, err := reg.LoadTriggerPlugins(ctx, pluginsPath)
 	if err != nil {
 		panic(err)
@@ -74,8 +74,8 @@ func registerNativeSourceProviders(reg *registry.Registry) {
 func NewRegistry(ctx context.Context, log *slog.Logger, pluginsPath string) *registry.Registry {
 	reg := registry.NewRegistry(log)
 
-	registreActionPlugins(ctx, reg, pluginsPath)
-	registreTriggerPlugins(ctx, reg, pluginsPath)
+	registerActionPlugins(ctx, reg, pluginsPath)
+	registerTriggerPlugins(ctx, reg, pluginsPath)
 	registerSourceProviderPlugins(ctx, reg, pluginsPath)
 
 	registerNativeTriggers(reg)
