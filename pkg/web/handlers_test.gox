@@ -29,7 +29,7 @@ func (suite *APITestSuite) SetupSuite() {
 	os.RemoveAll(suite.tempDir)
 	os.MkdirAll(suite.tempDir, 0755)
 
-	persistence := file.NewFilePersistence(suite.tempDir)
+	persistence := file.NewPersistence(suite.tempDir)
 	workflowRepository := application.NewWorkflowRepository(persistence)
 	actionRegistry := registry.NewActionRegistry()
 	triggerRegistry := registry.NewTriggerRegistry()

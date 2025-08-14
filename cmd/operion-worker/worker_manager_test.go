@@ -45,7 +45,7 @@ func (m *MockEventBus) GenerateID() string {
 func TestNewWorkerManager(t *testing.T) {
 	// Setup test dependencies
 	tempDir := t.TempDir()
-	persistence := file.NewFilePersistence(tempDir)
+	persistence := file.NewPersistence(tempDir)
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	registry := registry.NewRegistry(logger)
 	eventBus := &MockEventBus{}
@@ -66,7 +66,7 @@ func TestNewWorkerManager(t *testing.T) {
 func TestWorkerManager_HandleWorkflowTriggered_InvalidEvent(t *testing.T) {
 	// Setup test dependencies
 	tempDir := t.TempDir()
-	persistence := file.NewFilePersistence(tempDir)
+	persistence := file.NewPersistence(tempDir)
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	registry := registry.NewRegistry(logger)
 	eventBus := &MockEventBus{}
@@ -84,7 +84,7 @@ func TestWorkerManager_HandleWorkflowTriggered_InvalidEvent(t *testing.T) {
 func TestWorkerManager_HandleWorkflowTriggered_WorkflowNotFound(t *testing.T) {
 	// Setup test dependencies
 	tempDir := t.TempDir()
-	persistence := file.NewFilePersistence(tempDir)
+	persistence := file.NewPersistence(tempDir)
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	registry := registry.NewRegistry(logger)
 	eventBus := &MockEventBus{}
@@ -111,7 +111,7 @@ func TestWorkerManager_HandleWorkflowTriggered_WorkflowNotFound(t *testing.T) {
 func TestWorkerManager_HandleWorkflowStepAvailable_InvalidEvent(t *testing.T) {
 	// Setup test dependencies
 	tempDir := t.TempDir()
-	persistence := file.NewFilePersistence(tempDir)
+	persistence := file.NewPersistence(tempDir)
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	registry := registry.NewRegistry(logger)
 	eventBus := &MockEventBus{}
@@ -129,7 +129,7 @@ func TestWorkerManager_HandleWorkflowStepAvailable_InvalidEvent(t *testing.T) {
 func TestWorkerManager_HandleWorkflowStepAvailable_WorkflowNotFound(t *testing.T) {
 	// Setup test dependencies
 	tempDir := t.TempDir()
-	persistence := file.NewFilePersistence(tempDir)
+	persistence := file.NewPersistence(tempDir)
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	registry := registry.NewRegistry(logger)
 	eventBus := &MockEventBus{}
@@ -165,7 +165,7 @@ func TestWorkerManager_HandleWorkflowStepAvailable_WorkflowNotFound(t *testing.T
 func TestWorkerManager_BasicWorkflowExecution(t *testing.T) {
 	// Setup test dependencies
 	tempDir := t.TempDir()
-	persistence := file.NewFilePersistence(tempDir)
+	persistence := file.NewPersistence(tempDir)
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	registry := registry.NewRegistry(logger)
 	eventBus := &MockEventBus{}
