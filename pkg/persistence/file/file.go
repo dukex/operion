@@ -4,6 +4,7 @@ package file
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"os"
 	"path"
@@ -15,23 +16,25 @@ import (
 	"github.com/dukex/operion/pkg/persistence"
 )
 
-type FilePersistence struct {
+// Persistence implements the persistence.Persistence interface using the file system.
+type Persistence struct {
 	root string
 }
 
-func NewFilePersistence(root string) persistence.Persistence {
-	return &FilePersistence{
+// NewPersistence creates a new instance of Persistence with the specified root directory.
+func NewPersistence(root string) persistence.Persistence {
+	return &Persistence{
 		root: strings.Replace(root, "file://", "", 1),
 	}
 }
 
 // Close performs any necessary cleanup. For file-based persistence, there is nothing to clean up.
-func (fp *FilePersistence) Close(_ context.Context) error {
+func (fp *Persistence) Close(_ context.Context) error {
 	return nil
 }
 
 // HealthCheck checks if the file persistence layer is healthy by verifying the root directory exists.
-func (fp *FilePersistence) HealthCheck(_ context.Context) error {
+func (fp *Persistence) HealthCheck(_ context.Context) error {
 	if _, err := os.Stat(fp.root); os.IsNotExist(err) {
 		return os.ErrNotExist
 	}
@@ -40,12 +43,12 @@ func (fp *FilePersistence) HealthCheck(_ context.Context) error {
 }
 
 // Workflows retrieves all workflows from the file system.
-func (fp *FilePersistence) Workflows(ctx context.Context) ([]*models.Workflow, error) {
+func (fp *Persistence) Workflows(ctx context.Context) ([]*models.Workflow, error) {
 	root := os.DirFS(fp.root + "/workflows")
 
 	jsonFiles, err := fs.Glob(root, "*.json")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to list workflow files: %w", err)
 	}
 
 	if len(jsonFiles) == 0 {
@@ -67,7 +70,7 @@ func (fp *FilePersistence) Workflows(ctx context.Context) ([]*models.Workflow, e
 }
 
 // WorkflowByID retrieves a workflow by its ID from the file system.
-func (fp *FilePersistence) WorkflowByID(_ context.Context, workflowID string) (*models.Workflow, error) {
+func (fp *Persistence) WorkflowByID(_ context.Context, workflowID string) (*models.Workflow, error) {
 	filePath := filepath.Clean(path.Join(fp.root, "workflows", workflowID+".json"))
 
 	body, err := os.ReadFile(filePath)
@@ -76,24 +79,24 @@ func (fp *FilePersistence) WorkflowByID(_ context.Context, workflowID string) (*
 			return nil, nil
 		}
 
-		return nil, err
+		return nil, fmt.Errorf("failed to fetch workflow %s: %w", workflowID, err)
 	}
 
 	var workflow models.Workflow
 
 	err = json.Unmarshal(body, &workflow)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal workflow %s: %w", workflowID, err)
 	}
 
 	return &workflow, nil
 }
 
 // SaveWorkflow saves a workflow to the file system.
-func (fp *FilePersistence) SaveWorkflow(_ context.Context, workflow *models.Workflow) error {
+func (fp *Persistence) SaveWorkflow(_ context.Context, workflow *models.Workflow) error {
 	err := os.MkdirAll(fp.root+"/workflows", 0750)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create workflows directory: %w", err)
 	}
 
 	now := time.Now().UTC()
@@ -105,7 +108,7 @@ func (fp *FilePersistence) SaveWorkflow(_ context.Context, workflow *models.Work
 
 	data, err := json.MarshalIndent(workflow, "", "  ")
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to marshal workflow %s: %w", workflow.ID, err)
 	}
 
 	filePath := path.Join(fp.root+"/workflows", workflow.ID+".json")
@@ -114,7 +117,7 @@ func (fp *FilePersistence) SaveWorkflow(_ context.Context, workflow *models.Work
 }
 
 // DeleteWorkflow removes a workflow by its ID.
-func (fp *FilePersistence) DeleteWorkflow(_ context.Context, id string) error {
+func (fp *Persistence) DeleteWorkflow(_ context.Context, id string) error {
 	filePath := path.Join(fp.root+"/workflows", id+".json")
 
 	err := os.Remove(filePath)
@@ -123,11 +126,15 @@ func (fp *FilePersistence) DeleteWorkflow(_ context.Context, id string) error {
 		return nil
 	}
 
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to delete workflow %s: %w", id, err)
+	}
+
+	return nil
 }
 
 // WorkflowTriggersBySourceID returns workflow triggers that match a specific source ID and workflow status.
-func (fp *FilePersistence) WorkflowTriggersBySourceID(ctx context.Context, sourceID string, status models.WorkflowStatus) ([]*models.TriggerMatch, error) {
+func (fp *Persistence) WorkflowTriggersBySourceID(ctx context.Context, sourceID string, status models.WorkflowStatus) ([]*models.TriggerMatch, error) {
 	workflows, err := fp.Workflows(ctx)
 	if err != nil {
 		return nil, err
@@ -156,7 +163,7 @@ func (fp *FilePersistence) WorkflowTriggersBySourceID(ctx context.Context, sourc
 }
 
 // WorkflowTriggersBySourceAndEvent returns workflow triggers that match a specific source ID, event type, and workflow status.
-func (fp *FilePersistence) WorkflowTriggersBySourceAndEvent(ctx context.Context, sourceID, eventType string, status models.WorkflowStatus) ([]*models.TriggerMatch, error) {
+func (fp *Persistence) WorkflowTriggersBySourceAndEvent(ctx context.Context, sourceID, eventType string, status models.WorkflowStatus) ([]*models.TriggerMatch, error) {
 	workflows, err := fp.Workflows(ctx)
 	if err != nil {
 		return nil, err

@@ -21,7 +21,7 @@ import (
 )
 
 func TestNewExecutor(t *testing.T) {
-	persistence := file.NewFilePersistence(t.TempDir())
+	persistence := file.NewPersistence(t.TempDir())
 	registry := createTestRegistry()
 
 	executor := NewExecutor(persistence, registry)
@@ -35,7 +35,7 @@ func TestExecutor_Start_EmptyWorkflow(t *testing.T) {
 	ctx := t.Context()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	persistence := file.NewFilePersistence(t.TempDir())
+	persistence := file.NewPersistence(t.TempDir())
 	registry := createTestRegistry()
 	executor := NewExecutor(persistence, registry)
 
@@ -66,7 +66,7 @@ func TestExecutor_Start_Success(t *testing.T) {
 	ctx := t.Context()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	persistence := file.NewFilePersistence(t.TempDir())
+	persistence := file.NewPersistence(t.TempDir())
 	registry := createTestRegistry()
 	executor := NewExecutor(persistence, registry)
 
@@ -118,7 +118,7 @@ func TestExecutor_ExecuteStep_LogAction(t *testing.T) {
 	ctx := t.Context()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	persistence := file.NewFilePersistence(t.TempDir())
+	persistence := file.NewPersistence(t.TempDir())
 	registry := createTestRegistry()
 	executor := NewExecutor(persistence, registry)
 
@@ -189,7 +189,7 @@ func TestExecutor_ExecuteStep_WithNextStep(t *testing.T) {
 	ctx := t.Context()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	persistence := file.NewFilePersistence(t.TempDir())
+	persistence := file.NewPersistence(t.TempDir())
 	registry := createTestRegistry()
 	executor := NewExecutor(persistence, registry)
 
@@ -263,7 +263,7 @@ func TestExecutor_ExecuteStep_DisabledStep(t *testing.T) {
 	ctx := t.Context()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	persistence := file.NewFilePersistence(t.TempDir())
+	persistence := file.NewPersistence(t.TempDir())
 	registry := createTestRegistry()
 	executor := NewExecutor(persistence, registry)
 
@@ -305,7 +305,7 @@ func TestExecutor_ExecuteStep_StepNotFound(t *testing.T) {
 	ctx := t.Context()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	persistence := file.NewFilePersistence(t.TempDir())
+	persistence := file.NewPersistence(t.TempDir())
 	registry := createTestRegistry()
 	executor := NewExecutor(persistence, registry)
 
@@ -335,7 +335,7 @@ func TestExecutor_ExecuteStep_Action_failure(t *testing.T) {
 	ctx := t.Context()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	persistence := file.NewFilePersistence(t.TempDir())
+	persistence := file.NewPersistence(t.TempDir())
 	registry := createTestRegistry()
 	executor := NewExecutor(persistence, registry)
 
@@ -400,7 +400,7 @@ func TestExecutor_IntegrationWithEventBus(t *testing.T) {
 	eventBus := eventbus.NewWatermillEventBus(pub, sub)
 
 	// Create test components
-	persistence := file.NewFilePersistence(t.TempDir())
+	persistence := file.NewPersistence(t.TempDir())
 	registry := createTestRegistry()
 	executor := NewExecutor(persistence, registry)
 

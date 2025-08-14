@@ -10,28 +10,28 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewFilePersistence(t *testing.T) {
+func TestNewPersistence(t *testing.T) {
 	// Test with regular path
-	persistence := NewFilePersistence("/tmp/test")
-	fp := persistence.(*FilePersistence)
+	persistence := NewPersistence("/tmp/test")
+	fp := persistence.(*Persistence)
 	assert.Equal(t, "/tmp/test", fp.root)
 
 	// Test with file:// prefix
-	persistence = NewFilePersistence("file:///tmp/test")
-	fp = persistence.(*FilePersistence)
+	persistence = NewPersistence("file:///tmp/test")
+	fp = persistence.(*Persistence)
 	assert.Equal(t, "/tmp/test", fp.root)
 }
 
-func TestFilePersistence_Close(t *testing.T) {
-	persistence := NewFilePersistence("./test-data")
+func TestPersistence_Close(t *testing.T) {
+	persistence := NewPersistence("./test-data")
 	err := persistence.Close(t.Context())
 	assert.NoError(t, err)
 }
 
-func TestFilePersistence_SaveWorkflow(t *testing.T) {
+func TestPersistence_SaveWorkflow(t *testing.T) {
 	testDir := t.TempDir()
 
-	persistence := NewFilePersistence(testDir)
+	persistence := NewPersistence(testDir)
 
 	workflow := &models.Workflow{
 		ID:          "test-workflow",
@@ -65,10 +65,10 @@ func TestFilePersistence_SaveWorkflow(t *testing.T) {
 	assert.False(t, workflow.UpdatedAt.IsZero())
 }
 
-func TestFilePersistence_SaveWorkflow_UpdatesTimestamp(t *testing.T) {
+func TestPersistence_SaveWorkflow_UpdatesTimestamp(t *testing.T) {
 	testDir := t.TempDir()
 
-	persistence := NewFilePersistence(testDir)
+	persistence := NewPersistence(testDir)
 
 	workflow := &models.Workflow{
 		ID:        "update-workflow",
@@ -85,10 +85,10 @@ func TestFilePersistence_SaveWorkflow_UpdatesTimestamp(t *testing.T) {
 	assert.True(t, workflow.UpdatedAt.After(workflow.CreatedAt))
 }
 
-func TestFilePersistence_WorkflowByID(t *testing.T) {
+func TestPersistence_WorkflowByID(t *testing.T) {
 	testDir := t.TempDir()
 
-	persistence := NewFilePersistence(testDir)
+	persistence := NewPersistence(testDir)
 
 	// Create test workflow
 	originalWorkflow := &models.Workflow{
@@ -128,21 +128,21 @@ func TestFilePersistence_WorkflowByID(t *testing.T) {
 	assert.Equal(t, "step-1", fetchedWorkflow.Steps[0].ID)
 }
 
-func TestFilePersistence_WorkflowByID_NotFound(t *testing.T) {
+func TestPersistence_WorkflowByID_NotFound(t *testing.T) {
 	testDir := t.TempDir()
 
-	persistence := NewFilePersistence(testDir)
+	persistence := NewPersistence(testDir)
 
 	// Try to fetch non-existent workflow
 	workflow, err := persistence.WorkflowByID(t.Context(), "non-existent")
-	assert.NoError(t, err)
-	assert.Nil(t, workflow)
+	require.NoError(t, err)
+	require.Nil(t, workflow)
 }
 
-func TestFilePersistence_Workflows(t *testing.T) {
+func TestPersistence_Workflows(t *testing.T) {
 	testDir := t.TempDir()
 
-	persistence := NewFilePersistence(testDir)
+	persistence := NewPersistence(testDir)
 
 	// Create multiple test workflows
 	workflows := []*models.Workflow{
@@ -185,10 +185,10 @@ func TestFilePersistence_Workflows(t *testing.T) {
 	assert.Contains(t, workflowIDs, "workflow-3")
 }
 
-func TestFilePersistence_Workflows_EmptyDirectory(t *testing.T) {
+func TestPersistence_Workflows_EmptyDirectory(t *testing.T) {
 	testDir := t.TempDir()
 
-	persistence := NewFilePersistence(testDir)
+	persistence := NewPersistence(testDir)
 
 	// Fetch workflows from empty directory
 	workflows, err := persistence.Workflows(t.Context())
@@ -196,10 +196,10 @@ func TestFilePersistence_Workflows_EmptyDirectory(t *testing.T) {
 	assert.Empty(t, workflows)
 }
 
-func TestFilePersistence_Workflows_NoDirectory(t *testing.T) {
+func TestPersistence_Workflows_NoDirectory(t *testing.T) {
 	testDir := t.TempDir()
 
-	persistence := NewFilePersistence(testDir)
+	persistence := NewPersistence(testDir)
 
 	// Try to fetch workflows without creating directory first
 	workflows, err := persistence.Workflows(t.Context())
@@ -208,10 +208,10 @@ func TestFilePersistence_Workflows_NoDirectory(t *testing.T) {
 	assert.Empty(t, workflows)
 }
 
-func TestFilePersistence_DeleteWorkflow(t *testing.T) {
+func TestPersistence_DeleteWorkflow(t *testing.T) {
 	testDir := t.TempDir()
 
-	persistence := NewFilePersistence(testDir)
+	persistence := NewPersistence(testDir)
 
 	// Create test workflow
 	workflow := &models.Workflow{
@@ -235,10 +235,10 @@ func TestFilePersistence_DeleteWorkflow(t *testing.T) {
 	assert.NoFileExists(t, filePath)
 }
 
-func TestFilePersistence_DeleteWorkflow_NotFound(t *testing.T) {
+func TestPersistence_DeleteWorkflow_NotFound(t *testing.T) {
 	testDir := t.TempDir()
 
-	persistence := NewFilePersistence(testDir)
+	persistence := NewPersistence(testDir)
 
 	// Try to delete non-existent workflow (should not error)
 	err := persistence.DeleteWorkflow(t.Context(), "non-existent")
