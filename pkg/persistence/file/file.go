@@ -126,7 +126,11 @@ func (fp *Persistence) DeleteWorkflow(_ context.Context, id string) error {
 		return nil
 	}
 
-	return fmt.Errorf("failed to delete workflow %s: %w", id, err)
+	if err != nil {
+		return fmt.Errorf("failed to delete workflow %s: %w", id, err)
+	}
+
+	return nil
 }
 
 // WorkflowTriggersBySourceID returns workflow triggers that match a specific source ID and workflow status.
