@@ -18,7 +18,7 @@ import (
 )
 
 func setupTestApp(tempDir string) *fiber.App {
-	persistence := file.NewFilePersistence(tempDir)
+	persistence := file.NewPersistence(tempDir)
 
 	app := NewAPI(
 		slog.Default(),
@@ -89,7 +89,7 @@ func TestAPI_GetWorkflows_Empty(t *testing.T) {
 func TestAPI_GetWorkflows_WithData(t *testing.T) {
 	t.Parallel()
 	tempDir := t.TempDir()
-	persistence := file.NewFilePersistence(tempDir)
+	persistence := file.NewPersistence(tempDir)
 
 	// Create test workflows
 	workflow1 := &models.Workflow{
@@ -165,7 +165,7 @@ func TestAPI_GetWorkflows_WithData(t *testing.T) {
 func TestAPI_GetWorkflow_Success(t *testing.T) {
 	t.Parallel()
 	tempDir := t.TempDir()
-	persistence := file.NewFilePersistence(tempDir)
+	persistence := file.NewPersistence(tempDir)
 
 	// Create test workflow
 	workflow1 := &models.Workflow{
@@ -289,7 +289,7 @@ func TestAPI_ContentType_JSON(t *testing.T) {
 func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
 	t.Parallel()
 	tempDir := t.TempDir()
-	persistence := file.NewFilePersistence(tempDir)
+	persistence := file.NewPersistence(tempDir)
 
 	// Create a comprehensive test workflow
 	complexWorkflow := &models.Workflow{

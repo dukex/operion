@@ -27,7 +27,7 @@ func NewPersistence(ctx context.Context, logger *slog.Logger, databaseURL string
 	// case "redis":
 	// 	return persistence.NewRedisPersistence(databaseURL)
 	default:
-		return file.NewFilePersistence(databaseURL)
+		return file.NewPersistence(databaseURL)
 	}
 }
 
