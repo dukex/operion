@@ -130,7 +130,7 @@ func (fp *Persistence) DeleteWorkflow(_ context.Context, id string) error {
 }
 
 // WorkflowTriggersBySourceID returns workflow triggers that match a specific source ID and workflow status.
-func (fp *FilePersistence) WorkflowTriggersBySourceID(ctx context.Context, sourceID string, status models.WorkflowStatus) ([]*models.TriggerMatch, error) {
+func (fp *Persistence) WorkflowTriggersBySourceID(ctx context.Context, sourceID string, status models.WorkflowStatus) ([]*models.TriggerMatch, error) {
 	workflows, err := fp.Workflows(ctx)
 	if err != nil {
 		return nil, err
@@ -159,7 +159,7 @@ func (fp *FilePersistence) WorkflowTriggersBySourceID(ctx context.Context, sourc
 }
 
 // WorkflowTriggersBySourceAndEvent returns workflow triggers that match a specific source ID, event type, and workflow status.
-func (fp *FilePersistence) WorkflowTriggersBySourceAndEvent(ctx context.Context, sourceID, eventType string, status models.WorkflowStatus) ([]*models.TriggerMatch, error) {
+func (fp *Persistence) WorkflowTriggersBySourceAndEvent(ctx context.Context, sourceID, eventType string, status models.WorkflowStatus) ([]*models.TriggerMatch, error) {
 	workflows, err := fp.Workflows(ctx)
 	if err != nil {
 		return nil, err
