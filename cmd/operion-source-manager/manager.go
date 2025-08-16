@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"slices"
 	"sync"
 	"syscall"
 	"time"
@@ -16,10 +17,10 @@ import (
 	"github.com/dukex/operion/pkg/registry"
 )
 
-type SourceProviderManager struct {
+type ProviderManager struct {
 	id               string
 	sourceEventBus   eventbus.SourceEventBus
-	runningProviders map[string]protocol.SourceProvider
+	runningProviders map[string]protocol.Provider
 	providerMutex    sync.RWMutex
 	logger           *slog.Logger
 	persistence      persistence.Persistence
@@ -28,27 +29,27 @@ type SourceProviderManager struct {
 	providerFilter   []string
 }
 
-func NewSourceProviderManager(
+func NewProviderManager(
 	id string,
 	persistence persistence.Persistence,
 	sourceEventBus eventbus.SourceEventBus,
 	logger *slog.Logger,
 	registry *registry.Registry,
 	providerFilter []string,
-) *SourceProviderManager {
-	return &SourceProviderManager{
+) *ProviderManager {
+	return &ProviderManager{
 		id:               id,
 		logger:           logger.With("module", "operion-source-manager", "manager_id", id),
 		persistence:      persistence,
 		registry:         registry,
 		restartCount:     0,
 		sourceEventBus:   sourceEventBus,
-		runningProviders: make(map[string]protocol.SourceProvider),
+		runningProviders: make(map[string]protocol.Provider),
 		providerFilter:   providerFilter,
 	}
 }
 
-func (spm *SourceProviderManager) Start(ctx context.Context) {
+func (spm *ProviderManager) Start(ctx context.Context) {
 	spmCtx, cancel := context.WithCancel(ctx)
 
 	spm.logger.Info("Starting source provider manager")
@@ -57,7 +58,7 @@ func (spm *SourceProviderManager) Start(ctx context.Context) {
 	spm.run(ctx, cancel)
 }
 
-func (spm *SourceProviderManager) handleSignals(ctx context.Context, cancel context.CancelFunc) {
+func (spm *ProviderManager) handleSignals(ctx context.Context, cancel context.CancelFunc) {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
 
@@ -79,7 +80,7 @@ func (spm *SourceProviderManager) handleSignals(ctx context.Context, cancel cont
 	}()
 }
 
-func (spm *SourceProviderManager) restart(ctx context.Context, cancel context.CancelFunc) {
+func (spm *ProviderManager) restart(ctx context.Context, cancel context.CancelFunc) {
 	spm.restartCount++
 	spmCtx := context.WithoutCancel(ctx)
 	spm.stop(spmCtx, cancel)
@@ -96,9 +97,9 @@ func (spm *SourceProviderManager) restart(ctx context.Context, cancel context.Ca
 	spm.Start(spmCtx)
 }
 
-func (spm *SourceProviderManager) run(ctx context.Context, cancel context.CancelFunc) {
+func (spm *ProviderManager) run(ctx context.Context, cancel context.CancelFunc) {
 	// Start source providers with lifecycle management
-	if err := spm.startSourceProviders(ctx); err != nil {
+	if err := spm.startProviders(ctx); err != nil {
 		spm.logger.Error("Failed to start source providers", "error", err)
 		spm.restart(ctx, cancel)
 
@@ -113,11 +114,11 @@ func (spm *SourceProviderManager) run(ctx context.Context, cancel context.Cancel
 	spm.logger.Info("Source provider manager stopped")
 }
 
-func (spm *SourceProviderManager) startSourceProviders(ctx context.Context) error {
+func (spm *ProviderManager) startProviders(ctx context.Context) error {
 	// Get available source providers from registry
-	availableProviders := spm.registry.GetAvailableSourceProviders()
+	availableProviders := spm.registry.GetAvailableProviders()
 
-	var providersToStart []protocol.SourceProviderFactory
+	var providersToStart []protocol.ProviderFactory
 
 	if len(spm.providerFilter) == 0 {
 		// No filter - start all available providers
@@ -125,12 +126,8 @@ func (spm *SourceProviderManager) startSourceProviders(ctx context.Context) erro
 	} else {
 		// Filter providers based on configuration
 		for _, factory := range availableProviders {
-			for _, filterName := range spm.providerFilter {
-				if factory.ID() == filterName {
-					providersToStart = append(providersToStart, factory)
-
-					break
-				}
+			if slices.Contains(spm.providerFilter, factory.ID()) {
+				providersToStart = append(providersToStart, factory)
 			}
 		}
 	}
@@ -144,10 +141,10 @@ func (spm *SourceProviderManager) startSourceProviders(ctx context.Context) erro
 	for _, factory := range providersToStart {
 		wg.Add(1)
 
-		go func(factory protocol.SourceProviderFactory) {
+		go func(factory protocol.ProviderFactory) {
 			defer wg.Done()
 
-			if err := spm.startSourceProvider(ctx, factory); err != nil {
+			if err := spm.startProvider(ctx, factory); err != nil {
 				spm.logger.Error("Failed to start source provider",
 					"provider_id", factory.ID(),
 					"error", err)
@@ -160,7 +157,7 @@ func (spm *SourceProviderManager) startSourceProviders(ctx context.Context) erro
 	return nil
 }
 
-func (spm *SourceProviderManager) startSourceProvider(ctx context.Context, factory protocol.SourceProviderFactory) error {
+func (spm *ProviderManager) startProvider(ctx context.Context, factory protocol.ProviderFactory) error {
 	providerID := factory.ID()
 
 	// Create default empty configuration - providers handle their own setup
@@ -172,7 +169,7 @@ func (spm *SourceProviderManager) startSourceProvider(ctx context.Context, facto
 		// Generate provider instance key using provider ID
 		instanceKey := providerID
 
-		provider, err := spm.registry.CreateSourceProvider(ctx, providerID, config)
+		provider, err := spm.registry.CreateProvider(ctx, providerID, config)
 		if err != nil {
 			spm.logger.Error("Failed to create source provider",
 				"provider_id", providerID,
@@ -184,47 +181,7 @@ func (spm *SourceProviderManager) startSourceProvider(ctx context.Context, facto
 
 		// Execute complete lifecycle if provider supports it
 		if lifecycle, ok := provider.(protocol.ProviderLifecycle); ok {
-			deps := protocol.Dependencies{
-				Logger: spm.logger,
-			}
-
-			// Step 1: Initialize dependencies
-			if err := lifecycle.Initialize(ctx, deps); err != nil {
-				spm.logger.Error("Failed to initialize provider",
-					"provider_id", providerID,
-					"instance_key", instanceKey,
-					"error", err)
-
-				continue
-			}
-
-			// Step 2: Configure with current workflows
-			workflows, err := spm.persistence.Workflows(ctx)
-			if err != nil {
-				spm.logger.Error("Failed to get workflows for configuration",
-					"provider_id", providerID,
-					"instance_key", instanceKey,
-					"error", err)
-
-				continue
-			}
-
-			if err := lifecycle.Configure(workflows); err != nil {
-				spm.logger.Error("Failed to configure provider",
-					"provider_id", providerID,
-					"instance_key", instanceKey,
-					"error", err)
-
-				continue
-			}
-
-			// Step 3: Prepare for startup
-			if err := lifecycle.Prepare(ctx); err != nil {
-				spm.logger.Error("Failed to prepare provider",
-					"provider_id", providerID,
-					"instance_key", instanceKey,
-					"error", err)
-
+			if err := spm.executeProviderLifecycle(ctx, lifecycle, providerID, instanceKey); err != nil {
 				continue
 			}
 		}
@@ -234,7 +191,7 @@ func (spm *SourceProviderManager) startSourceProvider(ctx context.Context, facto
 		spm.providerMutex.Unlock()
 
 		// Create callback for the provider
-		callback := spm.createSourceEventCallback("")
+		callback := spm.createSourceEventCallback()
 
 		// Step 4: Start the provider
 		if err := provider.Start(ctx, callback); err != nil {
@@ -258,7 +215,7 @@ func (spm *SourceProviderManager) startSourceProvider(ctx context.Context, facto
 	return nil
 }
 
-func (spm *SourceProviderManager) createSourceEventCallback(sourceID string) protocol.SourceEventCallback {
+func (spm *ProviderManager) createSourceEventCallback() protocol.SourceEventCallback {
 	return func(ctx context.Context, sourceID, providerType, eventType string, data map[string]any) error {
 		logger := spm.logger.With(
 			"source_id", sourceID,
@@ -295,7 +252,7 @@ func (spm *SourceProviderManager) createSourceEventCallback(sourceID string) pro
 	}
 }
 
-func (spm *SourceProviderManager) stop(ctx context.Context, cancel context.CancelFunc) {
+func (spm *ProviderManager) stop(ctx context.Context, cancel context.CancelFunc) {
 	spm.logger.Info("Stopping source provider manager")
 
 	if cancel != nil {
@@ -315,6 +272,116 @@ func (spm *SourceProviderManager) stop(ctx context.Context, cancel context.Cance
 		}
 	}
 
-	spm.runningProviders = make(map[string]protocol.SourceProvider)
+	spm.runningProviders = make(map[string]protocol.Provider)
 	spm.logger.Info("All source providers stopped")
+}
+
+func (spm *ProviderManager) updateTriggersWithSourceIDs(ctx context.Context, triggerToSourceMap map[string]string) error {
+	if len(triggerToSourceMap) == 0 {
+		return nil
+	}
+
+	spm.logger.Info("Updating triggers with source IDs", "mapping_count", len(triggerToSourceMap))
+
+	// Get all workflows to find and update triggers
+	workflows, err := spm.persistence.Workflows(ctx)
+	if err != nil {
+		return err
+	}
+
+	updated := 0
+
+	for _, workflow := range workflows {
+		workflowUpdated := false
+
+		for _, trigger := range workflow.WorkflowTriggers {
+			if sourceID, exists := triggerToSourceMap[trigger.ID]; exists {
+				if trigger.SourceID != sourceID {
+					trigger.SourceID = sourceID
+					workflowUpdated = true
+					updated++
+
+					spm.logger.Info("Updated trigger with source ID",
+						"workflow_id", workflow.ID,
+						"trigger_id", trigger.ID,
+						"source_id", sourceID)
+				}
+			}
+		}
+
+		// Save workflow if any triggers were updated
+		if workflowUpdated {
+			if err := spm.persistence.SaveWorkflow(ctx, workflow); err != nil {
+				spm.logger.Error("Failed to save workflow with updated triggers",
+					"workflow_id", workflow.ID,
+					"error", err)
+
+				return err
+			}
+		}
+	}
+
+	spm.logger.Info("Completed updating triggers with source IDs", "updated_count", updated)
+
+	return nil
+}
+
+func (spm *ProviderManager) executeProviderLifecycle(ctx context.Context, lifecycle protocol.ProviderLifecycle, providerID, instanceKey string) error {
+	deps := protocol.Dependencies{
+		Logger: spm.logger,
+	}
+
+	// Step 1: Initialize dependencies
+	if err := lifecycle.Initialize(ctx, deps); err != nil {
+		spm.logger.Error("Failed to initialize provider",
+			"provider_id", providerID,
+			"instance_key", instanceKey,
+			"error", err)
+
+		return err
+	}
+
+	// Step 2: Configure with current workflows
+	workflows, err := spm.persistence.Workflows(ctx)
+	if err != nil {
+		spm.logger.Error("Failed to get workflows for configuration",
+			"provider_id", providerID,
+			"instance_key", instanceKey,
+			"error", err)
+
+		return err
+	}
+
+	// Configure provider and get triggerID -> sourceID mapping
+	triggerToSourceMap, err := lifecycle.Configure(workflows)
+	if err != nil {
+		spm.logger.Error("Failed to configure provider",
+			"provider_id", providerID,
+			"instance_key", instanceKey,
+			"error", err)
+
+		return err
+	}
+
+	// Update triggers with their sourceID mappings
+	if err := spm.updateTriggersWithSourceIDs(ctx, triggerToSourceMap); err != nil {
+		spm.logger.Error("Failed to update triggers with source IDs",
+			"provider_id", providerID,
+			"instance_key", instanceKey,
+			"error", err)
+
+		return err
+	}
+
+	// Step 3: Prepare for startup
+	if err := lifecycle.Prepare(ctx); err != nil {
+		spm.logger.Error("Failed to prepare provider",
+			"provider_id", providerID,
+			"instance_key", instanceKey,
+			"error", err)
+
+		return err
+	}
+
+	return nil
 }

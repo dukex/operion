@@ -9,15 +9,17 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/google/uuid"
+
 	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/protocol"
-	webhookModels "github.com/dukex/operion/pkg/sources/webhook/models"
-	webhookPersistence "github.com/dukex/operion/pkg/sources/webhook/persistence"
+	webhookModels "github.com/dukex/operion/pkg/providers/webhook/models"
+	webhookPersistence "github.com/dukex/operion/pkg/providers/webhook/persistence"
 )
 
-// WebhookSourceProvider implements a centralized webhook orchestrator that manages
+// WebhookProvider implements a centralized webhook orchestrator that manages
 // HTTP webhook endpoints and converts incoming requests to source events.
-type WebhookSourceProvider struct {
+type WebhookProvider struct {
 	config             map[string]any
 	logger             *slog.Logger
 	callback           protocol.SourceEventCallback
@@ -29,7 +31,7 @@ type WebhookSourceProvider struct {
 }
 
 // Start begins the centralized webhook orchestrator.
-func (w *WebhookSourceProvider) Start(ctx context.Context, callback protocol.SourceEventCallback) error {
+func (w *WebhookProvider) Start(ctx context.Context, callback protocol.SourceEventCallback) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -65,7 +67,7 @@ func (w *WebhookSourceProvider) Start(ctx context.Context, callback protocol.Sou
 }
 
 // Stop gracefully shuts down the webhook orchestrator.
-func (w *WebhookSourceProvider) Stop(ctx context.Context) error {
+func (w *WebhookProvider) Stop(ctx context.Context) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -89,7 +91,7 @@ func (w *WebhookSourceProvider) Stop(ctx context.Context) error {
 }
 
 // Validate checks if the webhook orchestrator configuration is valid.
-func (w *WebhookSourceProvider) Validate() error {
+func (w *WebhookProvider) Validate() error {
 	// Orchestrator validation: ensure server is available
 	if w.server == nil {
 		return errors.New("webhook server not initialized")
@@ -106,7 +108,7 @@ func (w *WebhookSourceProvider) Validate() error {
 // ProviderLifecycle interface implementation
 
 // Initialize sets up the provider with required dependencies.
-func (w *WebhookSourceProvider) Initialize(ctx context.Context, deps protocol.Dependencies) error {
+func (w *WebhookProvider) Initialize(ctx context.Context, deps protocol.Dependencies) error {
 	w.logger = deps.Logger
 
 	// Initialize webhook-specific persistence based on URL
@@ -135,12 +137,13 @@ func (w *WebhookSourceProvider) Initialize(ctx context.Context, deps protocol.De
 }
 
 // Configure configures the provider based on current workflow definitions.
-func (w *WebhookSourceProvider) Configure(workflows []*models.Workflow) error {
+func (w *WebhookProvider) Configure(workflows []*models.Workflow) (map[string]string, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
 	w.logger.Info("Configuring webhook provider with workflows", "workflow_count", len(workflows))
 
+	triggerToSource := make(map[string]string)
 	sourceCount := 0
 
 	for _, wf := range workflows {
@@ -149,8 +152,9 @@ func (w *WebhookSourceProvider) Configure(workflows []*models.Workflow) error {
 		}
 
 		for _, trigger := range wf.WorkflowTriggers {
-			if trigger.TriggerID == "webhook" {
-				if w.processWebhookTrigger(wf.ID, trigger) {
+			if trigger.ProviderID == "webhook" {
+				if sourceID := w.processWebhookTrigger(wf.ID, trigger); sourceID != "" {
+					triggerToSource[trigger.ID] = sourceID
 					sourceCount++
 				}
 			}
@@ -168,11 +172,11 @@ func (w *WebhookSourceProvider) Configure(workflows []*models.Workflow) error {
 			"total_sources", len(totalSources))
 	}
 
-	return nil
+	return triggerToSource, nil
 }
 
 // Prepare performs final preparation before starting the provider.
-func (w *WebhookSourceProvider) Prepare(ctx context.Context) error {
+func (w *WebhookProvider) Prepare(ctx context.Context) error {
 	if w.server == nil {
 		return errors.New("webhook server not initialized")
 	}
@@ -201,15 +205,16 @@ func (w *WebhookSourceProvider) Prepare(ctx context.Context) error {
 }
 
 // processWebhookTrigger handles the creation of a webhook source for a trigger with webhook type.
-// Returns true if a source was successfully created, false otherwise.
-func (w *WebhookSourceProvider) processWebhookTrigger(workflowID string, trigger *models.WorkflowTrigger) bool {
+// Returns the sourceID if a source was successfully created, empty string otherwise.
+func (w *WebhookProvider) processWebhookTrigger(workflowID string, trigger *models.WorkflowTrigger) string {
 	sourceID := trigger.SourceID
 	if sourceID == "" {
-		w.logger.Warn("Trigger has webhook type but no source_id",
+		// Generate a new UUID for the sourceID
+		sourceID = uuid.New().String()
+		w.logger.Info("Generated source_id for webhook trigger",
 			"workflow_id", workflowID,
-			"trigger_id", trigger.ID)
-
-		return false
+			"trigger_id", trigger.ID,
+			"generated_source_id", sourceID)
 	}
 
 	// Check if source already exists by source ID (not ExternalID)
@@ -219,7 +224,7 @@ func (w *WebhookSourceProvider) processWebhookTrigger(workflowID string, trigger
 			"source_id", sourceID,
 			"error", err)
 
-		return false
+		return ""
 	}
 
 	if existingSource != nil {
@@ -234,7 +239,7 @@ func (w *WebhookSourceProvider) processWebhookTrigger(workflowID string, trigger
 				"error", err)
 		}
 
-		return false
+		return sourceID // Return existing sourceID
 	}
 
 	// Create new webhook source
@@ -244,7 +249,7 @@ func (w *WebhookSourceProvider) processWebhookTrigger(workflowID string, trigger
 			"source_id", sourceID,
 			"error", err)
 
-		return false
+		return ""
 	}
 
 	// Save source to persistence
@@ -253,7 +258,7 @@ func (w *WebhookSourceProvider) processWebhookTrigger(workflowID string, trigger
 			"source_id", sourceID,
 			"error", err)
 
-		return false
+		return ""
 	}
 
 	w.logger.Info("Created webhook source",
@@ -261,11 +266,11 @@ func (w *WebhookSourceProvider) processWebhookTrigger(workflowID string, trigger
 		"external_id", source.ExternalID.String(),
 		"webhook_url", source.GetWebhookURL())
 
-	return true
+	return sourceID
 }
 
 // getWebhookPort gets the webhook server port from configuration or environment.
-func (w *WebhookSourceProvider) getWebhookPort() int {
+func (w *WebhookProvider) getWebhookPort() int {
 	// Check configuration first
 	if portVal, exists := w.config["port"]; exists {
 		if port, ok := portVal.(int); ok && port > 0 && port <= 65535 {
@@ -291,7 +296,7 @@ func (w *WebhookSourceProvider) getWebhookPort() int {
 }
 
 // GetRegisteredSources returns registered sources from persistence for testing/debugging.
-func (w *WebhookSourceProvider) GetRegisteredSources() map[string]*webhookModels.WebhookSource {
+func (w *WebhookProvider) GetRegisteredSources() map[string]*webhookModels.WebhookSource {
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 
@@ -312,7 +317,7 @@ func (w *WebhookSourceProvider) GetRegisteredSources() map[string]*webhookModels
 }
 
 // GetWebhookURL returns the webhook URL for a given source ID.
-func (w *WebhookSourceProvider) GetWebhookURL(sourceID string) string {
+func (w *WebhookProvider) GetWebhookURL(sourceID string) string {
 	source, err := w.webhookPersistence.WebhookSourceByID(sourceID)
 	if err != nil || source == nil {
 		return ""
@@ -322,7 +327,7 @@ func (w *WebhookSourceProvider) GetWebhookURL(sourceID string) string {
 }
 
 // createPersistence creates the appropriate persistence implementation based on URL scheme.
-func (w *WebhookSourceProvider) createPersistence(persistenceURL string) (webhookPersistence.WebhookPersistence, error) {
+func (w *WebhookProvider) createPersistence(persistenceURL string) (webhookPersistence.WebhookPersistence, error) {
 	scheme := w.parsePersistenceScheme(persistenceURL)
 	w.logger.Info("Initializing webhook persistence", "scheme", scheme, "url", persistenceURL)
 
@@ -344,7 +349,7 @@ func (w *WebhookSourceProvider) createPersistence(persistenceURL string) (webhoo
 }
 
 // parsePersistenceScheme extracts the scheme from a persistence URL.
-func (w *WebhookSourceProvider) parsePersistenceScheme(persistenceURL string) string {
+func (w *WebhookProvider) parsePersistenceScheme(persistenceURL string) string {
 	parts := strings.SplitN(persistenceURL, "://", 2)
 	if len(parts) < 2 {
 		return "unknown"

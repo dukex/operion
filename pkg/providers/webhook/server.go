@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/dukex/operion/pkg/protocol"
-	"github.com/dukex/operion/pkg/sources/webhook/models"
+	"github.com/dukex/operion/pkg/providers/webhook/models"
 	"github.com/xeipuuv/gojsonschema"
 )
 

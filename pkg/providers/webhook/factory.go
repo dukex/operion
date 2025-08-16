@@ -6,40 +6,40 @@ import (
 	"github.com/dukex/operion/pkg/protocol"
 )
 
-// WebhookSourceProviderFactory creates instances of WebhookSourceProvider.
-type WebhookSourceProviderFactory struct{}
+// WebhookProviderFactory creates instances of WebhookProvider.
+type WebhookProviderFactory struct{}
 
-// NewWebhookSourceProviderFactory creates a new factory instance.
-func NewWebhookSourceProviderFactory() *WebhookSourceProviderFactory {
-	return &WebhookSourceProviderFactory{}
+// NewWebhookProviderFactory creates a new factory instance.
+func NewWebhookProviderFactory() *WebhookProviderFactory {
+	return &WebhookProviderFactory{}
 }
 
-// Create instantiates a new centralized WebhookSourceProvider orchestrator.
-func (f *WebhookSourceProviderFactory) Create(config map[string]any, logger *slog.Logger) (protocol.SourceProvider, error) {
+// Create instantiates a new centralized WebhookProvider orchestrator.
+func (f *WebhookProviderFactory) Create(config map[string]any, logger *slog.Logger) (protocol.Provider, error) {
 	// Create single orchestrator instance (port configuration handled during Initialize)
-	return &WebhookSourceProvider{
+	return &WebhookProvider{
 		config: config,
 		logger: logger.With("module", "centralized_webhook"),
 	}, nil
 }
 
 // ID returns the unique identifier for this source provider type.
-func (f *WebhookSourceProviderFactory) ID() string {
+func (f *WebhookProviderFactory) ID() string {
 	return "webhook"
 }
 
 // Name returns a human-readable name for this source provider.
-func (f *WebhookSourceProviderFactory) Name() string {
+func (f *WebhookProviderFactory) Name() string {
 	return "Centralized Webhook"
 }
 
 // Description returns a detailed description of what this source provider does.
-func (f *WebhookSourceProviderFactory) Description() string {
+func (f *WebhookProviderFactory) Description() string {
 	return "A centralized webhook orchestrator that manages HTTP webhook endpoints with external ID-based security. Receives HTTP POST requests and converts them to source events for workflow triggering. Supports optional JSON schema validation and automatic source registration from workflow triggers."
 }
 
 // Schema returns a JSON Schema that describes the orchestrator configuration.
-func (f *WebhookSourceProviderFactory) Schema() map[string]any {
+func (f *WebhookProviderFactory) Schema() map[string]any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -106,9 +106,9 @@ func (f *WebhookSourceProviderFactory) Schema() map[string]any {
 }
 
 // EventTypes returns a list of event types that this source provider can emit.
-func (f *WebhookSourceProviderFactory) EventTypes() []string {
+func (f *WebhookProviderFactory) EventTypes() []string {
 	return []string{"WebhookReceived"}
 }
 
 // Ensure interface compliance.
-var _ protocol.SourceProviderFactory = (*WebhookSourceProviderFactory)(nil)
+var _ protocol.ProviderFactory = (*WebhookProviderFactory)(nil)

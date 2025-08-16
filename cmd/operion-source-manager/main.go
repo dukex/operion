@@ -111,7 +111,7 @@ func main() {
 				}
 			}()
 
-			manager := NewSourceProviderManager(
+			manager := NewProviderManager(
 				managerID,
 				persistence,
 				sourceEventBus,

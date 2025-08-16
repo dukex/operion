@@ -8,7 +8,8 @@
       "name": "5 Minute Schedule Trigger",
       "description": "Trigger every 5 minutes to test multi-schedule orchestrator",
       "source_id": "test-scheduler-5min",
-      "trigger_id": "",
+      "provider_id": "scheduler",
+      "event_type": "schedule_due",
       "configuration": {
         "cron_expression": "*/5 * * * *"
       }

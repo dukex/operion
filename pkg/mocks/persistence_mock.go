@@ -48,17 +48,8 @@ func (m *MockPersistence) HealthCheck(ctx context.Context) error {
 	return args.Error(0)
 }
 
-func (m *MockPersistence) WorkflowTriggersBySourceID(ctx context.Context, sourceID string, status models.WorkflowStatus) ([]*models.TriggerMatch, error) {
-	args := m.Called(ctx, sourceID, status)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-
-	return args.Get(0).([]*models.TriggerMatch), args.Error(1)
-}
-
-func (m *MockPersistence) WorkflowTriggersBySourceAndEvent(ctx context.Context, sourceID, eventType string, status models.WorkflowStatus) ([]*models.TriggerMatch, error) {
-	args := m.Called(ctx, sourceID, eventType, status)
+func (m *MockPersistence) WorkflowTriggersBySourceEventAndProvider(ctx context.Context, sourceID, eventType, providerID string, status models.WorkflowStatus) ([]*models.TriggerMatch, error) {
+	args := m.Called(ctx, sourceID, eventType, providerID, status)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

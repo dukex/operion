@@ -34,7 +34,7 @@ The project follows a clean, layered architecture with clear separation of conce
 
 - **Models** (`pkg/models/`) - Core domain models and interfaces
 - **Business Logic** (`pkg/workflow/`) - Workflow execution and management
-- **Source Providers** (`pkg/sources/`) - Self-contained event generation modules with isolated persistence
+- **Source Providers** (`pkg/providers/`) - Self-contained event generation modules with isolated persistence
 - **Infrastructure** (`pkg/persistence/`, `pkg/event_bus/`) - External integrations and data access
 - **Extensions** (`pkg/registry/`) - Plugin system for actions and triggers with .so file loading
 - **Interface Layer** (`cmd/`) - Entry points (API server, CLI tools, service managers)
@@ -154,7 +154,7 @@ The system uses a modern event-driven architecture with complete provider isolat
 1. **Source Providers** - Self-contained modules that generate events from external sources:
    - Each provider manages its own persistence and configuration
    - Completely isolated from core system (only receives workflow definitions)
-   - Examples: scheduler provider (`pkg/sources/scheduler/`), webhook provider (future)
+   - Examples: scheduler provider (`pkg/providers/scheduler/`), webhook provider (future)
 2. **Source Manager Service** - Orchestrates source providers:
    - Manages provider lifecycle (Initialize → Configure → Prepare → Start)
    - Passes workflow definitions to providers during configuration
@@ -211,7 +211,7 @@ Actions now use a standardized contract with:
 
 ### Available Source Providers
 
-- **Scheduler** (`pkg/sources/scheduler/`) - Self-contained cron-based scheduler with isolated persistence
+- **Scheduler** (`pkg/providers/scheduler/`) - Self-contained cron-based scheduler with isolated persistence
   - Supports file-based persistence (`file://./data/scheduler`) or database persistence (future)
   - Manages its own schedule models and lifecycle
   - Configurable via `SCHEDULER_PERSISTENCE_URL` environment variable

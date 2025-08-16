@@ -9,7 +9,7 @@ import (
 
 	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/protocol"
-	webhookModels "github.com/dukex/operion/pkg/sources/webhook/models"
+	webhookModels "github.com/dukex/operion/pkg/providers/webhook/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -51,7 +51,7 @@ func createTestWorkflow(id string, triggers []*models.WorkflowTrigger) *models.W
 func createWebhookTrigger(id, sourceID string, config map[string]any) *models.WorkflowTrigger {
 	return &models.WorkflowTrigger{
 		ID:            id,
-		TriggerID:     webhookTriggerType,
+		ProviderID:    webhookTriggerType,
 		SourceID:      sourceID,
 		Configuration: config,
 	}
@@ -59,7 +59,7 @@ func createWebhookTrigger(id, sourceID string, config map[string]any) *models.Wo
 
 // Constructor and Initialization Tests
 
-func TestWebhookSourceProvider_Initialize(t *testing.T) {
+func TestWebhookProvider_Initialize(t *testing.T) {
 	testCases := []struct {
 		name         string
 		config       map[string]any
@@ -128,7 +128,7 @@ func TestWebhookSourceProvider_Initialize(t *testing.T) {
 				t.Setenv(key, value)
 			}
 
-			provider := &WebhookSourceProvider{
+			provider := &WebhookProvider{
 				config: tc.config,
 			}
 
@@ -150,7 +150,7 @@ func TestWebhookSourceProvider_Initialize(t *testing.T) {
 
 // Configure Tests
 
-func TestWebhookSourceProvider_Configure(t *testing.T) {
+func TestWebhookProvider_Configure(t *testing.T) {
 	tests := []struct {
 		name      string
 		workflows []*models.Workflow
@@ -213,13 +213,13 @@ func TestWebhookSourceProvider_Configure(t *testing.T) {
 			expected: 0,
 		},
 		{
-			name: "webhook trigger without source_id ignored",
+			name: "webhook trigger without source_id generates UUID",
 			workflows: []*models.Workflow{
 				createTestWorkflow("workflow-1", []*models.WorkflowTrigger{
-					{ID: "trigger-1", TriggerID: webhookTriggerType, SourceID: ""}, // No source ID
+					{ID: "trigger-1", ProviderID: webhookTriggerType, SourceID: ""}, // No source ID
 				}),
 			},
-			expected: 0,
+			expected: 1, // Now generates UUID and creates source
 		},
 		{
 			name: "webhook with JSON schema configuration",
@@ -245,7 +245,7 @@ func TestWebhookSourceProvider_Configure(t *testing.T) {
 			// Set up persistence for Configure test
 			t.Setenv("WEBHOOK_PERSISTENCE_URL", "file://"+t.TempDir()+"/webhook_configure_test")
 
-			provider := &WebhookSourceProvider{
+			provider := &WebhookProvider{
 				config: map[string]any{},
 				logger: createTestLogger(),
 			}
@@ -256,7 +256,7 @@ func TestWebhookSourceProvider_Configure(t *testing.T) {
 			err := provider.Initialize(ctx, deps)
 			require.NoError(t, err)
 
-			err = provider.Configure(tt.workflows)
+			_, err = provider.Configure(tt.workflows)
 			require.NoError(t, err)
 
 			// Check expected sources count from persistence
@@ -271,7 +271,7 @@ func TestWebhookSourceProvider_Configure(t *testing.T) {
 				}
 
 				for _, trigger := range workflow.WorkflowTriggers {
-					if trigger.TriggerID == webhookTriggerType && trigger.SourceID != "" {
+					if trigger.ProviderID == webhookTriggerType && trigger.SourceID != "" {
 						found := false
 
 						for _, source := range sources {
@@ -298,15 +298,15 @@ func TestWebhookSourceProvider_Configure(t *testing.T) {
 
 // Lifecycle Tests
 
-func TestWebhookSourceProvider_Validate(t *testing.T) {
+func TestWebhookProvider_Validate(t *testing.T) {
 	testCases := []struct {
 		name      string
-		provider  *WebhookSourceProvider
+		provider  *WebhookProvider
 		wantError bool
 	}{
 		{
 			name: "valid provider",
-			provider: &WebhookSourceProvider{
+			provider: &WebhookProvider{
 				server: &WebhookServer{},
 				port:   8080,
 			},
@@ -314,7 +314,7 @@ func TestWebhookSourceProvider_Validate(t *testing.T) {
 		},
 		{
 			name: "nil server",
-			provider: &WebhookSourceProvider{
+			provider: &WebhookProvider{
 				server: nil,
 				port:   8080,
 			},
@@ -322,7 +322,7 @@ func TestWebhookSourceProvider_Validate(t *testing.T) {
 		},
 		{
 			name: "invalid port - zero",
-			provider: &WebhookSourceProvider{
+			provider: &WebhookProvider{
 				server: &WebhookServer{},
 				port:   0,
 			},
@@ -330,7 +330,7 @@ func TestWebhookSourceProvider_Validate(t *testing.T) {
 		},
 		{
 			name: "invalid port - negative",
-			provider: &WebhookSourceProvider{
+			provider: &WebhookProvider{
 				server: &WebhookServer{},
 				port:   -1,
 			},
@@ -338,7 +338,7 @@ func TestWebhookSourceProvider_Validate(t *testing.T) {
 		},
 		{
 			name: "invalid port - too high",
-			provider: &WebhookSourceProvider{
+			provider: &WebhookProvider{
 				server: &WebhookServer{},
 				port:   65536,
 			},
@@ -358,11 +358,11 @@ func TestWebhookSourceProvider_Validate(t *testing.T) {
 	}
 }
 
-func TestWebhookSourceProvider_Prepare(t *testing.T) {
+func TestWebhookProvider_Prepare(t *testing.T) {
 	// Set up persistence for test
 	t.Setenv("WEBHOOK_PERSISTENCE_URL", "file://"+t.TempDir()+"/webhook_prepare_test")
 
-	provider := &WebhookSourceProvider{
+	provider := &WebhookProvider{
 		logger: createTestLogger(),
 	}
 
@@ -383,8 +383,8 @@ func TestWebhookSourceProvider_Prepare(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestWebhookSourceProvider_Prepare_NilServer(t *testing.T) {
-	provider := &WebhookSourceProvider{
+func TestWebhookProvider_Prepare_NilServer(t *testing.T) {
+	provider := &WebhookProvider{
 		server: nil,
 	}
 
@@ -396,11 +396,11 @@ func TestWebhookSourceProvider_Prepare_NilServer(t *testing.T) {
 
 // Start/Stop Tests
 
-func TestWebhookSourceProvider_StartStop(t *testing.T) {
+func TestWebhookProvider_StartStop(t *testing.T) {
 	// Set up persistence for test
 	t.Setenv("WEBHOOK_PERSISTENCE_URL", "file://"+t.TempDir()+"/webhook_startstop_test")
 
-	provider := &WebhookSourceProvider{
+	provider := &WebhookProvider{
 		config: map[string]any{"port": 0}, // Use port 0 for testing to get random available port
 		logger: createTestLogger(),
 	}
@@ -440,11 +440,11 @@ func TestWebhookSourceProvider_StartStop(t *testing.T) {
 
 // Helper Methods Tests
 
-func TestWebhookSourceProvider_GetWebhookURL(t *testing.T) {
+func TestWebhookProvider_GetWebhookURL(t *testing.T) {
 	// Set up persistence for test
 	t.Setenv("WEBHOOK_PERSISTENCE_URL", "file://"+t.TempDir()+"/webhook_url_test")
 
-	provider := &WebhookSourceProvider{
+	provider := &WebhookProvider{
 		logger: createTestLogger(),
 	}
 
@@ -470,11 +470,11 @@ func TestWebhookSourceProvider_GetWebhookURL(t *testing.T) {
 	assert.Empty(t, url)
 }
 
-func TestWebhookSourceProvider_GetRegisteredSources(t *testing.T) {
+func TestWebhookProvider_GetRegisteredSources(t *testing.T) {
 	// Set up persistence for test
 	t.Setenv("WEBHOOK_PERSISTENCE_URL", "file://"+t.TempDir()+"/webhook_sources_test")
 
-	provider := &WebhookSourceProvider{
+	provider := &WebhookProvider{
 		logger: createTestLogger(),
 	}
 
@@ -506,7 +506,7 @@ func TestWebhookSourceProvider_GetRegisteredSources(t *testing.T) {
 
 // Port Configuration Tests
 
-func TestWebhookSourceProvider_getWebhookPort(t *testing.T) {
+func TestWebhookProvider_getWebhookPort(t *testing.T) {
 	testCases := []struct {
 		name         string
 		config       map[string]any
@@ -575,7 +575,7 @@ func TestWebhookSourceProvider_getWebhookPort(t *testing.T) {
 				t.Setenv("WEBHOOK_PORT", tc.envVar)
 			}
 
-			provider := &WebhookSourceProvider{
+			provider := &WebhookProvider{
 				config: tc.config,
 			}
 

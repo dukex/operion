@@ -8,7 +8,8 @@
       "name": "Webhook Source Trigger",
       "description": "Receives webhook events through the centralized webhook source provider",
       "source_id": "message-webhook-source",
-      "trigger_id": "webhook",
+      "provider_id": "webhook",
+      "event_type": "webhook_received",
       "configuration": {
         "json_schema": {
           "type": "object",

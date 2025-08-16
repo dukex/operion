@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestWebhookSourceProviderFactory_Create(t *testing.T) {
+func TestWebhookProviderFactory_Create(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	testCases := []struct {
@@ -55,7 +55,7 @@ func TestWebhookSourceProviderFactory_Create(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			factory := NewWebhookSourceProviderFactory()
+			factory := NewWebhookProviderFactory()
 			require.NotNil(t, factory)
 
 			provider, err := factory.Create(tc.config, logger)
@@ -63,7 +63,7 @@ func TestWebhookSourceProviderFactory_Create(t *testing.T) {
 			require.NotNil(t, provider)
 
 			// Verify it's the right type
-			webhookProvider, ok := provider.(*WebhookSourceProvider)
+			webhookProvider, ok := provider.(*WebhookProvider)
 			assert.True(t, ok)
 			assert.NotNil(t, webhookProvider)
 
@@ -78,18 +78,18 @@ func TestWebhookSourceProviderFactory_Create(t *testing.T) {
 	}
 }
 
-func TestWebhookSourceProviderFactory_ID(t *testing.T) {
-	factory := NewWebhookSourceProviderFactory()
+func TestWebhookProviderFactory_ID(t *testing.T) {
+	factory := NewWebhookProviderFactory()
 	assert.Equal(t, "webhook", factory.ID())
 }
 
-func TestWebhookSourceProviderFactory_Name(t *testing.T) {
-	factory := NewWebhookSourceProviderFactory()
+func TestWebhookProviderFactory_Name(t *testing.T) {
+	factory := NewWebhookProviderFactory()
 	assert.Equal(t, "Centralized Webhook", factory.Name())
 }
 
-func TestWebhookSourceProviderFactory_Description(t *testing.T) {
-	factory := NewWebhookSourceProviderFactory()
+func TestWebhookProviderFactory_Description(t *testing.T) {
+	factory := NewWebhookProviderFactory()
 	description := factory.Description()
 
 	assert.NotEmpty(t, description)
@@ -99,16 +99,16 @@ func TestWebhookSourceProviderFactory_Description(t *testing.T) {
 	assert.Contains(t, description, "source events")
 }
 
-func TestWebhookSourceProviderFactory_EventTypes(t *testing.T) {
-	factory := NewWebhookSourceProviderFactory()
+func TestWebhookProviderFactory_EventTypes(t *testing.T) {
+	factory := NewWebhookProviderFactory()
 	eventTypes := factory.EventTypes()
 
 	require.Len(t, eventTypes, 1)
 	assert.Equal(t, "WebhookReceived", eventTypes[0])
 }
 
-func TestWebhookSourceProviderFactory_Schema(t *testing.T) {
-	factory := NewWebhookSourceProviderFactory()
+func TestWebhookProviderFactory_Schema(t *testing.T) {
+	factory := NewWebhookProviderFactory()
 	schema := factory.Schema()
 
 	// Verify schema structure
@@ -199,8 +199,8 @@ func TestWebhookSourceProviderFactory_Schema(t *testing.T) {
 	}
 }
 
-func TestWebhookSourceProviderFactory_InterfaceCompliance(t *testing.T) {
-	factory := NewWebhookSourceProviderFactory()
+func TestWebhookProviderFactory_InterfaceCompliance(t *testing.T) {
+	factory := NewWebhookProviderFactory()
 
 	// Test that all interface methods are implemented and return expected types
 	assert.IsType(t, "", factory.ID())
@@ -216,9 +216,9 @@ func TestWebhookSourceProviderFactory_InterfaceCompliance(t *testing.T) {
 	assert.NotNil(t, provider)
 }
 
-func TestNewWebhookSourceProviderFactory(t *testing.T) {
-	factory1 := NewWebhookSourceProviderFactory()
-	factory2 := NewWebhookSourceProviderFactory()
+func TestNewWebhookProviderFactory(t *testing.T) {
+	factory1 := NewWebhookProviderFactory()
+	factory2 := NewWebhookProviderFactory()
 
 	// Each call should return a new instance
 	assert.NotSame(t, factory1, factory2)

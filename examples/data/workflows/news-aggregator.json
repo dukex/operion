@@ -8,7 +8,8 @@
       "id": "news-schedule",
       "name": "News Schedule Trigger",
       "description": "Trigger to fetch news 3 times daily",
-      "trigger_id": "schedule",
+      "provider_id": "scheduler",
+      "event_type": "schedule_due",
       "configuration": {
         "cron": "0 8,14,20 * * *",
         "timezone": "UTC"

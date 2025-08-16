@@ -8,9 +8,9 @@ import (
 	"github.com/dukex/operion/pkg/actions/httprequest"
 	logaction "github.com/dukex/operion/pkg/actions/log"
 	"github.com/dukex/operion/pkg/actions/transform"
+	"github.com/dukex/operion/pkg/providers/scheduler"
+	webhookSource "github.com/dukex/operion/pkg/providers/webhook"
 	"github.com/dukex/operion/pkg/registry"
-	"github.com/dukex/operion/pkg/sources/scheduler"
-	webhookSource "github.com/dukex/operion/pkg/sources/webhook"
 	"github.com/dukex/operion/pkg/triggers/kafka"
 	"github.com/dukex/operion/pkg/triggers/queue"
 	"github.com/dukex/operion/pkg/triggers/schedule"
@@ -39,14 +39,14 @@ func registerTriggerPlugins(ctx context.Context, reg *registry.Registry, plugins
 	}
 }
 
-func registerSourceProviderPlugins(ctx context.Context, reg *registry.Registry, pluginsPath string) {
-	sourceProviderPlugins, err := reg.LoadSourceProviderPlugins(ctx, pluginsPath)
+func registerProviderPlugins(ctx context.Context, reg *registry.Registry, pluginsPath string) {
+	sourceProviderPlugins, err := reg.LoadProviderPlugins(ctx, pluginsPath)
 	if err != nil {
 		panic(err)
 	}
 
 	for _, plugin := range sourceProviderPlugins {
-		reg.RegisterSourceProvider(plugin)
+		reg.RegisterProvider(plugin)
 	}
 }
 
@@ -63,12 +63,12 @@ func registerNativeTriggers(reg *registry.Registry) {
 	reg.RegisterTrigger(kafka.NewTriggerFactory())
 }
 
-func registerNativeSourceProviders(reg *registry.Registry) {
-	schedulerProvider := scheduler.NewSchedulerSourceProviderFactory()
-	reg.RegisterSourceProvider(schedulerProvider)
+func registerNativeProviders(reg *registry.Registry) {
+	schedulerProvider := scheduler.NewSchedulerProviderFactory()
+	reg.RegisterProvider(schedulerProvider)
 
-	webhookProvider := webhookSource.NewWebhookSourceProviderFactory()
-	reg.RegisterSourceProvider(webhookProvider)
+	webhookProvider := webhookSource.NewWebhookProviderFactory()
+	reg.RegisterProvider(webhookProvider)
 }
 
 func NewRegistry(ctx context.Context, log *slog.Logger, pluginsPath string) *registry.Registry {
@@ -76,11 +76,11 @@ func NewRegistry(ctx context.Context, log *slog.Logger, pluginsPath string) *reg
 
 	registerActionPlugins(ctx, reg, pluginsPath)
 	registerTriggerPlugins(ctx, reg, pluginsPath)
-	registerSourceProviderPlugins(ctx, reg, pluginsPath)
+	registerProviderPlugins(ctx, reg, pluginsPath)
 
 	registerNativeTriggers(reg)
 	registerNativeActions(reg)
-	registerNativeSourceProviders(reg)
+	registerNativeProviders(reg)
 
 	return reg
 }

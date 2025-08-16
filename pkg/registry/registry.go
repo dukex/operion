@@ -19,15 +19,15 @@ var (
 	ErrActionNotRegistered = errors.New("action type not registered")
 	// ErrTriggerNotRegistered is returned when a trigger ID is not registered.
 	ErrTriggerNotRegistered = errors.New("trigger ID not registered")
-	// ErrSourceProviderNotRegistered is returned when a provider ID is not registered.
-	ErrSourceProviderNotRegistered = errors.New("provider ID not registered")
+	// ErrProviderNotRegistered is returned when a provider ID is not registered.
+	ErrProviderNotRegistered = errors.New("provider ID not registered")
 )
 
 type Registry struct {
 	logger                  *slog.Logger
 	actionFactories         map[string]protocol.ActionFactory
 	triggerFactories        map[string]protocol.TriggerFactory
-	sourceProviderFactories map[string]protocol.SourceProviderFactory
+	sourceProviderFactories map[string]protocol.ProviderFactory
 }
 
 func NewRegistry(log *slog.Logger) *Registry {
@@ -35,7 +35,7 @@ func NewRegistry(log *slog.Logger) *Registry {
 		logger:                  log,
 		actionFactories:         make(map[string]protocol.ActionFactory),
 		triggerFactories:        make(map[string]protocol.TriggerFactory),
-		sourceProviderFactories: make(map[string]protocol.SourceProviderFactory),
+		sourceProviderFactories: make(map[string]protocol.ProviderFactory),
 	}
 }
 
@@ -55,8 +55,8 @@ func (r *Registry) LoadTriggerPlugins(ctx context.Context, pluginsPath string) (
 	return loadPlugin[protocol.TriggerFactory](ctx, r.logger, pluginsPath, "Trigger")
 }
 
-func (r *Registry) LoadSourceProviderPlugins(ctx context.Context, pluginsPath string) ([]protocol.SourceProviderFactory, error) {
-	return loadPlugin[protocol.SourceProviderFactory](ctx, r.logger, pluginsPath, "SourceProvider")
+func (r *Registry) LoadProviderPlugins(ctx context.Context, pluginsPath string) ([]protocol.ProviderFactory, error) {
+	return loadPlugin[protocol.ProviderFactory](ctx, r.logger, pluginsPath, "Provider")
 }
 
 func (r *Registry) RegisterAction(actionFactory protocol.ActionFactory) {
@@ -67,7 +67,7 @@ func (r *Registry) RegisterTrigger(triggerFactory protocol.TriggerFactory) {
 	r.triggerFactories[triggerFactory.ID()] = triggerFactory
 }
 
-func (r *Registry) RegisterSourceProvider(sourceProviderFactory protocol.SourceProviderFactory) {
+func (r *Registry) RegisterProvider(sourceProviderFactory protocol.ProviderFactory) {
 	r.sourceProviderFactories[sourceProviderFactory.ID()] = sourceProviderFactory
 }
 
@@ -109,12 +109,12 @@ func (r *Registry) CreateTrigger(
 	return created, nil
 }
 
-// CreateSourceProvider creates a new source provider instance based on the provided provider ID and configuration.
-func (r *Registry) CreateSourceProvider(
+// CreateProvider creates a new source provider instance based on the provided provider ID and configuration.
+func (r *Registry) CreateProvider(
 	ctx context.Context,
 	providerID string,
 	config map[string]any,
-) (protocol.SourceProvider, error) {
+) (protocol.Provider, error) {
 	factory, ok := r.sourceProviderFactories[providerID]
 	if !ok {
 		return nil, fmt.Errorf("trigger ID '%s': %w", providerID, ErrTriggerNotRegistered)
@@ -149,8 +149,8 @@ func (r *Registry) GetAvailableTriggers() []protocol.TriggerFactory {
 }
 
 // GetAvailableProviders returns all available source provider types.
-func (r *Registry) GetAvailableSourceProviders() []protocol.SourceProviderFactory {
-	sourceProviders := make([]protocol.SourceProviderFactory, 0, len(r.sourceProviderFactories))
+func (r *Registry) GetAvailableProviders() []protocol.ProviderFactory {
+	sourceProviders := make([]protocol.ProviderFactory, 0, len(r.sourceProviderFactories))
 	for _, sourceProvider := range r.sourceProviderFactories {
 		sourceProviders = append(sourceProviders, sourceProvider)
 	}
@@ -158,8 +158,8 @@ func (r *Registry) GetAvailableSourceProviders() []protocol.SourceProviderFactor
 	return sourceProviders
 }
 
-func (r *Registry) GetSourceProviders() map[string]protocol.SourceProviderFactory {
-	sourceProviders := make(map[string]protocol.SourceProviderFactory)
+func (r *Registry) GetProviders() map[string]protocol.ProviderFactory {
+	sourceProviders := make(map[string]protocol.ProviderFactory)
 	for id, factory := range r.sourceProviderFactories {
 		sourceProviders[id] = factory
 	}

@@ -6,41 +6,41 @@ import (
 	"github.com/dukex/operion/pkg/protocol"
 )
 
-// SchedulerSourceProviderFactory creates instances of SchedulerSourceProvider.
-type SchedulerSourceProviderFactory struct{}
+// SchedulerProviderFactory creates instances of SchedulerProvider.
+type SchedulerProviderFactory struct{}
 
-// NewSchedulerSourceProviderFactory creates a new factory instance.
-func NewSchedulerSourceProviderFactory() *SchedulerSourceProviderFactory {
-	return &SchedulerSourceProviderFactory{}
+// NewSchedulerProviderFactory creates a new factory instance.
+func NewSchedulerProviderFactory() *SchedulerProviderFactory {
+	return &SchedulerProviderFactory{}
 }
 
-// Create instantiates a new centralized SchedulerSourceProvider orchestrator.
-func (f *SchedulerSourceProviderFactory) Create(config map[string]any, logger *slog.Logger) (protocol.SourceProvider, error) {
+// Create instantiates a new centralized SchedulerProvider orchestrator.
+func (f *SchedulerProviderFactory) Create(config map[string]any, logger *slog.Logger) (protocol.Provider, error) {
 	// Create single orchestrator instance (no source-specific configuration required)
 	// Persistence will be initialized during the Initialize lifecycle method
-	return &SchedulerSourceProvider{
+	return &SchedulerProvider{
 		config: config,
 		logger: logger.With("module", "centralized_scheduler"),
 	}, nil
 }
 
 // ID returns the unique identifier for this source provider type.
-func (f *SchedulerSourceProviderFactory) ID() string {
+func (f *SchedulerProviderFactory) ID() string {
 	return "scheduler"
 }
 
 // Name returns a human-readable name for this source provider.
-func (f *SchedulerSourceProviderFactory) Name() string {
+func (f *SchedulerProviderFactory) Name() string {
 	return "Centralized Scheduler"
 }
 
 // Description returns a detailed description of what this source provider does.
-func (f *SchedulerSourceProviderFactory) Description() string {
+func (f *SchedulerProviderFactory) Description() string {
 	return "A centralized scheduler orchestrator that polls the database for due schedules and processes them regardless of their individual cron expressions. Schedules are created when workflows with scheduler triggers are registered."
 }
 
 // Schema returns a JSON Schema that describes the orchestrator configuration.
-func (f *SchedulerSourceProviderFactory) Schema() map[string]any {
+func (f *SchedulerProviderFactory) Schema() map[string]any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -58,9 +58,9 @@ func (f *SchedulerSourceProviderFactory) Schema() map[string]any {
 }
 
 // EventTypes returns a list of event types that this source provider can emit.
-func (f *SchedulerSourceProviderFactory) EventTypes() []string {
+func (f *SchedulerProviderFactory) EventTypes() []string {
 	return []string{"ScheduleDue"}
 }
 
 // Ensure interface compliance.
-var _ protocol.SourceProviderFactory = (*SchedulerSourceProviderFactory)(nil)
+var _ protocol.ProviderFactory = (*SchedulerProviderFactory)(nil)

@@ -8,7 +8,8 @@
       "name": "2 Minute Schedule Trigger",
       "description": "Trigger every 2 minutes to test multi-schedule orchestrator",
       "source_id": "test-scheduler-2min",
-      "trigger_id": "",
+      "provider_id": "scheduler",
+      "event_type": "schedule_due",
       "configuration": {
         "cron_expression": "*/2 * * * *"
       }

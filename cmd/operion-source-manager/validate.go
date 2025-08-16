@@ -17,8 +17,8 @@ var validate *validator.Validate
 
 // Static error variables for linter compliance.
 var (
-	ErrInvalidTriggers              = errors.New("invalid triggers found")
-	ErrInvalidSourceProviderConfigs = errors.New("invalid source provider configurations found")
+	ErrInvalidTriggers        = errors.New("invalid triggers found")
+	ErrInvalidProviderConfigs = errors.New("invalid source provider configurations found")
 )
 
 func NewValidateCommand() *cli.Command {
@@ -74,7 +74,7 @@ func NewValidateCommand() *cli.Command {
 			invalidProviders := 0
 
 			// Get available source providers from registry
-			sourceProviders := registry.GetSourceProviders()
+			sourceProviders := registry.GetProviders()
 			_, _ = fmt.Fprintf(os.Stdout, "Available source providers: %d\n", len(sourceProviders))
 			for name, factory := range sourceProviders {
 				_, _ = fmt.Fprintf(os.Stdout, "  - %s: %s\n", name, factory.Description())
@@ -152,7 +152,7 @@ func NewValidateCommand() *cli.Command {
 			}
 
 			if invalidProviders > 0 {
-				return fmt.Errorf("%w: %d", ErrInvalidSourceProviderConfigs, invalidProviders)
+				return fmt.Errorf("%w: %d", ErrInvalidProviderConfigs, invalidProviders)
 			}
 
 			_, _ = fmt.Fprintln(os.Stdout, "All source provider configurations are valid! ✅")

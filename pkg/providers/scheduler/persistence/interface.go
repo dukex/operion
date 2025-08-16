@@ -3,7 +3,7 @@ package persistence
 import (
 	"time"
 
-	"github.com/dukex/operion/pkg/sources/scheduler/models"
+	"github.com/dukex/operion/pkg/providers/scheduler/models"
 )
 
 // SchedulerPersistence defines the persistence interface for the scheduler provider.

@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dukex/operion/pkg/sources/scheduler/models"
+	"github.com/dukex/operion/pkg/providers/scheduler/models"
 )
 
 // FilePersistence implements SchedulerPersistence using JSON files.

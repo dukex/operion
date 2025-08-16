@@ -16,8 +16,8 @@ type Persistence interface {
 	HealthCheck(ctx context.Context) error
 
 	// Trigger operations
-	WorkflowTriggersBySourceID(ctx context.Context, sourceID string, status models.WorkflowStatus) ([]*models.TriggerMatch, error)
-	WorkflowTriggersBySourceAndEvent(ctx context.Context, sourceID, eventType string, status models.WorkflowStatus) ([]*models.TriggerMatch, error)
+	// Find triggers by source ID, event type, and provider ID
+	WorkflowTriggersBySourceEventAndProvider(ctx context.Context, sourceID, eventType, providerID string, status models.WorkflowStatus) ([]*models.TriggerMatch, error)
 
 	Close(ctx context.Context) error
 }

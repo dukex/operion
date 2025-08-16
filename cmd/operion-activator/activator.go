@@ -177,27 +177,23 @@ func (a *Activator) handleSourceEvent(ctx context.Context, sourceEvent *events.S
 
 // findTriggersForSourceEvent queries the database for triggers that match a source event.
 func (a *Activator) findTriggersForSourceEvent(ctx context.Context, sourceEvent *events.SourceEvent) ([]*models.TriggerMatch, error) {
-	// Use the new persistence method to find triggers by source ID and active status
-	// This enables database implementations to use proper queries and indexes
-	matchingTriggers, err := a.persistence.WorkflowTriggersBySourceID(ctx, sourceEvent.SourceID, models.WorkflowStatusActive)
+	// Use the comprehensive persistence method to find triggers by source ID, event type, and provider ID
+	// This enables database implementations to use proper queries and indexes for exact matching
+	matchingTriggers, err := a.persistence.WorkflowTriggersBySourceEventAndProvider(
+		ctx,
+		sourceEvent.SourceID,
+		sourceEvent.EventType,
+		sourceEvent.ProviderID,
+		models.WorkflowStatusActive,
+	)
 	if err != nil {
 		a.logger.Error("Failed to fetch matching triggers", "error", err)
 
 		return nil, err
 	}
 
-	// Filter triggers based on additional matching criteria
-	// Note: For now we accept all triggers from the matching source
-	// TODO: Add event type filtering when triggers support event type specification
-	var filteredTriggers []*models.TriggerMatch
-
-	for _, match := range matchingTriggers {
-		if a.triggerMatchesSourceEvent(match.Trigger, sourceEvent) {
-			filteredTriggers = append(filteredTriggers, match)
-		}
-	}
-
-	return filteredTriggers, nil
+	// No additional filtering needed - the persistence layer already filtered by all criteria
+	return matchingTriggers, nil
 }
 
 // triggerMatchesSourceEvent determines if a workflow trigger should be activated by a source event.

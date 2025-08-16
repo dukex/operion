@@ -17,7 +17,8 @@ type ProviderLifecycle interface {
 
 	// Configure configures the provider based on current workflow definitions.
 	// Called after Initialize() and whenever workflows change.
-	Configure(workflows []*models.Workflow) error
+	// Returns a map of triggerID -> sourceID for workflows that were configured.
+	Configure(workflows []*models.Workflow) (map[string]string, error)
 
 	// Prepare performs final preparation before starting the provider.
 	// Called after Configure(), just before Start().

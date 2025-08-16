@@ -88,7 +88,7 @@ func TestActivator_HandleSourceEvent_ValidEvent(t *testing.T) {
 	triggerMatches := createTestTriggerMatches("workflow-123", "trigger-123", "source-123")
 
 	// Mock finding matching triggers
-	mockPersistence.On("WorkflowTriggersBySourceID", mock.Anything, "source-123", models.WorkflowStatusActive).Return(triggerMatches, nil)
+	mockPersistence.On("WorkflowTriggersBySourceEventAndProvider", mock.Anything, "source-123", "ScheduleDue", "scheduler", models.WorkflowStatusActive).Return(triggerMatches, nil)
 
 	// Mock event publishing
 	mockEventBus.On("GenerateID").Return("event-123")
@@ -117,7 +117,7 @@ func TestActivator_HandleSourceEvent_InvalidEvent(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "source_id is required")
 	// Should not call persistence or eventbus due to validation failure
-	mockPersistence.AssertNotCalled(t, "WorkflowTriggersBySourceID")
+	mockPersistence.AssertNotCalled(t, "WorkflowTriggersBySourceEventAndProvider")
 	mockEventBus.AssertNotCalled(t, "Publish")
 }
 
@@ -137,7 +137,7 @@ func TestActivator_HandleSourceEvent_NoMatchingTriggers(t *testing.T) {
 	}
 
 	// Mock no matching triggers found
-	mockPersistence.On("WorkflowTriggersBySourceID", mock.Anything, "source-123", models.WorkflowStatusActive).Return([]*models.TriggerMatch{}, nil)
+	mockPersistence.On("WorkflowTriggersBySourceEventAndProvider", mock.Anything, "source-123", "ScheduleDue", "scheduler", models.WorkflowStatusActive).Return([]*models.TriggerMatch{}, nil)
 
 	err := activator.handleSourceEvent(context.Background(), sourceEvent)
 
@@ -163,7 +163,7 @@ func TestActivator_HandleSourceEvent_DatabaseError(t *testing.T) {
 	}
 
 	// Mock database error
-	mockPersistence.On("WorkflowTriggersBySourceID", mock.Anything, "source-123", models.WorkflowStatusActive).Return(nil, assert.AnError)
+	mockPersistence.On("WorkflowTriggersBySourceEventAndProvider", mock.Anything, "source-123", "ScheduleDue", "scheduler", models.WorkflowStatusActive).Return(nil, assert.AnError)
 
 	err := activator.handleSourceEvent(context.Background(), sourceEvent)
 
@@ -205,7 +205,7 @@ func TestActivator_HandleSourceEvent_MultipleMatchingTriggers(t *testing.T) {
 			},
 		},
 	}
-	mockPersistence.On("WorkflowTriggersBySourceID", mock.Anything, "source-123", models.WorkflowStatusActive).Return(triggerMatches, nil)
+	mockPersistence.On("WorkflowTriggersBySourceEventAndProvider", mock.Anything, "source-123", "ScheduleDue", "scheduler", models.WorkflowStatusActive).Return(triggerMatches, nil)
 
 	// Mock event publishing for both workflows
 	mockEventBus.On("GenerateID").Return("event-123").Times(2)
@@ -243,7 +243,7 @@ func TestActivator_HandleSourceEvent_PublishFailure(t *testing.T) {
 			},
 		},
 	}
-	mockPersistence.On("WorkflowTriggersBySourceID", mock.Anything, "source-123", models.WorkflowStatusActive).Return(triggerMatches, nil)
+	mockPersistence.On("WorkflowTriggersBySourceEventAndProvider", mock.Anything, "source-123", "ScheduleDue", "scheduler", models.WorkflowStatusActive).Return(triggerMatches, nil)
 
 	// Mock event publishing failure
 	mockEventBus.On("GenerateID").Return("event-123")
@@ -281,7 +281,7 @@ func TestActivator_FindTriggersForSourceEvent_Success(t *testing.T) {
 			},
 		},
 	}
-	mockPersistence.On("WorkflowTriggersBySourceID", mock.Anything, "source-123", models.WorkflowStatusActive).Return(expectedTriggers, nil)
+	mockPersistence.On("WorkflowTriggersBySourceEventAndProvider", mock.Anything, "source-123", "ScheduleDue", "scheduler", models.WorkflowStatusActive).Return(expectedTriggers, nil)
 
 	triggers, err := activator.findTriggersForSourceEvent(context.Background(), sourceEvent)
 
@@ -305,7 +305,7 @@ func TestActivator_FindTriggersForSourceEvent_DatabaseError(t *testing.T) {
 		EventData:  map[string]any{"schedule_id": "sched-123"},
 	}
 
-	mockPersistence.On("WorkflowTriggersBySourceID", mock.Anything, "source-123", models.WorkflowStatusActive).Return(nil, assert.AnError)
+	mockPersistence.On("WorkflowTriggersBySourceEventAndProvider", mock.Anything, "source-123", "ScheduleDue", "scheduler", models.WorkflowStatusActive).Return(nil, assert.AnError)
 
 	triggers, err := activator.findTriggersForSourceEvent(context.Background(), sourceEvent)
 
@@ -329,7 +329,7 @@ func TestActivator_FindTriggersForSourceEvent_EmptyResults(t *testing.T) {
 		EventData:  map[string]any{"schedule_id": "sched-123"},
 	}
 
-	mockPersistence.On("WorkflowTriggersBySourceID", mock.Anything, "source-123", models.WorkflowStatusActive).Return([]*models.TriggerMatch{}, nil)
+	mockPersistence.On("WorkflowTriggersBySourceEventAndProvider", mock.Anything, "source-123", "ScheduleDue", "scheduler", models.WorkflowStatusActive).Return([]*models.TriggerMatch{}, nil)
 
 	triggers, err := activator.findTriggersForSourceEvent(context.Background(), sourceEvent)
 
@@ -614,7 +614,7 @@ func TestActivator_EventHandlingFlow_Integration(t *testing.T) {
 
 	triggerMatches := createTestTriggerMatches("workflow-integration", "trigger-integration", "source-integration")
 
-	mockPersistence.On("WorkflowTriggersBySourceID", mock.Anything, "source-integration", models.WorkflowStatusActive).Return(triggerMatches, nil)
+	mockPersistence.On("WorkflowTriggersBySourceEventAndProvider", mock.Anything, "source-integration", "ScheduleDue", "scheduler", models.WorkflowStatusActive).Return(triggerMatches, nil)
 	mockEventBus.On("GenerateID").Return("event-integration")
 	mockEventBus.On("Publish", mock.Anything, "workflow-integration", mock.AnythingOfType("events.WorkflowTriggered")).Return(nil)
 

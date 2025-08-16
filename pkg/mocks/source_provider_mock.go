@@ -7,24 +7,24 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// MockSourceProvider is a mock implementation of protocol.SourceProvider interface.
-type MockSourceProvider struct {
+// MockProvider is a mock implementation of protocol.Provider interface.
+type MockProvider struct {
 	mock.Mock
 }
 
-func (m *MockSourceProvider) Start(ctx context.Context, callback protocol.SourceEventCallback) error {
+func (m *MockProvider) Start(ctx context.Context, callback protocol.SourceEventCallback) error {
 	args := m.Called(ctx, callback)
 
 	return args.Error(0)
 }
 
-func (m *MockSourceProvider) Stop(ctx context.Context) error {
+func (m *MockProvider) Stop(ctx context.Context) error {
 	args := m.Called(ctx)
 
 	return args.Error(0)
 }
 
-func (m *MockSourceProvider) Validate() error {
+func (m *MockProvider) Validate() error {
 	args := m.Called()
 
 	return args.Error(0)

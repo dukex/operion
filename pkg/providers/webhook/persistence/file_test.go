@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dukex/operion/pkg/sources/webhook/models"
+	"github.com/dukex/operion/pkg/providers/webhook/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

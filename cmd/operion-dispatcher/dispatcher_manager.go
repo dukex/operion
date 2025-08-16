@@ -162,7 +162,7 @@ func (dm *DispatcherManager) startWorkflowTriggers(ctx context.Context, workflow
 		config["trigger_id"] = workflowTrigger.TriggerID
 		config["id"] = workflowTrigger.ID
 
-		trigger, err := dm.registry.CreateTrigger(ctx, workflowTrigger.TriggerID, config)
+		trigger, err := dm.registry.CreateTrigger(ctx, workflowTrigger.ProviderID, config)
 		if err != nil {
 			wtLogger.ErrorContext(ctx, "Failed to create trigger", "error", err)
 

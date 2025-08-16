@@ -9,16 +9,18 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/dukex/operion/pkg/events"
 	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/protocol"
-	schedulerModels "github.com/dukex/operion/pkg/sources/scheduler/models"
-	schedulerPersistence "github.com/dukex/operion/pkg/sources/scheduler/persistence"
+	schedulerModels "github.com/dukex/operion/pkg/providers/scheduler/models"
+	schedulerPersistence "github.com/dukex/operion/pkg/providers/scheduler/persistence"
 )
 
-// SchedulerSourceProvider implements a centralized cron-based scheduler orchestrator
+// SchedulerProvider implements a centralized cron-based scheduler orchestrator
 // that polls the database for due schedules and processes them regardless of their individual cron expressions.
-type SchedulerSourceProvider struct {
+type SchedulerProvider struct {
 	config               map[string]any
 	logger               *slog.Logger
 	schedulerPersistence schedulerPersistence.SchedulerPersistence
@@ -30,7 +32,7 @@ type SchedulerSourceProvider struct {
 }
 
 // Start begins the centralized scheduler orchestrator.
-func (s *SchedulerSourceProvider) Start(ctx context.Context, callback protocol.SourceEventCallback) error {
+func (s *SchedulerProvider) Start(ctx context.Context, callback protocol.SourceEventCallback) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -54,7 +56,7 @@ func (s *SchedulerSourceProvider) Start(ctx context.Context, callback protocol.S
 }
 
 // Stop gracefully shuts down the scheduler orchestrator.
-func (s *SchedulerSourceProvider) Stop(ctx context.Context) error {
+func (s *SchedulerProvider) Stop(ctx context.Context) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -80,7 +82,7 @@ func (s *SchedulerSourceProvider) Stop(ctx context.Context) error {
 }
 
 // Validate checks if the scheduler orchestrator configuration is valid.
-func (s *SchedulerSourceProvider) Validate() error {
+func (s *SchedulerProvider) Validate() error {
 	// Orchestrator validation: ensure persistence is available
 	if s.schedulerPersistence == nil {
 		return events.ErrInvalidEventData
@@ -92,7 +94,7 @@ func (s *SchedulerSourceProvider) Validate() error {
 }
 
 // pollSchedules is the centralized poller that runs every minute.
-func (s *SchedulerSourceProvider) pollSchedules(ctx context.Context) {
+func (s *SchedulerProvider) pollSchedules(ctx context.Context) {
 	for {
 		select {
 		case <-s.done:
@@ -107,7 +109,7 @@ func (s *SchedulerSourceProvider) pollSchedules(ctx context.Context) {
 
 // processDueSchedules queries database for ALL due schedules and publishes events
 // This is the core orchestrator method that handles schedules with different cron expressions.
-func (s *SchedulerSourceProvider) processDueSchedules(ctx context.Context) {
+func (s *SchedulerProvider) processDueSchedules(ctx context.Context) {
 	now := time.Now().UTC()
 
 	// Query database for ALL schedules that are due, regardless of cron expression
@@ -156,12 +158,12 @@ func (s *SchedulerSourceProvider) processDueSchedules(ctx context.Context) {
 }
 
 // getDueSchedules retrieves schedules that are due for execution.
-func (s *SchedulerSourceProvider) getDueSchedules(now time.Time) ([]*schedulerModels.Schedule, error) {
+func (s *SchedulerProvider) getDueSchedules(now time.Time) ([]*schedulerModels.Schedule, error) {
 	return s.schedulerPersistence.DueSchedules(now)
 }
 
 // updateSchedule saves the updated schedule back to the database.
-func (s *SchedulerSourceProvider) updateSchedule(schedule *schedulerModels.Schedule) error {
+func (s *SchedulerProvider) updateSchedule(schedule *schedulerModels.Schedule) error {
 	if err := s.schedulerPersistence.SaveSchedule(schedule); err != nil {
 		return err
 	}
@@ -174,7 +176,7 @@ func (s *SchedulerSourceProvider) updateSchedule(schedule *schedulerModels.Sched
 }
 
 // publishScheduleEvent publishes a source event for a due schedule.
-func (s *SchedulerSourceProvider) publishScheduleEvent(ctx context.Context, schedule *schedulerModels.Schedule) error {
+func (s *SchedulerProvider) publishScheduleEvent(ctx context.Context, schedule *schedulerModels.Schedule) error {
 	now := time.Now()
 
 	eventData := map[string]any{
@@ -189,7 +191,7 @@ func (s *SchedulerSourceProvider) publishScheduleEvent(ctx context.Context, sche
 // ProviderLifecycle interface implementation
 
 // Initialize sets up the provider with required dependencies.
-func (s *SchedulerSourceProvider) Initialize(ctx context.Context, deps protocol.Dependencies) error {
+func (s *SchedulerProvider) Initialize(ctx context.Context, deps protocol.Dependencies) error {
 	s.logger = deps.Logger
 
 	// Initialize scheduler-specific persistence based on URL
@@ -209,12 +211,13 @@ func (s *SchedulerSourceProvider) Initialize(ctx context.Context, deps protocol.
 }
 
 // Configure configures the provider based on current workflow definitions.
-func (s *SchedulerSourceProvider) Configure(workflows []*models.Workflow) error {
+func (s *SchedulerProvider) Configure(workflows []*models.Workflow) (map[string]string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	s.logger.Info("Configuring scheduler provider with workflows", "workflow_count", len(workflows))
 
+	triggerToSource := make(map[string]string)
 	scheduleCount := 0
 
 	for _, wf := range workflows {
@@ -224,7 +227,8 @@ func (s *SchedulerSourceProvider) Configure(workflows []*models.Workflow) error 
 
 		for _, trigger := range wf.WorkflowTriggers {
 			if cronExpr, exists := trigger.Configuration["cron_expression"]; exists {
-				if s.processScheduleTrigger(wf.ID, trigger, cronExpr) {
+				if sourceID := s.processScheduleTrigger(wf.ID, trigger, cronExpr); sourceID != "" {
+					triggerToSource[trigger.ID] = sourceID
 					scheduleCount++
 				}
 			}
@@ -233,11 +237,11 @@ func (s *SchedulerSourceProvider) Configure(workflows []*models.Workflow) error 
 
 	s.logger.Info("Scheduler configuration completed", "created_schedules", scheduleCount)
 
-	return nil
+	return triggerToSource, nil
 }
 
 // Prepare performs final preparation before starting the provider.
-func (s *SchedulerSourceProvider) Prepare(ctx context.Context) error {
+func (s *SchedulerProvider) Prepare(ctx context.Context) error {
 	if s.schedulerPersistence == nil {
 		return errors.New("scheduler persistence not initialized")
 	}
@@ -248,15 +252,16 @@ func (s *SchedulerSourceProvider) Prepare(ctx context.Context) error {
 }
 
 // processScheduleTrigger handles the creation of a schedule for a trigger with cron_expression.
-// Returns true if a schedule was successfully created, false otherwise.
-func (s *SchedulerSourceProvider) processScheduleTrigger(workflowID string, trigger *models.WorkflowTrigger, cronExpr any) bool {
+// Returns the sourceID if a schedule was successfully created, empty string otherwise.
+func (s *SchedulerProvider) processScheduleTrigger(workflowID string, trigger *models.WorkflowTrigger, cronExpr any) string {
 	sourceID := trigger.SourceID
 	if sourceID == "" {
-		s.logger.Warn("Trigger has cron_expression but no source_id",
+		// Generate a new UUID for the sourceID
+		sourceID = uuid.New().String()
+		s.logger.Info("Generated source_id for scheduler trigger",
 			"workflow_id", workflowID,
-			"trigger_id", trigger.ID)
-
-		return false
+			"trigger_id", trigger.ID,
+			"generated_source_id", sourceID)
 	}
 
 	// Check if schedule already exists
@@ -266,13 +271,13 @@ func (s *SchedulerSourceProvider) processScheduleTrigger(workflowID string, trig
 			"source_id", sourceID,
 			"error", err)
 
-		return false
+		return ""
 	}
 
 	if existingSchedule != nil {
 		s.logger.Debug("Schedule already exists", "source_id", sourceID)
 
-		return false
+		return sourceID // Return existing sourceID
 	}
 
 	// Create new schedule
@@ -282,7 +287,7 @@ func (s *SchedulerSourceProvider) processScheduleTrigger(workflowID string, trig
 			"source_id", sourceID,
 			"type", cronExpr)
 
-		return false
+		return ""
 	}
 
 	schedule, err := schedulerModels.NewSchedule(sourceID, sourceID, cronStr)
@@ -292,7 +297,7 @@ func (s *SchedulerSourceProvider) processScheduleTrigger(workflowID string, trig
 			"cron", cronStr,
 			"error", err)
 
-		return false
+		return ""
 	}
 
 	if err := s.schedulerPersistence.SaveSchedule(schedule); err != nil {
@@ -300,7 +305,7 @@ func (s *SchedulerSourceProvider) processScheduleTrigger(workflowID string, trig
 			"source_id", sourceID,
 			"error", err)
 
-		return false
+		return ""
 	}
 
 	s.logger.Info("Created schedule",
@@ -308,11 +313,11 @@ func (s *SchedulerSourceProvider) processScheduleTrigger(workflowID string, trig
 		"cron", cronStr,
 		"next_due_at", schedule.NextDueAt)
 
-	return true
+	return sourceID
 }
 
 // createPersistence creates the appropriate persistence implementation based on URL scheme.
-func (s *SchedulerSourceProvider) createPersistence(persistenceURL string) (schedulerPersistence.SchedulerPersistence, error) {
+func (s *SchedulerProvider) createPersistence(persistenceURL string) (schedulerPersistence.SchedulerPersistence, error) {
 	scheme := s.parsePersistenceScheme(persistenceURL)
 
 	s.logger.Info("Initializing scheduler persistence", "scheme", scheme, "url", persistenceURL)
@@ -340,7 +345,7 @@ func (s *SchedulerSourceProvider) createPersistence(persistenceURL string) (sche
 }
 
 // parsePersistenceScheme extracts the scheme from a persistence URL.
-func (s *SchedulerSourceProvider) parsePersistenceScheme(persistenceURL string) string {
+func (s *SchedulerProvider) parsePersistenceScheme(persistenceURL string) string {
 	parts := strings.Split(persistenceURL, "://")
 	if len(parts) < 2 {
 		return "file" // default to file if no scheme

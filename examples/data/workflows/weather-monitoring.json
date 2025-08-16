@@ -8,7 +8,8 @@
       "id": "weather-schedule",
       "name": "Weather Schedule Trigger",
       "description": "Trigger to check weather conditions every 3 hours",
-      "trigger_id": "schedule",
+      "provider_id": "scheduler",
+      "event_type": "schedule_due",
       "configuration": {
         "cron": "0 */3 * * *",
         "timezone": "UTC"

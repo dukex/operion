@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/dukex/operion/pkg/sources/webhook/models"
+	"github.com/dukex/operion/pkg/providers/webhook/models"
 )
 
 // FilePersistence implements WebhookPersistence using JSON files.
