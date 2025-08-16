@@ -338,7 +338,6 @@ func TestActivator_FindTriggersForSourceEvent_EmptyResults(t *testing.T) {
 	mockPersistence.AssertExpectations(t)
 }
 
-
 func TestActivator_PublishWorkflowTriggered_Success(t *testing.T) {
 	mockPersistence := &mocks.MockPersistence{}
 	mockEventBus := &mocks.MockEventBus{}

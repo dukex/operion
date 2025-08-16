@@ -196,7 +196,6 @@ func (a *Activator) findTriggersForSourceEvent(ctx context.Context, sourceEvent 
 	return matchingTriggers, nil
 }
 
-
 // publishWorkflowTriggered publishes a WorkflowTriggered event for a specific trigger.
 func (a *Activator) publishWorkflowTriggered(ctx context.Context, workflowID, triggerID string, sourceData map[string]any) error {
 	logger := a.logger.With("workflow_id", workflowID, "trigger_id", triggerID)
