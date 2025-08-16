@@ -1,0 +1,59 @@
+{
+  "id": "webhook-source-message-logger",
+  "name": "Webhook Message Logger",
+  "description": "Simple workflow that receives webhooks and logs the 'message' attribute from JSON body",
+  "workflow_triggers": [
+    {
+      "id": "webhook-trigger-1",
+      "name": "Webhook Source Trigger",
+      "description": "Receives webhook events through the centralized webhook source provider",
+      "source_id": "message-webhook-source",
+      "trigger_id": "webhook",
+      "configuration": {
+        "json_schema": {
+          "type": "object",
+          "properties": {
+            "message": {
+              "type": "string",
+              "description": "The message content to be logged"
+            }
+          },
+          "required": ["message"],
+          "additionalProperties": true
+        }
+      }
+    }
+  ],
+  "steps": [
+    {
+      "id": "log-message",
+      "action_id": "log",
+      "configuration": {
+        "message": "Webhook received: {{.trigger_data.body.message}}"
+      },
+      "uid": "message_logger",
+      "name": "Log Webhook Message",
+      "enabled": true
+    }
+  ],
+  "variables": {},
+  "status": "active",
+  "metadata": {
+    "author": "Operion Example",
+    "description": "Simple webhook message logging workflow",
+    "tags": [
+      "webhook",
+      "source-provider",
+      "simple"
+    ],
+    "version": "1.0",
+    "usage_instructions": [
+      "1. Start source manager: SOURCE_PROVIDERS='webhook' operion-source-manager",
+      "2. Send POST to webhook URL with JSON: {\"message\": \"Hello World!\"}",
+      "3. Check logs to see the message"
+    ]
+  },
+  "owner": "system",
+  "created_at": "2025-08-07T16:00:00Z",
+  "updated_at": "2025-08-07T16:00:00Z"
+}
