@@ -92,7 +92,7 @@ func (w *WorkerManager) handleWorkflowTriggered(ctx context.Context, event any) 
 
 	workflowExecutor := workflow.NewExecutor(w.persistence, w.registry)
 
-	eventsToDispatcher, err := workflowExecutor.Start(ctx, logger, triggeredEvent.WorkflowID, triggerData)
+	eventsToPublish, err := workflowExecutor.Start(ctx, logger, triggeredEvent.WorkflowID, triggerData)
 	if err != nil {
 		w.logger.ErrorContext(ctx, "Failed to execute workflow", "error", err)
 
@@ -110,7 +110,7 @@ func (w *WorkerManager) handleWorkflowTriggered(ctx context.Context, event any) 
 		return err
 	}
 
-	for _, event := range eventsToDispatcher {
+	for _, event := range eventsToPublish {
 		publishErr := w.eventBus.Publish(ctx, triggeredEvent.WorkflowID, event)
 		if publishErr != nil {
 			w.logger.ErrorContext(ctx, "Failed to publish workflow event", "error", publishErr, "event", event)
@@ -147,7 +147,7 @@ func (w *WorkerManager) handleWorkflowStepAvailable(ctx context.Context, event a
 		return err
 	}
 
-	eventsToDispatcher, err := workflowExecutor.ExecuteStep(ctx, logger, workflowItem, workflowStepEvent.ExecutionContext, workflowStepEvent.StepID)
+	eventsToPublish, err := workflowExecutor.ExecuteStep(ctx, logger, workflowItem, workflowStepEvent.ExecutionContext, workflowStepEvent.StepID)
 	if err != nil {
 		w.logger.ErrorContext(ctx, "Failed to execute workflow step", "error", err)
 
@@ -165,7 +165,7 @@ func (w *WorkerManager) handleWorkflowStepAvailable(ctx context.Context, event a
 		return nil
 	}
 
-	for _, event := range eventsToDispatcher {
+	for _, event := range eventsToPublish {
 		publishErr := w.eventBus.Publish(ctx, workflowStepEvent.WorkflowID, event)
 		if publishErr != nil {
 			w.logger.ErrorContext(ctx, "Failed to publish workflow event", "error", publishErr, "event", event)

@@ -155,9 +155,8 @@ The system uses a modern event-driven architecture with complete provider isolat
    - Processes `WorkflowTriggered` events and `WorkflowStepAvailable` events
    - Publishes granular events: `WorkflowStepFinished`, `WorkflowStepFailed`, `WorkflowFinished`
 
-**Legacy Architecture (still supported):**
-1. **Dispatcher Service** - Legacy trigger support with plugin loading
-2. **Direct workflow triggering** - For backwards compatibility
+**Legacy Architecture (deprecated):**
+1. **Direct workflow triggering** - Legacy trigger support (to be removed)
 
 **Benefits:**
 - **Complete Isolation**: Source providers are self-contained modules
