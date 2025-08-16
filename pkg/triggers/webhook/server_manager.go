@@ -268,6 +268,7 @@ func (sm *WebhookServerManager) Done() <-chan struct{} {
 func ResetGlobalManager() {
 	resetMu.Lock()
 	defer resetMu.Unlock()
+
 	once = sync.Once{}
 	globalServerManager = nil
 }

@@ -8,7 +8,8 @@
       "id": "catalog-schedule",
       "name": "Product Catalog Schedule Trigger",
       "description": "Trigger to sync product catalog daily at 1 AM UTC",
-      "trigger_id": "schedule",
+      "provider_id": "scheduler",
+      "event_type": "schedule_due",
       "configuration": {
         "cron": "0 1 * * *",
         "timezone": "UTC"

@@ -57,7 +57,7 @@ air                 # Start development server with live reload (proxy on port 3
 ```bash
 PORT=9091              # API server port (default: 9091)
 DATABASE_URL           # Database connection URL (required)
-EVENT_BUS_TYPE         # Event bus type (kafka, rabbitmq, etc.) (required)
+KAFKA_BROKERS          # Kafka broker addresses (required)
 PLUGINS_PATH=./plugins # Path to action plugins directory (default: ./plugins)
 LOG_LEVEL=info         # Log level: debug, info, warn, error (default: info)
 ```
@@ -66,18 +66,28 @@ LOG_LEVEL=info         # Log level: debug, info, warn, error (default: info)
 ```bash
 WORKER_ID              # Custom worker ID (auto-generated if not provided)
 DATABASE_URL           # Database connection URL (required)
-EVENT_BUS_TYPE         # Event bus type (kafka, rabbitmq, etc.) (required)
+KAFKA_BROKERS          # Kafka broker addresses (required)
 PLUGINS_PATH=./plugins # Path to action plugins directory (default: ./plugins)
 LOG_LEVEL=info         # Log level: debug, info, warn, error (default: info)
 ```
 
-#### Dispatcher Service (operion-dispatcher)
+
+#### Source Manager Service (operion-source-manager)
 ```bash
-DISPATCHER_ID          # Custom dispatcher ID (auto-generated if not provided)
+SOURCE_MANAGER_ID         # Custom source manager ID (auto-generated if not provided)
+DATABASE_URL              # Database connection URL (required)
+KAFKA_BROKERS             # Kafka broker addresses (required)
+PLUGINS_PATH=./plugins    # Path to source provider plugins directory (default: ./plugins)
+SOURCE_PROVIDERS          # Comma-separated list of providers to run (e.g., 'scheduler,webhook')
+SCHEDULER_PERSISTENCE_URL # Scheduler persistence URL (required if using scheduler): file://./data/scheduler, postgres://..., mysql://...
+LOG_LEVEL=info            # Log level: debug, info, warn, error (default: info)
+```
+
+#### Activator Service (operion-activator)
+```bash
+ACTIVATOR_ID           # Custom activator ID (auto-generated if not provided)
 DATABASE_URL           # Database connection URL (required)
-EVENT_BUS_TYPE         # Event bus type (kafka, rabbitmq, etc.) (required)
-PLUGINS_PATH=./plugins # Path to action plugins directory (default: ./plugins)
-WEBHOOK_PORT=8085      # Port for webhook HTTP server (default: 8085)
+KAFKA_BROKERS          # Kafka broker addresses (required)
 LOG_LEVEL=info         # Log level: debug, info, warn, error (default: info)
 ```
 
@@ -104,6 +114,29 @@ go mod download     # Download dependencies
 go mod tidy         # Clean up dependencies
 ```
 
+### Coding Standards
+
+#### Struct Tag Alignment
+All struct tags within a struct must be vertically aligned for better readability:
+
+```go
+// ✅ Correct - tags are aligned
+type Example struct {
+    ID          string `json:"id"          validate:"required"`
+    Name        string `json:"name"        validate:"required,min=3"`
+    Description string `json:"description"`
+}
+
+// ❌ Incorrect - tags are not aligned  
+type Example struct {
+    ID string `json:"id" validate:"required"`
+    Name string `json:"name" validate:"required,min=3"`
+    Description string `json:"description"`
+}
+```
+
+The `tagalign` linter is configured to enforce this rule automatically. Run `make fmt` after making struct changes to ensure proper formatting.
+
 ### CI/CD Pipeline
 
 The project uses GitHub Actions for continuous integration and quality assurance:
@@ -125,7 +158,7 @@ The project uses GitHub Actions for continuous integration and quality assurance
   - Uploads to Coveralls with GitHub token
   - HTML reports generated for artifacts
 - **Build Verification**:
-  - Builds all three binaries (operion-api, operion-worker, operion-dispatcher)
+  - Builds all service binaries (operion-api, operion-worker, operion-activator, operion-source-manager)
   - Uploads build artifacts for download
 - **Caching**: Go modules cached for faster builds
 
@@ -137,11 +170,12 @@ The project uses GitHub Actions for continuous integration and quality assurance
   - `/registry/actions` - Sorted list of available actions with complete JSON schemas
   - `/registry/triggers` - Sorted list of available triggers with complete JSON schemas
 - **CLI Worker** (`cmd/operion-worker/`) - Background workflow execution tool
-- **CLI Dispatcher Service** (`cmd/operion-dispatcher/`) - Trigger listener and event publisher (replaces operion-trigger)
+- **CLI Source Manager** (`cmd/operion-source-manager/`) - Centralized scheduler orchestrator for managing source providers
+- **CLI Activator** (`cmd/operion-activator/`) - Bridge between source events and workflow events
 - **Visual Workflow Editor** (`ui/operion-editor/`) - React-based browser interface for workflow visualization
 - **Domain Models** (`pkg/models/`) - Core workflow, action, and trigger models
 - **Workflow Engine** (`pkg/workflow/`) - Workflow execution, management, and repository
-- **Event System** (`pkg/event_bus/`, `pkg/events/`) - Event-driven communication
+- **Event System** (`pkg/event_bus/`, `pkg/events/`) - Kafka-based event-driven communication with dual topics
 - **Plugin Registry** (`pkg/registry/`) - Plugin-based system for actions and triggers with .so file loading
 - **File Persistence** (`pkg/persistence/file/`) - JSON file storage
 
@@ -167,3 +201,5 @@ The project uses GitHub Actions for continuous integration and quality assurance
 ## Development Memories
 
 - **TODO Tracking**: Check the TODO.md file to see if the implementation was described
+- Always run `golangci-lint run --fix <folder or file>`, passing the folder or files that have been edited.
+- Always run `go fmt ./...` after finishing editing files and before building

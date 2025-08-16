@@ -126,5 +126,40 @@ func (fp *Persistence) DeleteWorkflow(_ context.Context, id string) error {
 		return nil
 	}
 
-	return fmt.Errorf("failed to delete workflow %s: %w", id, err)
+	if err != nil {
+		return fmt.Errorf("failed to delete workflow %s: %w", id, err)
+	}
+
+	return nil
+}
+
+// WorkflowTriggersBySourceEventAndProvider returns workflow triggers that match source ID, event type, provider ID, and workflow status.
+func (fp *Persistence) WorkflowTriggersBySourceEventAndProvider(ctx context.Context, sourceID, eventType, providerID string, status models.WorkflowStatus) ([]*models.TriggerMatch, error) {
+	workflows, err := fp.Workflows(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var matchingTriggers []*models.TriggerMatch
+
+	for _, wf := range workflows {
+		// Only process workflows with the specified status
+		if wf.Status != status {
+			continue
+		}
+
+		for _, trigger := range wf.WorkflowTriggers {
+			// Check if this trigger matches all criteria: source ID, event type, and provider ID
+			if trigger.SourceID == sourceID &&
+				trigger.EventType == eventType &&
+				trigger.ProviderID == providerID {
+				matchingTriggers = append(matchingTriggers, &models.TriggerMatch{
+					WorkflowID: wf.ID,
+					Trigger:    trigger,
+				})
+			}
+		}
+	}
+
+	return matchingTriggers, nil
 }

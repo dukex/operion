@@ -1,0 +1,175 @@
+{
+  "id": "test-scheduler-source",
+  "name": "Test Scheduler Source Provider",
+  "description": "Test workflow for scheduler source provider with database persistence",
+  "sources": [
+    {
+      "id": "1234",
+      "provider": "caju"
+    }
+  ],
+  "workflow_triggers": [
+    {
+      "id": "caju-trigger-1",
+      "name": "Test Schedule Trigger",
+      "description": "Trigger every minute to test scheduler source provider",
+      "provider": "caju",
+      "event_type": "employee_created",
+      "configuration": {
+        "sponsor_id": "1234"
+      }
+    },
+    {
+      "id": "caju-trigger-2",
+      "name": "Test Schedule Trigger",
+      "description": "Trigger every minute to test scheduler source provider",
+      "provider": "caju",
+      "event_type": "allowance_created",
+      "configuration": {
+        "sponsor_id": "1234"
+      }
+    }
+
+
+
+
+
+    {
+      "id": "scheduler-trigger-1",
+      "name": "Test Schedule Trigger",
+      "description": "Trigger every minute to test scheduler source provider",
+      "provider": "scheduler",
+      "configuration": {
+        "cron_expression": "*/1 * * * *"
+      }
+    },
+        {
+      "id": "scheduler-trigger-1",
+      "name": "Test Schedule Trigger",
+      "description": "Trigger every minute to test scheduler source provider",
+      "source_type": "google_drive",
+      "configuration": {
+        "account_id": "3456", // associado com o suorce 
+        "event": "FileChanged",
+        "file_id": "1234"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "id": "log-trigger-info",
+      "action_id": "log",
+      "configuration": {
+        "message": "Scheduler triggered at {{.trigger_data.published_at}} with cron: {{.trigger_data.cron_expression}}"
+      },
+      "uid": "triggerlog",
+      "name": "Log Trigger Information",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
+      "on_success": "process-schedule-data",
+      "enabled": true
+    },
+    {
+      "id": "process-schedule-data",
+      "action_id": "transform",
+      "configuration": {
+        "expression": "{\n  \"execution_time\": \"{{now}}\",\n  \"cron_expression\": \"{{.trigger_data.cron_expression}}\",\n  \"due_time\": \"{{.trigger_data.due_at}}\",\n  \"published_time\": \"{{.trigger_data.published_at}}\",\n  \"execution_count\": 1,\n  \"status\": \"success\"\n}"
+      },
+      "uid": "scheduleprocessed",
+      "name": "Process Schedule Data",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
+      "on_success": "log-processed-data",
+      "enabled": true
+    },
+    {
+      "id": "log-processed-data",
+      "action_id": "log",
+      "configuration": {
+        "message": "Schedule execution #{{.step_results.scheduleprocessed.execution_count}} completed. Next execution in ~1 minute."
+      },
+      "uid": "processedlog",
+      "name": "Log Processed Data",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
+      "on_success": "send-test-webhook",
+      "enabled": true
+    },
+    {
+      "id": "send-test-webhook",
+      "action_id": "http_request",
+      "configuration": {
+        "body": "{\n  \"service\": \"scheduler-test\",\n  \"execution_data\": {\n    \"execution_time\": steps.scheduleprocessed.execution_time,\n    \"trigger_source\": steps.scheduleprocessed.trigger_source,\n    \"cron_expression\": steps.scheduleprocessed.cron_expression,\n    \"execution_count\": steps.scheduleprocessed.execution_count\n  },\n  \"trigger_data\": {\n    \"source_id\": trigger_data.source_id,\n    \"due_at\": trigger_data.due_at,\n    \"published_at\": trigger_data.published_at\n  }\n}",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "host": "httpbin.org",
+        "method": "POST",
+        "path": "/post",
+        "protocol": "https",
+        "timeout": 10
+      },
+      "uid": "webhookresponse",
+      "name": "Send Test Webhook",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
+      "on_success": "log-success",
+      "on_failure": "log-webhook-error",
+      "enabled": true
+    },
+    {
+      "id": "log-success",
+      "action_id": "log",
+      "configuration": {
+        "message": "Scheduler test workflow completed successfully. Total executions: {{.step_results.scheduleprocessed.execution_count}}"
+      },
+      "uid": "successlog",
+      "name": "Log Success",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
+      "enabled": true
+    },
+    {
+      "id": "log-webhook-error",
+      "action_id": "log",
+      "configuration": {
+        "message": "\"Failed to send test webhook, but scheduler is working correctly\""
+      },
+      "uid": "webhookerrorlog",
+      "name": "Log Webhook Error",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
+      "enabled": true
+    }
+  ],
+  "variables": {
+    "execution_count": 0,
+    "test_mode": true
+  },
+  "status": "active",
+  "metadata": {
+    "author": "Operion Test",
+    "description": "Test workflow for scheduler source provider functionality with database persistence",
+    "tags": [
+      "scheduler",
+      "test",
+      "source-provider"
+    ],
+    "version": "1.0"
+  },
+  "owner": "",
+  "created_at": "2025-08-03T20:50:40.614206Z",
+  "updated_at": "2025-08-03T20:50:40.614651Z"
+}

@@ -8,7 +8,8 @@
       "id": "crypto-schedule",
       "name": "Crypto Price Schedule Trigger",
       "description": "Trigger to fetch crypto prices every 5 minutes",
-      "trigger_id": "schedule",
+      "provider_id": "scheduler",
+      "event_type": "schedule_due",
       "configuration": {
         "cron": "*/5 * * * *",
         "timezone": "UTC"

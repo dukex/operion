@@ -8,7 +8,8 @@
       "id": "sync-schedule",
       "name": "Sync Schedule Trigger",
       "description": "Trigger to sync data weekly on Sunday at 2 AM UTC",
-      "trigger_id": "schedule",
+      "provider_id": "scheduler",
+      "event_type": "schedule_due",
       "configuration": {
         "cron": "0 2 * * 0",
         "timezone": "UTC"

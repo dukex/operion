@@ -19,24 +19,28 @@ var (
 	ErrActionNotRegistered = errors.New("action type not registered")
 	// ErrTriggerNotRegistered is returned when a trigger ID is not registered.
 	ErrTriggerNotRegistered = errors.New("trigger ID not registered")
+	// ErrProviderNotRegistered is returned when a provider ID is not registered.
+	ErrProviderNotRegistered = errors.New("provider ID not registered")
 )
 
 type Registry struct {
-	logger           *slog.Logger
-	actionFactories  map[string]protocol.ActionFactory
-	triggerFactories map[string]protocol.TriggerFactory
+	logger                  *slog.Logger
+	actionFactories         map[string]protocol.ActionFactory
+	triggerFactories        map[string]protocol.TriggerFactory
+	sourceProviderFactories map[string]protocol.ProviderFactory
 }
 
 func NewRegistry(log *slog.Logger) *Registry {
 	return &Registry{
-		logger:           log,
-		actionFactories:  make(map[string]protocol.ActionFactory),
-		triggerFactories: make(map[string]protocol.TriggerFactory),
+		logger:                  log,
+		actionFactories:         make(map[string]protocol.ActionFactory),
+		triggerFactories:        make(map[string]protocol.TriggerFactory),
+		sourceProviderFactories: make(map[string]protocol.ProviderFactory),
 	}
 }
 
 func (r *Registry) HealthCheck() (string, bool) {
-	if len(r.actionFactories) == 0 && len(r.triggerFactories) == 0 {
+	if len(r.actionFactories) == 0 && len(r.triggerFactories) == 0 && len(r.sourceProviderFactories) == 0 {
 		return "No plugins loaded", false
 	}
 
@@ -51,12 +55,20 @@ func (r *Registry) LoadTriggerPlugins(ctx context.Context, pluginsPath string) (
 	return loadPlugin[protocol.TriggerFactory](ctx, r.logger, pluginsPath, "Trigger")
 }
 
+func (r *Registry) LoadProviderPlugins(ctx context.Context, pluginsPath string) ([]protocol.ProviderFactory, error) {
+	return loadPlugin[protocol.ProviderFactory](ctx, r.logger, pluginsPath, "Provider")
+}
+
 func (r *Registry) RegisterAction(actionFactory protocol.ActionFactory) {
 	r.actionFactories[actionFactory.ID()] = actionFactory
 }
 
 func (r *Registry) RegisterTrigger(triggerFactory protocol.TriggerFactory) {
 	r.triggerFactories[triggerFactory.ID()] = triggerFactory
+}
+
+func (r *Registry) RegisterProvider(sourceProviderFactory protocol.ProviderFactory) {
+	r.sourceProviderFactories[sourceProviderFactory.ID()] = sourceProviderFactory
 }
 
 // CreateAction creates a new action instance based on the provided action type and configuration.
@@ -97,6 +109,25 @@ func (r *Registry) CreateTrigger(
 	return created, nil
 }
 
+// CreateProvider creates a new source provider instance based on the provided provider ID and configuration.
+func (r *Registry) CreateProvider(
+	ctx context.Context,
+	providerID string,
+	config map[string]any,
+) (protocol.Provider, error) {
+	factory, ok := r.sourceProviderFactories[providerID]
+	if !ok {
+		return nil, fmt.Errorf("trigger ID '%s': %w", providerID, ErrTriggerNotRegistered)
+	}
+
+	created, err := factory.Create(config, r.logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create trigger '%s': %w", providerID, err)
+	}
+
+	return created, nil
+}
+
 // GetAvailableActions returns all available action types sorted by ID.
 func (r *Registry) GetAvailableActions() []protocol.ActionFactory {
 	actions := make([]protocol.ActionFactory, 0, len(r.actionFactories))
@@ -115,6 +146,25 @@ func (r *Registry) GetAvailableTriggers() []protocol.TriggerFactory {
 	}
 
 	return triggers
+}
+
+// GetAvailableProviders returns all available source provider types.
+func (r *Registry) GetAvailableProviders() []protocol.ProviderFactory {
+	sourceProviders := make([]protocol.ProviderFactory, 0, len(r.sourceProviderFactories))
+	for _, sourceProvider := range r.sourceProviderFactories {
+		sourceProviders = append(sourceProviders, sourceProvider)
+	}
+
+	return sourceProviders
+}
+
+func (r *Registry) GetProviders() map[string]protocol.ProviderFactory {
+	sourceProviders := make(map[string]protocol.ProviderFactory)
+	for id, factory := range r.sourceProviderFactories {
+		sourceProviders[id] = factory
+	}
+
+	return sourceProviders
 }
 
 func loadPlugin[T any](ctx context.Context, logger *slog.Logger, pluginsPath string, symbolName string) ([]T, error) {

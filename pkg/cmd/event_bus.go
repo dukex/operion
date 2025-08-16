@@ -22,3 +22,18 @@ func NewEventBus(provider string, logger *slog.Logger) eventbus.EventBus {
 		panic("Unsupported event bus provider: " + provider)
 	}
 }
+
+// NewSourceEventBus creates a source event bus instance based on the provider.
+func NewSourceEventBus(provider string, logger *slog.Logger) eventbus.SourceEventBus {
+	switch provider {
+	case "kafka":
+		sourceEventBus, err := eventbus.NewKafkaSourceEventBus(logger)
+		if err != nil {
+			panic(fmt.Errorf("failed to create Kafka source event bus: %w", err))
+		}
+
+		return sourceEventBus
+	default:
+		panic("Unsupported source event bus provider: " + provider)
+	}
+}

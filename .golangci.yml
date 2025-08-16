@@ -60,3 +60,9 @@ linters:
       allow-first-in-block: true
       allow-whole-block: false
       branch-max-lines: 2
+    tagalign:
+      align: true
+      sort: false
+      order:
+        - json
+        - validate

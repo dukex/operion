@@ -41,7 +41,7 @@ services:
     depends_on:
       - api
 
-  dispatcher-kafka:
+  activator-kafka:
     build: 
       dockerfile: Dockerfile 
       context: ..
@@ -52,15 +52,37 @@ services:
     volumes:
       - ..:/app
       - $GOPATH/pkg/mod:/go/pkg/mod
-    ports:
-      - 8085:8085 # Expose the webhook dispatcher port
     working_dir: /app
-    command: /bin/operion-dispatcher --database-url file:///app/examples/data --event-bus kafka
+    command: /bin/operion-activator --database-url file:///app/examples/data
     environment:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
-      - OTEL_SERVICE_NAME=operion-dispatcher-kafka
+      - OTEL_SERVICE_NAME=operion-activator-kafka
       - OTEL_TRACES_EXPORTER=otlp
       - KAFKA_BROKERS=kafka:9092
+    develop:
+      watch:
+        - action: rebuild
+          path: ..
+
+  source-manager-kafka:
+    build: 
+      dockerfile: Dockerfile 
+      context: ..
+    restart: unless-stopped
+    depends_on:
+      - kafka
+      - jaeger
+    volumes:
+      - ..:/app
+      - $GOPATH/pkg/mod:/go/pkg/mod
+    working_dir: /app
+    command: /bin/operion-source-manager --database-url file:///app/examples/data --providers scheduler
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+      - OTEL_SERVICE_NAME=operion-source-manager-kafka
+      - OTEL_TRACES_EXPORTER=otlp
+      - KAFKA_BROKERS=kafka:9092
+      - SCHEDULER_PERSISTENCE_URL=file:///app/examples/data/scheduler
     develop:
       watch:
         - action: rebuild

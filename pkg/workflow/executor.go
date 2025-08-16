@@ -154,12 +154,12 @@ func (s *Executor) nextStep(
 ) []eventbus.Event {
 	nextStepID, found := s.getNextStepID(step, success)
 
-	eventsToDispatcher := make([]eventbus.Event, 0)
+	eventsToPublish := make([]eventbus.Event, 0)
 
 	if !found {
 		logger.InfoContext(ctx, "No next step defined, ending workflow execution")
 
-		eventsToDispatcher = append(eventsToDispatcher, &events.WorkflowFinished{
+		eventsToPublish = append(eventsToPublish, &events.WorkflowFinished{
 			BaseEvent:   events.NewBaseEvent(events.WorkflowFinishedEvent, workflowId),
 			ExecutionID: executionCtx.ID,
 			Result:      executionCtx.StepResults,
@@ -167,7 +167,7 @@ func (s *Executor) nextStep(
 	} else {
 		logger.InfoContext(ctx, "Moving to next step", "next_step_id", nextStepID)
 
-		eventsToDispatcher = append(eventsToDispatcher, &events.WorkflowStepAvailable{
+		eventsToPublish = append(eventsToPublish, &events.WorkflowStepAvailable{
 			BaseEvent:        events.NewBaseEvent(events.WorkflowStepAvailableEvent, workflowId),
 			ExecutionID:      executionCtx.ID,
 			StepID:           nextStepID,
@@ -175,7 +175,7 @@ func (s *Executor) nextStep(
 		})
 	}
 
-	return eventsToDispatcher
+	return eventsToPublish
 }
 
 // func (s *Executor) getWorkflowByID(workflowID string) (*models.Workflow, error) {

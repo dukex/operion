@@ -7,7 +7,8 @@
       "id": "redis-queue-trigger",
       "name": "Redis Queue Trigger",
       "description": "Trigger when a task is received from Redis queue",
-      "trigger_id": "queue",
+      "provider_id": "queue",
+      "event_type": "message_received",
       "configuration": {
         "provider": "redis",
         "connection": {

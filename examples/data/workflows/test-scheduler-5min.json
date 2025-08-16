@@ -1,0 +1,84 @@
+{
+  "id": "test-scheduler-5min",
+  "name": "Test Scheduler 5 Minute Interval",
+  "description": "Test workflow for scheduler with 5-minute intervals to verify multi-schedule orchestrator",
+  "workflow_triggers": [
+    {
+      "id": "scheduler-trigger-5min",
+      "name": "5 Minute Schedule Trigger",
+      "description": "Trigger every 5 minutes to test multi-schedule orchestrator",
+      "source_id": "test-scheduler-5min",
+      "provider_id": "scheduler",
+      "event_type": "schedule_due",
+      "configuration": {
+        "cron_expression": "*/5 * * * *"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "id": "log-5min-trigger",
+      "action_id": "log",
+      "configuration": {
+        "message": "5-minute scheduler triggered at {{.trigger_data.published_at}} with cron: {{.trigger_data.cron_expression}}"
+      },
+      "uid": "trigger5minlog",
+      "name": "Log 5-Minute Trigger",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
+      "on_success": "process-5min-data",
+      "enabled": true
+    },
+    {
+      "id": "process-5min-data",
+      "action_id": "transform",
+      "configuration": {
+        "expression": "{\n  \"execution_time\": \"{{now}}\",\n  \"cron_expression\": \"{{.trigger_data.cron_expression}}\",\n  \"interval\": \"5-minutes\",\n  \"due_time\": \"{{.trigger_data.due_at}}\",\n  \"published_time\": \"{{.trigger_data.published_at}}\",\n  \"execution_count\": 1,\n  \"status\": \"success\"\n}"
+      },
+      "uid": "schedule5minprocessed",
+      "name": "Process 5-Minute Schedule Data",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
+      "on_success": "log-5min-processed",
+      "enabled": true
+    },
+    {
+      "id": "log-5min-processed",
+      "action_id": "log",
+      "configuration": {
+        "message": "5-minute schedule execution #{{.step_results.schedule5minprocessed.execution_count}} completed. Next execution in ~5 minutes."
+      },
+      "uid": "processed5minlog",
+      "name": "Log 5-Minute Processed Data",
+      "conditional": {
+        "language": "simple",
+        "expression": "true"
+      },
+      "enabled": true
+    }
+  ],
+  "variables": {
+    "execution_count": 0,
+    "test_mode": true,
+    "interval": "5-minutes"
+  },
+  "status": "active",
+  "metadata": {
+    "author": "Operion Test",
+    "description": "Test workflow for multi-schedule orchestrator functionality",
+    "tags": [
+      "scheduler",
+      "test",
+      "multi-schedule",
+      "5-minute"
+    ],
+    "version": "1.0"
+  },
+  "owner": "",
+  "created_at": "2025-08-04T00:00:00.000000Z",
+  "updated_at": "2025-08-04T00:00:00.000000Z"
+}
