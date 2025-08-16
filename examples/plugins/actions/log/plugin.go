@@ -6,7 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/dukex/operion/pkg/models"
-	"github.com/dukex/operion/pkg/protocol"
+	"github.com/operion-flow/interfaces"
 )
 
 type LogAction struct {
@@ -36,12 +36,12 @@ func (l ActionFactory) Description() string {
 	return "Logs a message to the console or a file based on the configuration provided."
 }
 
-func (l ActionFactory) Create(config map[string]any) (protocol.Action, error) {
+func (l ActionFactory) Create(config map[string]any) (interfaces.Action, error) {
 	return &LogAction{
 		config: config,
 	}, nil
 }
 
-var _ protocol.ActionFactory = ActionFactory{}
+var _ interfaces.ActionFactory = ActionFactory{}
 
 var Action = ActionFactory{}

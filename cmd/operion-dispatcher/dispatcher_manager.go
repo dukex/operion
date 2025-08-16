@@ -14,16 +14,16 @@ import (
 	"github.com/dukex/operion/pkg/events"
 	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/persistence"
-	"github.com/dukex/operion/pkg/protocol"
 	"github.com/dukex/operion/pkg/registry"
 	"github.com/dukex/operion/pkg/triggers/webhook"
 	"github.com/dukex/operion/pkg/workflow"
+	"github.com/operion-flow/interfaces"
 )
 
 type DispatcherManager struct {
 	id              string
 	eventBus        eventbus.EventBus
-	runningTriggers map[string]protocol.Trigger
+	runningTriggers map[string]interfaces.Trigger
 	triggerMutex    sync.RWMutex
 	// tp              *sdktrace.TracerProvider
 	logger         *slog.Logger
@@ -51,7 +51,7 @@ func NewDispatcherManager(
 		registry:        registry,
 		restartCount:    0,
 		eventBus:        eventBus,
-		runningTriggers: make(map[string]protocol.Trigger),
+		runningTriggers: make(map[string]interfaces.Trigger),
 		webhookManager:  webhookManager,
 		webhookPort:     webhookPort,
 	}
@@ -191,7 +191,7 @@ func (dm *DispatcherManager) startWorkflowTriggers(ctx context.Context, workflow
 	<-ctx.Done()
 }
 
-func (tm *DispatcherManager) createTriggerCallback(workflowID, triggerID string) protocol.TriggerCallback {
+func (tm *DispatcherManager) createTriggerCallback(workflowID, triggerID string) interfaces.TriggerCallback {
 	return func(ctx context.Context, data map[string]any) error {
 		logger := tm.logger.With("workflow_id", workflowID, "trigger_id", triggerID)
 		logger.InfoContext(ctx, "Trigger fired, publishing event")
@@ -237,6 +237,6 @@ func (dm *DispatcherManager) stop(ctx context.Context, cancel context.CancelFunc
 		dm.logger.ErrorContext(ctx, "Error stopping webhook server manager", "error", err)
 	}
 
-	dm.runningTriggers = make(map[string]protocol.Trigger)
+	dm.runningTriggers = make(map[string]interfaces.Trigger)
 	dm.logger.InfoContext(ctx, "All triggers stopped")
 }

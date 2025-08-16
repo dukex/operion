@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dukex/operion/pkg/protocol"
 	"github.com/dukex/operion/pkg/triggers/schedule"
+	"github.com/operion-flow/interfaces"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -461,7 +461,7 @@ func TestScheduleTrigger_Interface(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify it implements the Trigger interface
-	var _ protocol.Trigger = trigger
+	var _ interfaces.Trigger = trigger
 
 	assert.Equal(t, "*/5 * * * *", trigger.CronExpr)
 	assert.True(t, trigger.Enabled)

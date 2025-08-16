@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/alaingilbert/cron"
-	"github.com/dukex/operion/pkg/protocol"
+	"github.com/operion-flow/interfaces"
 )
 
 var (
@@ -26,7 +26,7 @@ type Trigger struct {
 	CronExpr string
 	Enabled  bool
 	cron     *cron.Cron
-	callback protocol.TriggerCallback
+	callback interfaces.TriggerCallback
 	logger   *slog.Logger
 }
 
@@ -123,7 +123,7 @@ func buildCronSuggestions(cronExpr string) string {
 }
 
 // Start starts the schedule trigger.
-func (t *Trigger) Start(ctx context.Context, callback protocol.TriggerCallback) error {
+func (t *Trigger) Start(ctx context.Context, callback interfaces.TriggerCallback) error {
 	if !t.Enabled {
 		t.logger.InfoContext(ctx, "ScheduleTrigger is disabled.")
 

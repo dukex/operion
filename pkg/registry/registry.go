@@ -11,7 +11,7 @@ import (
 	"plugin"
 	"strings"
 
-	"github.com/dukex/operion/pkg/protocol"
+	"github.com/operion-flow/interfaces"
 )
 
 var (
@@ -23,15 +23,15 @@ var (
 
 type Registry struct {
 	logger           *slog.Logger
-	actionFactories  map[string]protocol.ActionFactory
-	triggerFactories map[string]protocol.TriggerFactory
+	actionFactories  map[string]interfaces.ActionFactory
+	triggerFactories map[string]interfaces.TriggerFactory
 }
 
 func NewRegistry(log *slog.Logger) *Registry {
 	return &Registry{
 		logger:           log,
-		actionFactories:  make(map[string]protocol.ActionFactory),
-		triggerFactories: make(map[string]protocol.TriggerFactory),
+		actionFactories:  make(map[string]interfaces.ActionFactory),
+		triggerFactories: make(map[string]interfaces.TriggerFactory),
 	}
 }
 
@@ -43,19 +43,19 @@ func (r *Registry) HealthCheck() (string, bool) {
 	return "Plugins loaded successfully", true
 }
 
-func (r *Registry) LoadActionPlugins(ctx context.Context, pluginsPath string) ([]protocol.ActionFactory, error) {
-	return loadPlugin[protocol.ActionFactory](ctx, r.logger, pluginsPath, "Action")
+func (r *Registry) LoadActionPlugins(ctx context.Context, pluginsPath string) ([]interfaces.ActionFactory, error) {
+	return loadPlugin[interfaces.ActionFactory](ctx, r.logger, pluginsPath, "Action")
 }
 
-func (r *Registry) LoadTriggerPlugins(ctx context.Context, pluginsPath string) ([]protocol.TriggerFactory, error) {
-	return loadPlugin[protocol.TriggerFactory](ctx, r.logger, pluginsPath, "Trigger")
+func (r *Registry) LoadTriggerPlugins(ctx context.Context, pluginsPath string) ([]interfaces.TriggerFactory, error) {
+	return loadPlugin[interfaces.TriggerFactory](ctx, r.logger, pluginsPath, "Trigger")
 }
 
-func (r *Registry) RegisterAction(actionFactory protocol.ActionFactory) {
+func (r *Registry) RegisterAction(actionFactory interfaces.ActionFactory) {
 	r.actionFactories[actionFactory.ID()] = actionFactory
 }
 
-func (r *Registry) RegisterTrigger(triggerFactory protocol.TriggerFactory) {
+func (r *Registry) RegisterTrigger(triggerFactory interfaces.TriggerFactory) {
 	r.triggerFactories[triggerFactory.ID()] = triggerFactory
 }
 
@@ -64,7 +64,7 @@ func (r *Registry) CreateAction(
 	ctx context.Context,
 	actionType string,
 	config map[string]any,
-) (protocol.Action, error) {
+) (interfaces.Action, error) {
 	factory, ok := r.actionFactories[actionType]
 	if !ok {
 		return nil, fmt.Errorf("action type '%s': %w", actionType, ErrActionNotRegistered)
@@ -83,7 +83,7 @@ func (r *Registry) CreateTrigger(
 	ctx context.Context,
 	triggerID string,
 	config map[string]any,
-) (protocol.Trigger, error) {
+) (interfaces.Trigger, error) {
 	factory, ok := r.triggerFactories[triggerID]
 	if !ok {
 		return nil, fmt.Errorf("trigger ID '%s': %w", triggerID, ErrTriggerNotRegistered)
@@ -98,8 +98,8 @@ func (r *Registry) CreateTrigger(
 }
 
 // GetAvailableActions returns all available action types sorted by ID.
-func (r *Registry) GetAvailableActions() []protocol.ActionFactory {
-	actions := make([]protocol.ActionFactory, 0, len(r.actionFactories))
+func (r *Registry) GetAvailableActions() []interfaces.ActionFactory {
+	actions := make([]interfaces.ActionFactory, 0, len(r.actionFactories))
 	for _, action := range r.actionFactories {
 		actions = append(actions, action)
 	}
@@ -108,8 +108,8 @@ func (r *Registry) GetAvailableActions() []protocol.ActionFactory {
 }
 
 // GetAvailableTriggers returns all available trigger types.
-func (r *Registry) GetAvailableTriggers() []protocol.TriggerFactory {
-	triggers := make([]protocol.TriggerFactory, 0, len(r.triggerFactories))
+func (r *Registry) GetAvailableTriggers() []interfaces.TriggerFactory {
+	triggers := make([]interfaces.TriggerFactory, 0, len(r.triggerFactories))
 	for _, trigger := range r.triggerFactories {
 		triggers = append(triggers, trigger)
 	}

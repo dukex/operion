@@ -3,7 +3,7 @@ package transform
 import (
 	"context"
 
-	"github.com/dukex/operion/pkg/protocol"
+	"github.com/operion-flow/interfaces"
 )
 
 // ActionFactory is the factory for creating Transform actions.
@@ -15,7 +15,7 @@ func NewActionFactory() *ActionFactory {
 }
 
 // Create creates a new Action instance based on the provided configuration.
-func (h *ActionFactory) Create(_ context.Context, config map[string]any) (protocol.Action, error) {
+func (h *ActionFactory) Create(_ context.Context, config map[string]any) (interfaces.Action, error) {
 	return NewAction(config)
 }
 
