@@ -71,15 +71,6 @@ PLUGINS_PATH=./plugins # Path to action plugins directory (default: ./plugins)
 LOG_LEVEL=info         # Log level: debug, info, warn, error (default: info)
 ```
 
-#### Dispatcher Service (operion-dispatcher)
-```bash
-DISPATCHER_ID          # Custom dispatcher ID (auto-generated if not provided)
-DATABASE_URL           # Database connection URL (required)
-KAFKA_BROKERS          # Kafka broker addresses (required)
-PLUGINS_PATH=./plugins # Path to action plugins directory (default: ./plugins)
-WEBHOOK_PORT=8085      # Port for webhook HTTP server (default: 8085)
-LOG_LEVEL=info         # Log level: debug, info, warn, error (default: info)
-```
 
 #### Source Manager Service (operion-source-manager)
 ```bash
@@ -167,7 +158,7 @@ The project uses GitHub Actions for continuous integration and quality assurance
   - Uploads to Coveralls with GitHub token
   - HTML reports generated for artifacts
 - **Build Verification**:
-  - Builds all three binaries (operion-api, operion-worker, operion-dispatcher)
+  - Builds all service binaries (operion-api, operion-worker, operion-activator, operion-source-manager)
   - Uploads build artifacts for download
 - **Caching**: Go modules cached for faster builds
 
@@ -179,7 +170,6 @@ The project uses GitHub Actions for continuous integration and quality assurance
   - `/registry/actions` - Sorted list of available actions with complete JSON schemas
   - `/registry/triggers` - Sorted list of available triggers with complete JSON schemas
 - **CLI Worker** (`cmd/operion-worker/`) - Background workflow execution tool
-- **CLI Dispatcher Service** (`cmd/operion-dispatcher/`) - Trigger listener and event publisher (replaces operion-trigger)
 - **CLI Source Manager** (`cmd/operion-source-manager/`) - Centralized scheduler orchestrator for managing source providers
 - **CLI Activator** (`cmd/operion-activator/`) - Bridge between source events and workflow events
 - **Visual Workflow Editor** (`ui/operion-editor/`) - React-based browser interface for workflow visualization

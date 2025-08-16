@@ -22,7 +22,7 @@ Operion enables you to create automated workflows through:
 - **Event-Driven** - Decoupled architecture with pub/sub messaging for scalability
 - **Extensible** - Plugin system with dynamic .so file loading for triggers and actions
 - **REST API** - HTTP interface for managing workflows
-- **CLI Tools** - Command-line interfaces for dispatcher and worker services
+- **CLI Tools** - Command-line interfaces for activator, source manager, and worker services
 - **Multiple Storage Options** - File-based, database, and cloud storage support
 - **Worker Management** - Background execution with proper lifecycle management
 - **Horizontal Scaling** - Support for multiple instances and load balancing
@@ -123,18 +123,6 @@ SCHEDULER_PERSISTENCE_URL=file://./data/scheduler \
 ./bin/operion-activator --activator-id my-activator --database-url postgres://user:pass@localhost/db
 ```
 
-#### Dispatcher Service (Legacy Trigger Support)
-
-```bash
-# Start dispatcher service for legacy trigger support
-./bin/operion-dispatcher --database-url ./data/workflows --event-bus gochannel
-
-# Start with custom dispatcher ID and plugins
-./bin/operion-dispatcher --dispatcher-id my-dispatcher --database-url ./data/workflows --event-bus kafka --plugins-path ./plugins
-
-# Validate trigger configurations
-./bin/operion-dispatcher validate
-```
 
 #### Worker Service (Workflow Execution)
 

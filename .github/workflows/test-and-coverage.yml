@@ -121,8 +121,11 @@ jobs:
       - name: Build Worker
         run: make ./bin/operion-worker
 
-      - name: Build Dispatcher
-        run: make ./bin/operion-dispatcher
+      - name: Build Activator
+        run: make ./bin/operion-activator
+
+      - name: Build Source Manager
+        run: make ./bin/operion-source-manager
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
