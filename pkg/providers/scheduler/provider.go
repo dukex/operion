@@ -185,7 +185,7 @@ func (s *SchedulerProvider) publishScheduleEvent(ctx context.Context, schedule *
 		"published_at":    now.Format("2006-01-02 15:04:05.000"),
 	}
 
-	return s.callback(ctx, schedule.SourceID, "scheduler", "ScheduleDue", eventData)
+	return s.callback(ctx, schedule.SourceID, "scheduler", "schedule_due", eventData)
 }
 
 // ProviderLifecycle interface implementation
@@ -226,6 +226,9 @@ func (s *SchedulerProvider) Configure(workflows []*models.Workflow) (map[string]
 		}
 
 		for _, trigger := range wf.WorkflowTriggers {
+			if trigger.ProviderID != "scheduler" {
+				continue
+			}
 			if cronExpr, exists := trigger.Configuration["cron_expression"]; exists {
 				if sourceID := s.processScheduleTrigger(wf.ID, trigger, cronExpr); sourceID != "" {
 					triggerToSource[trigger.ID] = sourceID

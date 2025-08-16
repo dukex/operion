@@ -244,7 +244,7 @@ func (s *WebhookServer) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	// Publish source event if callback is available
 	if s.callback != nil {
 		ctx := r.Context()
-		if err := s.callback(ctx, source.ID, "webhook", "WebhookReceived", enrichedEventData); err != nil {
+		if err := s.callback(ctx, source.ID, "webhook", "webhook_received", enrichedEventData); err != nil {
 			s.logger.Error("Error publishing source event", "source_id", source.ID, "error", err)
 			s.writeErrorResponse(w, http.StatusInternalServerError, "Error processing webhook")
 
