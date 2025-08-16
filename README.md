@@ -23,7 +23,7 @@ Operion enables you to create automated workflows through:
 - **Extensible** - Plugin system with dynamic .so file loading for triggers and actions
 - **REST API** - HTTP interface for managing workflows
 - **CLI Tools** - Command-line interfaces for activator, source manager, and worker services
-- **Multiple Storage Options** - File-based, database, and cloud storage support
+- **Multiple Storage Options** - File-based, PostgreSQL, and cloud storage support
 - **Worker Management** - Background execution with proper lifecycle management
 - **Horizontal Scaling** - Support for multiple instances and load balancing
 - **Observability** - Built-in metrics, structured logging, and health checks
@@ -34,7 +34,7 @@ The project follows a clean, layered architecture with clear separation of conce
 
 - **Models** (`pkg/models/`) - Core domain models and interfaces
 - **Business Logic** (`pkg/workflow/`) - Workflow execution and management
-- **Source Providers** (`pkg/providers/`) - Self-contained event generation modules with isolated persistence
+- **Providers** (`pkg/providers/`) - Self-contained event generation modules with isolated persistence
 - **Infrastructure** (`pkg/persistence/`, `pkg/event_bus/`) - External integrations and data access
 - **Extensions** (`pkg/registry/`) - Plugin system for actions and triggers with .so file loading
 - **Interface Layer** (`cmd/`) - Entry points (API server, CLI tools, service managers)
@@ -61,11 +61,38 @@ make build
 
 ### Configuration
 
-Set the port via environment variable (defaults to 3000):
+#### API Server
+
+The API server supports the following environment variables:
 
 ```bash
-PORT=3000
+PORT=9091                    # API server port (default: 9091)
+DATABASE_URL=./data/workflows  # Database connection URL or file path (required)
+EVENT_BUS_TYPE=gochannel     # Event bus type: gochannel, kafka (required)
+PLUGINS_PATH=./plugins       # Path to plugins directory (default: ./plugins)
+LOG_LEVEL=info              # Log level: debug, info, warn, error (default: info)
 ```
+
+#### Database Options
+
+Operion supports multiple persistence backends:
+
+**File-based Storage** (default):
+```bash
+DATABASE_URL=./data/workflows
+```
+
+**PostgreSQL Database**:
+```bash
+DATABASE_URL=postgres://user:password@localhost:5432/operion
+```
+
+The PostgreSQL persistence layer includes:
+- Normalized schema with separate tables for workflows, triggers, and steps
+- JSONB storage for configuration data
+- Automated schema migrations with version tracking
+- Soft delete functionality
+- Comprehensive indexing for performance
 
 ## Usage
 
