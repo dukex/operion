@@ -338,53 +338,6 @@ func TestActivator_FindTriggersForSourceEvent_EmptyResults(t *testing.T) {
 	mockPersistence.AssertExpectations(t)
 }
 
-func TestActivator_TriggerMatchesSourceEvent_SourceIDMatch(t *testing.T) {
-	mockPersistence := &mocks.MockPersistence{}
-	mockEventBus := &mocks.MockEventBus{}
-	mockSourceEventBus := &mocks.MockSourceEventBus{}
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-
-	activator := NewActivator("test-activator", mockPersistence, mockEventBus, mockSourceEventBus, logger)
-
-	trigger := &models.WorkflowTrigger{
-		ID:       "trigger-123",
-		SourceID: "source-123",
-	}
-
-	sourceEvent := &events.SourceEvent{
-		SourceID:   "source-123",
-		ProviderID: "scheduler",
-		EventType:  "ScheduleDue",
-		EventData:  map[string]any{},
-	}
-
-	matches := activator.triggerMatchesSourceEvent(trigger, sourceEvent)
-	assert.True(t, matches)
-}
-
-func TestActivator_TriggerMatchesSourceEvent_SourceIDMismatch(t *testing.T) {
-	mockPersistence := &mocks.MockPersistence{}
-	mockEventBus := &mocks.MockEventBus{}
-	mockSourceEventBus := &mocks.MockSourceEventBus{}
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-
-	activator := NewActivator("test-activator", mockPersistence, mockEventBus, mockSourceEventBus, logger)
-
-	trigger := &models.WorkflowTrigger{
-		ID:       "trigger-123",
-		SourceID: "source-123",
-	}
-
-	sourceEvent := &events.SourceEvent{
-		SourceID:   "source-456", // Different source ID
-		ProviderID: "scheduler",
-		EventType:  "ScheduleDue",
-		EventData:  map[string]any{},
-	}
-
-	matches := activator.triggerMatchesSourceEvent(trigger, sourceEvent)
-	assert.False(t, matches)
-}
 
 func TestActivator_PublishWorkflowTriggered_Success(t *testing.T) {
 	mockPersistence := &mocks.MockPersistence{}

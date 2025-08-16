@@ -196,20 +196,6 @@ func (a *Activator) findTriggersForSourceEvent(ctx context.Context, sourceEvent 
 	return matchingTriggers, nil
 }
 
-// triggerMatchesSourceEvent determines if a workflow trigger should be activated by a source event.
-func (a *Activator) triggerMatchesSourceEvent(trigger *models.WorkflowTrigger, sourceEvent *events.SourceEvent) bool {
-	// Source ID must match
-	if trigger.SourceID != sourceEvent.SourceID {
-		return false
-	}
-
-	// TODO: Add event type filtering based on trigger configuration
-	// For now, any event from the matching source will trigger the workflow
-	// Future enhancement: triggers could specify which event types they're interested in
-	// via their Configuration map, e.g., trigger.Configuration["event_types"] = ["ScheduleDue", "ScheduleOverdue"]
-
-	return true
-}
 
 // publishWorkflowTriggered publishes a WorkflowTriggered event for a specific trigger.
 func (a *Activator) publishWorkflowTriggered(ctx context.Context, workflowID, triggerID string, sourceData map[string]any) error {
