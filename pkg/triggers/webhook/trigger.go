@@ -6,7 +6,7 @@ import (
 	"errors"
 	"log/slog"
 
-	"github.com/dukex/operion/pkg/protocol"
+	"github.com/operion-flow/interfaces"
 )
 
 type Trigger struct {
@@ -14,7 +14,7 @@ type Trigger struct {
 	Method   string
 	Headers  map[string]string
 	Enabled  bool
-	callback protocol.TriggerCallback
+	callback interfaces.TriggerCallback
 	logger   *slog.Logger
 }
 
@@ -84,7 +84,7 @@ func (t *Trigger) Validate(_ context.Context) error {
 	return nil
 }
 
-func (t *Trigger) Start(ctx context.Context, callback protocol.TriggerCallback) error {
+func (t *Trigger) Start(ctx context.Context, callback interfaces.TriggerCallback) error {
 	if !t.Enabled {
 		t.logger.InfoContext(ctx, "WebhookTrigger is disabled.")
 

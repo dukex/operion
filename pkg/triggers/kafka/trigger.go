@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/IBM/sarama"
-	"github.com/dukex/operion/pkg/protocol"
+	"github.com/operion-flow/interfaces"
 )
 
 type Trigger struct {
@@ -20,7 +20,7 @@ type Trigger struct {
 	ConsumerGroup string
 	Brokers       []string
 	consumer      sarama.ConsumerGroup
-	callback      protocol.TriggerCallback
+	callback      interfaces.TriggerCallback
 	logger        *slog.Logger
 }
 
@@ -85,7 +85,7 @@ const kafkaSessionTimeout = 10 * time.Second
 const kafkaHeartbeatInterval = 3 * time.Second
 const kafkaRetryInterval = 5 * time.Second
 
-func (t *Trigger) Start(ctx context.Context, callback protocol.TriggerCallback) error {
+func (t *Trigger) Start(ctx context.Context, callback interfaces.TriggerCallback) error {
 	t.logger.InfoContext(ctx, "Starting Kafka trigger")
 	t.callback = callback
 	newCtx, cancel := context.WithCancel(ctx)

@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/dukex/operion/pkg/models"
-	"github.com/dukex/operion/pkg/protocol"
+	"github.com/operion-flow/interfaces"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -47,7 +47,7 @@ func (f *mockActionFactory) Description() string {
 	return "This is a mock action for testing purposes."
 }
 
-func (f *mockActionFactory) Create(_ context.Context, config map[string]any) (protocol.Action, error) {
+func (f *mockActionFactory) Create(_ context.Context, config map[string]any) (interfaces.Action, error) {
 	return &mockAction{
 		id:     f.actionType,
 		config: config,
@@ -70,11 +70,11 @@ func (f *mockActionFactory) Schema() map[string]any {
 type mockTrigger struct {
 	id       string
 	config   map[string]any
-	callback protocol.TriggerCallback
+	callback interfaces.TriggerCallback
 	logger   *slog.Logger
 }
 
-func (m *mockTrigger) Start(ctx context.Context, callback protocol.TriggerCallback) error {
+func (m *mockTrigger) Start(ctx context.Context, callback interfaces.TriggerCallback) error {
 	m.callback = callback
 
 	return nil
@@ -130,7 +130,7 @@ func (f *mockTriggerFactory) Create(
 	_ context.Context,
 	config map[string]any,
 	logger *slog.Logger,
-) (protocol.Trigger, error) {
+) (interfaces.Trigger, error) {
 	return &mockTrigger{
 		id:     f.triggerType,
 		config: config,

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/dukex/operion/pkg/protocol"
+	"github.com/operion-flow/interfaces"
 )
 
 var (
@@ -14,11 +14,11 @@ var (
 	ErrConfigNil = errors.New("config cannot be nil")
 )
 
-// TriggerFactory implements protocol.TriggerFactory for creating TriggerFactory instances.
+// TriggerFactory implements interfaces.TriggerFactory for creating TriggerFactory instances.
 type TriggerFactory struct{}
 
 // NewTriggerFactory creates a new instance of TriggerFactory.
-func NewTriggerFactory() protocol.TriggerFactory {
+func NewTriggerFactory() interfaces.TriggerFactory {
 	return &TriggerFactory{}
 }
 
@@ -184,7 +184,7 @@ func (f *TriggerFactory) Create(
 	ctx context.Context,
 	config map[string]any,
 	logger *slog.Logger,
-) (protocol.Trigger, error) {
+) (interfaces.Trigger, error) {
 	if config == nil {
 		return nil, ErrConfigNil
 	}

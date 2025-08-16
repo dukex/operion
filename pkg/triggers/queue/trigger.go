@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dukex/operion/pkg/protocol"
+	"github.com/operion-flow/interfaces"
 	redis "github.com/redis/go-redis/v9"
 )
 
@@ -42,7 +42,7 @@ type Trigger struct {
 	Enabled       bool
 
 	client   redis.UniversalClient
-	callback protocol.TriggerCallback
+	callback interfaces.TriggerCallback
 	logger   *slog.Logger
 	stopCh   chan struct{}
 	wg       sync.WaitGroup
@@ -101,7 +101,7 @@ func (t *Trigger) Validate(_ context.Context) error {
 	return nil
 }
 
-func (t *Trigger) Start(ctx context.Context, callback protocol.TriggerCallback) error {
+func (t *Trigger) Start(ctx context.Context, callback interfaces.TriggerCallback) error {
 	if !t.Enabled {
 		t.logger.InfoContext(ctx, "QueueTrigger is disabled.")
 

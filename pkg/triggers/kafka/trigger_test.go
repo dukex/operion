@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dukex/operion/pkg/protocol"
 	"github.com/dukex/operion/pkg/triggers/kafka"
+	"github.com/operion-flow/interfaces"
 )
 
 func TestNewKafkaTrigger(t *testing.T) {
@@ -238,8 +238,8 @@ func mockCallback(ctx context.Context, data map[string]any) error {
 func TestKafkaTriggerCallbackInterface(t *testing.T) {
 	t.Parallel()
 
-	// Test that our mock callback implements the protocol.TriggerCallback interface
-	var callback protocol.TriggerCallback = mockCallback
+	// Test that our mock callback implements the interfaces.TriggerCallback interface
+	var callback interfaces.TriggerCallback = mockCallback
 
 	// This should compile without errors
 	_ = callback

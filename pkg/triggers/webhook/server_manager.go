@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dukex/operion/pkg/protocol"
+	"github.com/operion-flow/interfaces"
 )
 
 var (
@@ -268,6 +268,7 @@ func (sm *WebhookServerManager) Done() <-chan struct{} {
 func ResetGlobalManager() {
 	resetMu.Lock()
 	defer resetMu.Unlock()
+
 	once = sync.Once{}
 	globalServerManager = nil
 }
@@ -275,6 +276,6 @@ func ResetGlobalManager() {
 // Handler handles incoming webhook requests.
 type Handler struct {
 	TriggerID string
-	Callback  protocol.TriggerCallback
+	Callback  interfaces.TriggerCallback
 	Logger    *slog.Logger
 }

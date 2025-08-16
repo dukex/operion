@@ -3,7 +3,7 @@ package httprequest
 import (
 	"context"
 
-	"github.com/dukex/operion/pkg/protocol"
+	"github.com/operion-flow/interfaces"
 )
 
 // ActionFactory creates HTTPRequestAction instances.
@@ -15,7 +15,7 @@ func NewActionFactory() *ActionFactory {
 }
 
 // Create creates a new HTTPRequestAction from the given configuration.
-func (h *ActionFactory) Create(_ context.Context, config map[string]any) (protocol.Action, error) {
+func (h *ActionFactory) Create(_ context.Context, config map[string]any) (interfaces.Action, error) {
 	return NewAction(config)
 }
 

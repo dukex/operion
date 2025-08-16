@@ -3,7 +3,7 @@ package log
 import (
 	"context"
 
-	"github.com/dukex/operion/pkg/protocol"
+	"github.com/operion-flow/interfaces"
 )
 
 // ActionFactory is the factory for creating LogAction instances.
@@ -30,7 +30,7 @@ func (*ActionFactory) Description() string {
 }
 
 // Create creates a new LogAction instance with the provided configuration.
-func (f *ActionFactory) Create(_ context.Context, config map[string]any) (protocol.Action, error) {
+func (f *ActionFactory) Create(_ context.Context, config map[string]any) (interfaces.Action, error) {
 	if config == nil {
 		config = map[string]any{}
 	}

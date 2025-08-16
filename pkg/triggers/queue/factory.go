@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/dukex/operion/pkg/protocol"
+	"github.com/operion-flow/interfaces"
 )
 
-func NewTriggerFactory() protocol.TriggerFactory {
+func NewTriggerFactory() interfaces.TriggerFactory {
 	return &TriggerFactory{}
 }
 
@@ -105,7 +105,7 @@ func (f *TriggerFactory) Create(
 	ctx context.Context,
 	config map[string]any,
 	logger *slog.Logger,
-) (protocol.Trigger, error) {
+) (interfaces.Trigger, error) {
 	if config == nil {
 		return nil, errors.New("config cannot be nil")
 	}
