@@ -8,11 +8,16 @@ import (
 )
 
 type Persistence interface {
+	// Workflows operations
 	Workflows(ctx context.Context) ([]*models.Workflow, error)
 	SaveWorkflow(ctx context.Context, workflow *models.Workflow) error
 	WorkflowByID(ctx context.Context, id string) (*models.Workflow, error)
 	DeleteWorkflow(ctx context.Context, id string) error
 	HealthCheck(ctx context.Context) error
+
+	// Trigger operations
+	// Find triggers by source ID, event type, and provider ID
+	WorkflowTriggersBySourceEventAndProvider(ctx context.Context, sourceID, eventType, providerID string, status models.WorkflowStatus) ([]*models.TriggerMatch, error)
 
 	Close(ctx context.Context) error
 }

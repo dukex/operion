@@ -1,0 +1,29 @@
+[
+  {
+    "id": "test-scheduler-2min",
+    "source_id": "test-scheduler-2min",
+    "cron_expression": "*/2 * * * *",
+    "next_due_at": "2025-08-06T14:40:00Z",
+    "created_at": "2025-08-06T14:33:11.985876Z",
+    "updated_at": "2025-08-06T14:38:11.992786Z",
+    "active": true
+  },
+  {
+    "id": "test-scheduler-5min",
+    "source_id": "test-scheduler-5min",
+    "cron_expression": "*/5 * * * *",
+    "next_due_at": "2025-08-06T14:40:00Z",
+    "created_at": "2025-08-06T14:33:11.986012Z",
+    "updated_at": "2025-08-06T14:35:11.994452Z",
+    "active": true
+  },
+  {
+    "id": "test-scheduler-source",
+    "source_id": "test-scheduler-source",
+    "cron_expression": "*/1 * * * *",
+    "next_due_at": "2025-08-06T14:40:00Z",
+    "created_at": "2025-08-06T14:33:11.986131Z",
+    "updated_at": "2025-08-06T14:39:11.99027Z",
+    "active": true
+  }
+]

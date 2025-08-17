@@ -11,7 +11,8 @@
       "id": "webhook-trigger-1",
       "name": "Webhook Trigger",
       "description": "HTTP webhook trigger for example workflow",
-      "trigger_id": "webhook",
+      "provider_id": "webhook",
+      "event_type": "webhook_received",
       "configuration": {
         "id": "example-webhook",
         "path": "/api/webhook/example"

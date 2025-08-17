@@ -8,7 +8,8 @@
       "id": "github-schedule",
       "name": "GitHub Monitor Schedule Trigger", 
       "description": "Trigger to monitor GitHub repo every 6 hours",
-      "trigger_id": "schedule",
+      "provider_id": "scheduler",
+      "event_type": "schedule_due",
       "configuration": {
         "cron": "0 */6 * * *",
         "timezone": "UTC"

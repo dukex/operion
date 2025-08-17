@@ -8,6 +8,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/persistence/file"
 	"github.com/dukex/operion/pkg/registry"
@@ -367,9 +369,11 @@ func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
 		},
 		WorkflowTriggers: []*models.WorkflowTrigger{
 			{
-				ID:        "integration-test-trigger",
-				Name:      "Integration Test Trigger",
-				TriggerID: "schedule",
+				ID:         "integration-test-trigger",
+				Name:       "Integration Test Trigger",
+				SourceID:   uuid.New().String(),
+				EventType:  "schedule_due",
+				ProviderID: "scheduler",
 				Configuration: map[string]any{
 					"schedule": "0 0 * * *",
 				},
@@ -444,7 +448,7 @@ func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
 
 	// Verify triggers
 	trigger := fetchedWorkflow.WorkflowTriggers[0]
-	assert.Equal(t, "schedule", trigger.TriggerID)
+	assert.Equal(t, "scheduler", trigger.ProviderID)
 	assert.Equal(t, "0 0 * * *", trigger.Configuration["schedule"])
 }
 

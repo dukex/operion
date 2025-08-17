@@ -8,7 +8,8 @@
       "id": "orders-kafka-trigger",
       "name": "Orders Kafka Trigger",
       "description": "Trigger when order events are received from Kafka orders topic",
-      "trigger_id": "kafka",
+      "provider_id": "kafka",
+      "event_type": "message_received",
       "configuration": {
         "topic": "orders",
         "consumer_group": "operion-order-processor"

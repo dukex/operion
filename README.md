@@ -6,10 +6,13 @@ A cloud-native workflow automation platform built in Go that enables event-drive
 
 Operion enables you to create automated workflows through:
 
-- **Triggers**: Events that initiate workflows (scheduled execution)
+- **Source Providers**: Self-contained modules that generate events from external sources (scheduler, webhook, kafka)
+- **Triggers**: Workflow trigger definitions that specify conditions for workflow execution
 - **Actions**: Operations executed in workflows (HTTP requests, file operations, logging, data transformation)
 - **Context**: Data sharing between workflow steps
 - **Workers**: Background processes that execute workflows
+- **Source Manager**: Orchestrates source providers and manages their lifecycle
+- **Activator**: Bridges source events to workflow executions
 
 ![image](https://github.com/user-attachments/assets/8dfd67d2-fe4b-4196-ab11-3d931ee2f90c)
 
@@ -19,7 +22,7 @@ Operion enables you to create automated workflows through:
 - **Event-Driven** - Decoupled architecture with pub/sub messaging for scalability
 - **Extensible** - Plugin system with dynamic .so file loading for triggers and actions
 - **REST API** - HTTP interface for managing workflows
-- **CLI Tools** - Command-line interfaces for dispatcher and worker services
+- **CLI Tools** - Command-line interfaces for activator, source manager, and worker services
 - **Multiple Storage Options** - File-based, PostgreSQL, and cloud storage support
 - **Worker Management** - Background execution with proper lifecycle management
 - **Horizontal Scaling** - Support for multiple instances and load balancing
@@ -31,9 +34,10 @@ The project follows a clean, layered architecture with clear separation of conce
 
 - **Models** (`pkg/models/`) - Core domain models and interfaces
 - **Business Logic** (`pkg/workflow/`) - Workflow execution and management
+- **Providers** (`pkg/providers/`) - Self-contained event generation modules with isolated persistence
 - **Infrastructure** (`pkg/persistence/`, `pkg/event_bus/`) - External integrations and data access
 - **Extensions** (`pkg/registry/`) - Plugin system for actions and triggers with .so file loading
-- **Interface Layer** (`cmd/`) - Entry points (API server, CLI tool)
+- **Interface Layer** (`cmd/`) - Entry points (API server, CLI tools, service managers)
 
 ## Installation
 
@@ -121,41 +125,71 @@ The visual workflow editor will be available at `http://localhost:5173`
 
 ### Start Services
 
-#### Dispatcher Service (Event Publishers)
+#### Source Manager Service (Event Generation)
 
 ```bash
-# Start dispatcher service to listen for triggers and publish events
-./bin/operion-dispatcher --database-url ./data/workflows --event-bus gochannel
+# Start source manager to run source providers (scheduler, webhook, etc.)
+./bin/operion-source-manager --database-url file://./data --providers scheduler
 
-# Start with custom dispatcher ID and plugins
-./bin/operion-dispatcher --dispatcher-id my-dispatcher --database-url ./data/workflows --event-bus kafka --plugins-path ./plugins
+# Start with custom configuration
+SOURCE_MANAGER_ID=my-manager \
+SCHEDULER_PERSISTENCE_URL=file://./data/scheduler \
+./bin/operion-source-manager --database-url postgres://user:pass@localhost/db --providers scheduler,webhook
 
-# Validate trigger configurations
-./bin/operion-dispatcher validate
+# Validate source provider configurations
+./bin/operion-source-manager validate --database-url file://./data
 ```
+
+#### Activator Service (Event Bridge)
+
+```bash  
+# Start activator to bridge source events to workflow executions
+./bin/operion-activator --database-url file://./data
+
+# Start with custom activator ID
+./bin/operion-activator --activator-id my-activator --database-url postgres://user:pass@localhost/db
+```
+
 
 #### Worker Service (Workflow Execution)
 
 ```bash
 # Start workers to execute workflows
-./bin/operion-worker
+./bin/operion-worker --database-url file://./data
 
-# Start workers with custom worker ID
-./bin/operion-worker --worker-id my-worker
+# Start workers with custom worker ID  
+./bin/operion-worker --worker-id my-worker --database-url postgres://user:pass@localhost/db
 ```
 
 #### Event-Driven Architecture
 
-The system uses an event-driven architecture where:
+The system uses a modern event-driven architecture with complete provider isolation:
 
-1. **Dispatcher Service** loads trigger plugins, listens for trigger conditions and publishes `WorkflowTriggered` events
-2. **Worker Service** handles workflow events and executes steps individually:
-   - Receives `WorkflowTriggered` events and starts workflow execution
-   - Processes `WorkflowStepAvailable` events for step-by-step execution
+**New Source-Based Architecture:**
+1. **Source Providers** - Self-contained modules that generate events from external sources:
+   - Each provider manages its own persistence and configuration
+   - Completely isolated from core system (only receives workflow definitions)
+   - Examples: scheduler provider (`pkg/providers/scheduler/`), webhook provider (future)
+2. **Source Manager Service** - Orchestrates source providers:
+   - Manages provider lifecycle (Initialize → Configure → Prepare → Start)
+   - Passes workflow definitions to providers during configuration
+   - Publishes source events to event bus
+3. **Activator Service** - Bridges source events to workflow executions:
+   - Listens to source events from event bus  
+   - Matches events to workflow triggers
+   - Publishes `WorkflowTriggered` events for matched workflows
+4. **Worker Service** - Executes workflows step-by-step:
+   - Processes `WorkflowTriggered` events and `WorkflowStepAvailable` events
    - Publishes granular events: `WorkflowStepFinished`, `WorkflowStepFailed`, `WorkflowFinished`
-3. **Event Bus** decouples trigger detection from workflow execution (supports GoChannel and Kafka)
-4. **Native Actions** - Core actions built into binary for better performance
-5. **Plugin System** enables dynamic loading of .so files for extensible triggers and custom actions
+
+**Legacy Architecture (deprecated):**
+1. **Direct workflow triggering** - Legacy trigger support (to be removed)
+
+**Benefits:**
+- **Complete Isolation**: Source providers are self-contained modules
+- **Pluggable Architecture**: Easy to add new event sources without core changes
+- **Flexible Persistence**: Each provider can use different storage (file, database)
+- **Scalable**: Source generation decoupled from workflow execution
 
 ### API Endpoints
 
@@ -189,10 +223,17 @@ Actions now use a standardized contract with:
 
 ## Current Implementation
 
-### Available Triggers
+### Available Source Providers
+
+- **Scheduler** (`pkg/providers/scheduler/`) - Self-contained cron-based scheduler with isolated persistence
+  - Supports file-based persistence (`file://./data/scheduler`) or database persistence (future)
+  - Manages its own schedule models and lifecycle
+  - Configurable via `SCHEDULER_PERSISTENCE_URL` environment variable
+
+### Available Triggers (Legacy)
 
 - **Schedule** (`pkg/triggers/schedule/`) - Cron-based execution using robfig/cron with native implementation
-- **Kafka** (`pkg/triggers/kafka/`) - Message-based triggering from Kafka topics with native implementation
+- **Kafka** (`pkg/triggers/kafka/`) - Message-based triggering from Kafka topics with native implementation  
 - **Redis Queue** (`pkg/triggers/queue/`) - Redis-based queue consumption for task processing
 - **Webhook** (`pkg/triggers/webhook/`) - HTTP endpoint triggers for external integrations
 

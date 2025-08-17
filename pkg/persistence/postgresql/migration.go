@@ -28,14 +28,18 @@ func migrations() map[int]string {
 				workflow_id UUID NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
 				name VARCHAR(255) NOT NULL,
 				description TEXT NOT NULL,
-				trigger_id VARCHAR(255) NOT NULL,
+				source_id VARCHAR(255),
+				event_type VARCHAR(255) NOT NULL,
+				provider_id VARCHAR(255) NOT NULL,
 				configuration JSONB,
 				created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
 				updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 			);
 
 			CREATE INDEX idx_workflow_triggers_workflow_id ON workflow_triggers(workflow_id);
-			CREATE INDEX idx_workflow_triggers_trigger_id ON workflow_triggers(trigger_id);
+			CREATE INDEX idx_workflow_triggers_event_type ON workflow_triggers(event_type);
+			CREATE INDEX idx_workflow_triggers_provider_id ON workflow_triggers(provider_id);
+			CREATE INDEX idx_workflow_triggers_source_id ON workflow_triggers(source_id);
 
 			-- Create workflow_steps table
 			CREATE TABLE workflow_steps (
