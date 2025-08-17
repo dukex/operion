@@ -92,3 +92,8 @@ func (p *Persistence) SaveWorkflow(ctx context.Context, workflow *models.Workflo
 func (p *Persistence) DeleteWorkflow(ctx context.Context, id string) error {
 	return p.workflowRepo.Delete(ctx, id)
 }
+
+// WorkflowTriggersBySourceEventAndProvider finds triggers by source ID, event type, and provider ID.
+func (p *Persistence) WorkflowTriggersBySourceEventAndProvider(ctx context.Context, sourceID, eventType, providerID string, status models.WorkflowStatus) ([]*models.TriggerMatch, error) {
+	return p.workflowRepo.GetTriggersBySourceEventAndProvider(ctx, sourceID, eventType, providerID, status)
+}

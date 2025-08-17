@@ -114,10 +114,10 @@ func NewValidateCommand() *cli.Command {
 						continue
 					}
 
-					// Use TriggerID as the source provider type - this should always be set
-					sourceProviderType := workflowTrigger.TriggerID
+					// Use ProviderID as the source provider type - this should always be set
+					sourceProviderType := workflowTrigger.ProviderID
 					if sourceProviderType == "" {
-						panic(fmt.Sprintf("TriggerID is empty for workflow %s, trigger %s - this should not happen", workflow.ID, workflowTrigger.ID))
+						panic(fmt.Sprintf("ProviderID is empty for workflow %s, trigger %s - this should not happen", workflow.ID, workflowTrigger.ID))
 					}
 
 					// Validate that the source provider exists

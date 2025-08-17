@@ -245,7 +245,9 @@ func (r *WorkflowRepository) loadWorkflowTriggersAndSteps(ctx context.Context, w
 			id
 		  , name
 		  , description
-		  , trigger_id
+		  , source_id
+		  , event_type
+		  , provider_id
 		  , configuration
 		FROM workflow_triggers
 		WHERE workflow_id = $1
@@ -276,7 +278,9 @@ func (r *WorkflowRepository) loadWorkflowTriggersAndSteps(ctx context.Context, w
 			&trigger.ID,
 			&trigger.Name,
 			&trigger.Description,
-			&trigger.TriggerID,
+			&trigger.SourceID,
+			&trigger.EventType,
+			&trigger.ProviderID,
 			&configJSON,
 		)
 		if err != nil {
@@ -382,8 +386,8 @@ func (r *WorkflowRepository) saveWorkflowTriggers(ctx context.Context, tx *sql.T
 		}
 
 		query := `
-			INSERT INTO workflow_triggers (id, workflow_id, name, description, trigger_id, configuration)
-			VALUES ($1, $2, $3, $4, $5, $6)
+			INSERT INTO workflow_triggers (id, workflow_id, name, description, source_id, event_type, provider_id, configuration)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		`
 
 		_, err = tx.ExecContext(ctx, query,
@@ -391,7 +395,9 @@ func (r *WorkflowRepository) saveWorkflowTriggers(ctx context.Context, tx *sql.T
 			workflow.ID,
 			trigger.Name,
 			trigger.Description,
-			trigger.TriggerID,
+			trigger.SourceID,
+			trigger.EventType,
+			trigger.ProviderID,
 			configJSON,
 		)
 		if err != nil {
@@ -485,4 +491,81 @@ func (r *WorkflowRepository) scanWorkflowBase(scanner interface {
 	}
 
 	return &workflow, nil
+}
+
+// GetTriggersBySourceEventAndProvider returns triggers matching the specified criteria.
+func (r *WorkflowRepository) GetTriggersBySourceEventAndProvider(ctx context.Context, sourceID, eventType, providerID string, status models.WorkflowStatus) ([]*models.TriggerMatch, error) {
+	query := `
+		SELECT 
+			w.id as workflow_id,
+			t.id,
+			t.name,
+			t.description,
+			t.source_id,
+			t.event_type,
+			t.provider_id,
+			t.configuration
+		FROM workflows w
+		JOIN workflow_triggers t ON w.id = t.workflow_id
+		WHERE w.deleted_at IS NULL
+		  AND w.status = $1
+		  AND t.source_id = $2
+		  AND t.event_type = $3
+		  AND t.provider_id = $4
+		ORDER BY w.created_at DESC
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, status, sourceID, eventType, providerID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query workflow triggers: %w", err)
+	}
+
+	defer func() {
+		err := rows.Close()
+		if err != nil {
+			r.logger.ErrorContext(ctx, "failed to close rows", "error", err)
+		}
+	}()
+
+	var matches []*models.TriggerMatch
+
+	for rows.Next() {
+		var (
+			workflowID string
+			trigger    models.WorkflowTrigger
+			configJSON []byte
+		)
+
+		err := rows.Scan(
+			&workflowID,
+			&trigger.ID,
+			&trigger.Name,
+			&trigger.Description,
+			&trigger.SourceID,
+			&trigger.EventType,
+			&trigger.ProviderID,
+			&configJSON,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan trigger match: %w", err)
+		}
+
+		if configJSON != nil {
+			err := json.Unmarshal(configJSON, &trigger.Configuration)
+			if err != nil {
+				return nil, fmt.Errorf("failed to unmarshal trigger configuration: %w", err)
+			}
+		}
+
+		matches = append(matches, &models.TriggerMatch{
+			WorkflowID: workflowID,
+			Trigger:    &trigger,
+		})
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating trigger matches: %w", err)
+	}
+
+	return matches, nil
 }

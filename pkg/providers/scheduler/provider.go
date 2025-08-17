@@ -229,6 +229,7 @@ func (s *SchedulerProvider) Configure(workflows []*models.Workflow) (map[string]
 			if trigger.ProviderID != "scheduler" {
 				continue
 			}
+
 			if cronExpr, exists := trigger.Configuration["cron_expression"]; exists {
 				if sourceID := s.processScheduleTrigger(wf.ID, trigger, cronExpr); sourceID != "" {
 					triggerToSource[trigger.ID] = sourceID

@@ -165,7 +165,7 @@ func TestWebhookProvider_Configure(t *testing.T) {
 			name: "workflow without webhook triggers",
 			workflows: []*models.Workflow{
 				createTestWorkflow("workflow-1", []*models.WorkflowTrigger{
-					{ID: "trigger-1", TriggerID: "scheduler", SourceID: "source-123"},
+					{ID: "trigger-1", ProviderID: "scheduler", SourceID: "source-123", EventType: "schedule_due"},
 				}),
 			},
 			expected: 0,

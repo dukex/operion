@@ -128,7 +128,9 @@ func TestNewPersistence_SaveAndRetrieveWorkflow(t *testing.T) {
 				ID:          uuid.New().String(),
 				Name:        "Daily Schedule",
 				Description: "Runs daily at midnight",
-				TriggerID:   "schedule",
+				SourceID:    uuid.New().String(),
+				EventType:   "schedule_due",
+				ProviderID:  "scheduler",
 				Configuration: map[string]any{
 					"cron": "0 0 * * *",
 				},
@@ -193,7 +195,9 @@ func TestNewPersistence_UpdateWorkflow(t *testing.T) {
 				ID:          uuid.New().String(),
 				Name:        "Daily Schedule",
 				Description: "Runs daily at midnight",
-				TriggerID:   "schedule",
+				SourceID:    uuid.New().String(),
+				EventType:   "schedule_due",
+				ProviderID:  "scheduler",
 				Configuration: map[string]any{
 					"cron": "0 0 * * *",
 				},
@@ -251,7 +255,9 @@ func TestNewPersistence_ListWorkflows(t *testing.T) {
 			Description: "Description 3",
 			WorkflowTriggers: []*models.WorkflowTrigger{
 				{
-					TriggerID: "schedule",
+					SourceID:   uuid.New().String(),
+					EventType:  "schedule_due",
+					ProviderID: "scheduler",
 					Configuration: map[string]any{
 						"cron": "0 0 * * *",
 					},
@@ -277,7 +283,9 @@ func TestNewPersistence_ListWorkflows(t *testing.T) {
 			Description: "Description 4",
 			WorkflowTriggers: []*models.WorkflowTrigger{
 				{
-					TriggerID: "schedule",
+					SourceID:   uuid.New().String(),
+					EventType:  "schedule_due",
+					ProviderID: "scheduler",
 					Configuration: map[string]any{
 						"cron": "0 0 * * *",
 					},
@@ -321,7 +329,9 @@ func TestNewPersistence_DeleteWorkflow(t *testing.T) {
 				ID:          uuid.New().String(),
 				Name:        "Daily Schedule",
 				Description: "Runs daily at midnight",
-				TriggerID:   "schedule",
+				SourceID:    uuid.New().String(),
+				EventType:   "schedule_due",
+				ProviderID:  "scheduler",
 				Configuration: map[string]any{
 					"cron": "0 0 * * *",
 				},
@@ -373,7 +383,9 @@ func TestNewPersistence_ComplexWorkflow(t *testing.T) {
 		Description: "A complex workflow with multiple triggers and steps",
 		WorkflowTriggers: []*models.WorkflowTrigger{
 			{
-				TriggerID: "schedule",
+				SourceID:   uuid.New().String(),
+				EventType:  "schedule_due",
+				ProviderID: "scheduler",
 				Configuration: map[string]any{
 					"cron":        "0 0 * * *",
 					"workflow_id": "test-complex-workflow",
@@ -381,7 +393,9 @@ func TestNewPersistence_ComplexWorkflow(t *testing.T) {
 				},
 			},
 			{
-				TriggerID: "webhook",
+				SourceID:   uuid.New().String(),
+				EventType:  "webhook_received",
+				ProviderID: "webhook",
 				Configuration: map[string]any{
 					"path":        "/webhook/test",
 					"method":      "POST",
@@ -468,8 +482,8 @@ func TestNewPersistence_ComplexWorkflow(t *testing.T) {
 	assert.Len(t, retrieved.WorkflowTriggers, 2)
 
 	for _, trigger := range retrieved.WorkflowTriggers {
-		switch trigger.TriggerID {
-		case "schedule":
+		switch trigger.ProviderID {
+		case "scheduler":
 			assert.Equal(t, "0 0 * * *", trigger.Configuration["cron"])
 			assert.Equal(t, true, trigger.Configuration["enabled"])
 		case "webhook":
