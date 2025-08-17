@@ -281,7 +281,6 @@ func TestKafkaProvider_Configure(t *testing.T) {
 								found = true
 
 								assert.Equal(t, trigger.Configuration, source.Configuration)
-								assert.NotEmpty(t, source.ExternalID.String())
 								assert.True(t, source.Active)
 
 								break

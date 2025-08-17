@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -128,7 +127,6 @@ func TestNewKafkaSource(t *testing.T) {
 
 			// Verify basic fields
 			assert.Equal(t, tt.sourceID, source.ID)
-			assert.NotEqual(t, uuid.Nil, source.ExternalID)
 			assert.True(t, source.Active)
 			assert.NotEmpty(t, source.ConnectionDetailsID)
 			assert.Equal(t, tt.expectedTopic, source.ConnectionDetails.Topic)
@@ -162,7 +160,6 @@ func TestKafkaSource_Validate(t *testing.T) {
 			name: "valid source",
 			source: &KafkaSource{
 				ID:                  "valid-source",
-				ExternalID:          uuid.New(),
 				ConnectionDetailsID: "test-connection-id",
 				ConnectionDetails: ConnectionDetails{
 					Topic:   "test-topic",
@@ -175,20 +172,6 @@ func TestKafkaSource_Validate(t *testing.T) {
 			name: "empty ID",
 			source: &KafkaSource{
 				ID:                  "",
-				ExternalID:          uuid.New(),
-				ConnectionDetailsID: "test-connection-id",
-				ConnectionDetails: ConnectionDetails{
-					Topic:   "test-topic",
-					Brokers: "localhost:9092",
-				},
-			},
-			expectError: true,
-		},
-		{
-			name: "nil external ID",
-			source: &KafkaSource{
-				ID:                  "test-source",
-				ExternalID:          uuid.Nil,
 				ConnectionDetailsID: "test-connection-id",
 				ConnectionDetails: ConnectionDetails{
 					Topic:   "test-topic",
@@ -201,7 +184,6 @@ func TestKafkaSource_Validate(t *testing.T) {
 			name: "empty connection details ID",
 			source: &KafkaSource{
 				ID:                  "test-source",
-				ExternalID:          uuid.New(),
 				ConnectionDetailsID: "",
 				ConnectionDetails: ConnectionDetails{
 					Topic:   "test-topic",
@@ -214,7 +196,6 @@ func TestKafkaSource_Validate(t *testing.T) {
 			name: "empty topic",
 			source: &KafkaSource{
 				ID:                  "test-source",
-				ExternalID:          uuid.New(),
 				ConnectionDetailsID: "test-connection-id",
 				ConnectionDetails: ConnectionDetails{
 					Topic:   "",
@@ -227,7 +208,6 @@ func TestKafkaSource_Validate(t *testing.T) {
 			name: "empty brokers",
 			source: &KafkaSource{
 				ID:                  "test-source",
-				ExternalID:          uuid.New(),
 				ConnectionDetailsID: "test-connection-id",
 				ConnectionDetails: ConnectionDetails{
 					Topic:   "test-topic",
@@ -376,7 +356,6 @@ func TestKafkaSource_JSONMarshaling(t *testing.T) {
 
 	// Verify fields
 	assert.Equal(t, source.ID, unmarshaledSource.ID)
-	assert.Equal(t, source.ExternalID, unmarshaledSource.ExternalID)
 	assert.Equal(t, source.ConnectionDetailsID, unmarshaledSource.ConnectionDetailsID)
 	assert.Equal(t, source.ConnectionDetails, unmarshaledSource.ConnectionDetails)
 	assert.Equal(t, source.JSONSchema, unmarshaledSource.JSONSchema)

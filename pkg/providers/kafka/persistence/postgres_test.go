@@ -153,7 +153,6 @@ func TestPostgresPersistence_SaveAndRetrieveKafkaSource(t *testing.T) {
 
 	// Verify source data
 	assert.Equal(t, source.ID, retrievedSource.ID)
-	assert.Equal(t, source.ExternalID, retrievedSource.ExternalID)
 	assert.Equal(t, source.ConnectionDetailsID, retrievedSource.ConnectionDetailsID)
 	assert.Equal(t, source.ConnectionDetails, retrievedSource.ConnectionDetails)
 	assert.Equal(t, source.JSONSchema, retrievedSource.JSONSchema)

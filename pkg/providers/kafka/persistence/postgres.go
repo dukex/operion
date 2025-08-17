@@ -56,9 +56,9 @@ func (p *PostgresPersistence) SaveKafkaSource(source *kafkaModels.KafkaSource) e
 
 	query := `
 		INSERT INTO kafka_sources (
-			id, external_id, connection_details_id, connection_details, 
+			id, connection_details_id, connection_details, 
 			json_schema, configuration, active, created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		ON CONFLICT (id) 
 		DO UPDATE SET
 			connection_details_id = EXCLUDED.connection_details_id,
@@ -94,7 +94,6 @@ func (p *PostgresPersistence) SaveKafkaSource(source *kafkaModels.KafkaSource) e
 
 	_, err = p.db.ExecContext(ctx, query,
 		source.ID,
-		source.ExternalID.String(),
 		source.ConnectionDetailsID,
 		connectionDetailsJSON,
 		jsonSchemaJSON,
@@ -119,7 +118,7 @@ func (p *PostgresPersistence) KafkaSourceByID(id string) (*kafkaModels.KafkaSour
 	ctx := context.Background()
 
 	query := `
-		SELECT id, external_id, connection_details_id, connection_details, 
+		SELECT id, connection_details_id, connection_details, 
 			   json_schema, configuration, active, created_at, updated_at
 		FROM kafka_sources 
 		WHERE id = $1
@@ -128,7 +127,6 @@ func (p *PostgresPersistence) KafkaSourceByID(id string) (*kafkaModels.KafkaSour
 	row := p.db.QueryRowContext(ctx, query, id)
 
 	var (
-		externalIDStr         string
 		connectionDetailsJSON string
 		jsonSchemaJSON        string
 		configurationJSON     string
@@ -138,7 +136,6 @@ func (p *PostgresPersistence) KafkaSourceByID(id string) (*kafkaModels.KafkaSour
 
 	err := row.Scan(
 		&source.ID,
-		&externalIDStr,
 		&source.ConnectionDetailsID,
 		&connectionDetailsJSON,
 		&jsonSchemaJSON,
@@ -155,11 +152,6 @@ func (p *PostgresPersistence) KafkaSourceByID(id string) (*kafkaModels.KafkaSour
 		p.logger.ErrorContext(ctx, "Failed to scan Kafka source", "source_id", id, "error", err)
 
 		return nil, fmt.Errorf("failed to scan Kafka source: %w", err)
-	}
-
-	// Parse external ID
-	if err := source.ExternalID.UnmarshalText([]byte(externalIDStr)); err != nil {
-		return nil, fmt.Errorf("failed to parse external ID: %w", err)
 	}
 
 	// Deserialize JSON fields
@@ -188,7 +180,7 @@ func (p *PostgresPersistence) KafkaSourceByConnectionDetailsID(connectionDetails
 	ctx := context.Background()
 
 	query := `
-		SELECT id, external_id, connection_details_id, connection_details, 
+		SELECT id, connection_details_id, connection_details, 
 			   json_schema, configuration, active, created_at, updated_at
 		FROM kafka_sources 
 		WHERE connection_details_id = $1
@@ -223,7 +215,7 @@ func (p *PostgresPersistence) KafkaSources() ([]*kafkaModels.KafkaSource, error)
 	ctx := context.Background()
 
 	query := `
-		SELECT id, external_id, connection_details_id, connection_details, 
+		SELECT id, connection_details_id, connection_details, 
 			   json_schema, configuration, active, created_at, updated_at
 		FROM kafka_sources 
 		ORDER BY created_at ASC
@@ -257,7 +249,7 @@ func (p *PostgresPersistence) ActiveKafkaSources() ([]*kafkaModels.KafkaSource, 
 	ctx := context.Background()
 
 	query := `
-		SELECT id, external_id, connection_details_id, connection_details, 
+		SELECT id, connection_details_id, connection_details, 
 			   json_schema, configuration, active, created_at, updated_at
 		FROM kafka_sources 
 		WHERE active = true
@@ -360,7 +352,6 @@ func (p *PostgresPersistence) scanKafkaSourceRows(ctx context.Context, rows *sql
 
 	for rows.Next() {
 		var (
-			externalIDStr         string
 			connectionDetailsJSON string
 			jsonSchemaJSON        string
 			configurationJSON     string
@@ -370,7 +361,6 @@ func (p *PostgresPersistence) scanKafkaSourceRows(ctx context.Context, rows *sql
 
 		err := rows.Scan(
 			&source.ID,
-			&externalIDStr,
 			&source.ConnectionDetailsID,
 			&connectionDetailsJSON,
 			&jsonSchemaJSON,
@@ -383,11 +373,6 @@ func (p *PostgresPersistence) scanKafkaSourceRows(ctx context.Context, rows *sql
 			p.logger.ErrorContext(ctx, "Failed to scan Kafka source row", "error", err)
 
 			return nil, fmt.Errorf("failed to scan Kafka source: %w", err)
-		}
-
-		// Parse external ID
-		if err := source.ExternalID.UnmarshalText([]byte(externalIDStr)); err != nil {
-			return nil, fmt.Errorf("failed to parse external ID: %w", err)
 		}
 
 		// Deserialize JSON fields
@@ -423,7 +408,6 @@ func kafkaMigrations() map[int]string {
 			-- Create kafka_sources table for Kafka provider persistence
 			CREATE TABLE kafka_sources (
 				id VARCHAR(255) PRIMARY KEY,
-				external_id UUID NOT NULL,
 				connection_details_id VARCHAR(255) NOT NULL,
 				connection_details JSONB NOT NULL,
 				json_schema JSONB,
@@ -436,7 +420,6 @@ func kafkaMigrations() map[int]string {
 			-- Create indexes for better query performance
 			CREATE INDEX idx_kafka_sources_connection_details_id ON kafka_sources(connection_details_id);
 			CREATE INDEX idx_kafka_sources_active ON kafka_sources(active);
-			CREATE INDEX idx_kafka_sources_external_id ON kafka_sources(external_id);
 			CREATE INDEX idx_kafka_sources_created_at ON kafka_sources(created_at);
 			CREATE INDEX idx_kafka_sources_updated_at ON kafka_sources(updated_at);
 		`,

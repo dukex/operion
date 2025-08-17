@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"strings"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 // ErrInvalidKafkaSource is returned when Kafka source validation fails.
@@ -30,14 +28,11 @@ type ConnectionDetails struct {
 	Config map[string]any `json:"config,omitempty"`
 }
 
-// KafkaSource represents a Kafka consumer configuration with external ID-based mapping.
+// KafkaSource represents a Kafka consumer configuration with connection details mapping.
 // Each Kafka source maps connection details and optional JSON schema for message validation.
 type KafkaSource struct {
 	// ID is the internal source identifier used in workflows
 	ID string `json:"id" validate:"required"`
-
-	// ExternalID is the external UUID used for source identification
-	ExternalID uuid.UUID `json:"external_id" validate:"required"`
 
 	// ConnectionDetailsID is a hash of the connection details for sharing consumers
 	ConnectionDetailsID string `json:"connection_details_id" validate:"required"`
@@ -85,7 +80,6 @@ func NewKafkaSource(sourceID string, configuration map[string]any) (*KafkaSource
 
 	source := &KafkaSource{
 		ID:                  sourceID,
-		ExternalID:          uuid.New(),
 		ConnectionDetailsID: connectionDetailsID,
 		ConnectionDetails:   connectionDetails,
 		Configuration:       configuration,
@@ -189,10 +183,6 @@ func generateConnectionDetailsID(details ConnectionDetails, schema map[string]an
 // Validate performs validation on the Kafka source structure.
 func (ks *KafkaSource) Validate() error {
 	if ks.ID == "" {
-		return ErrInvalidKafkaSource
-	}
-
-	if ks.ExternalID == uuid.Nil {
 		return ErrInvalidKafkaSource
 	}
 
