@@ -152,6 +152,7 @@ func extractJSONSchema(config map[string]any) map[string]any {
 			return schema
 		}
 	}
+
 	return nil
 }
 
@@ -159,25 +160,29 @@ func extractJSONSchema(config map[string]any) map[string]any {
 func generateConnectionDetailsID(details ConnectionDetails, schema map[string]any) string {
 	// Create a deterministic string representation
 	var parts []string
+
 	parts = append(parts, details.Topic)
 	parts = append(parts, details.Brokers)
 	parts = append(parts, details.ConsumerGroup)
 
 	// Include schema in the hash if present
 	if schema != nil {
-		schemaBytes, _ := json.Marshal(schema)
-		parts = append(parts, string(schemaBytes))
+		if schemaBytes, err := json.Marshal(schema); err == nil {
+			parts = append(parts, string(schemaBytes))
+		}
 	}
 
 	// Include additional config if present
 	if details.Config != nil {
-		configBytes, _ := json.Marshal(details.Config)
-		parts = append(parts, string(configBytes))
+		if configBytes, err := json.Marshal(details.Config); err == nil {
+			parts = append(parts, string(configBytes))
+		}
 	}
 
 	// Generate hash
 	combined := strings.Join(parts, "|")
 	hash := sha256.Sum256([]byte(combined))
+
 	return hex.EncodeToString(hash[:16]) // Use first 16 bytes for shorter ID
 }
 
@@ -256,6 +261,7 @@ func (ks *KafkaSource) MarshalJSON() ([]byte, error) {
 
 	return json.Marshal(&struct {
 		*Alias
+
 		CreatedAt string `json:"created_at"`
 		UpdatedAt string `json:"updated_at"`
 	}{
@@ -271,6 +277,7 @@ func (ks *KafkaSource) UnmarshalJSON(data []byte) error {
 
 	aux := &struct {
 		*Alias
+
 		CreatedAt string `json:"created_at"`
 		UpdatedAt string `json:"updated_at"`
 	}{
@@ -294,6 +301,36 @@ func (ks *KafkaSource) UnmarshalJSON(data []byte) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+// JSON serialization helpers for database persistence
+
+// StructToJSON serializes a struct to JSON string.
+func StructToJSON(v any) (string, error) {
+	if v == nil {
+		return "null", nil
+	}
+
+	jsonBytes, err := json.Marshal(v)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal to JSON: %w", err)
+	}
+
+	return string(jsonBytes), nil
+}
+
+// JSONToStruct deserializes a JSON string to struct.
+func JSONToStruct(jsonStr string, v any) error {
+	if jsonStr == "" || jsonStr == "null" {
+		return nil
+	}
+
+	err := json.Unmarshal([]byte(jsonStr), v)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal JSON: %w", err)
 	}
 
 	return nil

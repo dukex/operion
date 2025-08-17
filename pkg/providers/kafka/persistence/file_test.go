@@ -20,6 +20,8 @@ func TestNewFilePersistence(t *testing.T) {
 		{
 			name: "valid directory",
 			setupDir: func(t *testing.T) string {
+				t.Helper()
+
 				return t.TempDir()
 			},
 			expectError: false,
@@ -27,6 +29,8 @@ func TestNewFilePersistence(t *testing.T) {
 		{
 			name: "non-existent directory should be created",
 			setupDir: func(t *testing.T) string {
+				t.Helper()
+
 				return filepath.Join(t.TempDir(), "new-dir")
 			},
 			expectError: false,
@@ -67,7 +71,10 @@ func TestFilePersistence_SaveAndRetrieveKafkaSource(t *testing.T) {
 	dataDir := t.TempDir()
 	fp, err := NewFilePersistence(dataDir)
 	require.NoError(t, err)
-	defer fp.Close()
+
+	defer func() {
+		_ = fp.Close()
+	}()
 
 	// Create test source
 	config := map[string]any{
@@ -108,7 +115,10 @@ func TestFilePersistence_KafkaSourceByConnectionDetailsID(t *testing.T) {
 	dataDir := t.TempDir()
 	fp, err := NewFilePersistence(dataDir)
 	require.NoError(t, err)
-	defer fp.Close()
+
+	defer func() {
+		_ = fp.Close()
+	}()
 
 	// Create test sources with same connection details
 	config1 := map[string]any{
@@ -163,7 +173,10 @@ func TestFilePersistence_KafkaSources(t *testing.T) {
 	dataDir := t.TempDir()
 	fp, err := NewFilePersistence(dataDir)
 	require.NoError(t, err)
-	defer fp.Close()
+
+	defer func() {
+		_ = fp.Close()
+	}()
 
 	// Initially should be empty
 	sources, err := fp.KafkaSources()
@@ -199,7 +212,10 @@ func TestFilePersistence_ActiveKafkaSources(t *testing.T) {
 	dataDir := t.TempDir()
 	fp, err := NewFilePersistence(dataDir)
 	require.NoError(t, err)
-	defer fp.Close()
+
+	defer func() {
+		_ = fp.Close()
+	}()
 
 	// Create and save active source
 	config1 := map[string]any{"topic": "orders", "brokers": "localhost:9092"}
@@ -212,6 +228,7 @@ func TestFilePersistence_ActiveKafkaSources(t *testing.T) {
 	config2 := map[string]any{"topic": "events", "brokers": "localhost:9092"}
 	inactiveSource, err := models.NewKafkaSource("inactive-source", config2)
 	require.NoError(t, err)
+
 	inactiveSource.Active = false
 	err = fp.SaveKafkaSource(inactiveSource)
 	require.NoError(t, err)
@@ -233,7 +250,10 @@ func TestFilePersistence_UpdateKafkaSource(t *testing.T) {
 	dataDir := t.TempDir()
 	fp, err := NewFilePersistence(dataDir)
 	require.NoError(t, err)
-	defer fp.Close()
+
+	defer func() {
+		_ = fp.Close()
+	}()
 
 	// Create and save initial source
 	config := map[string]any{"topic": "orders", "brokers": "localhost:9092"}
@@ -270,7 +290,10 @@ func TestFilePersistence_DeleteKafkaSource(t *testing.T) {
 	dataDir := t.TempDir()
 	fp, err := NewFilePersistence(dataDir)
 	require.NoError(t, err)
-	defer fp.Close()
+
+	defer func() {
+		_ = fp.Close()
+	}()
 
 	// Create and save test sources
 	config1 := map[string]any{"topic": "orders", "brokers": "localhost:9092"}
@@ -320,7 +343,10 @@ func TestFilePersistence_HealthCheck(t *testing.T) {
 	dataDir := t.TempDir()
 	fp, err := NewFilePersistence(dataDir)
 	require.NoError(t, err)
-	defer fp.Close()
+
+	defer func() {
+		_ = fp.Close()
+	}()
 
 	// Health check should pass for valid directory
 	err = fp.HealthCheck()
@@ -361,7 +387,10 @@ func TestFilePersistence_PersistenceAcrossRestarts(t *testing.T) {
 	// Create second persistence instance (simulating restart)
 	fp2, err := NewFilePersistence(dataDir)
 	require.NoError(t, err)
-	defer fp2.Close()
+
+	defer func() {
+		_ = fp2.Close()
+	}()
 
 	// Verify sources were loaded from file
 	sources, err := fp2.KafkaSources()
@@ -386,7 +415,10 @@ func TestFilePersistence_ConcurrentAccess(t *testing.T) {
 	dataDir := t.TempDir()
 	fp, err := NewFilePersistence(dataDir)
 	require.NoError(t, err)
-	defer fp.Close()
+
+	defer func() {
+		_ = fp.Close()
+	}()
 
 	// Create test source
 	config := map[string]any{"topic": "orders", "brokers": "localhost:9092"}
@@ -399,7 +431,8 @@ func TestFilePersistence_ConcurrentAccess(t *testing.T) {
 
 	// Test concurrent reads (should not cause data races)
 	done := make(chan bool, 10)
-	for i := 0; i < 10; i++ {
+
+	for range 10 {
 		go func() {
 			defer func() { done <- true }()
 
@@ -419,7 +452,7 @@ func TestFilePersistence_ConcurrentAccess(t *testing.T) {
 	}
 
 	// Wait for all goroutines to complete
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		<-done
 	}
 }

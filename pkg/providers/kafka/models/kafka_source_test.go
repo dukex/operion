@@ -119,6 +119,7 @@ func TestNewKafkaSource(t *testing.T) {
 			if tt.expectError {
 				assert.Error(t, err)
 				assert.Nil(t, source)
+
 				return
 			}
 
@@ -369,6 +370,7 @@ func TestKafkaSource_JSONMarshaling(t *testing.T) {
 
 	// Unmarshal back
 	var unmarshaledSource KafkaSource
+
 	err = json.Unmarshal(jsonData, &unmarshaledSource)
 	require.NoError(t, err)
 
@@ -425,4 +427,162 @@ func TestGenerateConnectionDetailsID(t *testing.T) {
 	// Verify ID format (should be hex string of reasonable length)
 	assert.Len(t, id1, 32) // 16 bytes = 32 hex chars
 	assert.Regexp(t, "^[0-9a-f]+$", id1)
+}
+
+func TestStructToJSON(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    any
+		expected string
+	}{
+		{
+			name:     "nil value",
+			input:    nil,
+			expected: "null",
+		},
+		{
+			name: "simple struct",
+			input: ConnectionDetails{
+				Topic:   "orders",
+				Brokers: "localhost:9092",
+			},
+			expected: `{"topic":"orders","brokers":"localhost:9092","consumer_group":""}`,
+		},
+		{
+			name: "map with nested values",
+			input: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"id": map[string]any{"type": "string"},
+				},
+			},
+			expected: `{"properties":{"id":{"type":"string"}},"type":"object"}`,
+		},
+		{
+			name:     "empty string",
+			input:    "",
+			expected: `""`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := StructToJSON(tt.input)
+			require.NoError(t, err)
+			assert.JSONEq(t, tt.expected, result)
+		})
+	}
+}
+
+func TestJSONToStruct(t *testing.T) {
+	t.Run("unmarshal to struct", func(t *testing.T) {
+		jsonStr := `{"topic":"orders","brokers":"localhost:9092","consumer_group":"test-group"}`
+
+		var connDetails ConnectionDetails
+
+		err := JSONToStruct(jsonStr, &connDetails)
+		require.NoError(t, err)
+
+		assert.Equal(t, "orders", connDetails.Topic)
+		assert.Equal(t, "localhost:9092", connDetails.Brokers)
+		assert.Equal(t, "test-group", connDetails.ConsumerGroup)
+	})
+
+	t.Run("unmarshal to map", func(t *testing.T) {
+		jsonStr := `{"type":"object","properties":{"id":{"type":"string"}}}`
+
+		var result map[string]any
+
+		err := JSONToStruct(jsonStr, &result)
+		require.NoError(t, err)
+
+		assert.Equal(t, "object", result["type"])
+		properties := result["properties"].(map[string]any)
+		idField := properties["id"].(map[string]any)
+		assert.Equal(t, "string", idField["type"])
+	})
+
+	t.Run("null string", func(t *testing.T) {
+		var result map[string]any
+
+		err := JSONToStruct("null", &result)
+		require.NoError(t, err)
+		assert.Nil(t, result)
+	})
+
+	t.Run("empty string", func(t *testing.T) {
+		var result map[string]any
+
+		err := JSONToStruct("", &result)
+		require.NoError(t, err)
+		assert.Nil(t, result)
+	})
+
+	t.Run("invalid JSON", func(t *testing.T) {
+		var result map[string]any
+
+		err := JSONToStruct("invalid json", &result)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to unmarshal JSON")
+	})
+}
+
+func TestJSONSerializationRoundTrip(t *testing.T) {
+	originalData := map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"order_id": map[string]any{
+				"type":    "string",
+				"pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+			},
+			"items": map[string]any{
+				"type": "array",
+				"items": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"id":    map[string]any{"type": "string"},
+						"price": map[string]any{"type": "number", "minimum": 0},
+					},
+					"required": []string{"id", "price"},
+				},
+			},
+		},
+		"required": []string{"order_id", "items"},
+	}
+
+	// Serialize to JSON
+	jsonStr, err := StructToJSON(originalData)
+	require.NoError(t, err)
+	assert.NotEmpty(t, jsonStr)
+	assert.NotEqual(t, "null", jsonStr)
+
+	// Deserialize back
+	var deserializedData map[string]any
+
+	err = JSONToStruct(jsonStr, &deserializedData)
+	require.NoError(t, err)
+
+	// Verify data integrity
+	assert.Equal(t, originalData["type"], deserializedData["type"])
+
+	// Convert slice types for comparison since JSON unmarshaling creates []interface{} not []string
+	origRequired := originalData["required"].([]string)
+	deserRequired := deserializedData["required"].([]interface{})
+	assert.Len(t, deserRequired, len(origRequired))
+
+	for i, req := range origRequired {
+		assert.Equal(t, req, deserRequired[i].(string))
+	}
+
+	// Verify nested structures
+	origProperties := originalData["properties"].(map[string]any)
+	deserProperties := deserializedData["properties"].(map[string]any)
+
+	origOrderId := origProperties["order_id"].(map[string]any)
+	deserOrderId := deserProperties["order_id"].(map[string]any)
+	assert.Equal(t, origOrderId["pattern"], deserOrderId["pattern"])
+
+	origItems := origProperties["items"].(map[string]any)
+	deserItems := deserProperties["items"].(map[string]any)
+	assert.Equal(t, origItems["type"], deserItems["type"])
 }

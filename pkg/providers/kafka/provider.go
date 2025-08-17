@@ -131,7 +131,7 @@ func (k *KafkaProvider) Initialize(ctx context.Context, deps protocol.Dependenci
 		return errors.New("kafka provider requires KAFKA_PERSISTENCE_URL environment variable (e.g., file://./data/kafka)")
 	}
 
-	persistence, err := k.createPersistence(persistenceURL)
+	persistence, err := k.createPersistence(ctx, persistenceURL)
 	if err != nil {
 		return err
 	}
@@ -578,7 +578,7 @@ func (h *kafkaConsumerGroupHandler) validateJSONSchema(messageData any, schema m
 }
 
 // createPersistence creates the appropriate persistence implementation based on URL scheme.
-func (k *KafkaProvider) createPersistence(persistenceURL string) (kafkaPersistence.KafkaPersistence, error) {
+func (k *KafkaProvider) createPersistence(ctx context.Context, persistenceURL string) (kafkaPersistence.KafkaPersistence, error) {
 	scheme := k.parsePersistenceScheme(persistenceURL)
 	k.logger.Info("Initializing Kafka persistence", "scheme", scheme, "url", persistenceURL)
 
@@ -589,8 +589,8 @@ func (k *KafkaProvider) createPersistence(persistenceURL string) (kafkaPersisten
 
 		return kafkaPersistence.NewFilePersistence(path)
 	case "postgres", "postgresql":
-		// Future: implement database persistence
-		return nil, errors.New("postgres persistence for Kafka not yet implemented")
+		// Create PostgreSQL persistence
+		return kafkaPersistence.NewPostgresPersistence(ctx, k.logger, persistenceURL)
 	case "mysql":
 		// Future: implement database persistence
 		return nil, errors.New("mysql persistence for Kafka not yet implemented")
