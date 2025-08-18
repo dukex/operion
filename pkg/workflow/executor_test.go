@@ -2,15 +2,14 @@ package workflow
 
 import (
 	"context"
+	"log"
 	"log/slog"
 	"os"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill"
 	logaction "github.com/dukex/operion/pkg/actions/log"
-	"github.com/dukex/operion/pkg/channels/gochannel"
 	"github.com/dukex/operion/pkg/eventbus"
 	"github.com/dukex/operion/pkg/events"
 	"github.com/dukex/operion/pkg/models"
@@ -386,18 +385,43 @@ func TestExecutor_ExecuteStep_Action_failure(t *testing.T) {
 	assert.Contains(t, stepFailedEvent.Error, "not registered")
 }
 
+type MockEventBus struct {
+	handlers map[events.EventType]eventbus.EventHandler
+}
+
+func (m *MockEventBus) Handle(ctx context.Context, eventType events.EventType, handler eventbus.EventHandler) error {
+	m.handlers[eventType] = handler
+
+	return nil
+}
+
+func (m *MockEventBus) Subscribe(ctx context.Context) error {
+	return nil
+}
+
+func (m *MockEventBus) Publish(ctx context.Context, key string, event eventbus.Event) error {
+	if handler, exists := m.handlers[event.GetType()]; exists {
+		return handler(ctx, event)
+	}
+
+	log.Printf("No handler for event type %s", event.GetType())
+
+	return nil
+}
+
+func (m *MockEventBus) Close(ctx context.Context) error {
+	return nil
+}
+
 func TestExecutor_IntegrationWithEventBus(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	// Create gochannel event bus for testing
-	watermillLogger := watermill.NewSlogLogger(logger)
-	pub, sub, err := gochannel.CreateTestChannel(watermillLogger)
-	require.NoError(t, err)
-
-	eventBus := eventbus.NewWatermillEventBus(pub, sub)
+	eventBus := &MockEventBus{
+		handlers: make(map[events.EventType]eventbus.EventHandler),
+	}
 
 	// Create test components
 	persistence := file.NewPersistence(t.TempDir())
@@ -432,7 +456,7 @@ func TestExecutor_IntegrationWithEventBus(t *testing.T) {
 		eventsMutex    sync.Mutex
 	)
 
-	err = eventBus.Handle(events.WorkflowStepAvailableEvent, func(ctx context.Context, event any) error {
+	err = eventBus.Handle(ctx, events.WorkflowStepAvailableEvent, func(ctx context.Context, event any) error {
 		eventsMutex.Lock()
 		defer eventsMutex.Unlock()
 
@@ -442,7 +466,7 @@ func TestExecutor_IntegrationWithEventBus(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	err = eventBus.Handle(events.WorkflowStepFinishedEvent, func(ctx context.Context, event any) error {
+	err = eventBus.Handle(ctx, events.WorkflowStepFinishedEvent, func(ctx context.Context, event any) error {
 		eventsMutex.Lock()
 		defer eventsMutex.Unlock()
 
@@ -452,7 +476,7 @@ func TestExecutor_IntegrationWithEventBus(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	err = eventBus.Handle(events.WorkflowFinishedEvent, func(ctx context.Context, event any) error {
+	err = eventBus.Handle(ctx, events.WorkflowFinishedEvent, func(ctx context.Context, event any) error {
 		eventsMutex.Lock()
 		defer eventsMutex.Unlock()
 
@@ -489,7 +513,7 @@ func TestExecutor_IntegrationWithEventBus(t *testing.T) {
 	assert.GreaterOrEqual(t, len(receivedEvents), 1)
 
 	// Clean up
-	err = eventBus.Close()
+	err = eventBus.Close(ctx)
 	assert.NoError(t, err)
 
 	err = repo.Delete(t.Context(), workflowCreated.ID)

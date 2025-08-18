@@ -122,9 +122,13 @@ func (fp *Persistence) DeleteWorkflow(_ context.Context, id string) error {
 
 	err := os.Remove(filePath)
 
-	if err != nil && os.IsNotExist(err) {
+	if os.IsNotExist(err) {
 		return nil
 	}
 
-	return fmt.Errorf("failed to delete workflow %s: %w", id, err)
+	if err != nil {
+		return fmt.Errorf("failed to delete workflow %s: %w", id, err)
+	}
+
+	return nil
 }

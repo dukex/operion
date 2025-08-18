@@ -201,7 +201,7 @@ func (tm *DispatcherManager) createTriggerCallback(workflowID, triggerID string)
 			TriggerID:   triggerID,
 			TriggerData: data,
 		}
-		event.ID = tm.eventBus.GenerateID()
+		event.ID = tm.eventBus.GenerateID(ctx)
 
 		err := tm.eventBus.Publish(ctx, workflowID, event)
 		if err != nil {

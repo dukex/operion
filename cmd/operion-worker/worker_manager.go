@@ -42,12 +42,12 @@ func NewWorkerManager(
 func (w *WorkerManager) Start(ctx context.Context) error {
 	w.logger.InfoContext(ctx, "Starting worker manager", "worker_id", w.id)
 
-	err := w.eventBus.Handle(events.WorkflowTriggeredEvent, w.handleWorkflowTriggered)
+	err := w.eventBus.Handle(ctx, events.WorkflowTriggeredEvent, w.handleWorkflowTriggered)
 	if err != nil {
 		return err
 	}
 
-	err = w.eventBus.Handle(events.WorkflowStepAvailableEvent, w.handleWorkflowStepAvailable)
+	err = w.eventBus.Handle(ctx, events.WorkflowStepAvailableEvent, w.handleWorkflowStepAvailable)
 	if err != nil {
 		return err
 	}

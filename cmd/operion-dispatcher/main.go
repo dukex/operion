@@ -87,9 +87,9 @@ func main() {
 
 			registry := cmd.NewRegistry(ctx, logger, command.String("plugins-path"))
 
-			eventBus := cmd.NewEventBus(command.String("event-bus"), logger)
+			eventBus := cmd.NewEventBus(ctx, logger, command.String("event-bus"))
 			defer func() {
-				err := eventBus.Close()
+				err := eventBus.Close(ctx)
 				if err != nil {
 					logger.ErrorContext(ctx, "Failed to close event bus", "error", err)
 				}
