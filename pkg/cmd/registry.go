@@ -8,6 +8,7 @@ import (
 	"github.com/dukex/operion/pkg/actions/httprequest"
 	logaction "github.com/dukex/operion/pkg/actions/log"
 	"github.com/dukex/operion/pkg/actions/transform"
+	kafkaProvider "github.com/dukex/operion/pkg/providers/kafka"
 	"github.com/dukex/operion/pkg/providers/scheduler"
 	webhookSource "github.com/dukex/operion/pkg/providers/webhook"
 	"github.com/dukex/operion/pkg/registry"
@@ -69,6 +70,9 @@ func registerNativeProviders(reg *registry.Registry) {
 
 	webhookProvider := webhookSource.NewWebhookProviderFactory()
 	reg.RegisterProvider(webhookProvider)
+
+	kafkaSourceProvider := kafkaProvider.NewKafkaProviderFactory()
+	reg.RegisterProvider(kafkaSourceProvider)
 }
 
 func NewRegistry(ctx context.Context, log *slog.Logger, pluginsPath string) *registry.Registry {

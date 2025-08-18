@@ -2,38 +2,7 @@
   "id": "test-scheduler-source",
   "name": "Test Scheduler Source Provider",
   "description": "Test workflow for scheduler source provider with database persistence",
-  "sources": [
-    {
-      "id": "1234",
-      "provider": "caju"
-    }
-  ],
   "workflow_triggers": [
-    {
-      "id": "caju-trigger-1",
-      "name": "Test Schedule Trigger",
-      "description": "Trigger every minute to test scheduler source provider",
-      "provider": "caju",
-      "event_type": "employee_created",
-      "configuration": {
-        "sponsor_id": "1234"
-      }
-    },
-    {
-      "id": "caju-trigger-2",
-      "name": "Test Schedule Trigger",
-      "description": "Trigger every minute to test scheduler source provider",
-      "provider": "caju",
-      "event_type": "allowance_created",
-      "configuration": {
-        "sponsor_id": "1234"
-      }
-    }
-
-
-
-
-
     {
       "id": "scheduler-trigger-1",
       "name": "Test Schedule Trigger",
@@ -41,17 +10,6 @@
       "provider": "scheduler",
       "configuration": {
         "cron_expression": "*/1 * * * *"
-      }
-    },
-        {
-      "id": "scheduler-trigger-1",
-      "name": "Test Schedule Trigger",
-      "description": "Trigger every minute to test scheduler source provider",
-      "source_type": "google_drive",
-      "configuration": {
-        "account_id": "3456", // associado com o suorce 
-        "event": "FileChanged",
-        "file_id": "1234"
       }
     }
   ],

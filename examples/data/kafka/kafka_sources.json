@@ -1,0 +1,19 @@
+[
+  {
+    "id": "18a00f62-93fc-4512-92ad-6899337c2e4a",
+    "connection_details_id": "025997fe7cfc7bce47202f14658e96c2",
+    "connection_details": {
+      "topic": "orders",
+      "consumer_group": "operion-order-processor",
+      "brokers": "localhost:29092"
+    },
+    "configuration": {
+      "brokers": "localhost:29092",
+      "consumer_group": "operion-order-processor",
+      "topic": "orders"
+    },
+    "active": true,
+    "created_at": "2025-08-18T12:16:52Z",
+    "updated_at": "2025-08-18T12:16:52Z"
+  }
+]
