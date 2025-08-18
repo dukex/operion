@@ -13,11 +13,15 @@ import (
 	"github.com/dukex/operion/pkg/eventbus"
 	"github.com/dukex/operion/pkg/events"
 	"github.com/dukex/operion/pkg/models"
+	"github.com/dukex/operion/pkg/otelhelper"
 	"github.com/dukex/operion/pkg/persistence"
 	"github.com/dukex/operion/pkg/protocol"
 	"github.com/dukex/operion/pkg/registry"
 	"github.com/dukex/operion/pkg/triggers/webhook"
 	"github.com/dukex/operion/pkg/workflow"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type DispatcherManager struct {
@@ -25,13 +29,13 @@ type DispatcherManager struct {
 	eventBus        eventbus.EventBus
 	runningTriggers map[string]protocol.Trigger
 	triggerMutex    sync.RWMutex
-	// tp              *sdktrace.TracerProvider
-	logger         *slog.Logger
-	persistence    persistence.Persistence
-	registry       *registry.Registry
-	restartCount   int
-	webhookManager *webhook.WebhookServerManager
-	webhookPort    int
+	tracer          trace.Tracer
+	logger          *slog.Logger
+	persistence     persistence.Persistence
+	registry        *registry.Registry
+	restartCount    int
+	webhookManager  *webhook.WebhookServerManager
+	webhookPort     int
 }
 
 func NewDispatcherManager(
@@ -41,6 +45,7 @@ func NewDispatcherManager(
 	logger *slog.Logger,
 	registry *registry.Registry,
 	webhookPort int,
+	tracer trace.Tracer,
 ) *DispatcherManager {
 	webhookManager := webhook.GetWebhookServerManager(webhookPort, logger)
 
@@ -54,6 +59,7 @@ func NewDispatcherManager(
 		runningTriggers: make(map[string]protocol.Trigger),
 		webhookManager:  webhookManager,
 		webhookPort:     webhookPort,
+		tracer:          tracer,
 	}
 }
 
@@ -102,7 +108,8 @@ func (dm *DispatcherManager) signals(ctx context.Context, cancel context.CancelF
 			dm.logger.InfoContext(ctx, "Reloading configuration...")
 			dm.restart(ctx, cancel)
 		case syscall.SIGINT, syscall.SIGTERM:
-			dm.logger.InfoContext(ctx, "Shutting down gracefully...")
+			dm.stop(ctx, cancel)
+			dm.logger.InfoContext(ctx, "Dispatcher manager stopped gracefully")
 			os.Exit(0)
 		default:
 			dm.logger.WarnContext(ctx, "Unhandled signal received", "signal", sig)
@@ -196,21 +203,30 @@ func (tm *DispatcherManager) createTriggerCallback(workflowID, triggerID string)
 		logger := tm.logger.With("workflow_id", workflowID, "trigger_id", triggerID)
 		logger.InfoContext(ctx, "Trigger fired, publishing event")
 
+		traceCtx, span := otelhelper.StartSpan(ctx, tm.tracer, "dispatcher.trigger fired",
+			attribute.String(otelhelper.WorkflowIDKey, workflowID),
+			attribute.String(otelhelper.TriggerIDKey, triggerID),
+		)
+		defer span.End()
+
 		event := events.WorkflowTriggered{
 			BaseEvent:   events.NewBaseEvent(events.WorkflowTriggeredEvent, workflowID),
 			TriggerID:   triggerID,
 			TriggerData: data,
 		}
-		event.ID = tm.eventBus.GenerateID()
+		event.ID = tm.eventBus.GenerateID(traceCtx)
 
-		err := tm.eventBus.Publish(ctx, workflowID, event)
+		err := tm.eventBus.Publish(traceCtx, workflowID, event)
 		if err != nil {
-			logger.ErrorContext(ctx, "Failed to publish trigger event", "error", err)
+			otelhelper.SetError(span, err, attribute.String("error.message", err.Error()))
+			logger.ErrorContext(traceCtx, "Failed to publish trigger event", "error", err)
 
 			return err
 		}
 
-		logger.With("event_id", event.ID).InfoContext(ctx, "Successfully published trigger event")
+		logger.With("event_id", event.ID).InfoContext(traceCtx, "Successfully published trigger event")
+		span.AddEvent("event_published")
+		span.SetStatus(codes.Ok, "trigger event published successfully")
 
 		return nil
 	}

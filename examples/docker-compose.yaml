@@ -5,8 +5,10 @@ services:
       context: ..
     restart: unless-stopped
     depends_on:
-      - kafka
-      - jaeger
+      kafka:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
     volumes:
       - ..:/app
       - $GOPATH/pkg/mod:/go/pkg/mod
@@ -47,8 +49,10 @@ services:
       context: ..
     restart: unless-stopped
     depends_on:
-      - kafka
-      - jaeger
+      kafka:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
     volumes:
       - ..:/app
       - $GOPATH/pkg/mod:/go/pkg/mod
@@ -72,8 +76,10 @@ services:
       context: ..
     restart: unless-stopped
     depends_on:
-      - kafka
-      - jaeger
+      kafka:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
     volumes:
       - ..:/app
       - $GOPATH/pkg/mod:/go/pkg/mod
@@ -120,6 +126,11 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT"
       KAFKA_INTER_BROKER_LISTENER_NAME: "INTERNAL"
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "kafka:9092"]
+      interval: 3s
+      timeout: 2s
+      retries: 5
 
   akhq:
     image: tchiotludo/akhq:dev

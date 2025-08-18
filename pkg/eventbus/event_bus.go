@@ -16,7 +16,7 @@ type EventPublisher interface {
 }
 
 type EventSubscriber interface {
-	Handle(eventType events.EventType, handler EventHandler) error
+	Handle(ctx context.Context, eventType events.EventType, handler EventHandler) error
 	Subscribe(ctx context.Context) error
 }
 
@@ -25,6 +25,6 @@ type EventHandler func(ctx context.Context, event any) error
 type EventBus interface {
 	EventPublisher
 	EventSubscriber
-	Close() error
-	GenerateID() string
+	Close(ctx context.Context) error
+	GenerateID(ctx context.Context) string
 }

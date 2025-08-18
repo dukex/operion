@@ -8,9 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill"
 	logaction "github.com/dukex/operion/pkg/actions/log"
-	"github.com/dukex/operion/pkg/channels/gochannel"
 	"github.com/dukex/operion/pkg/eventbus"
 	"github.com/dukex/operion/pkg/events"
 	"github.com/dukex/operion/pkg/models"
@@ -19,6 +17,50 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// Mock event bus for testing.
+type MockEventBus struct {
+	publishedEvents []any
+	handlers        map[events.EventType]eventbus.EventHandler
+}
+
+func NewMockEventBus() *MockEventBus {
+	return &MockEventBus{
+		publishedEvents: make([]any, 0),
+		handlers:        make(map[events.EventType]eventbus.EventHandler),
+	}
+}
+
+func (m *MockEventBus) Handle(eventType events.EventType, handler eventbus.EventHandler) error {
+	m.handlers[eventType] = handler
+
+	return nil
+}
+
+func (m *MockEventBus) Publish(ctx context.Context, key string, event eventbus.Event) error {
+	m.publishedEvents = append(m.publishedEvents, event)
+
+	// Call the handler if registered
+	if handler, exists := m.handlers[event.GetType()]; exists {
+		go func() {
+			_ = handler(ctx, event)
+		}()
+	}
+
+	return nil
+}
+
+func (m *MockEventBus) Subscribe(ctx context.Context) error {
+	return nil
+}
+
+func (m *MockEventBus) Close() error {
+	return nil
+}
+
+func (m *MockEventBus) GenerateID() string {
+	return "mock-event-id"
+}
 
 func TestNewExecutor(t *testing.T) {
 	persistence := file.NewPersistence(t.TempDir())
@@ -392,12 +434,8 @@ func TestExecutor_IntegrationWithEventBus(t *testing.T) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	// Create gochannel event bus for testing
-	watermillLogger := watermill.NewSlogLogger(logger)
-	pub, sub, err := gochannel.CreateTestChannel(watermillLogger)
-	require.NoError(t, err)
-
-	eventBus := eventbus.NewWatermillEventBus(pub, sub)
+	// Create mock event bus for testing
+	eventBus := NewMockEventBus()
 
 	// Create test components
 	persistence := file.NewPersistence(t.TempDir())

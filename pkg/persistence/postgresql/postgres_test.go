@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"log/slog"
 	"os"
+	"os/exec"
 	"testing"
 	"time"
 
@@ -18,6 +19,16 @@ import (
 )
 
 var postgresContainer *postgres.PostgresContainer
+
+// isDockerAvailable checks if Docker daemon is running.
+func isDockerAvailable() bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	
+	cmd := exec.CommandContext(ctx, "docker", "info")
+
+	return cmd.Run() == nil
+}
 
 func dropDb(ctx context.Context, t *testing.T, databaseURL string) {
 	t.Helper()
@@ -36,6 +47,11 @@ func dropDb(ctx context.Context, t *testing.T, databaseURL string) {
 
 func setupTestDB(t *testing.T) (*postgresql.Persistence, context.Context, string) {
 	t.Helper()
+
+	// Skip tests if Docker is not available
+	if !isDockerAvailable() {
+		t.Skip("Docker is not available, skipping PostgreSQL tests")
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 

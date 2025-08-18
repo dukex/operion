@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	"github.com/dukex/operion/pkg/cmd"
 	"github.com/dukex/operion/pkg/log"
+	"github.com/dukex/operion/pkg/otelhelper"
 	"github.com/google/uuid"
 	cli "github.com/urfave/cli/v3"
 )
@@ -63,9 +65,9 @@ func main() {
 
 			registry := cmd.NewRegistry(ctx, logger, command.String("plugins-path"))
 
-			eventBus := cmd.NewEventBus(command.String("event-bus"), logger)
+			eventBus := cmd.NewEventBus(ctx, logger, command.String("event-bus"))
 			defer func() {
-				err := eventBus.Close()
+				err := eventBus.Close(ctx)
 				if err != nil {
 					logger.ErrorContext(ctx, "Failed to close event bus", "error", err)
 				}
@@ -79,15 +81,21 @@ func main() {
 				}
 			}()
 
+			tracer, err := otelhelper.NewTracer(ctx, "operion-worker")
+			if err != nil {
+				return fmt.Errorf("failed to create tracer: %w", err)
+			}
+
 			worker := NewWorkerManager(
 				workerID,
 				persistence,
 				eventBus,
 				logger,
 				registry,
+				tracer,
 			)
 
-			err := worker.Start(ctx)
+			err = worker.Start(ctx)
 			if err != nil {
 				logger.ErrorContext(ctx, "Failed to start event-driven worker", "error", err)
 			}

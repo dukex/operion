@@ -2,17 +2,21 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/dukex/operion/pkg/eventbus"
 	"github.com/dukex/operion/pkg/events"
+	"github.com/dukex/operion/pkg/otelhelper"
 	"github.com/dukex/operion/pkg/persistence"
 	"github.com/dukex/operion/pkg/registry"
 	"github.com/dukex/operion/pkg/workflow"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type WorkerManager struct {
@@ -21,6 +25,7 @@ type WorkerManager struct {
 	persistence persistence.Persistence
 	registry    *registry.Registry
 	eventBus    eventbus.EventBus
+	tracer      trace.Tracer
 }
 
 func NewWorkerManager(
@@ -29,6 +34,7 @@ func NewWorkerManager(
 	eventBus eventbus.EventBus,
 	logger *slog.Logger,
 	registry *registry.Registry,
+	tracer trace.Tracer,
 ) *WorkerManager {
 	return &WorkerManager{
 		id:          id,
@@ -36,18 +42,19 @@ func NewWorkerManager(
 		persistence: persistence,
 		registry:    registry,
 		eventBus:    eventBus,
+		tracer:      tracer,
 	}
 }
 
 func (w *WorkerManager) Start(ctx context.Context) error {
 	w.logger.InfoContext(ctx, "Starting worker manager", "worker_id", w.id)
 
-	err := w.eventBus.Handle(events.WorkflowTriggeredEvent, w.handleWorkflowTriggered)
+	err := w.eventBus.Handle(ctx, events.WorkflowTriggeredEvent, w.handleWorkflowTriggered)
 	if err != nil {
 		return err
 	}
 
-	err = w.eventBus.Handle(events.WorkflowStepAvailableEvent, w.handleWorkflowStepAvailable)
+	err = w.eventBus.Handle(ctx, events.WorkflowStepAvailableEvent, w.handleWorkflowStepAvailable)
 	if err != nil {
 		return err
 	}
@@ -78,12 +85,18 @@ func (w *WorkerManager) handleWorkflowTriggered(ctx context.Context, event any) 
 		return nil
 	}
 
+	traceCtx, span := otelhelper.StartSpan(ctx, w.tracer, "worker.workflow triggered",
+		attribute.String(otelhelper.WorkflowIDKey, triggeredEvent.WorkflowID),
+		attribute.String(otelhelper.TriggerIDKey, triggeredEvent.TriggerID),
+	)
+	defer span.End()
+
 	logger := w.logger.With(
 		"workflow_id", triggeredEvent.WorkflowID,
 		"trigger_id", triggeredEvent.TriggerID,
 		"event_id", triggeredEvent.ID,
 	)
-	logger.InfoContext(ctx, "Processing workflow triggered event")
+	logger.InfoContext(traceCtx, "Processing workflow triggered event")
 
 	triggerData := make(map[string]any)
 	if triggeredEvent.TriggerData != nil {
@@ -92,9 +105,11 @@ func (w *WorkerManager) handleWorkflowTriggered(ctx context.Context, event any) 
 
 	workflowExecutor := workflow.NewExecutor(w.persistence, w.registry)
 
-	eventsToDispatcher, err := workflowExecutor.Start(ctx, logger, triggeredEvent.WorkflowID, triggerData)
+	eventsToDispatcher, err := workflowExecutor.Start(traceCtx, logger, triggeredEvent.WorkflowID, triggerData)
 	if err != nil {
-		w.logger.ErrorContext(ctx, "Failed to execute workflow", "error", err)
+		w.logger.ErrorContext(traceCtx, "Failed to execute workflow", "error", err)
+
+		otelhelper.SetError(span, err)
 
 		failedEvent := events.WorkflowFailed{
 			BaseEvent: events.NewBaseEvent(events.WorkflowFailedEvent, triggeredEvent.WorkflowID),
@@ -102,18 +117,27 @@ func (w *WorkerManager) handleWorkflowTriggered(ctx context.Context, event any) 
 		}
 		failedEvent.WorkerID = triggeredEvent.WorkerID
 
-		publishErr := w.eventBus.Publish(ctx, triggeredEvent.WorkflowID, failedEvent)
+		publishErr := w.eventBus.Publish(traceCtx, triggeredEvent.WorkflowID, failedEvent)
 		if publishErr != nil {
-			w.logger.ErrorContext(ctx, "Failed to publish workflow failed event", "error", publishErr)
+			w.logger.ErrorContext(traceCtx, "Failed to publish workflow failed event", "error", publishErr)
+
+			otelhelper.SetError(span, errors.New("failed to publish workflow failed event"))
 		}
 
 		return err
 	}
 
 	for _, event := range eventsToDispatcher {
-		publishErr := w.eventBus.Publish(ctx, triggeredEvent.WorkflowID, event)
+		publishErr := w.eventBus.Publish(traceCtx, triggeredEvent.WorkflowID, event)
+
+		logger.With("event_id", event.GetType()).InfoContext(traceCtx, "Successfully published trigger event")
+		span.AddEvent("event_published")
+		span.SetStatus(codes.Ok, "trigger event published successfully")
+
 		if publishErr != nil {
-			w.logger.ErrorContext(ctx, "Failed to publish workflow event", "error", publishErr, "event", event)
+			w.logger.ErrorContext(traceCtx, "Failed to publish workflow event", "error", publishErr, "event", event)
+
+			otelhelper.SetError(span, errors.New("failed to publish workflow event"))
 
 			return publishErr
 		}
@@ -132,24 +156,33 @@ func (w *WorkerManager) handleWorkflowStepAvailable(ctx context.Context, event a
 		return nil
 	}
 
+	traceCtx, span := otelhelper.StartSpan(ctx, w.tracer, "worker.workflow step available",
+		attribute.String(otelhelper.WorkflowIDKey, workflowStepEvent.WorkflowID),
+		attribute.String(otelhelper.ExecutionIDKey, workflowStepEvent.ExecutionID),
+		attribute.String(otelhelper.StepIDKey, workflowStepEvent.StepID),
+		attribute.String(otelhelper.WorkerIDKey, w.id),
+		attribute.String("event_id", workflowStepEvent.ID),
+	)
+	defer span.End()
+
 	logger := w.logger.With(
 		"workflow_id", workflowStepEvent.WorkflowID,
 		"execution_id", workflowStepEvent.ExecutionID,
 		"step_id", workflowStepEvent.StepID,
 	)
 
-	logger.InfoContext(ctx, "Processing workflow step available event")
+	logger.InfoContext(traceCtx, "Processing workflow step available event")
 
-	workflowItem, err := workflow.NewRepository(w.persistence).FetchByID(ctx, workflowStepEvent.WorkflowID)
+	workflowItem, err := workflow.NewRepository(w.persistence).FetchByID(traceCtx, workflowStepEvent.WorkflowID)
 	if err != nil {
-		w.logger.ErrorContext(ctx, "Failed to fetch workflow by ID", "error", err, "workflow_id", workflowStepEvent.WorkflowID)
+		w.logger.ErrorContext(traceCtx, "Failed to fetch workflow by ID", "error", err, "workflow_id", workflowStepEvent.WorkflowID)
 
 		return err
 	}
 
-	eventsToDispatcher, err := workflowExecutor.ExecuteStep(ctx, logger, workflowItem, workflowStepEvent.ExecutionContext, workflowStepEvent.StepID)
+	eventsToDispatcher, err := workflowExecutor.ExecuteStep(traceCtx, logger, workflowItem, workflowStepEvent.ExecutionContext, workflowStepEvent.StepID)
 	if err != nil {
-		w.logger.ErrorContext(ctx, "Failed to execute workflow step", "error", err)
+		w.logger.ErrorContext(traceCtx, "Failed to execute workflow step", "error", err)
 
 		// failedEvent := events.WorkflowStepFailed{
 		// 	BaseEvent:   events.NewBaseEvent(events.WorkflowStepFailedEvent, workflowStepEvent.WorkflowID),
@@ -189,8 +222,6 @@ func (w *WorkerManager) handleWorkflowStepAvailable(ctx context.Context, event a
 	// 	"workflow_id":  triggeredEvent.WorkflowID,
 	// 	"execution_id": triggeredEvent.ID,
 	// }).Info("Workflow execution completed")
-
-	time.Sleep(1 * time.Second) // Simulate some processing time
 
 	// return errors.New("Workflow execution not implemented yet")
 	return nil

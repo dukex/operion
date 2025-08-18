@@ -13,6 +13,7 @@ import (
 	"github.com/dukex/operion/pkg/registry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 // Mock event bus for testing.
@@ -20,7 +21,7 @@ type MockEventBus struct {
 	publishedEvents []any
 }
 
-func (m *MockEventBus) Handle(eventType events.EventType, handler eventbus.EventHandler) error {
+func (m *MockEventBus) Handle(ctx context.Context, eventType events.EventType, handler eventbus.EventHandler) error {
 	return nil
 }
 
@@ -34,11 +35,11 @@ func (m *MockEventBus) Subscribe(ctx context.Context) error {
 	return nil
 }
 
-func (m *MockEventBus) Close() error {
+func (m *MockEventBus) Close(ctx context.Context) error {
 	return nil
 }
 
-func (m *MockEventBus) GenerateID() string {
+func (m *MockEventBus) GenerateID(ctx context.Context) string {
 	return "mock-event-id"
 }
 
@@ -52,7 +53,8 @@ func TestNewWorkerManager(t *testing.T) {
 
 	// Create worker manager
 	workerID := "test-worker-1"
-	wm := NewWorkerManager(workerID, persistence, eventBus, logger, registry)
+	tracer := noop.NewTracerProvider().Tracer("test")
+	wm := NewWorkerManager(workerID, persistence, eventBus, logger, registry, tracer)
 
 	// Verify worker manager is created correctly
 	assert.NotNil(t, wm)
@@ -72,7 +74,8 @@ func TestWorkerManager_HandleWorkflowTriggered_InvalidEvent(t *testing.T) {
 	eventBus := &MockEventBus{}
 
 	// Create worker manager
-	wm := NewWorkerManager("test-worker", persistence, eventBus, logger, registry)
+	tracer := noop.NewTracerProvider().Tracer("test")
+	wm := NewWorkerManager("test-worker", persistence, eventBus, logger, registry, tracer)
 
 	// Handle invalid event type
 	err := wm.handleWorkflowTriggered(t.Context(), "invalid-event")
@@ -90,7 +93,8 @@ func TestWorkerManager_HandleWorkflowTriggered_WorkflowNotFound(t *testing.T) {
 	eventBus := &MockEventBus{}
 
 	// Create worker manager
-	wm := NewWorkerManager("test-worker", persistence, eventBus, logger, registry)
+	tracer := noop.NewTracerProvider().Tracer("test")
+	wm := NewWorkerManager("test-worker", persistence, eventBus, logger, registry, tracer)
 
 	// Create a mock workflow triggered event
 	baseEvent := events.NewBaseEvent(events.WorkflowTriggeredEvent, "non-existent-workflow")
@@ -117,7 +121,8 @@ func TestWorkerManager_HandleWorkflowStepAvailable_InvalidEvent(t *testing.T) {
 	eventBus := &MockEventBus{}
 
 	// Create worker manager
-	wm := NewWorkerManager("test-worker", persistence, eventBus, logger, registry)
+	tracer := noop.NewTracerProvider().Tracer("test")
+	wm := NewWorkerManager("test-worker", persistence, eventBus, logger, registry, tracer)
 
 	// Handle invalid event type
 	err := wm.handleWorkflowStepAvailable(t.Context(), "invalid-event")
@@ -135,7 +140,8 @@ func TestWorkerManager_HandleWorkflowStepAvailable_WorkflowNotFound(t *testing.T
 	eventBus := &MockEventBus{}
 
 	// Create worker manager
-	wm := NewWorkerManager("test-worker", persistence, eventBus, logger, registry)
+	tracer := noop.NewTracerProvider().Tracer("test")
+	wm := NewWorkerManager("test-worker", persistence, eventBus, logger, registry, tracer)
 
 	// Create execution context
 	executionCtx := models.ExecutionContext{
@@ -198,7 +204,8 @@ func TestWorkerManager_BasicWorkflowExecution(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create worker manager
-	wm := NewWorkerManager("basic-test-worker", persistence, eventBus, logger, registry)
+	tracer := noop.NewTracerProvider().Tracer("test")
+	wm := NewWorkerManager("basic-test-worker", persistence, eventBus, logger, registry, tracer)
 
 	// Create a mock workflow triggered event
 	baseEvent := events.NewBaseEvent(events.WorkflowTriggeredEvent, workflow.ID)

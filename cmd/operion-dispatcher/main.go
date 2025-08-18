@@ -3,12 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"os"
 
 	"github.com/dukex/operion/pkg/cmd"
 	"github.com/dukex/operion/pkg/log"
-	trc "github.com/dukex/operion/pkg/tracer"
+	"github.com/dukex/operion/pkg/otelhelper"
 	"github.com/google/uuid"
 	cli "github.com/urfave/cli/v3"
 )
@@ -65,17 +64,6 @@ func main() {
 		Action: func(ctx context.Context, command *cli.Command) error {
 			log.Setup(command.String("log-level"))
 
-			tracerProvider, err := trc.InitTracer(ctx, "operion-trigger")
-			if err != nil {
-				return fmt.Errorf("failed to initialize tracer: %w", err)
-			}
-			defer func() {
-				err := tracerProvider.Shutdown(ctx)
-				if err != nil {
-					slog.ErrorContext(ctx, "Failed to shutdown tracer provider", "error", err)
-				}
-			}()
-
 			dispatcherID := command.String("dispatcher-id")
 			if dispatcherID == "" {
 				dispatcherID = "dispatcher-" + uuid.New().String()[:8]
@@ -87,9 +75,9 @@ func main() {
 
 			registry := cmd.NewRegistry(ctx, logger, command.String("plugins-path"))
 
-			eventBus := cmd.NewEventBus(command.String("event-bus"), logger)
+			eventBus := cmd.NewEventBus(ctx, logger, command.String("event-bus"))
 			defer func() {
-				err := eventBus.Close()
+				err := eventBus.Close(ctx)
 				if err != nil {
 					logger.ErrorContext(ctx, "Failed to close event bus", "error", err)
 				}
@@ -103,6 +91,11 @@ func main() {
 				}
 			}()
 
+			tracer, err := otelhelper.NewTracer(ctx, "operion-dispatcher")
+			if err != nil {
+				return fmt.Errorf("failed to create tracer: %w", err)
+			}
+
 			NewDispatcherManager(
 				dispatcherID,
 				persistence,
@@ -110,6 +103,7 @@ func main() {
 				logger,
 				registry,
 				command.Int("webhook-port"),
+				tracer,
 			).Start(ctx)
 
 			return nil

@@ -316,7 +316,7 @@ func (r *WorkflowRepository) loadWorkflowTriggersAndSteps(ctx context.Context, w
 	defer func() {
 		err := rows.Close()
 		if err != nil {
-			r.logger.Error("failed to close rows", "error", err)
+			r.logger.ErrorContext(ctx, "failed to close rows", "error", err)
 		}
 	}()
 
