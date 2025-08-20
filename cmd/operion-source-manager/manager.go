@@ -132,7 +132,7 @@ func (spm *ProviderManager) startProviders(ctx context.Context) error {
 		}
 	}
 
-	spm.logger.Info("Starting source providers",
+	spm.logger.Info("Starting providers",
 		"available_count", len(availableProviders),
 		"filtered_count", len(providersToStart),
 		"filter", spm.providerFilter)
@@ -145,10 +145,12 @@ func (spm *ProviderManager) startProviders(ctx context.Context) error {
 			defer wg.Done()
 
 			if err := spm.startProvider(ctx, factory); err != nil {
-				spm.logger.Error("Failed to start source provider",
+				spm.logger.Error("Failed to start provider",
 					"provider_id", factory.ID(),
 					"error", err)
 			}
+
+			spm.logger.Info("Started provider", "provider_id", factory.ID())
 		}(factory)
 	}
 
