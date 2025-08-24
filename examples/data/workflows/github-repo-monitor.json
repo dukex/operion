@@ -3,53 +3,49 @@
   "name": "GitHub Repository Monitor",
   "description": "Monitor GitHub repository activity including new issues, pull requests, and releases",
   "status": "active",
-  "workflow_triggers": [
+  "nodes": [
     {
       "id": "github-schedule",
-      "name": "GitHub Monitor Schedule Trigger", 
-      "description": "Trigger to monitor GitHub repo every 6 hours",
-      "provider_id": "scheduler",
-      "event_type": "schedule_due",
-      "configuration": {
+      "name": "GitHub Monitor Schedule Trigger",
+      "node_type": "trigger:scheduler",
+      "category": "trigger",
+      "config": {
         "cron": "0 */6 * * *",
         "timezone": "UTC"
-      }
-    }
-  ],
-  "steps": [
+      },
+      "enabled": true,
+      "provider_id": "scheduler",
+      "event_type": "schedule_due",
+      "position_x": 50,
+      "position_y": 100
+    },
     {
       "id": "fetch-repo-info",
       "name": "Fetch Repository Info",
-      "action_id": "http_request",
-      "uid": "repodata",
-      "configuration": {
-        "protocol": "https",
-        "host": "api.github.com",
-        "path": "/repos/vars.repo_owner/vars.repo_name",
+      "config": {
+        "url": "https://api.github.com/repos/{{.variables.repo_owner}}/{{.variables.repo_name}}",
         "method": "GET",
         "timeout": 10,
         "headers": {
           "Accept": "application/vnd.github.v3+json",
           "User-Agent": "Operion-GitHubMonitor/1.0"
         },
-        "retry": {
+        "retries": {
           "attempts": 3,
-          "delay": 2
+          "delay": 2000
         }
       },
-      "on_success": "fetch-recent-issues",
-      "on_failure": "log-repo-error",
-      "enabled": true
+      "position_x": 100,
+      "position_y": 100,
+      "enabled": true,
+      "node_type": "httprequest",
+      "category": "action"
     },
     {
       "id": "fetch-recent-issues",
       "name": "Fetch Recent Issues",
-      "action_id": "http_request",
-      "uid": "issuesdata",
-      "configuration": {
-        "protocol": "https",
-        "host": "api.github.com",
-        "path": "/repos/vars.repo_owner/vars.repo_name/issues?state=all&sort=updated&per_page=5",
+      "config": {
+        "url": "https://api.github.com/repos/{{.variables.repo_owner}}/{{.variables.repo_name}}/issues?state=all&sort=updated&per_page=5",
         "method": "GET",
         "timeout": 10,
         "headers": {
@@ -57,19 +53,17 @@
           "User-Agent": "Operion-GitHubMonitor/1.0"
         }
       },
-      "on_success": "fetch-recent-releases",
-      "on_failure": "log-issues-error",
-      "enabled": true
+      "position_x": 100,
+      "position_y": 250,
+      "enabled": true,
+      "node_type": "httprequest",
+      "category": "action"
     },
     {
       "id": "fetch-recent-releases",
       "name": "Fetch Recent Releases",
-      "action_id": "http_request",
-      "uid": "releasesdata",
-      "configuration": {
-        "protocol": "https",
-        "host": "api.github.com",
-        "path": "/repos/vars.repo_owner/vars.repo_name/releases?per_page=3",
+      "config": {
+        "url": "https://api.github.com/repos/{{.variables.repo_owner}}/{{.variables.repo_name}}/releases?per_page=3",
         "method": "GET",
         "timeout": 10,
         "headers": {
@@ -77,112 +71,187 @@
           "User-Agent": "Operion-GitHubMonitor/1.0"
         }
       },
-      "on_success": "process-repo-data",
-      "on_failure": "log-releases-error",
-      "enabled": true
+      "position_x": 100,
+      "position_y": 400,
+      "enabled": true,
+      "node_type": "httprequest",
+      "category": "action"
     },
     {
       "id": "process-repo-data",
       "name": "Process Repository Data",
-      "action_id": "transform",
-      "uid": "reposummary",
-      "configuration": {
-        "expression": "{\n  \"repository\": {\n    \"name\": steps.repodata.body.full_name,\n    \"description\": steps.repodata.body.description,\n    \"stars\": steps.repodata.body.stargazers_count,\n    \"forks\": steps.repodata.body.forks_count,\n    \"open_issues\": steps.repodata.body.open_issues_count,\n    \"language\": steps.repodata.body.language,\n    \"last_push\": steps.repodata.body.pushed_at\n  },\n  \"recent_issues\": $map(steps.issuesdata.body[0..2], function($issue) {\n    {\n      \"title\": $issue.title,\n      \"state\": $issue.state,\n      \"created\": $issue.created_at,\n      \"updated\": $issue.updated_at,\n      \"author\": $issue.user.login\n    }\n  }),\n  \"latest_releases\": $map(steps.releasesdata.body[0..1], function($release) {\n    {\n      \"name\": $release.name,\n      \"tag\": $release.tag_name,\n      \"published\": $release.published_at,\n      \"author\": $release.author.login\n    }\n  }),\n  \"activity_score\": steps.repodata.body.open_issues_count + $count(steps.issuesdata.body) + $count(steps.releasesdata.body),\n  \"timestamp\": $now()\n}"
+      "config": {
+        "expression": "{{ $repo := index .node_results \"fetch-repo-info\" }}{{ $issues := index .node_results \"fetch-recent-issues\" }}{{ $releases := index .node_results \"fetch-recent-releases\" }}{\n  \"repository\": {\n    \"name\": \"{{ $repo.json.full_name }}\",\n    \"description\": \"{{ $repo.json.description }}\",\n    \"stars\": {{ $repo.json.stargazers_count }},\n    \"forks\": {{ $repo.json.forks_count }},\n    \"open_issues\": {{ $repo.json.open_issues_count }},\n    \"language\": \"{{ $repo.json.language }}\",\n    \"last_push\": \"{{ $repo.json.pushed_at }}\"\n  },\n  \"recent_issues\": [{{ range $i, $issue := slice $issues.json 0 3 }}{{ if ne $i 0 }},{{ end }}{\n    \"title\": \"{{ $issue.title }}\",\n    \"state\": \"{{ $issue.state }}\",\n    \"created\": \"{{ $issue.created_at }}\",\n    \"updated\": \"{{ $issue.updated_at }}\",\n    \"author\": \"{{ $issue.user.login }}\"\n  }{{ end }}],\n  \"latest_releases\": [{{ range $i, $release := slice $releases.json 0 2 }}{{ if ne $i 0 }},{{ end }}{\n    \"name\": \"{{ $release.name }}\",\n    \"tag\": \"{{ $release.tag_name }}\",\n    \"published\": \"{{ $release.published_at }}\",\n    \"author\": \"{{ $release.author.login }}\"\n  }{{ end }}],\n  \"activity_score\": {{ add $repo.json.open_issues_count (len $issues.json) (len $releases.json) }},\n  \"timestamp\": \"{{now}}\"\n}"
       },
-      "on_success": "log-activity",
-      "enabled": true
+      "position_x": 300,
+      "position_y": 250,
+      "enabled": true,
+      "node_type": "transform",
+      "category": "action"
     },
     {
       "id": "log-activity",
       "name": "Log Repository Activity",
-      "action_id": "log",
-      "uid": "activitylog",
-      "configuration": {
-        "message": "\"GitHub Repo \" & steps.reposummary.repository.name & \" - Stars: \" & $string(steps.reposummary.repository.stars) & \", Open Issues: \" & $string(steps.reposummary.repository.open_issues) & \", Activity Score: \" & $string(steps.reposummary.activity_score)"
+      "config": {
+        "message": "{{ $summary := index .node_results \"process-repo-data\" }}GitHub Repo {{ $summary.repository.name }} - Stars: {{ $summary.repository.stars }}, Open Issues: {{ $summary.repository.open_issues }}, Activity Score: {{ $summary.activity_score }}"
       },
-      "on_success": "check-high-activity",
-      "enabled": true
+      "position_x": 500,
+      "position_y": 250,
+      "enabled": true,
+      "node_type": "log",
+      "category": "action"
     },
     {
       "id": "check-high-activity",
       "name": "Check High Activity",
-      "action_id": "transform",
-      "uid": "activitycheck",
-      "configuration": {
-        "expression": "{\n  \"high_activity\": steps.reposummary.activity_score > vars.activity_threshold,\n  \"alert_message\": steps.reposummary.activity_score > vars.activity_threshold ? \"High activity detected in \" & steps.reposummary.repository.name : \"Normal activity level\"\n}"
+      "config": {
+        "expression": "{{ $summary := index .node_results \"process-repo-data\" }}{\n  \"high_activity\": {{ gt $summary.activity_score .variables.activity_threshold }},\n  \"alert_message\": \"{{ if gt $summary.activity_score .variables.activity_threshold }}High activity detected in {{ $summary.repository.name }}{{ else }}Normal activity level{{ end }}\"\n}"
       },
-      "on_success": "send-activity-report",
-      "enabled": true
+      "position_x": 700,
+      "position_y": 250,
+      "enabled": true,
+      "node_type": "transform",
+      "category": "action"
     },
     {
       "id": "send-activity-report",
       "name": "Send Activity Report",
-      "action_id": "http_request",
-      "uid": "reportresponse",
-      "configuration": {
-        "protocol": "https",
-        "host": "httpbin.org",
-        "path": "/post",
+      "config": {
+        "url": "https://httpbin.org/post",
         "method": "POST",
         "headers": {
           "Content-Type": "application/json"
         },
-        "body": "{\n  \"service\": \"github-monitor\",\n  \"timestamp\": steps.reposummary.timestamp,\n  \"repository\": steps.reposummary.repository,\n  \"recent_activity\": {\n    \"issues\": steps.reposummary.recent_issues,\n    \"releases\": steps.reposummary.latest_releases,\n    \"activity_score\": steps.reposummary.activity_score,\n    \"high_activity_alert\": steps.activitycheck.high_activity\n  },\n  \"alert_message\": steps.activitycheck.alert_message\n}",
+        "body": "{{ $summary := index .node_results \"process-repo-data\" }}{{ $activity := index .node_results \"check-high-activity\" }}{\n  \"service\": \"github-monitor\",\n  \"timestamp\": \"{{ $summary.timestamp }}\",\n  \"repository\": {{ $summary.repository | toJson }},\n  \"recent_activity\": {\n    \"issues\": {{ $summary.recent_issues | toJson }},\n    \"releases\": {{ $summary.latest_releases | toJson }},\n    \"activity_score\": {{ $summary.activity_score }},\n    \"high_activity_alert\": {{ $activity.high_activity }}\n  },\n  \"alert_message\": \"{{ $activity.alert_message }}\"\n}",
         "timeout": 10
       },
-      "on_success": "log-success",
-      "on_failure": "log-webhook-error",
-      "enabled": true
+      "position_x": 900,
+      "position_y": 250,
+      "enabled": true,
+      "node_type": "httprequest",
+      "category": "action"
     },
     {
       "id": "log-success",
       "name": "Log Success",
-      "action_id": "log",
-      "uid": "successlog",
-      "configuration": {
-        "message": "\"GitHub monitoring completed for \" & steps.reposummary.repository.name & \". \" & steps.activitycheck.alert_message"
+      "config": {
+        "message": "{{ $summary := index .node_results \"process-repo-data\" }}{{ $activity := index .node_results \"check-high-activity\" }}GitHub monitoring completed for {{ $summary.repository.name }}. {{ $activity.alert_message }}"
       },
-      "enabled": true
+      "position_x": 1100,
+      "position_y": 200,
+      "enabled": true,
+      "node_type": "log",
+      "category": "action"
     },
     {
       "id": "log-repo-error",
       "name": "Log Repository Error",
-      "action_id": "log",
-      "uid": "repoerrorlog",
-      "configuration": {
-        "message": "\"Failed to fetch repository data for \" & vars.repo_owner & \"/\" & vars.repo_name"
+      "config": {
+        "message": "Failed to fetch repository data for {{.variables.repo_owner}}/{{.variables.repo_name}}"
       },
-      "enabled": true
+      "position_x": 300,
+      "position_y": 100,
+      "enabled": true,
+      "node_type": "log",
+      "category": "action"
     },
     {
       "id": "log-issues-error",
       "name": "Log Issues Error",
-      "action_id": "log",
-      "uid": "issueserrorlog",
-      "configuration": {
-        "message": "\"Failed to fetch issues data for \" & vars.repo_owner & \"/\" & vars.repo_name"
+      "config": {
+        "message": "Failed to fetch issues data for {{.variables.repo_owner}}/{{.variables.repo_name}}"
       },
-      "enabled": true
+      "position_x": 300,
+      "position_y": 250,
+      "enabled": true,
+      "node_type": "log",
+      "category": "action"
     },
     {
       "id": "log-releases-error",
       "name": "Log Releases Error",
-      "action_id": "log",
-      "uid": "releaseserrorlog",
-      "configuration": {
-        "message": "\"Failed to fetch releases data for \" & vars.repo_owner & \"/\" & vars.repo_name"
+      "config": {
+        "message": "Failed to fetch releases data for {{.variables.repo_owner}}/{{.variables.repo_name}}"
       },
-      "enabled": true
+      "position_x": 300,
+      "position_y": 400,
+      "enabled": true,
+      "node_type": "log",
+      "category": "action"
     },
     {
       "id": "log-webhook-error",
       "name": "Log Webhook Error",
-      "action_id": "log",
-      "uid": "webhookerrorlog",
-      "configuration": {
-        "message": "\"Failed to send GitHub activity report\""
+      "config": {
+        "message": "Failed to send GitHub activity report"
       },
-      "enabled": true
+      "position_x": 1100,
+      "position_y": 300,
+      "enabled": true,
+      "node_type": "log",
+      "category": "action"
+    }
+  ],
+  "connections": [
+    {
+      "id": "trigger-github-schedule-to-fetch-repo-info",
+      "source_port": "github-schedule:success",
+      "target_port": "fetch-repo-info:main"
+    },
+    {
+      "id": "repo-to-issues",
+      "source_port": "fetch-repo-info:success",
+      "target_port": "fetch-recent-issues:main"
+    },
+    {
+      "id": "repo-error",
+      "source_port": "fetch-repo-info:error",
+      "target_port": "log-repo-error:main"
+    },
+    {
+      "id": "issues-to-releases",
+      "source_port": "fetch-recent-issues:success",
+      "target_port": "fetch-recent-releases:main"
+    },
+    {
+      "id": "issues-error",
+      "source_port": "fetch-recent-issues:error",
+      "target_port": "log-issues-error:main"
+    },
+    {
+      "id": "releases-to-process",
+      "source_port": "fetch-recent-releases:success",
+      "target_port": "process-repo-data:main"
+    },
+    {
+      "id": "releases-error",
+      "source_port": "fetch-recent-releases:error",
+      "target_port": "log-releases-error:main"
+    },
+    {
+      "id": "process-to-log",
+      "source_port": "process-repo-data:success",
+      "target_port": "log-activity:main"
+    },
+    {
+      "id": "log-to-check",
+      "source_port": "log-activity:success",
+      "target_port": "check-high-activity:main"
+    },
+    {
+      "id": "check-to-send",
+      "source_port": "check-high-activity:success",
+      "target_port": "send-activity-report:main"
+    },
+    {
+      "id": "send-success",
+      "source_port": "send-activity-report:success",
+      "target_port": "log-success:main"
+    },
+    {
+      "id": "send-error",
+      "source_port": "send-activity-report:error",
+      "target_port": "log-webhook-error:main"
     }
   ],
   "variables": {

@@ -2,15 +2,13 @@
   "id": "webhook-source-message-logger",
   "name": "Webhook Message Logger",
   "description": "Simple workflow that receives webhooks and logs the 'message' attribute from JSON body",
-  "workflow_triggers": [
+  "nodes": [
     {
       "id": "webhook-trigger-1",
       "name": "Webhook Source Trigger",
-      "description": "Receives webhook events through the centralized webhook source provider",
-      "source_id": "message-webhook-source",
-      "provider_id": "webhook",
-      "event_type": "webhook_received",
-      "configuration": {
+      "node_type": "trigger:webhook",
+      "category": "trigger",
+      "config": {
         "json_schema": {
           "type": "object",
           "properties": {
@@ -19,22 +17,37 @@
               "description": "The message content to be logged"
             }
           },
-          "required": ["message"],
+          "required": [
+            "message"
+          ],
           "additionalProperties": true
         }
-      }
-    }
-  ],
-  "steps": [
+      },
+      "enabled": true,
+      "source_id": "message-webhook-source",
+      "provider_id": "webhook",
+      "event_type": "webhook_received",
+      "position_x": 50,
+      "position_y": 100
+    },
     {
       "id": "log-message",
-      "action_id": "log",
-      "configuration": {
+      "name": "Log Webhook Message",
+      "config": {
         "message": "Webhook received: {{.trigger_data.body.message}}"
       },
-      "uid": "message_logger",
-      "name": "Log Webhook Message",
-      "enabled": true
+      "position_x": 100,
+      "position_y": 100,
+      "enabled": true,
+      "node_type": "log",
+      "category": "action"
+    }
+  ],
+  "connections": [
+    {
+      "id": "trigger-webhook-trigger-1-to-log-message",
+      "source_port": "webhook-trigger-1:success",
+      "target_port": "log-message:main"
     }
   ],
   "variables": {},

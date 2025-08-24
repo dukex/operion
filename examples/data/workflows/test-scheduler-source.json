@@ -2,116 +2,7 @@
   "id": "test-scheduler-source",
   "name": "Test Scheduler Source Provider",
   "description": "Test workflow for scheduler source provider with database persistence",
-  "workflow_triggers": [
-    {
-      "id": "scheduler-trigger-1",
-      "name": "Test Schedule Trigger",
-      "description": "Trigger every minute to test scheduler source provider",
-      "provider": "scheduler",
-      "configuration": {
-        "cron_expression": "*/1 * * * *"
-      }
-    }
-  ],
-  "steps": [
-    {
-      "id": "log-trigger-info",
-      "action_id": "log",
-      "configuration": {
-        "message": "Scheduler triggered at {{.trigger_data.published_at}} with cron: {{.trigger_data.cron_expression}}"
-      },
-      "uid": "triggerlog",
-      "name": "Log Trigger Information",
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
-      "on_success": "process-schedule-data",
-      "enabled": true
-    },
-    {
-      "id": "process-schedule-data",
-      "action_id": "transform",
-      "configuration": {
-        "expression": "{\n  \"execution_time\": \"{{now}}\",\n  \"cron_expression\": \"{{.trigger_data.cron_expression}}\",\n  \"due_time\": \"{{.trigger_data.due_at}}\",\n  \"published_time\": \"{{.trigger_data.published_at}}\",\n  \"execution_count\": 1,\n  \"status\": \"success\"\n}"
-      },
-      "uid": "scheduleprocessed",
-      "name": "Process Schedule Data",
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
-      "on_success": "log-processed-data",
-      "enabled": true
-    },
-    {
-      "id": "log-processed-data",
-      "action_id": "log",
-      "configuration": {
-        "message": "Schedule execution #{{.step_results.scheduleprocessed.execution_count}} completed. Next execution in ~1 minute."
-      },
-      "uid": "processedlog",
-      "name": "Log Processed Data",
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
-      "on_success": "send-test-webhook",
-      "enabled": true
-    },
-    {
-      "id": "send-test-webhook",
-      "action_id": "http_request",
-      "configuration": {
-        "body": "{\n  \"service\": \"scheduler-test\",\n  \"execution_data\": {\n    \"execution_time\": steps.scheduleprocessed.execution_time,\n    \"trigger_source\": steps.scheduleprocessed.trigger_source,\n    \"cron_expression\": steps.scheduleprocessed.cron_expression,\n    \"execution_count\": steps.scheduleprocessed.execution_count\n  },\n  \"trigger_data\": {\n    \"source_id\": trigger_data.source_id,\n    \"due_at\": trigger_data.due_at,\n    \"published_at\": trigger_data.published_at\n  }\n}",
-        "headers": {
-          "Content-Type": "application/json"
-        },
-        "host": "httpbin.org",
-        "method": "POST",
-        "path": "/post",
-        "protocol": "https",
-        "timeout": 10
-      },
-      "uid": "webhookresponse",
-      "name": "Send Test Webhook",
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
-      "on_success": "log-success",
-      "on_failure": "log-webhook-error",
-      "enabled": true
-    },
-    {
-      "id": "log-success",
-      "action_id": "log",
-      "configuration": {
-        "message": "Scheduler test workflow completed successfully. Total executions: {{.step_results.scheduleprocessed.execution_count}}"
-      },
-      "uid": "successlog",
-      "name": "Log Success",
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
-      "enabled": true
-    },
-    {
-      "id": "log-webhook-error",
-      "action_id": "log",
-      "configuration": {
-        "message": "\"Failed to send test webhook, but scheduler is working correctly\""
-      },
-      "uid": "webhookerrorlog",
-      "name": "Log Webhook Error",
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
-      "enabled": true
-    }
-  ],
+  "steps": null,
   "variables": {
     "execution_count": 0,
     "test_mode": true
@@ -129,5 +20,24 @@
   },
   "owner": "",
   "created_at": "2025-08-03T20:50:40.614206Z",
-  "updated_at": "2025-08-03T20:50:40.614651Z"
+  "updated_at": "2025-08-21T20:35:20.327683555Z",
+  "nodes": [
+    {
+      "id": "scheduler-trigger-1",
+      "name": "Test Schedule Trigger",
+      "node_type": "trigger:scheduler",
+      "category": "trigger",
+      "config": {
+        "cron_expression": "*/1 * * * *",
+        "timezone": "UTC"
+      },
+      "enabled": true,
+      "source_id": "103fccac-1c8f-4121-91e0-eb7f9325d43f",
+      "provider_id": "scheduler",
+      "event_type": "schedule_due",
+      "position_x": 50,
+      "position_y": 100
+    }
+  ],
+  "connections": []
 }
