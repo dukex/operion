@@ -276,7 +276,6 @@ func (h *APIHandlers) GetWorkflow(c fiber.Ctx) error {
 // 	return c.JSON(updatedWorkflow.Triggers)
 // }
 
-
 // // convertSchemaToMap converts a JSONSchema to a map for backward compatibility
 // func convertSchemaToMap(schema *domain.JSONSchema) map[string]any {
 // 	if schema == nil {
@@ -323,7 +322,6 @@ func (h *APIHandlers) GetWorkflow(c fiber.Ctx) error {
 
 // 	return result
 // }
-
 
 func (h *APIHandlers) HealthCheck(c fiber.Ctx) error {
 	registryCheck, regOk := h.registry.HealthCheck()

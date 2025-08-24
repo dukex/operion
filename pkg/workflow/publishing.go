@@ -51,10 +51,7 @@ func (s *PublishingService) PublishWorkflow(ctx context.Context, workflowID stri
 	}
 
 	// Update original workflow to reference the published version
-	originalWorkflow.PublishedID = publishedWorkflow.ID
-
-	originalWorkflow.UpdatedAt = time.Now()
-	if err := s.persistence.WorkflowRepository().Save(ctx, originalWorkflow); err != nil {
+	if err := s.persistence.WorkflowRepository().UpdatePublishedID(ctx, originalWorkflow.ID, publishedWorkflow.ID); err != nil {
 		// Try to rollback the published workflow if updating original fails
 		_ = s.persistence.WorkflowRepository().Delete(ctx, publishedWorkflow.ID)
 
@@ -121,12 +118,17 @@ func (s *PublishingService) UnpublishWorkflow(ctx context.Context, workflowID st
 	}
 
 	// Reset original workflow
+	if err := s.persistence.WorkflowRepository().UpdatePublishedID(ctx, workflow.ID, ""); err != nil {
+		return fmt.Errorf("failed to update workflow published ID after unpublishing: %w", err)
+	}
+
+	// Update status to draft (still need to use Save for this since we don't have a dedicated method)
 	workflow.PublishedID = ""
 	workflow.Status = models.WorkflowStatusDraft
 	workflow.UpdatedAt = time.Now()
 
 	if err := s.persistence.WorkflowRepository().Save(ctx, workflow); err != nil {
-		return fmt.Errorf("failed to update workflow after unpublishing: %w", err)
+		return fmt.Errorf("failed to update workflow status after unpublishing: %w", err)
 	}
 
 	return nil

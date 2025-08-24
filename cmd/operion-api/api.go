@@ -64,7 +64,6 @@ func (a *API) App() *fiber.App {
 	// 	// w.Patch("/:id/steps", handlers.PatchWorkflowSteps)
 	// 	// w.Patch("/:id/triggers", handlers.PatchWorkflowTriggers)
 
-
 	app.Get("/health", handlers.HealthCheck)
 
 	return app

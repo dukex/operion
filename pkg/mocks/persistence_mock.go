@@ -45,6 +45,12 @@ func (m *MockWorkflowRepository) Delete(ctx context.Context, id string) error {
 	return args.Error(0)
 }
 
+func (m *MockWorkflowRepository) UpdatePublishedID(ctx context.Context, workflowID, publishedID string) error {
+	args := m.Called(ctx, workflowID, publishedID)
+
+	return args.Error(0)
+}
+
 func (m *MockWorkflowRepository) FindTriggersBySourceEventAndProvider(ctx context.Context, sourceID, eventType, providerID string, status models.WorkflowStatus) ([]*models.TriggerNodeMatch, error) {
 	args := m.Called(ctx, sourceID, eventType, providerID, status)
 	if args.Get(0) == nil {

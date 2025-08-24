@@ -284,6 +284,7 @@ func TestRegistry_GetAvailableNodes(t *testing.T) {
 	for _, factory := range nodes {
 		nodeTypes[factory.ID()] = true
 	}
+
 	assert.True(t, nodeTypes["node-1"])
 	assert.True(t, nodeTypes["node-2"])
 }
@@ -308,6 +309,7 @@ func TestRegistry_GetAvailableProviders(t *testing.T) {
 	for _, factory := range providers {
 		providerTypes[factory.ID()] = true
 	}
+
 	assert.True(t, providerTypes["provider-1"])
 	assert.True(t, providerTypes["provider-2"])
 }

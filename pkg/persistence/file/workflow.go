@@ -114,6 +114,26 @@ func (wr *WorkflowRepository) Delete(_ context.Context, id string) error {
 	return nil
 }
 
+// UpdatePublishedID updates only the published_id field of a workflow.
+func (wr *WorkflowRepository) UpdatePublishedID(ctx context.Context, workflowID, publishedID string) error {
+	// Load the existing workflow
+	workflow, err := wr.GetByID(ctx, workflowID)
+	if err != nil {
+		return fmt.Errorf("failed to get workflow: %w", err)
+	}
+
+	if workflow == nil {
+		return fmt.Errorf("workflow not found: %s", workflowID)
+	}
+
+	// Update only the published_id and updated_at fields
+	workflow.PublishedID = publishedID
+	workflow.UpdatedAt = time.Now().UTC()
+
+	// Save the updated workflow
+	return wr.Save(ctx, workflow)
+}
+
 // FindTriggersBySourceEventAndProvider returns workflow triggers that match source ID, event type, provider ID, and workflow status.
 func (wr *WorkflowRepository) FindTriggersBySourceEventAndProvider(ctx context.Context, sourceID, eventType, providerID string, status models.WorkflowStatus) ([]*models.TriggerNodeMatch, error) {
 	// Get all workflows

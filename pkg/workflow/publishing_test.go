@@ -45,6 +45,17 @@ func (r *testWorkflowRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
+func (r *testWorkflowRepository) UpdatePublishedID(ctx context.Context, workflowID, publishedID string) error {
+	if workflow, exists := r.workflows[workflowID]; exists {
+		workflow.PublishedID = publishedID
+		workflow.UpdatedAt = time.Now()
+
+		return nil
+	}
+
+	return fmt.Errorf("workflow not found: %s", workflowID)
+}
+
 func (r *testWorkflowRepository) FindTriggersBySourceEventAndProvider(ctx context.Context, sourceID, eventType, providerID string, status models.WorkflowStatus) ([]*models.TriggerNodeMatch, error) {
 	return nil, nil
 }

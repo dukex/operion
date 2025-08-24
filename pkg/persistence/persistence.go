@@ -28,6 +28,7 @@ type WorkflowRepository interface {
 	Save(ctx context.Context, workflow *models.Workflow) error
 	GetByID(ctx context.Context, id string) (*models.Workflow, error)
 	Delete(ctx context.Context, id string) error
+	UpdatePublishedID(ctx context.Context, workflowID, publishedID string) error
 
 	// Trigger operations (deprecated - will be removed)
 	FindTriggersBySourceEventAndProvider(ctx context.Context, sourceID, eventType, providerID string, status models.WorkflowStatus) ([]*models.TriggerNodeMatch, error)

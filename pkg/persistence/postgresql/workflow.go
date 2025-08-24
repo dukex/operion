@@ -35,6 +35,9 @@ func (r *WorkflowRepository) GetAll(ctx context.Context) ([]*models.Workflow, er
 		  , status
 		  , metadata
 		  , owner
+		  , published_id
+		  , parent_id
+		  , published_at
 		  , created_at
 		  , updated_at
 		  , deleted_at
@@ -63,7 +66,7 @@ func (r *WorkflowRepository) GetAll(ctx context.Context) ([]*models.Workflow, er
 			return nil, fmt.Errorf("failed to scan workflow: %w", err)
 		}
 
-		err = r.loadWorkflowTriggersAndNodes(ctx, workflow)
+		err = r.loadWorkflowNodes(ctx, workflow)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load workflow triggers and nodes: %w", err)
 		}
@@ -89,6 +92,9 @@ func (r *WorkflowRepository) GetByID(ctx context.Context, id string) (*models.Wo
 		  , status
 		  , metadata
 		  , owner
+		  , published_id
+		  , parent_id
+		  , published_at
 		  , created_at
 		  , updated_at
 		  , deleted_at
@@ -107,7 +113,7 @@ func (r *WorkflowRepository) GetByID(ctx context.Context, id string) (*models.Wo
 		return nil, fmt.Errorf("failed to scan workflow: %w", err)
 	}
 
-	if err := r.loadWorkflowTriggersAndNodes(ctx, workflow); err != nil {
+	if err := r.loadWorkflowNodes(ctx, workflow); err != nil {
 		return nil, fmt.Errorf("failed to load workflow triggers and nodes: %w", err)
 	}
 
@@ -159,8 +165,8 @@ func (r *WorkflowRepository) Save(ctx context.Context, workflow *models.Workflow
 	// Save workflow base data
 	workflowQuery := `
 		INSERT INTO workflows (id, name, description,
-variables, status, metadata, owner, created_at, updated_at, deleted_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+variables, status, metadata, owner, published_id, parent_id, published_at, created_at, updated_at, deleted_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 		ON CONFLICT (id) DO UPDATE SET
 			name = EXCLUDED.name,
 			description = EXCLUDED.description,
@@ -168,9 +174,26 @@ variables, status, metadata, owner, created_at, updated_at, deleted_at)
 			status = EXCLUDED.status,
 			metadata = EXCLUDED.metadata,
 			owner = EXCLUDED.owner,
+			published_id = EXCLUDED.published_id,
+			parent_id = EXCLUDED.parent_id,
+			published_at = EXCLUDED.published_at,
 			updated_at = EXCLUDED.updated_at,
 			deleted_at = EXCLUDED.deleted_at
 	`
+
+	// Convert empty UUID strings to NULL for PostgreSQL compatibility
+	var publishedIDParam, parentIDParam any
+	if workflow.PublishedID == "" {
+		publishedIDParam = nil
+	} else {
+		publishedIDParam = workflow.PublishedID
+	}
+
+	if workflow.ParentID == "" {
+		parentIDParam = nil
+	} else {
+		parentIDParam = workflow.ParentID
+	}
 
 	_, err = tx.ExecContext(ctx, workflowQuery,
 		workflow.ID,
@@ -180,6 +203,9 @@ variables, status, metadata, owner, created_at, updated_at, deleted_at)
 		workflow.Status,
 		metadataJSON,
 		workflow.Owner,
+		publishedIDParam,
+		parentIDParam,
+		workflow.PublishedAt,
 		workflow.CreatedAt,
 		workflow.UpdatedAt,
 		workflow.DeletedAt,
@@ -238,7 +264,36 @@ func (r *WorkflowRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (r *WorkflowRepository) loadWorkflowTriggersAndNodes(ctx context.Context, workflow *models.Workflow) error {
+// UpdatePublishedID updates only the published_id field of a workflow.
+func (r *WorkflowRepository) UpdatePublishedID(ctx context.Context, workflowID, publishedID string) error {
+	query := `UPDATE workflows SET published_id = $1, updated_at = NOW() WHERE id = $2 AND deleted_at IS NULL`
+
+	// Convert empty UUID string to NULL for PostgreSQL compatibility
+	var publishedIDParam any
+	if publishedID == "" {
+		publishedIDParam = nil
+	} else {
+		publishedIDParam = publishedID
+	}
+
+	result, err := r.db.ExecContext(ctx, query, publishedIDParam, workflowID)
+	if err != nil {
+		return fmt.Errorf("failed to update published_id: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("workflow not found or already deleted: %s", workflowID)
+	}
+
+	return nil
+}
+
+func (r *WorkflowRepository) loadWorkflowNodes(ctx context.Context, workflow *models.Workflow) error {
 	// Triggers are now part of nodes, so we only load nodes with all trigger fields
 
 	// Load nodes with trigger fields
@@ -435,6 +490,7 @@ func (r *WorkflowRepository) scanWorkflowBase(scanner interface {
 	var (
 		workflow                    models.Workflow
 		variablesJSON, metadataJSON []byte
+		publishedID, parentID       sql.NullString
 	)
 
 	err := scanner.Scan(
@@ -445,12 +501,24 @@ func (r *WorkflowRepository) scanWorkflowBase(scanner interface {
 		&workflow.Status,
 		&metadataJSON,
 		&workflow.Owner,
+		&publishedID,
+		&parentID,
+		&workflow.PublishedAt,
 		&workflow.CreatedAt,
 		&workflow.UpdatedAt,
 		&workflow.DeletedAt,
 	)
 	if err != nil {
 		return nil, err
+	}
+
+	// Convert nullable strings to regular strings
+	if publishedID.Valid {
+		workflow.PublishedID = publishedID.String
+	}
+
+	if parentID.Valid {
+		workflow.ParentID = parentID.String
 	}
 
 	// Unmarshal JSON fields
