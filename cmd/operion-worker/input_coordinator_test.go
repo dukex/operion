@@ -13,6 +13,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	testNodeID      = "test-node"
+	testExecutionID = "test-execution"
+	testNodeExecID  = "test-node-exec-1"
+	mergeNodeID     = "merge-node"
+	nodeExec1ID     = "node-exec-1"
+)
+
 func TestInputCoordinator_AddInput_SingleInput(t *testing.T) {
 	// Setup
 	tempDir := t.TempDir()
@@ -21,9 +29,9 @@ func TestInputCoordinator_AddInput_SingleInput(t *testing.T) {
 	coordinator := NewInputCoordinator(persistence, logger)
 
 	ctx := context.Background()
-	nodeID := "test-node"
-	executionID := "test-execution"
-	nodeExecutionID := "test-node-exec-1"
+	nodeID := testNodeID
+	executionID := testExecutionID
+	nodeExecutionID := testNodeExecID
 	port := "input"
 
 	result := models.NodeResult{
@@ -61,9 +69,9 @@ func TestInputCoordinator_AddInput_MultipleInputs_WaitAll(t *testing.T) {
 	coordinator := NewInputCoordinator(persistence, logger)
 
 	ctx := context.Background()
-	nodeID := "merge-node"
-	executionID := "test-execution"
-	nodeExecutionID := "test-node-exec-1"
+	nodeID := mergeNodeID
+	executionID := testExecutionID
+	nodeExecutionID := testNodeExecID
 
 	requirements := models.InputRequirements{
 		RequiredPorts: []string{"left", "right"},
@@ -107,9 +115,9 @@ func TestInputCoordinator_AddInput_MultipleInputs_WaitAny(t *testing.T) {
 	coordinator := NewInputCoordinator(persistence, logger)
 
 	ctx := context.Background()
-	nodeID := "merge-node"
-	executionID := "test-execution"
-	nodeExecutionID := "test-node-exec-1"
+	nodeID := mergeNodeID
+	executionID := testExecutionID
+	nodeExecutionID := testNodeExecID
 
 	requirements := models.InputRequirements{
 		RequiredPorts: []string{"left", "right"},
@@ -139,9 +147,9 @@ func TestInputCoordinator_AddInput_MultipleInputs_WaitFirst(t *testing.T) {
 	coordinator := NewInputCoordinator(persistence, logger)
 
 	ctx := context.Background()
-	nodeID := "merge-node"
-	executionID := "test-execution"
-	nodeExecutionID := "test-node-exec-1"
+	nodeID := mergeNodeID
+	executionID := testExecutionID
+	nodeExecutionID := testNodeExecID
 
 	requirements := models.InputRequirements{
 		RequiredPorts: []string{"left", "right"},
@@ -183,9 +191,9 @@ func TestInputCoordinator_AddInput_WithOptionalPorts(t *testing.T) {
 	coordinator := NewInputCoordinator(persistence, logger)
 
 	ctx := context.Background()
-	nodeID := "test-node"
-	executionID := "test-execution"
-	nodeExecutionID := "test-node-exec-1"
+	nodeID := testNodeID
+	executionID := testExecutionID
+	nodeExecutionID := testNodeExecID
 
 	requirements := models.InputRequirements{
 		RequiredPorts: []string{"required"},
@@ -269,7 +277,7 @@ func TestInputCoordinator_FIFO_Loop_Handling(t *testing.T) {
 	}
 
 	// Simulate multiple node executions (loop scenario)
-	nodeExecutionID1 := "node-exec-1"
+	nodeExecutionID1 := nodeExec1ID
 	nodeExecutionID2 := "node-exec-2"
 
 	result1 := models.NodeResult{
@@ -308,8 +316,8 @@ func TestInputCoordinator_GetPendingNodeExecution(t *testing.T) {
 
 	ctx := context.Background()
 	nodeID := "pending-node"
-	executionID := "test-execution"
-	nodeExecutionID := "node-exec-1"
+	executionID := testExecutionID
+	nodeExecutionID := nodeExec1ID
 
 	requirements := models.InputRequirements{
 		RequiredPorts: []string{"left", "right"},
@@ -346,8 +354,8 @@ func TestInputCoordinator_CleanupNodeExecution(t *testing.T) {
 
 	ctx := context.Background()
 	nodeID := "cleanup-node"
-	executionID := "test-execution"
-	nodeExecutionID := "node-exec-1"
+	executionID := testExecutionID
+	nodeExecutionID := nodeExec1ID
 
 	requirements := models.InputRequirements{
 		RequiredPorts: []string{"input"},
@@ -386,8 +394,8 @@ func TestInputCoordinator_InvalidInput(t *testing.T) {
 
 	ctx := context.Background()
 	nodeID := "test-node"
-	executionID := "test-execution"
-	nodeExecutionID := "node-exec-1"
+	executionID := testExecutionID
+	nodeExecutionID := nodeExec1ID
 
 	requirements := models.InputRequirements{
 		RequiredPorts: []string{"required"},

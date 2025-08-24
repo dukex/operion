@@ -6,6 +6,8 @@ import (
 	"github.com/dukex/operion/pkg/models"
 )
 
+const switchNodeType = "switch"
+
 func TestNewSwitchNode(t *testing.T) {
 	config := map[string]any{
 		"value": "{{.variables.status}}",
@@ -30,7 +32,7 @@ func TestNewSwitchNode(t *testing.T) {
 		t.Errorf("Expected ID 'test-switch', got: %s", node.ID())
 	}
 
-	if node.Type() != "switch" {
+	if node.Type() != switchNodeType {
 		t.Errorf("Expected type 'switch', got: %s", node.Type())
 	}
 
@@ -232,6 +234,7 @@ func TestSwitchNode_Execute_TemplateError(t *testing.T) {
 		if defaultResult.Status != string(models.NodeStatusSuccess) {
 			t.Errorf("Expected success status, got: %s", defaultResult.Status)
 		}
+
 		t.Log("Template engine handled missing variable gracefully, using default output")
 	} else {
 		t.Fatal("Expected either error or default output port to be activated")

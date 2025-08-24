@@ -170,7 +170,7 @@ func TestExecutionContextRepository_GetExecutionsByWorkflow(t *testing.T) {
 	// Should get 2 executions for workflow-target
 	assert.Len(t, executions, 2)
 
-	var executionIDs []string
+	executionIDs := make([]string, 0, len(executions))
 	for _, exec := range executions {
 		executionIDs = append(executionIDs, exec.ID)
 	}
@@ -237,7 +237,7 @@ func TestExecutionContextRepository_GetExecutionsByStatus(t *testing.T) {
 	// Should get 2 running executions
 	assert.Len(t, runningExecutions, 2)
 
-	var runningIDs []string
+	runningIDs := make([]string, 0, len(runningExecutions))
 	for _, exec := range runningExecutions {
 		runningIDs = append(runningIDs, exec.ID)
 	}

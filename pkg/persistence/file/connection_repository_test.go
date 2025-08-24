@@ -55,7 +55,7 @@ func TestConnectionRepository_GetConnectionsFromPublishedWorkflow(t *testing.T) 
 	require.NoError(t, err)
 	assert.Len(t, connections, 2)
 
-	var sourcePortNames []string
+	sourcePortNames := make([]string, 0, len(connections))
 	for _, conn := range connections {
 		sourcePortNames = append(sourcePortNames, conn.SourcePort)
 	}
@@ -110,7 +110,7 @@ func TestConnectionRepository_GetConnectionsByTargetNode(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, connections, 2)
 
-	var targetPortNames []string
+	targetPortNames := make([]string, 0, len(connections))
 	for _, conn := range connections {
 		targetPortNames = append(targetPortNames, conn.TargetPort)
 	}
@@ -159,7 +159,7 @@ func TestConnectionRepository_GetAllConnectionsFromPublishedWorkflow(t *testing.
 	require.NoError(t, err)
 	assert.Len(t, connections, 2)
 
-	var connectionIDs []string
+	connectionIDs := make([]string, 0, len(connections))
 	for _, conn := range connections {
 		connectionIDs = append(connectionIDs, conn.ID)
 	}

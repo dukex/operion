@@ -221,6 +221,7 @@ func (a *Activator) publishNodeActivation(ctx context.Context, workflowID, trigg
 
 	// Save execution context before publishing the event
 	logger.InfoContext(ctx, "Saving execution context", "execution_id", executionID)
+
 	err := a.persistence.ExecutionContextRepository().SaveExecutionContext(ctx, executionCtx)
 	if err != nil {
 		logger.Error("Failed to save execution context", "error", err, "execution_id", executionID)

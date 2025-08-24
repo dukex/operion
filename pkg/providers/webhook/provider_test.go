@@ -54,7 +54,7 @@ func createWebhookTriggerNode(id, sourceID string, config map[string]any) *model
 		sourceIDPtr = &sourceID
 	}
 
-	providerID := "webhook"
+	providerID := webhookTriggerType
 	eventType := "webhook_request"
 
 	return &models.WorkflowNode{
@@ -300,7 +300,7 @@ func TestWebhookProvider_Configure(t *testing.T) {
 					}
 
 					trigger := node // rename for compatibility
-					if trigger.ProviderID != nil && *trigger.ProviderID == "webhook" && trigger.SourceID != nil && *trigger.SourceID != "" {
+					if trigger.ProviderID != nil && *trigger.ProviderID == webhookTriggerType && trigger.SourceID != nil && *trigger.SourceID != "" {
 						found := false
 
 						for _, source := range sources {

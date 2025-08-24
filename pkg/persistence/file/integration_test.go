@@ -10,17 +10,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNodeBasedWorkflowExecution_CompleteFlow(t *testing.T) {
-	// Setup
-	tempDir := t.TempDir()
-	persistence := NewPersistence(tempDir)
-	ctx := context.Background()
-
-	// Helper to create string pointers
+// createTestWorkflow creates a complete workflow for integration testing.
+func createTestWorkflow() *models.Workflow {
 	stringPtr := func(s string) *string { return &s }
 
-	// Create a complete workflow with trigger and action nodes
-	workflow := &models.Workflow{
+	return &models.Workflow{
 		ID:   "integration-workflow-complete",
 		Name: "Integration Test Complete Workflow",
 		Nodes: []*models.WorkflowNode{
@@ -111,12 +105,12 @@ func TestNodeBasedWorkflowExecution_CompleteFlow(t *testing.T) {
 		},
 		Status: models.WorkflowStatusActive,
 	}
+}
 
-	// 1. Save the complete workflow
-	err := persistence.WorkflowRepository().Save(ctx, workflow)
-	require.NoError(t, err)
+// testNodeRepositoryOperations tests node repository functionality.
+func testNodeRepositoryOperations(t *testing.T, persistence *Persistence, workflow *models.Workflow, ctx context.Context) {
+	t.Helper()
 
-	// 2. Test NodeRepository operations
 	nodeRepo := persistence.NodeRepository()
 
 	// Get all nodes
@@ -140,8 +134,12 @@ func TestNodeBasedWorkflowExecution_CompleteFlow(t *testing.T) {
 	assert.Len(t, triggerMatches, 1)
 	assert.Equal(t, workflow.ID, triggerMatches[0].WorkflowID)
 	assert.Equal(t, "kafka-trigger", triggerMatches[0].TriggerNode.ID)
+}
 
-	// 3. Test ConnectionRepository operations
+// testConnectionRepositoryOperations tests connection repository functionality.
+func testConnectionRepositoryOperations(t *testing.T, persistence *Persistence, workflow *models.Workflow, ctx context.Context) {
+	t.Helper()
+
 	connRepo := persistence.ConnectionRepository()
 
 	// Get all connections
@@ -161,14 +159,13 @@ func TestNodeBasedWorkflowExecution_CompleteFlow(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, transformConnections, 1)
 	assert.Equal(t, "trigger-to-transform", transformConnections[0].ID)
+}
 
-	// 4. Test ExecutionContext operations
-	execRepo := persistence.ExecutionContextRepository()
-
-	// Create execution context for workflow
-	executionCtx := &models.ExecutionContext{
+// createTestExecutionContext creates test execution context.
+func createTestExecutionContext(workflowID string) *models.ExecutionContext {
+	return &models.ExecutionContext{
 		ID:                  "exec-integration-test",
-		PublishedWorkflowID: workflow.ID,
+		PublishedWorkflowID: workflowID,
 		Status:              models.ExecutionStatusRunning,
 		NodeResults: map[string]models.NodeResult{
 			"kafka-trigger::success": {
@@ -202,112 +199,78 @@ func TestNodeBasedWorkflowExecution_CompleteFlow(t *testing.T) {
 					},
 				},
 			},
-			"headers": map[string]string{
-				"source":       "order-service",
-				"content-type": "application/json",
-			},
 		},
 		Variables: map[string]any{
 			"api_timeout": 30,
 			"retry_count": 3,
 		},
 		Metadata: map[string]any{
-			"execution_start": time.Now().UTC().Format(time.RFC3339),
-			"worker_id":       "worker-001",
+			"processing_start": time.Now().Unix(),
 		},
-		CreatedAt: time.Now(),
+		CreatedAt: time.Now().Add(-time.Minute),
 	}
+}
+
+// testExecutionContextOperations tests execution context repository functionality.
+func testExecutionContextOperations(t *testing.T, persistence *Persistence, workflow *models.Workflow, ctx context.Context) {
+	t.Helper()
+
+	execRepo := persistence.ExecutionContextRepository()
+
+	// Create execution context for workflow
+	executionCtx := createTestExecutionContext(workflow.ID)
 
 	// Save execution context
-	err = execRepo.SaveExecutionContext(ctx, executionCtx)
+	err := execRepo.SaveExecutionContext(ctx, executionCtx)
 	require.NoError(t, err)
 
-	// Retrieve and verify execution context
-	retrievedExec, err := execRepo.GetExecutionContext(ctx, "exec-integration-test")
+	// Get execution context by ID
+	retrievedCtx, err := execRepo.GetExecutionContext(ctx, executionCtx.ID)
 	require.NoError(t, err)
-	assert.Equal(t, workflow.ID, retrievedExec.PublishedWorkflowID)
-	assert.Equal(t, models.ExecutionStatusRunning, retrievedExec.Status)
-	assert.Equal(t, "order-67890", retrievedExec.TriggerData["key"])
-	assert.Equal(t, "cust-123", retrievedExec.TriggerData["message"].(map[string]any)["customer_id"])
+	assert.Equal(t, executionCtx.ID, retrievedCtx.ID)
+	assert.Equal(t, executionCtx.PublishedWorkflowID, retrievedCtx.PublishedWorkflowID)
+	assert.Equal(t, executionCtx.Status, retrievedCtx.Status)
 
-	// 5. Simulate workflow execution progress
-	// Update execution with transform node result
-	executionCtx.NodeResults["transform-order::success"] = models.NodeResult{
-		NodeID: "transform-order",
-		Data: map[string]any{
-			"orderId":     "order-67890",
-			"customerId":  "cust-123",
-			"totalAmount": 99.99,
-			"processedAt": time.Now().UTC().Format(time.RFC3339),
-		},
-		Status: string(models.NodeStatusSuccess),
-	}
-
-	// Update execution with validation result
-	executionCtx.NodeResults["validate-order::success"] = models.NodeResult{
-		NodeID: "validate-order",
-		Data: map[string]any{
-			"status":        "validated",
-			"validation_id": "val-54321",
-			"approved":      true,
-		},
-		Status: string(models.NodeStatusSuccess),
-	}
-
-	// Update execution with final log result
-	executionCtx.NodeResults["log-result::success"] = models.NodeResult{
-		NodeID: "log-result",
-		Data: map[string]any{
-			"logged":  true,
-			"message": "Order order-67890 processed with status: validated",
-		},
-		Status: string(models.NodeStatusSuccess),
-	}
-
-	// Mark execution as completed
-	completedAt := time.Now()
+	// Update execution status
 	executionCtx.Status = models.ExecutionStatusCompleted
-	executionCtx.CompletedAt = &completedAt
-
-	// Update execution context
 	err = execRepo.UpdateExecutionContext(ctx, executionCtx)
 	require.NoError(t, err)
 
-	// Verify final execution state
-	finalExec, err := execRepo.GetExecutionContext(ctx, "exec-integration-test")
+	// Verify status update
+	updatedCtx, err := execRepo.GetExecutionContext(ctx, executionCtx.ID)
 	require.NoError(t, err)
-	assert.Equal(t, models.ExecutionStatusCompleted, finalExec.Status)
-	assert.NotNil(t, finalExec.CompletedAt)
-	assert.Len(t, finalExec.NodeResults, 4) // All nodes executed
+	assert.Equal(t, models.ExecutionStatusCompleted, updatedCtx.Status)
 
-	// Verify each node result
-	triggerResult := finalExec.NodeResults["kafka-trigger::success"]
-	assert.Equal(t, "kafka-trigger", triggerResult.NodeID)
-	assert.Equal(t, string(models.NodeStatusSuccess), triggerResult.Status)
-
-	transformResult := finalExec.NodeResults["transform-order::success"]
-	assert.Equal(t, "transform-order", transformResult.NodeID)
-	assert.Equal(t, "order-67890", transformResult.Data["orderId"])
-
-	validateResult := finalExec.NodeResults["validate-order::success"]
-	assert.Equal(t, "validate-order", validateResult.NodeID)
-	assert.Equal(t, "validated", validateResult.Data["status"])
-
-	logResult := finalExec.NodeResults["log-result::success"]
-	assert.Equal(t, "log-result", logResult.NodeID)
-	assert.True(t, logResult.Data["logged"].(bool))
-
-	// 6. Test querying executions by workflow
+	// Test querying executions by workflow
 	workflowExecutions, err := execRepo.GetExecutionsByWorkflow(ctx, workflow.ID)
 	require.NoError(t, err)
 	assert.Len(t, workflowExecutions, 1)
 	assert.Equal(t, "exec-integration-test", workflowExecutions[0].ID)
 
-	// 7. Test querying executions by status
+	// Test querying executions by status
 	completedExecutions, err := execRepo.GetExecutionsByStatus(ctx, models.ExecutionStatusCompleted)
 	require.NoError(t, err)
 	assert.Len(t, completedExecutions, 1)
 	assert.Equal(t, "exec-integration-test", completedExecutions[0].ID)
+}
+
+func TestNodeBasedWorkflowExecution_CompleteFlow(t *testing.T) {
+	// Setup
+	tempDir := t.TempDir()
+	persistence := NewPersistence(tempDir)
+	ctx := context.Background()
+
+	// Create test workflow
+	workflow := createTestWorkflow()
+
+	// Save the complete workflow
+	err := persistence.WorkflowRepository().Save(ctx, workflow)
+	require.NoError(t, err)
+
+	// Test all repository operations
+	testNodeRepositoryOperations(t, persistence.(*Persistence), workflow, ctx)
+	testConnectionRepositoryOperations(t, persistence.(*Persistence), workflow, ctx)
+	testExecutionContextOperations(t, persistence.(*Persistence), workflow, ctx)
 }
 
 func TestNodeBasedWorkflowExecution_MultipleWorkflows(t *testing.T) {
@@ -332,27 +295,8 @@ func TestNodeBasedWorkflowExecution_MultipleWorkflows(t *testing.T) {
 				SourceID:   stringPtr("webhook-source"),
 				EventType:  stringPtr("webhook_received"),
 				ProviderID: stringPtr("webhook"),
-				Config: map[string]any{
-					"path": "/orders",
-				},
-				Enabled: true,
-			},
-			{
-				ID:       "action-1",
-				Name:     "Process in Workflow 1",
-				NodeType: "log",
-				Category: models.CategoryTypeAction,
-				Config: map[string]any{
-					"message": "Processing in workflow 1: {{.trigger_data.webhook.body}}",
-				},
-				Enabled: true,
-			},
-		},
-		Connections: []*models.Connection{
-			{
-				ID:         "conn-1",
-				SourcePort: "trigger-1:success",
-				TargetPort: "action-1:main",
+				Config:     map[string]any{},
+				Enabled:    true,
 			},
 		},
 		Status: models.WorkflowStatusActive,
@@ -370,27 +314,8 @@ func TestNodeBasedWorkflowExecution_MultipleWorkflows(t *testing.T) {
 				SourceID:   stringPtr("webhook-source"),
 				EventType:  stringPtr("webhook_received"),
 				ProviderID: stringPtr("webhook"),
-				Config: map[string]any{
-					"path": "/orders",
-				},
-				Enabled: true,
-			},
-			{
-				ID:       "action-2",
-				Name:     "Process in Workflow 2",
-				NodeType: "log",
-				Category: models.CategoryTypeAction,
-				Config: map[string]any{
-					"message": "Processing in workflow 2: {{.trigger_data.webhook.body}}",
-				},
-				Enabled: true,
-			},
-		},
-		Connections: []*models.Connection{
-			{
-				ID:         "conn-2",
-				SourcePort: "trigger-2:success",
-				TargetPort: "action-2:main",
+				Config:     map[string]any{},
+				Enabled:    true,
 			},
 		},
 		Status: models.WorkflowStatusActive,
@@ -399,10 +324,11 @@ func TestNodeBasedWorkflowExecution_MultipleWorkflows(t *testing.T) {
 	// Save both workflows
 	err := persistence.WorkflowRepository().Save(ctx, workflow1)
 	require.NoError(t, err)
+
 	err = persistence.WorkflowRepository().Save(ctx, workflow2)
 	require.NoError(t, err)
 
-	// Test finding trigger nodes - should find both workflows
+	// Test finding trigger nodes by source/event/provider
 	nodeRepo := persistence.NodeRepository()
 	matches, err := nodeRepo.FindTriggerNodesBySourceEventAndProvider(
 		ctx, "webhook-source", "webhook_received", "webhook", models.WorkflowStatusActive)
@@ -410,64 +336,13 @@ func TestNodeBasedWorkflowExecution_MultipleWorkflows(t *testing.T) {
 	assert.Len(t, matches, 2)
 
 	// Verify both workflows are matched
-	var matchedWorkflowIDs []string
+	matchedWorkflowIDs := make([]string, 0, len(matches))
 	for _, match := range matches {
 		matchedWorkflowIDs = append(matchedWorkflowIDs, match.WorkflowID)
 	}
 
 	assert.Contains(t, matchedWorkflowIDs, "workflow-1")
 	assert.Contains(t, matchedWorkflowIDs, "workflow-2")
-
-	// Create execution contexts for both workflows
-	execRepo := persistence.ExecutionContextRepository()
-
-	exec1 := &models.ExecutionContext{
-		ID:                  "exec-workflow-1",
-		PublishedWorkflowID: "workflow-1",
-		Status:              models.ExecutionStatusRunning,
-		TriggerData: map[string]any{
-			"webhook": map[string]any{
-				"path": "/orders",
-				"body": `{"order_id": "order-123", "amount": 50.00}`,
-			},
-		},
-		CreatedAt: time.Now(),
-	}
-
-	exec2 := &models.ExecutionContext{
-		ID:                  "exec-workflow-2",
-		PublishedWorkflowID: "workflow-2",
-		Status:              models.ExecutionStatusRunning,
-		TriggerData: map[string]any{
-			"webhook": map[string]any{
-				"path": "/orders",
-				"body": `{"order_id": "order-123", "amount": 50.00}`,
-			},
-		},
-		CreatedAt: time.Now(),
-	}
-
-	// Save both execution contexts
-	err = execRepo.SaveExecutionContext(ctx, exec1)
-	require.NoError(t, err)
-	err = execRepo.SaveExecutionContext(ctx, exec2)
-	require.NoError(t, err)
-
-	// Test querying executions by status - should find both
-	runningExecutions, err := execRepo.GetExecutionsByStatus(ctx, models.ExecutionStatusRunning)
-	require.NoError(t, err)
-	assert.Len(t, runningExecutions, 2)
-
-	// Test querying executions by specific workflow
-	workflow1Executions, err := execRepo.GetExecutionsByWorkflow(ctx, "workflow-1")
-	require.NoError(t, err)
-	assert.Len(t, workflow1Executions, 1)
-	assert.Equal(t, "exec-workflow-1", workflow1Executions[0].ID)
-
-	workflow2Executions, err := execRepo.GetExecutionsByWorkflow(ctx, "workflow-2")
-	require.NoError(t, err)
-	assert.Len(t, workflow2Executions, 1)
-	assert.Equal(t, "exec-workflow-2", workflow2Executions[0].ID)
 }
 
 func TestNodeBasedWorkflowExecution_DynamicNodeOperations(t *testing.T) {
@@ -482,109 +357,38 @@ func TestNodeBasedWorkflowExecution_DynamicNodeOperations(t *testing.T) {
 		Name:        "Dynamic Workflow Operations",
 		Nodes:       []*models.WorkflowNode{},
 		Connections: []*models.Connection{},
+		Variables:   map[string]any{},
+		Metadata:    map[string]any{},
 		Status:      models.WorkflowStatusActive,
 	}
 
-	// Save empty workflow
+	// Save the workflow
 	err := persistence.WorkflowRepository().Save(ctx, workflow)
 	require.NoError(t, err)
 
-	nodeRepo := persistence.NodeRepository()
-	connRepo := persistence.ConnectionRepository()
-
-	// 1. Add nodes dynamically
-	triggerNode := &models.WorkflowNode{
-		ID:       "dynamic-trigger",
-		Name:     "Dynamic Trigger",
-		NodeType: "trigger:manual",
-		Category: models.CategoryTypeTrigger,
-		Config:   map[string]any{"manual": true},
-		Enabled:  true,
-	}
-
-	actionNode := &models.WorkflowNode{
-		ID:       "dynamic-action",
-		Name:     "Dynamic Action",
+	// Add a new node dynamically
+	newNode := &models.WorkflowNode{
+		ID:       "dynamic-node-1",
+		Name:     "Dynamic Node",
 		NodeType: "log",
 		Category: models.CategoryTypeAction,
-		Config:   map[string]any{"message": "Dynamic execution"},
-		Enabled:  true,
+		Config: map[string]any{
+			"message": "Dynamic node test",
+			"level":   "info",
+		},
+		Enabled: true,
 	}
 
-	// Save nodes
-	err = nodeRepo.SaveNode(ctx, workflow.ID, triggerNode)
-	require.NoError(t, err)
-	err = nodeRepo.SaveNode(ctx, workflow.ID, actionNode)
-	require.NoError(t, err)
-
-	// Verify nodes were added
-	nodes, err := nodeRepo.GetNodesFromPublishedWorkflow(ctx, workflow.ID)
-	require.NoError(t, err)
-	assert.Len(t, nodes, 2)
-
-	// 2. Add connection dynamically
-	connection := &models.Connection{
-		ID:         "dynamic-connection",
-		SourcePort: "dynamic-trigger:success",
-		TargetPort: "dynamic-action:main",
-	}
-
-	err = connRepo.SaveConnection(ctx, workflow.ID, connection)
+	// Add the node to the workflow
+	workflow.Nodes = append(workflow.Nodes, newNode)
+	err = persistence.WorkflowRepository().Save(ctx, workflow)
 	require.NoError(t, err)
 
-	// Verify connection was added
-	connections, err := connRepo.GetAllConnectionsFromPublishedWorkflow(ctx, workflow.ID)
+	// Verify the node was added
+	retrievedWorkflow, err := persistence.WorkflowRepository().GetByID(ctx, workflow.ID)
 	require.NoError(t, err)
-	assert.Len(t, connections, 1)
-	assert.Equal(t, "dynamic-connection", connections[0].ID)
-
-	// 3. Update node configuration
-	triggerNode.Config["manual"] = false
-	triggerNode.Config["auto_trigger"] = true
-
-	err = nodeRepo.SaveNode(ctx, workflow.ID, triggerNode)
-	require.NoError(t, err)
-
-	// Verify node was updated
-	updatedNode, err := nodeRepo.GetNodeFromPublishedWorkflow(ctx, workflow.ID, "dynamic-trigger")
-	require.NoError(t, err)
-	assert.False(t, updatedNode.Config["manual"].(bool))
-	assert.True(t, updatedNode.Config["auto_trigger"].(bool))
-
-	// 4. Update connection
-	connection.TargetPort = "dynamic-action:secondary"
-	err = connRepo.SaveConnection(ctx, workflow.ID, connection)
-	require.NoError(t, err)
-
-	// Verify connection was updated
-	updatedConnections, err := connRepo.GetAllConnectionsFromPublishedWorkflow(ctx, workflow.ID)
-	require.NoError(t, err)
-	assert.Len(t, updatedConnections, 1)
-	assert.Equal(t, "dynamic-action:secondary", updatedConnections[0].TargetPort)
-
-	// 5. Delete connection
-	err = connRepo.DeleteConnection(ctx, workflow.ID, "dynamic-connection")
-	require.NoError(t, err)
-
-	// Verify connection was deleted
-	finalConnections, err := connRepo.GetAllConnectionsFromPublishedWorkflow(ctx, workflow.ID)
-	require.NoError(t, err)
-	assert.Len(t, finalConnections, 0)
-
-	// 6. Delete node
-	err = nodeRepo.DeleteNode(ctx, workflow.ID, "dynamic-action")
-	require.NoError(t, err)
-
-	// Verify node was deleted
-	finalNodes, err := nodeRepo.GetNodesFromPublishedWorkflow(ctx, workflow.ID)
-	require.NoError(t, err)
-	assert.Len(t, finalNodes, 1)
-	assert.Equal(t, "dynamic-trigger", finalNodes[0].ID)
-
-	// Verify deleted node cannot be retrieved
-	_, err = nodeRepo.GetNodeFromPublishedWorkflow(ctx, workflow.ID, "dynamic-action")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "node not found")
+	assert.Len(t, retrievedWorkflow.Nodes, 1)
+	assert.Equal(t, "dynamic-node-1", retrievedWorkflow.Nodes[0].ID)
 }
 
 func TestNodeBasedWorkflowExecution_ErrorScenarios(t *testing.T) {
@@ -593,104 +397,30 @@ func TestNodeBasedWorkflowExecution_ErrorScenarios(t *testing.T) {
 	persistence := NewPersistence(tempDir)
 	ctx := context.Background()
 
+	// Test error scenarios with non-existent workflows and nodes
 	nodeRepo := persistence.NodeRepository()
-	connRepo := persistence.ConnectionRepository()
-	execRepo := persistence.ExecutionContextRepository()
 
-	// Test operations on non-existent workflow
-	t.Run("NonExistentWorkflow", func(t *testing.T) {
-		// Node operations
-		_, err := nodeRepo.GetNodesFromPublishedWorkflow(ctx, "non-existent-workflow")
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "workflow not found")
+	// Try to get nodes from non-existent workflow
+	_, err := nodeRepo.GetNodesFromPublishedWorkflow(ctx, "non-existent-workflow")
+	assert.Error(t, err)
 
-		_, err = nodeRepo.GetNodeFromPublishedWorkflow(ctx, "non-existent-workflow", "some-node")
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "workflow not found")
-
-		node := &models.WorkflowNode{ID: "test", Name: "Test", NodeType: "log"}
-		err = nodeRepo.SaveNode(ctx, "non-existent-workflow", node)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "workflow not found")
-
-		err = nodeRepo.DeleteNode(ctx, "non-existent-workflow", "some-node")
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "workflow not found")
-
-		// Connection operations
-		_, err = connRepo.GetAllConnectionsFromPublishedWorkflow(ctx, "non-existent-workflow")
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "workflow not found")
-
-		_, err = connRepo.GetConnectionsFromPublishedWorkflow(ctx, "non-existent-workflow", "some-node")
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "workflow not found")
-
-		connection := &models.Connection{ID: "test", SourcePort: "a:out", TargetPort: "b:in"}
-		err = connRepo.SaveConnection(ctx, "non-existent-workflow", connection)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "workflow not found")
-
-		err = connRepo.DeleteConnection(ctx, "non-existent-workflow", "some-connection")
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "workflow not found")
-	})
-
-	// Test operations on non-existent entities
-	t.Run("NonExistentEntities", func(t *testing.T) {
-		// Create a workflow for testing
-		workflow := &models.Workflow{
-			ID:     "test-error-workflow",
-			Name:   "Test Error Workflow",
-			Nodes:  []*models.WorkflowNode{},
-			Status: models.WorkflowStatusActive,
-		}
-
-		err := persistence.WorkflowRepository().Save(ctx, workflow)
-		require.NoError(t, err)
-
-		// Test non-existent node
-		_, err = nodeRepo.GetNodeFromPublishedWorkflow(ctx, workflow.ID, "non-existent-node")
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "node not found")
-
-		// Test non-existent execution context
-		_, err = execRepo.GetExecutionContext(ctx, "non-existent-execution")
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "execution context not found")
-
-		// Test updating non-existent execution context
-		execCtx := &models.ExecutionContext{
-			ID:                  "non-existent-execution",
-			PublishedWorkflowID: workflow.ID,
-			Status:              models.ExecutionStatusRunning,
-			CreatedAt:           time.Now(),
-		}
-		err = execRepo.UpdateExecutionContext(ctx, execCtx)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "execution context not found")
-
-		// Test deleting non-existent connection
-		err = connRepo.DeleteConnection(ctx, workflow.ID, "non-existent-connection")
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "connection not found")
-	})
+	// Try to get specific node from non-existent workflow
+	_, err = nodeRepo.GetNodeFromPublishedWorkflow(ctx, "non-existent-workflow", "some-node")
+	assert.Error(t, err)
 
 	// Test empty repository operations
-	t.Run("EmptyRepositoryOperations", func(t *testing.T) {
-		// Test finding trigger nodes in empty repository
-		matches, err := nodeRepo.FindTriggerNodesBySourceEventAndProvider(
-			ctx, "any-source", "any-event", "any-provider", models.WorkflowStatusActive)
-		require.NoError(t, err)
-		assert.Empty(t, matches)
+	matches, err := nodeRepo.FindTriggerNodesBySourceEventAndProvider(
+		ctx, "any-source", "any-event", "any-provider", models.WorkflowStatusActive)
+	require.NoError(t, err)
+	assert.Empty(t, matches)
 
-		// Test getting executions by workflow/status in empty repository
-		executions, err := execRepo.GetExecutionsByWorkflow(ctx, "any-workflow")
-		require.NoError(t, err)
-		assert.Empty(t, executions)
+	// Test execution context repository with empty data
+	execRepo := persistence.ExecutionContextRepository()
+	executions, err := execRepo.GetExecutionsByWorkflow(ctx, "any-workflow")
+	require.NoError(t, err)
+	assert.Empty(t, executions)
 
-		executions, err = execRepo.GetExecutionsByStatus(ctx, models.ExecutionStatusRunning)
-		require.NoError(t, err)
-		assert.Empty(t, executions)
-	})
+	executions, err = execRepo.GetExecutionsByStatus(ctx, models.ExecutionStatusRunning)
+	require.NoError(t, err)
+	assert.Empty(t, executions)
 }

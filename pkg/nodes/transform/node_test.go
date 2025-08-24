@@ -6,6 +6,39 @@ import (
 	"github.com/dukex/operion/pkg/models"
 )
 
+const transformNodeType = "transform"
+
+// validateErrorResult validates error result properties.
+func validateErrorResult(t *testing.T, errorResult models.NodeResult) {
+	t.Helper()
+
+	if errorResult.Status != string(models.NodeStatusError) {
+		t.Errorf("Expected error status, got: %s", errorResult.Status)
+	}
+
+	errorMsg, ok := errorResult.Data["error"].(string)
+	if !ok {
+		t.Error("Expected error message to be a string")
+
+		return
+	}
+
+	if errorMsg == "" {
+		t.Error("Expected non-empty error message")
+	}
+}
+
+// validateSuccessResult validates success result properties.
+func validateSuccessResult(t *testing.T, successResult models.NodeResult) {
+	t.Helper()
+
+	if successResult.Status != string(models.NodeStatusSuccess) {
+		t.Errorf("Expected success status, got: %s", successResult.Status)
+	}
+
+	t.Log("Template engine handled missing variable gracefully")
+}
+
 func TestNewTransformNode(t *testing.T) {
 	config := map[string]any{
 		"expression": "{{.variables.input}} | upper",
@@ -20,7 +53,7 @@ func TestNewTransformNode(t *testing.T) {
 		t.Errorf("Expected ID 'test-transform', got: %s", node.ID())
 	}
 
-	if node.Type() != "transform" {
+	if node.Type() != transformNodeType {
 		t.Errorf("Expected type 'transform', got: %s", node.Type())
 	}
 
@@ -119,27 +152,15 @@ func TestTransformNode_Execute_TemplateError(t *testing.T) {
 
 	// The template engine might not fail on missing variables,
 	// so we check if we get either a success or error result
-	if errorResult, ok := results[OutputPortError]; ok {
-		// If we get an error result, verify it's correct
-		if errorResult.Status != string(models.NodeStatusError) {
-			t.Errorf("Expected error status, got: %s", errorResult.Status)
-		}
+	errorResult, hasError := results[OutputPortError]
+	successResult, hasSuccess := results[OutputPortSuccess]
 
-		// Verify error contains transformation failure message
-		if errorMsg, ok := errorResult.Data["error"].(string); ok {
-			if errorMsg == "" {
-				t.Error("Expected non-empty error message")
-			}
-		} else {
-			t.Error("Expected error message to be a string")
-		}
-	} else if successResult, ok := results[OutputPortSuccess]; ok {
-		// If we get a success result, the template engine handled missing variables gracefully
-		if successResult.Status != string(models.NodeStatusSuccess) {
-			t.Errorf("Expected success status, got: %s", successResult.Status)
-		}
-		t.Log("Template engine handled missing variable gracefully")
-	} else {
+	switch {
+	case hasError:
+		validateErrorResult(t, errorResult)
+	case hasSuccess:
+		validateSuccessResult(t, successResult)
+	default:
 		t.Fatal("Expected either success or error output port to be activated")
 	}
 }

@@ -367,7 +367,7 @@ func TestNodeRepository_FindTriggerNodesBySourceEventAndProvider(t *testing.T) {
 	assert.Len(t, matches, 2)
 
 	// Check that we got the right matches
-	var matchedWorkflowIDs []string
+	matchedWorkflowIDs := make([]string, 0, len(matches))
 	for _, match := range matches {
 		matchedWorkflowIDs = append(matchedWorkflowIDs, match.WorkflowID)
 	}
