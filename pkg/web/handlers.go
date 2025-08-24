@@ -3,7 +3,6 @@ package web
 
 import (
 	"net/http"
-	"sort"
 	"time"
 
 	"github.com/dukex/operion/pkg/registry"
@@ -277,21 +276,6 @@ func (h *APIHandlers) GetWorkflow(c fiber.Ctx) error {
 // 	return c.JSON(updatedWorkflow.Triggers)
 // }
 
-type ActionResponse struct {
-	ID          string         `json:"id"`
-	Type        string         `json:"type"`
-	Name        string         `json:"name"`
-	Description string         `json:"description"`
-	Schema      map[string]any `json:"schema"`
-}
-
-type TriggerResponse struct {
-	ID          string         `json:"id"`
-	Type        string         `json:"type"`
-	Name        string         `json:"name"`
-	Description string         `json:"description"`
-	Schema      map[string]any `json:"schema"`
-}
 
 // // convertSchemaToMap converts a JSONSchema to a map for backward compatibility
 // func convertSchemaToMap(schema *domain.JSONSchema) map[string]any {
@@ -340,48 +324,6 @@ type TriggerResponse struct {
 // 	return result
 // }
 
-func (h *APIHandlers) GetAvailableActions(c fiber.Ctx) error {
-	components := h.registry.GetAvailableActions()
-
-	actions := make([]ActionResponse, len(components))
-	for i, component := range components {
-		actions[i] = ActionResponse{
-			ID:          component.ID(),
-			Type:        "action",
-			Name:        component.Name(),
-			Description: component.Description(),
-			Schema:      component.Schema(),
-		}
-	}
-
-	sort.Slice(actions, func(i, j int) bool {
-		return actions[i].ID < actions[j].ID
-	})
-
-	return c.JSON(actions)
-}
-
-func (h *APIHandlers) GetAvailableTriggers(c fiber.Ctx) error {
-	components := h.registry.GetAvailableTriggers()
-
-	// Convert to the expected format for backward compatibility
-	triggers := make([]TriggerResponse, len(components))
-	for i, component := range components {
-		triggers[i] = TriggerResponse{
-			ID:          component.ID(),
-			Type:        "trigger",
-			Name:        component.Name(),
-			Description: component.Description(),
-			Schema:      component.Schema(),
-		}
-	}
-
-	sort.Slice(triggers, func(i, j int) bool {
-		return triggers[i].ID < triggers[j].ID
-	})
-
-	return c.JSON(triggers)
-}
 
 func (h *APIHandlers) HealthCheck(c fiber.Ctx) error {
 	registryCheck, regOk := h.registry.HealthCheck()

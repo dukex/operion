@@ -12,110 +12,141 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Mock action for testing.
-type mockAction struct {
+// Mock node for testing.
+type mockNode struct {
 	id     string
 	config map[string]any
 }
 
-func (m *mockAction) Execute(ctx context.Context, execCtx models.ExecutionContext, logger *slog.Logger) (any, error) {
-	return map[string]any{
-		"id":     m.id,
-		"config": m.config,
-		"result": "mock execution completed",
+func (m *mockNode) ID() string {
+	return m.id
+}
+
+func (m *mockNode) Type() string {
+	return "mock-node"
+}
+
+func (m *mockNode) Execute(ctx models.ExecutionContext, inputs map[string]models.NodeResult) (map[string]models.NodeResult, error) {
+	return map[string]models.NodeResult{
+		"output": {
+			NodeID: m.id,
+			Data: map[string]any{
+				"config": m.config,
+				"inputs": inputs,
+				"result": "mock execution completed",
+			},
+			Status: "success",
+		},
 	}, nil
 }
 
-func (m *mockAction) Validate(_ context.Context) error {
+func (m *mockNode) GetInputPorts() []models.InputPort {
+	return []models.InputPort{{
+		Port: models.Port{
+			ID:     m.id + ":input",
+			NodeID: m.id,
+			Name:   "input",
+		},
+	}}
+}
+
+func (m *mockNode) GetOutputPorts() []models.OutputPort {
+	return []models.OutputPort{{
+		Port: models.Port{
+			ID:     m.id + ":output",
+			NodeID: m.id,
+			Name:   "output",
+		},
+	}}
+}
+
+func (m *mockNode) Validate(config map[string]any) error {
 	return nil
 }
 
-// Mock action factory for testing.
-type mockActionFactory struct {
-	actionType string
+// Mock node factory for testing.
+type mockNodeFactory struct {
+	nodeType string
 }
 
-func (f *mockActionFactory) ID() string {
-	return f.actionType
+func (f *mockNodeFactory) ID() string {
+	return f.nodeType
 }
 
-func (f *mockActionFactory) Name() string {
-	return "Mock Action"
+func (f *mockNodeFactory) Name() string {
+	return "Mock Node"
 }
 
-func (f *mockActionFactory) Description() string {
-	return "This is a mock action for testing purposes."
+func (f *mockNodeFactory) Description() string {
+	return "This is a mock node for testing purposes."
 }
 
-func (f *mockActionFactory) Create(_ context.Context, config map[string]any) (protocol.Action, error) {
-	return &mockAction{
-		id:     f.actionType,
+func (f *mockNodeFactory) Create(_ context.Context, nodeID string, config map[string]any) (models.Node, error) {
+	return &mockNode{
+		id:     nodeID,
 		config: config,
 	}, nil
 }
 
-func (f *mockActionFactory) Schema() map[string]any {
+func (f *mockNodeFactory) Schema() map[string]any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
 			"test_field": map[string]any{
 				"type":        "string",
-				"description": "Test field for mock action",
+				"description": "Test field for mock node",
 			},
 		},
 	}
 }
 
-// Mock trigger for testing.
-type mockTrigger struct {
-	id       string
-	config   map[string]any
-	callback protocol.TriggerCallback
-	logger   *slog.Logger
+// Mock provider for testing.
+type mockProvider struct {
+	id     string
+	config map[string]any
 }
 
-func (m *mockTrigger) Start(ctx context.Context, callback protocol.TriggerCallback) error {
-	m.callback = callback
+func (p *mockProvider) ID() string {
+	return p.id
+}
 
+func (p *mockProvider) Start(ctx context.Context, callback protocol.SourceEventCallback) error {
 	return nil
 }
 
-func (m *mockTrigger) Stop(ctx context.Context) error {
+func (p *mockProvider) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (m *mockTrigger) Validate(_ context.Context) error {
+func (p *mockProvider) Validate() error {
 	return nil
 }
 
-func (m *mockTrigger) TriggerWorkflow(ctx context.Context) error {
-	if m.callback != nil {
-		return m.callback(ctx, map[string]any{
-			"triggered_by": m.id,
-		})
-	}
-
-	return nil
+// Mock provider factory for testing.
+type mockProviderFactory struct {
+	providerType string
 }
 
-// Mock trigger factory for testing.
-type mockTriggerFactory struct {
-	triggerType string
+func (f *mockProviderFactory) ID() string {
+	return f.providerType
 }
 
-func (f *mockTriggerFactory) ID() string {
-	return f.triggerType
+func (f *mockProviderFactory) Name() string {
+	return "Mock Provider"
 }
 
-func (f *mockTriggerFactory) Name() string {
-	return "Mock Trigger"
+func (f *mockProviderFactory) Description() string {
+	return "Mock provider for testing"
 }
 
-func (f *mockTriggerFactory) Description() string {
-	return "Mock trigger for testing"
+func (f *mockProviderFactory) Create(config map[string]any, logger *slog.Logger) (protocol.Provider, error) {
+	return &mockProvider{
+		id:     f.providerType,
+		config: config,
+	}, nil
 }
 
-func (f *mockTriggerFactory) Schema() map[string]any {
+func (f *mockProviderFactory) Schema() map[string]any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -126,16 +157,8 @@ func (f *mockTriggerFactory) Schema() map[string]any {
 	}
 }
 
-func (f *mockTriggerFactory) Create(
-	_ context.Context,
-	config map[string]any,
-	logger *slog.Logger,
-) (protocol.Trigger, error) {
-	return &mockTrigger{
-		id:     f.triggerType,
-		config: config,
-		logger: logger,
-	}, nil
+func (f *mockProviderFactory) EventTypes() []string {
+	return []string{"mock_event"}
 }
 
 func TestNewRegistry(t *testing.T) {
@@ -144,185 +167,184 @@ func TestNewRegistry(t *testing.T) {
 
 	assert.NotNil(t, registry)
 	assert.Equal(t, logger, registry.logger)
-	assert.NotNil(t, registry.actionFactories)
-	assert.NotNil(t, registry.triggerFactories)
-	assert.Empty(t, registry.actionFactories)
-	assert.Empty(t, registry.triggerFactories)
+	assert.NotNil(t, registry.sourceProviderFactories)
+	assert.NotNil(t, registry.nodeFactories)
+	assert.Empty(t, registry.sourceProviderFactories)
+	assert.Empty(t, registry.nodeFactories)
 }
 
-func TestRegistry_RegisterAndCreateAction(t *testing.T) {
+func TestRegistry_RegisterAndCreateNode(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	registry := NewRegistry(logger)
 
-	// Register mock action factory
-	actionFactory := &mockActionFactory{actionType: "test-action"}
-	registry.RegisterAction(actionFactory)
+	// Register mock node factory
+	nodeFactory := &mockNodeFactory{nodeType: "test-node"}
+	registry.RegisterNode(nodeFactory)
 
 	// Verify registration
-	assert.Len(t, registry.actionFactories, 1)
-	assert.Contains(t, registry.actionFactories, "test-action")
+	assert.Len(t, registry.nodeFactories, 1)
+	assert.Contains(t, registry.nodeFactories, "test-node")
 
-	// Create action instance
+	// Create node instance
 	config := map[string]any{
 		"param1": "value1",
 		"param2": 42,
 	}
 
-	action, err := registry.CreateAction(t.Context(), "test-action", config)
+	node, err := registry.CreateNode(context.Background(), "test-node", "node-123", config)
 	require.NoError(t, err)
-	assert.NotNil(t, action)
+	assert.NotNil(t, node)
 
-	// Verify action can be executed
-	execCtx := models.ExecutionContext{
-		NodeResults: make(map[string]models.NodeResult),
-	}
-
-	result, err := action.Execute(t.Context(), execCtx, logger)
+	// Verify node can be executed
+	execContext := models.ExecutionContext{ID: "exec-123"}
+	inputs := map[string]models.NodeResult{}
+	result, err := node.Execute(execContext, inputs)
 	require.NoError(t, err)
 
-	resultMap := result.(map[string]any)
-	assert.Equal(t, "test-action", resultMap["id"])
-	assert.Equal(t, config, resultMap["config"])
-	assert.Equal(t, "mock execution completed", resultMap["result"])
+	assert.Contains(t, result, "output")
+	output := result["output"]
+	assert.Equal(t, "node-123", output.NodeID)
+	assert.Equal(t, "success", output.Status)
+	assert.Equal(t, config, output.Data["config"])
+	assert.Equal(t, inputs, output.Data["inputs"])
+	assert.Equal(t, "mock execution completed", output.Data["result"])
 }
 
-func TestRegistry_RegisterAndCreateTrigger(t *testing.T) {
+func TestRegistry_RegisterAndCreateProvider(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	registry := NewRegistry(logger)
 
-	// Register mock trigger factory
-	triggerFactory := &mockTriggerFactory{triggerType: "test-trigger"}
-	registry.RegisterTrigger(triggerFactory)
+	// Register mock provider factory
+	providerFactory := &mockProviderFactory{providerType: "test-provider"}
+	registry.RegisterProvider(providerFactory)
 
 	// Verify registration
-	assert.Len(t, registry.triggerFactories, 1)
-	assert.Contains(t, registry.triggerFactories, "test-trigger")
+	assert.Len(t, registry.sourceProviderFactories, 1)
+	assert.Contains(t, registry.sourceProviderFactories, "test-provider")
 
-	// Create trigger instance
+	// Create provider instance
 	config := map[string]any{
-		"schedule": "* * * * *",
-		"enabled":  true,
+		"setting1": "value1",
+		"setting2": true,
 	}
 
-	trigger, err := registry.CreateTrigger(t.Context(), "test-trigger", config)
+	provider, err := registry.CreateProvider(context.Background(), "test-provider", config)
 	require.NoError(t, err)
-	assert.NotNil(t, trigger)
+	assert.NotNil(t, provider)
 
-	// Verify trigger can be started and stopped
-	callback := func(ctx context.Context, data map[string]any) error {
-		return nil
-	}
-
-	err = trigger.Start(t.Context(), callback)
+	// Verify provider can be started and stopped
+	err = provider.Start(context.Background(), nil)
 	assert.NoError(t, err)
 
-	err = trigger.Stop(t.Context())
+	err = provider.Stop(context.Background())
 	assert.NoError(t, err)
 }
 
-func TestRegistry_CreateAction_NotRegistered(t *testing.T) {
+func TestRegistry_CreateNode_NotRegistered(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	registry := NewRegistry(logger)
 
-	// Try to create action that's not registered
-	action, err := registry.CreateAction(t.Context(), "non-existent-action", map[string]any{})
+	// Try to create node that's not registered
+	node, err := registry.CreateNode(context.Background(), "non-existent-node", "node-123", map[string]any{})
 
 	assert.Error(t, err)
-	assert.Nil(t, action)
+	assert.Nil(t, node)
 	assert.Contains(t, err.Error(), "not registered")
 }
 
-func TestRegistry_CreateTrigger_NotRegistered(t *testing.T) {
+func TestRegistry_CreateProvider_NotRegistered(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	registry := NewRegistry(logger)
 
-	// Try to create trigger that's not registered
-	trigger, err := registry.CreateTrigger(t.Context(), "non-existent-trigger", map[string]any{})
+	// Try to create provider that's not registered
+	provider, err := registry.CreateProvider(context.Background(), "non-existent-provider", map[string]any{})
 
 	assert.Error(t, err)
-	assert.Nil(t, trigger)
+	assert.Nil(t, provider)
 	assert.Contains(t, err.Error(), "not registered")
 }
 
-func TestRegistry_MultipleActionsAndTriggers(t *testing.T) {
+func TestRegistry_GetAvailableNodes(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	registry := NewRegistry(logger)
 
-	// Register multiple actions
-	actionFactory1 := &mockActionFactory{actionType: "action-1"}
-	actionFactory2 := &mockActionFactory{actionType: "action-2"}
+	// Register multiple nodes
+	nodeFactory1 := &mockNodeFactory{nodeType: "node-1"}
+	nodeFactory2 := &mockNodeFactory{nodeType: "node-2"}
 
-	registry.RegisterAction(actionFactory1)
-	registry.RegisterAction(actionFactory2)
+	registry.RegisterNode(nodeFactory1)
+	registry.RegisterNode(nodeFactory2)
 
-	// Register multiple triggers
-	triggerFactory1 := &mockTriggerFactory{triggerType: "trigger-1"}
-	triggerFactory2 := &mockTriggerFactory{triggerType: "trigger-2"}
+	// Get available nodes
+	nodes := registry.GetAvailableNodes()
+	assert.Len(t, nodes, 2)
 
-	registry.RegisterTrigger(triggerFactory1)
-	registry.RegisterTrigger(triggerFactory2)
-
-	// Verify all are registered
-	assert.Len(t, registry.actionFactories, 2)
-	assert.Len(t, registry.triggerFactories, 2)
-
-	// Create instances of each
-	action1, err := registry.CreateAction(t.Context(), "action-1", map[string]any{})
-	require.NoError(t, err)
-	assert.NotNil(t, action1)
-
-	action2, err := registry.CreateAction(t.Context(), "action-2", map[string]any{})
-	require.NoError(t, err)
-	assert.NotNil(t, action2)
-
-	trigger1, err := registry.CreateTrigger(t.Context(), "trigger-1", map[string]any{})
-	require.NoError(t, err)
-	assert.NotNil(t, trigger1)
-
-	trigger2, err := registry.CreateTrigger(t.Context(), "trigger-2", map[string]any{})
-	require.NoError(t, err)
-	assert.NotNil(t, trigger2)
+	// Check that both factories are present
+	nodeTypes := make(map[string]bool)
+	for _, factory := range nodes {
+		nodeTypes[factory.ID()] = true
+	}
+	assert.True(t, nodeTypes["node-1"])
+	assert.True(t, nodeTypes["node-2"])
 }
 
-func TestRegistry_OverwriteRegistration(t *testing.T) {
+func TestRegistry_GetAvailableProviders(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	registry := NewRegistry(logger)
 
-	// Register action factory
-	actionFactory1 := &mockActionFactory{actionType: "same-action"}
-	registry.RegisterAction(actionFactory1)
+	// Register multiple providers
+	providerFactory1 := &mockProviderFactory{providerType: "provider-1"}
+	providerFactory2 := &mockProviderFactory{providerType: "provider-2"}
 
-	// Register different factory with same type (should overwrite)
-	actionFactory2 := &mockActionFactory{actionType: "same-action"}
-	registry.RegisterAction(actionFactory2)
+	registry.RegisterProvider(providerFactory1)
+	registry.RegisterProvider(providerFactory2)
 
-	// Should still have only one entry
-	assert.Len(t, registry.actionFactories, 1)
+	// Get available providers
+	providers := registry.GetAvailableProviders()
+	assert.Len(t, providers, 2)
 
-	// The second factory should be used
-	action, err := registry.CreateAction(t.Context(), "same-action", map[string]any{})
-	require.NoError(t, err)
-	assert.NotNil(t, action)
+	// Check that both factories are present
+	providerTypes := make(map[string]bool)
+	for _, factory := range providers {
+		providerTypes[factory.ID()] = true
+	}
+	assert.True(t, providerTypes["provider-1"])
+	assert.True(t, providerTypes["provider-2"])
 }
 
-func TestRegistry_LoadActionPlugins_NonExistentPath(t *testing.T) {
+func TestRegistry_HealthCheck(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	registry := NewRegistry(logger)
+
+	// Empty registry should fail health check
+	message, ok := registry.HealthCheck()
+	assert.False(t, ok)
+	assert.Equal(t, "No plugins loaded", message)
+
+	// Registry with nodes should pass health check
+	nodeFactory := &mockNodeFactory{nodeType: "test-node"}
+	registry.RegisterNode(nodeFactory)
+
+	message, ok = registry.HealthCheck()
+	assert.True(t, ok)
+	assert.Equal(t, "Plugins loaded successfully", message)
+
+	// Registry with providers should pass health check
+	registry2 := NewRegistry(logger)
+	providerFactory := &mockProviderFactory{providerType: "test-provider"}
+	registry2.RegisterProvider(providerFactory)
+
+	message, ok = registry2.HealthCheck()
+	assert.True(t, ok)
+	assert.Equal(t, "Plugins loaded successfully", message)
+}
+
+func TestRegistry_LoadProviderPlugins_NonExistentPath(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	registry := NewRegistry(logger)
 
 	// Try to load plugins from non-existent path
-	factories, err := registry.LoadActionPlugins(t.Context(), "/non/existent/path")
-
-	// Should not fail, but return empty slice
-	assert.NoError(t, err)
-	assert.Empty(t, factories)
-}
-
-func TestRegistry_LoadTriggerPlugins_NonExistentPath(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	registry := NewRegistry(logger)
-
-	// Try to load plugins from non-existent path
-	factories, err := registry.LoadTriggerPlugins(t.Context(), "/non/existent/path")
+	factories, err := registry.LoadProviderPlugins(context.Background(), "/non/existent/path")
 
 	// Should not fail, but return empty slice
 	assert.NoError(t, err)
@@ -337,76 +359,7 @@ func TestRegistry_LoadPlugins_EmptyDirectory(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Try to load plugins from empty directory
-	actionFactories, err := registry.LoadActionPlugins(t.Context(), tmpDir)
+	providerFactories, err := registry.LoadProviderPlugins(context.Background(), tmpDir)
 	assert.NoError(t, err)
-	assert.Empty(t, actionFactories)
-
-	triggerFactories, err := registry.LoadTriggerPlugins(t.Context(), tmpDir)
-	assert.NoError(t, err)
-	assert.Empty(t, triggerFactories)
-}
-
-func TestMockAction_Execute(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-
-	action := &mockAction{
-		id: "test-mock",
-		config: map[string]any{
-			"test": "value",
-		},
-	}
-
-	execCtx := models.ExecutionContext{
-		ID:                  "exec-123",
-		PublishedWorkflowID: "workflow-456",
-		NodeResults: map[string]models.NodeResult{
-			"previous": {NodeID: "prev", Data: map[string]any{"value": "data"}, Status: "success"},
-		},
-	}
-
-	result, err := action.Execute(t.Context(), execCtx, logger)
-
-	require.NoError(t, err)
-	assert.NotNil(t, result)
-
-	resultMap := result.(map[string]any)
-	assert.Equal(t, "test-mock", resultMap["id"])
-	assert.Equal(t, "mock execution completed", resultMap["result"])
-}
-
-func TestMockTrigger_StartStopAndCallback(t *testing.T) {
-	trigger := &mockTrigger{
-		id: "test-mock-trigger",
-		config: map[string]any{
-			"enabled": true,
-		},
-	}
-
-	ctx := t.Context()
-
-	var (
-		callbackData   map[string]any
-		callbackCalled bool
-	)
-
-	callback := func(ctx context.Context, data map[string]any) error {
-		callbackData = data
-		callbackCalled = true
-
-		return nil
-	}
-
-	// Start trigger
-	err := trigger.Start(ctx, callback)
-	assert.NoError(t, err)
-
-	// Trigger workflow manually
-	err = trigger.TriggerWorkflow(t.Context())
-	assert.NoError(t, err)
-	assert.True(t, callbackCalled)
-	assert.Equal(t, "test-mock-trigger", callbackData["triggered_by"])
-
-	// Stop trigger
-	err = trigger.Stop(ctx)
-	assert.NoError(t, err)
+	assert.Empty(t, providerFactories)
 }

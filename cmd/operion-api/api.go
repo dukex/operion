@@ -64,9 +64,6 @@ func (a *API) App() *fiber.App {
 	// 	// w.Patch("/:id/steps", handlers.PatchWorkflowSteps)
 	// 	// w.Patch("/:id/triggers", handlers.PatchWorkflowTriggers)
 
-	registry := app.Group("/registry")
-	registry.Get("/actions", handlers.GetAvailableActions)
-	registry.Get("/triggers", handlers.GetAvailableTriggers)
 
 	app.Get("/health", handlers.HealthCheck)
 

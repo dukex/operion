@@ -1,4 +1,4 @@
-// Package registry provides plugin-based system for actions and triggers with dynamic loading capabilities.
+// Package registry provides plugin-based system for node factories and providers with dynamic loading capabilities.
 package registry
 
 import (
@@ -16,10 +16,6 @@ import (
 )
 
 var (
-	// ErrActionNotRegistered is returned when an action type is not registered.
-	ErrActionNotRegistered = errors.New("action type not registered")
-	// ErrTriggerNotRegistered is returned when a trigger ID is not registered.
-	ErrTriggerNotRegistered = errors.New("trigger ID not registered")
 	// ErrProviderNotRegistered is returned when a provider ID is not registered.
 	ErrProviderNotRegistered = errors.New("provider ID not registered")
 	// ErrNodeNotRegistered is returned when a node type is not registered.
@@ -28,8 +24,6 @@ var (
 
 type Registry struct {
 	logger                  *slog.Logger
-	actionFactories         map[string]protocol.ActionFactory
-	triggerFactories        map[string]protocol.TriggerFactory
 	sourceProviderFactories map[string]protocol.ProviderFactory
 	nodeFactories           map[string]protocol.NodeFactory
 }
@@ -37,39 +31,21 @@ type Registry struct {
 func NewRegistry(log *slog.Logger) *Registry {
 	return &Registry{
 		logger:                  log,
-		actionFactories:         make(map[string]protocol.ActionFactory),
-		triggerFactories:        make(map[string]protocol.TriggerFactory),
 		sourceProviderFactories: make(map[string]protocol.ProviderFactory),
 		nodeFactories:           make(map[string]protocol.NodeFactory),
 	}
 }
 
 func (r *Registry) HealthCheck() (string, bool) {
-	if len(r.actionFactories) == 0 && len(r.triggerFactories) == 0 && len(r.sourceProviderFactories) == 0 {
+	if len(r.sourceProviderFactories) == 0 && len(r.nodeFactories) == 0 {
 		return "No plugins loaded", false
 	}
 
 	return "Plugins loaded successfully", true
 }
 
-func (r *Registry) LoadActionPlugins(ctx context.Context, pluginsPath string) ([]protocol.ActionFactory, error) {
-	return loadPlugin[protocol.ActionFactory](ctx, r.logger, pluginsPath, "Action")
-}
-
-func (r *Registry) LoadTriggerPlugins(ctx context.Context, pluginsPath string) ([]protocol.TriggerFactory, error) {
-	return loadPlugin[protocol.TriggerFactory](ctx, r.logger, pluginsPath, "Trigger")
-}
-
 func (r *Registry) LoadProviderPlugins(ctx context.Context, pluginsPath string) ([]protocol.ProviderFactory, error) {
 	return loadPlugin[protocol.ProviderFactory](ctx, r.logger, pluginsPath, "Provider")
-}
-
-func (r *Registry) RegisterAction(actionFactory protocol.ActionFactory) {
-	r.actionFactories[actionFactory.ID()] = actionFactory
-}
-
-func (r *Registry) RegisterTrigger(triggerFactory protocol.TriggerFactory) {
-	r.triggerFactories[triggerFactory.ID()] = triggerFactory
 }
 
 func (r *Registry) RegisterProvider(sourceProviderFactory protocol.ProviderFactory) {
@@ -80,44 +56,6 @@ func (r *Registry) RegisterNode(nodeFactory protocol.NodeFactory) {
 	r.nodeFactories[nodeFactory.ID()] = nodeFactory
 }
 
-// CreateAction creates a new action instance based on the provided action type and configuration.
-func (r *Registry) CreateAction(
-	ctx context.Context,
-	actionType string,
-	config map[string]any,
-) (protocol.Action, error) {
-	factory, ok := r.actionFactories[actionType]
-	if !ok {
-		return nil, fmt.Errorf("action type '%s': %w", actionType, ErrActionNotRegistered)
-	}
-
-	created, err := factory.Create(ctx, config)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create action '%s': %w", actionType, err)
-	}
-
-	return created, nil
-}
-
-// CreateTrigger creates a new trigger instance based on the provided trigger ID and configuration.
-func (r *Registry) CreateTrigger(
-	ctx context.Context,
-	triggerID string,
-	config map[string]any,
-) (protocol.Trigger, error) {
-	factory, ok := r.triggerFactories[triggerID]
-	if !ok {
-		return nil, fmt.Errorf("trigger ID '%s': %w", triggerID, ErrTriggerNotRegistered)
-	}
-
-	created, err := factory.Create(ctx, config, r.logger)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create trigger '%s': %w", triggerID, err)
-	}
-
-	return created, nil
-}
-
 // CreateProvider creates a new source provider instance based on the provided provider ID and configuration.
 func (r *Registry) CreateProvider(
 	ctx context.Context,
@@ -126,12 +64,12 @@ func (r *Registry) CreateProvider(
 ) (protocol.Provider, error) {
 	factory, ok := r.sourceProviderFactories[providerID]
 	if !ok {
-		return nil, fmt.Errorf("trigger ID '%s': %w", providerID, ErrTriggerNotRegistered)
+		return nil, fmt.Errorf("provider ID '%s': %w", providerID, ErrProviderNotRegistered)
 	}
 
 	created, err := factory.Create(config, r.logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create trigger '%s': %w", providerID, err)
+		return nil, fmt.Errorf("failed to create provider '%s': %w", providerID, err)
 	}
 
 	return created, nil
@@ -155,26 +93,6 @@ func (r *Registry) CreateNode(
 	}
 
 	return created, nil
-}
-
-// GetAvailableActions returns all available action types sorted by ID.
-func (r *Registry) GetAvailableActions() []protocol.ActionFactory {
-	actions := make([]protocol.ActionFactory, 0, len(r.actionFactories))
-	for _, action := range r.actionFactories {
-		actions = append(actions, action)
-	}
-
-	return actions
-}
-
-// GetAvailableTriggers returns all available trigger types.
-func (r *Registry) GetAvailableTriggers() []protocol.TriggerFactory {
-	triggers := make([]protocol.TriggerFactory, 0, len(r.triggerFactories))
-	for _, trigger := range r.triggerFactories {
-		triggers = append(triggers, trigger)
-	}
-
-	return triggers
 }
 
 // GetAvailableProviders returns all available source provider types.
@@ -238,7 +156,7 @@ func loadPlugin[T any](ctx context.Context, logger *slog.Logger, pluginsPath str
 
 		pluginList = append(pluginList, castV)
 
-		l.InfoContext(ctx, "Loaded action plugin", slog.String("plugin", p))
+		l.InfoContext(ctx, "Loaded plugin", slog.String("plugin", p))
 	}
 
 	return pluginList, nil

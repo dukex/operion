@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Operion** is a cloud-native workflow automation platform built in Go that enables event-driven workflows with configurable triggers and actions. Designed following cloud-native principles, Operion is stateless, container-first, and optimized for Kubernetes deployments. The system provides multiple interfaces: a REST API server, CLI tools, and a React-based visual editor.
+**Operion** is a cloud-native workflow automation platform built in Go that enables event-driven workflows with node-based execution. Designed following cloud-native principles, Operion is stateless, container-first, and optimized for Kubernetes deployments. The system provides multiple interfaces: a REST API server, CLI tools, and a React-based visual editor.
 
 ## Architecture
 
@@ -13,28 +13,27 @@ The project follows a clean, layered architecture with clear separation of conce
 - **Models Layer** (`pkg/models/`) - Core domain models and interfaces
 - **Business Logic** (`pkg/workflow/`) - Workflow execution and management
 - **Infrastructure Layer** (`pkg/persistence/`, `pkg/event_bus/`) - External integrations and data access
-- **Extensions** (`pkg/registry/`) - Plugin system for actions and triggers
+- **Extensions** (`pkg/registry/`) - Plugin system for nodes and providers
 - **Interface Layer** (`cmd/`) - Entry points (API server, CLI tool)
 
 ### Key Domain Models
 
-- **Workflow** - Contains triggers, nodes, variables, and metadata
-- **WorkflowNode** - Individual workflow nodes with actions
-- **Action Interface** - Contract for executable actions (pluggable architecture)
-- **Trigger Interface** - Contract for workflow triggers (extensible system)
+- **Workflow** - Contains nodes, connections, variables, and metadata
+- **WorkflowNode** - Individual workflow nodes (triggers, actions, conditionals, etc.)
+- **Node Interface** - Contract for executable nodes (unified architecture)
+- **Connection** - Links between node ports for data flow
 - **ExecutionContext** - Carries state between workflow nodes
 
 ### Plugin Architecture
 
 Uses plugin-based system for extensibility:
-- **Registry** - Plugin registry for both actions and triggers in `pkg/registry/`
+- **Registry** - Plugin registry for nodes and providers in `pkg/registry/`
 - Dynamic loading of `.so` plugin files from filesystem
-- Factory pattern with `ActionFactory` and `TriggerFactory` interfaces
-- Protocol-based interfaces in `pkg/protocol/` for actions and triggers
+- Factory pattern with `NodeFactory` and `ProviderFactory` interfaces
+- Protocol-based interfaces in `pkg/protocol/` for nodes and providers
 - Runtime configuration from `map[string]any`
-- **Schema Support** - All ActionFactory and TriggerFactory implementations include Schema() method returning JSON Schema for configuration validation
-- **Templating Examples** - All action schemas include comprehensive examples showing how to use templating with step results, trigger data, and built-in functions
-- **Trigger Factory Interface** - All TriggerFactory implementations include ID(), Name(), Description(), and Schema() methods for consistent trigger registration and documentation
+- **Schema Support** - All NodeFactory and ProviderFactory implementations include Schema() method returning JSON Schema for configuration validation
+- **Templating Examples** - All node schemas include comprehensive examples showing how to use templating with step results, trigger data, and built-in functions
 
 ## Development Commands
 
@@ -58,7 +57,7 @@ air                 # Start development server with live reload (proxy on port 3
 PORT=9091              # API server port (default: 9091)
 DATABASE_URL           # Database connection URL (required)
 KAFKA_BROKERS          # Kafka broker addresses (required)
-PLUGINS_PATH=./plugins # Path to action plugins directory (default: ./plugins)
+PLUGINS_PATH=./plugins # Path to node plugins directory (default: ./plugins)
 LOG_LEVEL=info         # Log level: debug, info, warn, error (default: info)
 ```
 
@@ -71,7 +70,7 @@ LOG_LEVEL=info         # Log level: debug, info, warn, error (default: info)
 WORKER_ID              # Custom worker ID (auto-generated if not provided)
 DATABASE_URL           # Database connection URL (required)
 KAFKA_BROKERS          # Kafka broker addresses (required)
-PLUGINS_PATH=./plugins # Path to action plugins directory (default: ./plugins)
+PLUGINS_PATH=./plugins # Path to node plugins directory (default: ./plugins)
 LOG_LEVEL=info         # Log level: debug, info, warn, error (default: info)
 ```
 
@@ -171,42 +170,42 @@ The project uses GitHub Actions for continuous integration and quality assurance
 ### Available Components
 - **API Server** (`cmd/api/`) - Fiber-based REST API with workflows and registry endpoints
   - `/workflows` - CRUD operations for workflows
-  - `/registry/actions` - Sorted list of available actions with complete JSON schemas
-  - `/registry/triggers` - Sorted list of available triggers with complete JSON schemas
+  - `/registry/nodes` - Sorted list of available nodes with complete JSON schemas
 - **CLI Worker** (`cmd/operion-worker/`) - Background workflow execution tool
 - **CLI Source Manager** (`cmd/operion-source-manager/`) - Centralized scheduler orchestrator for managing source providers
 - **CLI Activator** (`cmd/operion-activator/`) - Bridge between source events and workflow events
 - **Visual Workflow Editor** (`ui/operion-editor/`) - React-based browser interface for workflow visualization
-- **Domain Models** (`pkg/models/`) - Core workflow, action, and trigger models
+- **Domain Models** (`pkg/models/`) - Core workflow and node models
 - **Workflow Engine** (`pkg/workflow/`) - Workflow execution, management, and repository
 - **Event System** (`pkg/event_bus/`, `pkg/events/`) - Kafka-based event-driven communication with dual topics
-- **Plugin Registry** (`pkg/registry/`) - Plugin-based system for actions and triggers with .so file loading
+- **Plugin Registry** (`pkg/registry/`) - Plugin-based system for nodes and providers with .so file loading
 - **File Persistence** (`pkg/persistence/file/`) - JSON file storage
 - **PostgreSQL Persistence** (`pkg/persistence/postgresql/`) - PostgreSQL database storage with automated migrations
 
-### Available Triggers
-- **Schedule Trigger** (`pkg/triggers/schedule/`) - Cron-based scheduling with robfig/cron with complete JSON schema
-- **Webhook Trigger** (`pkg/triggers/webhook/`) - HTTP webhook endpoints with centralized server management and complete JSON schema
-- **Queue Trigger** (`pkg/triggers/queue/`) - Message queue-based triggering with complete JSON schema
-- **Kafka Trigger** (`pkg/triggers/kafka/`) - Kafka topic message consumption with consumer group support and complete JSON schema
-  - Trigger data includes: topic, partition, offset, timestamp, key, message, headers
-
-### Available Actions
-- **HTTP Request** (`pkg/actions/httprequest/`) - Make HTTP calls with retry logic and templating support
-  - Schema includes: url (required), method, headers, body, retries (object with attempts/delay)
-  - Templating examples: `{{.step_results.get_user_id.user_id}}`, `{{.trigger_data.webhook.url}}/callback`
-  - Retry config: `{"attempts": 3, "delay": 1000}` (attempts: 0-5, delay: 100-30000ms)
-- **Transform** (`pkg/actions/transform/`) - Process data using Go templates
-  - Schema includes: expression (required), id
-  - Go template examples: `{{.name}}`, `{ "fullName": "{{.firstName}} {{.lastName}}" }`, `{{len .items}}`
-- **Log** (`pkg/actions/log/`) - Output log messages for debugging and monitoring
-  - Schema includes: message (required), level
-  - Templating examples: `Processing user: {{.trigger_data.webhook.user_name}}`, `{{.step_results.api_call.status}}`
+### Available Nodes
+- **Trigger Nodes** (`pkg/nodes/trigger/`) - Event-based workflow initiation
+  - **Scheduler** - Cron-based scheduling with robfig/cron with complete JSON schema
+  - **Webhook** - HTTP webhook endpoints with centralized server management and complete JSON schema
+  - **Kafka** - Kafka topic message consumption with consumer group support and complete JSON schema
+- **Action Nodes** (`pkg/nodes/`) - Processing and output nodes
+  - **HTTP Request** (`httprequest/`) - Make HTTP calls with retry logic and templating support
+    - Schema includes: url (required), method, headers, body, retries (object with attempts/delay)
+    - Templating examples: `{{.step_results.get_user_id.user_id}}`, `{{.trigger_data.webhook.url}}/callback`
+    - Retry config: `{"attempts": 3, "delay": 1000}` (attempts: 0-5, delay: 100-30000ms)
+  - **Transform** (`transform/`) - Process data using Go templates
+    - Schema includes: expression (required), id
+    - Go template examples: `{{.name}}`, `{ "fullName": "{{.firstName}} {{.lastName}}" }`, `{{len .items}}`
+  - **Log** (`log/`) - Output log messages for debugging and monitoring
+    - Schema includes: message (required), level
+    - Templating examples: `Processing user: {{.trigger_data.webhook.user_name}}`, `{{.step_results.api_call.status}}`
+  - **Conditional** (`conditional/`) - Conditional branching based on data evaluation
+  - **Switch** (`switch/`) - Multi-path routing based on expression evaluation
+  - **Merge** (`merge/`) - Combine multiple input streams into single output
 
 ### Database Persistence
 
 #### PostgreSQL Implementation
-- **Normalized Schema** - Separate tables for workflows, workflow_triggers, and workflow_nodes
+- **Normalized Schema** - Separate tables for workflows, workflow_nodes, and workflow_connections
 - **Automatic Migrations** - Database schema is automatically created and updated on startup via `MigrationManager`
 - **Schema Versioning** - Uses `schema_migrations` table to track applied migrations
 - **Soft Deletes** - Workflows are soft deleted using `deleted_at` timestamp
@@ -217,8 +216,10 @@ The project uses GitHub Actions for continuous integration and quality assurance
 
 #### Schema Structure
 - **workflows** table stores core workflow data (id, name, description, variables, metadata, status, timestamps)
-- **workflow_triggers** table stores trigger definitions with foreign key to workflows
 - **workflow_nodes** table stores node definitions with foreign key to workflows
+- **workflow_connections** table stores connection definitions with foreign key to workflows
+- **execution_contexts** table stores workflow execution state and results
+- **input_coordination_states** table manages node input coordination for complex workflows
 - **schema_migrations** table tracks migration versions and timestamps
 - **UUID v7 Support** - All table IDs use time-ordered UUID v7 with auto-generation for better performance and natural sorting
 - Comprehensive indexes on foreign keys, status, owner, creation time, and deletion timestamp for performance
@@ -233,8 +234,12 @@ The project uses GitHub Actions for continuous integration and quality assurance
 
 #### Repository Pattern
 - **WorkflowRepository** handles all workflow CRUD operations
-- Supports complex operations with triggers and steps in single transactions
-- Automatic loading of related triggers and steps when retrieving workflows
+- **NodeRepository** manages individual node operations within workflows
+- **ConnectionRepository** handles node connection management
+- **ExecutionContextRepository** manages workflow execution state
+- **InputCoordinationRepository** coordinates complex node input requirements
+- Supports complex operations with nodes and connections in single transactions
+- Automatic loading of related nodes and connections when retrieving workflows
 - Efficient bulk operations for saving/updating workflow components
 
 ## Development Memories
