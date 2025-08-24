@@ -86,5 +86,8 @@ func NewRegistry(ctx context.Context, log *slog.Logger, pluginsPath string) *reg
 	registerNativeActions(reg)
 	registerNativeProviders(reg)
 
+	// Register built-in node factories for node-based workflow execution
+	reg.RegisterDefaultNodes()
+
 	return reg
 }

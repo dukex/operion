@@ -11,6 +11,7 @@ import (
 	"plugin"
 	"strings"
 
+	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/protocol"
 )
 
@@ -21,6 +22,8 @@ var (
 	ErrTriggerNotRegistered = errors.New("trigger ID not registered")
 	// ErrProviderNotRegistered is returned when a provider ID is not registered.
 	ErrProviderNotRegistered = errors.New("provider ID not registered")
+	// ErrNodeNotRegistered is returned when a node type is not registered.
+	ErrNodeNotRegistered = errors.New("node type not registered")
 )
 
 type Registry struct {
@@ -28,6 +31,7 @@ type Registry struct {
 	actionFactories         map[string]protocol.ActionFactory
 	triggerFactories        map[string]protocol.TriggerFactory
 	sourceProviderFactories map[string]protocol.ProviderFactory
+	nodeFactories           map[string]protocol.NodeFactory
 }
 
 func NewRegistry(log *slog.Logger) *Registry {
@@ -36,6 +40,7 @@ func NewRegistry(log *slog.Logger) *Registry {
 		actionFactories:         make(map[string]protocol.ActionFactory),
 		triggerFactories:        make(map[string]protocol.TriggerFactory),
 		sourceProviderFactories: make(map[string]protocol.ProviderFactory),
+		nodeFactories:           make(map[string]protocol.NodeFactory),
 	}
 }
 
@@ -69,6 +74,10 @@ func (r *Registry) RegisterTrigger(triggerFactory protocol.TriggerFactory) {
 
 func (r *Registry) RegisterProvider(sourceProviderFactory protocol.ProviderFactory) {
 	r.sourceProviderFactories[sourceProviderFactory.ID()] = sourceProviderFactory
+}
+
+func (r *Registry) RegisterNode(nodeFactory protocol.NodeFactory) {
+	r.nodeFactories[nodeFactory.ID()] = nodeFactory
 }
 
 // CreateAction creates a new action instance based on the provided action type and configuration.
@@ -128,6 +137,26 @@ func (r *Registry) CreateProvider(
 	return created, nil
 }
 
+// CreateNode creates a new node instance based on the provided node type and configuration.
+func (r *Registry) CreateNode(
+	ctx context.Context,
+	nodeType string,
+	nodeID string,
+	config map[string]any,
+) (models.Node, error) {
+	factory, ok := r.nodeFactories[nodeType]
+	if !ok {
+		return nil, fmt.Errorf("node type '%s': %w", nodeType, ErrNodeNotRegistered)
+	}
+
+	created, err := factory.Create(ctx, nodeID, config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create node '%s': %w", nodeType, err)
+	}
+
+	return created, nil
+}
+
 // GetAvailableActions returns all available action types sorted by ID.
 func (r *Registry) GetAvailableActions() []protocol.ActionFactory {
 	actions := make([]protocol.ActionFactory, 0, len(r.actionFactories))
@@ -165,6 +194,16 @@ func (r *Registry) GetProviders() map[string]protocol.ProviderFactory {
 	}
 
 	return sourceProviders
+}
+
+// GetAvailableNodes returns all available node types.
+func (r *Registry) GetAvailableNodes() []protocol.NodeFactory {
+	nodes := make([]protocol.NodeFactory, 0, len(r.nodeFactories))
+	for _, node := range r.nodeFactories {
+		nodes = append(nodes, node)
+	}
+
+	return nodes
 }
 
 func loadPlugin[T any](ctx context.Context, logger *slog.Logger, pluginsPath string, symbolName string) ([]T, error) {

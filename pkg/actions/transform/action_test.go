@@ -108,20 +108,24 @@ func TestTransformAction_Execute_SimpleTransform(t *testing.T) {
 	t.Parallel()
 
 	action := &transform.Action{
-		Expression: "{{.step_results.user.name}}",
+		Expression: "{{.node_results.user.name}}",
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
-		ID:          "test-exec-1",
-		TriggerData: map[string]any{},
-		Metadata:    map[string]any{},
-		Variables:   map[string]any{},
-		WorkflowID:  "test-workflow-1",
-		StepResults: map[string]any{
-			"user": map[string]any{
-				"name": "John Doe",
-				"age":  30,
+		ID:                  "test-exec-1",
+		TriggerData:         map[string]any{},
+		Metadata:            map[string]any{},
+		Variables:           map[string]any{},
+		PublishedWorkflowID: "test-workflow-1",
+		NodeResults: map[string]models.NodeResult{
+			"user": {
+				NodeID: "user",
+				Data: map[string]any{
+					"name": "John Doe",
+					"age":  30,
+				},
+				Status: "success",
 			},
 		},
 	}
@@ -136,20 +140,24 @@ func TestTransformAction_Execute_ObjectConstruction(t *testing.T) {
 	t.Parallel()
 
 	action := &transform.Action{
-		Expression: `{ "name": "{{.step_results.user.name}}", "status": "active", "age": {{.step_results.user.age}} }`,
+		Expression: `{ "name": "{{.node_results.user.name}}", "status": "active", "age": {{.node_results.user.age}} }`,
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
-		ID:          "test-exec-1",
-		TriggerData: map[string]any{},
-		Metadata:    map[string]any{},
-		Variables:   map[string]any{},
-		WorkflowID:  "test-workflow-1",
-		StepResults: map[string]any{
-			"user": map[string]any{
-				"name": "Alice",
-				"age":  25,
+		ID:                  "test-exec-1",
+		TriggerData:         map[string]any{},
+		Metadata:            map[string]any{},
+		Variables:           map[string]any{},
+		PublishedWorkflowID: "test-workflow-1",
+		NodeResults: map[string]models.NodeResult{
+			"user": {
+				NodeID: "user",
+				Data: map[string]any{
+					"name": "Alice",
+					"age":  25,
+				},
+				Status: "success",
 			},
 		},
 	}
@@ -173,26 +181,32 @@ func TestTransformAction_Execute_ArrayTransform(t *testing.T) {
 	t.Parallel()
 
 	action := &transform.Action{
-		Expression: "{{index .step_results.users 0 \"name\"}}",
+		Expression: "{{index .node_results.users.value 0 \"name\"}}",
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
-		ID:          "test-exec-1",
-		TriggerData: map[string]any{},
-		Metadata:    map[string]any{},
-		Variables:   map[string]any{},
-		WorkflowID:  "test-workflow-1",
-		StepResults: map[string]any{
-			"users": []any{
-				map[string]any{
-					"name": "First User",
-					"id":   1,
+		ID:                  "test-exec-1",
+		TriggerData:         map[string]any{},
+		Metadata:            map[string]any{},
+		Variables:           map[string]any{},
+		PublishedWorkflowID: "test-workflow-1",
+		NodeResults: map[string]models.NodeResult{
+			"users": {
+				NodeID: "users",
+				Data: map[string]any{
+					"value": []any{
+						map[string]any{
+							"name": "First User",
+							"id":   1,
+						},
+						map[string]any{
+							"name": "Second User",
+							"id":   2,
+						},
+					},
 				},
-				map[string]any{
-					"name": "Second User",
-					"id":   2,
-				},
+				Status: "success",
 			},
 		},
 	}
@@ -207,27 +221,31 @@ func TestTransformAction_Execute_ComplexTransform(t *testing.T) {
 	t.Parallel()
 
 	action := &transform.Action{
-		Expression: `{ "price": {{if .step_results.api_response.close}}
-		{{.step_results.api_response.close}}
+		Expression: `{ "price": {{if .node_results.api_response.close}}
+		{{.node_results.api_response.close}}
 		{{else}}
-		{{.step_results.api_response.open}}
-		{{end}}, "currency": "USD", "timestamp": "{{.step_results.api_response.time}}" }`,
+		{{.node_results.api_response.open}}
+		{{end}}, "currency": "USD", "timestamp": "{{.node_results.api_response.time}}" }`,
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
-		ID:          "test-exec-1",
-		TriggerData: map[string]any{},
-		Metadata:    map[string]any{},
-		Variables:   map[string]any{},
-		WorkflowID:  "test-workflow-1",
-		StepResults: map[string]any{
-			"api_response": map[string]any{
-				"open":  45000.0,
-				"close": 46000.0,
-				"high":  47000.0,
-				"low":   44000.0,
-				"time":  "2023-10-01T10:00:00Z",
+		ID:                  "test-exec-1",
+		TriggerData:         map[string]any{},
+		Metadata:            map[string]any{},
+		Variables:           map[string]any{},
+		PublishedWorkflowID: "test-workflow-1",
+		NodeResults: map[string]models.NodeResult{
+			"api_response": {
+				NodeID: "api_response",
+				Data: map[string]any{
+					"open":  45000.0,
+					"close": 46000.0,
+					"high":  47000.0,
+					"low":   44000.0,
+					"time":  "2023-10-01T10:00:00Z",
+				},
+				Status: "success",
 			},
 		},
 	}
@@ -256,13 +274,17 @@ func TestTransformAction_Execute_EmptyExpression(t *testing.T) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
-		ID:          "test-exec-1",
-		TriggerData: map[string]any{},
-		Metadata:    map[string]any{},
-		Variables:   map[string]any{},
-		WorkflowID:  "test-workflow-1",
-		StepResults: map[string]any{
-			"data": "test",
+		ID:                  "test-exec-1",
+		TriggerData:         map[string]any{},
+		Metadata:            map[string]any{},
+		Variables:           map[string]any{},
+		PublishedWorkflowID: "test-workflow-1",
+		NodeResults: map[string]models.NodeResult{
+			"data": {
+				NodeID: "data",
+				Data:   map[string]any{"value": "test"},
+				Status: "success",
+			},
 		},
 	}
 
@@ -282,13 +304,17 @@ func TestTransformAction_Execute_InvalidExpression(t *testing.T) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
-		ID:          "test-exec-1",
-		TriggerData: map[string]any{},
-		Metadata:    map[string]any{},
-		Variables:   map[string]any{},
-		WorkflowID:  "test-workflow-1",
-		StepResults: map[string]any{
-			"data": "test",
+		ID:                  "test-exec-1",
+		TriggerData:         map[string]any{},
+		Metadata:            map[string]any{},
+		Variables:           map[string]any{},
+		PublishedWorkflowID: "test-workflow-1",
+		NodeResults: map[string]models.NodeResult{
+			"data": {
+				NodeID: "data",
+				Data:   map[string]any{"value": "test"},
+				Status: "success",
+			},
 		},
 	}
 
@@ -302,7 +328,7 @@ func TestTransformAction_Execute_WithCancel(t *testing.T) {
 	t.Parallel()
 
 	action := &transform.Action{
-		Expression: "{{.step_results.data}}",
+		Expression: "{{.node_results.data.value}}",
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -310,13 +336,17 @@ func TestTransformAction_Execute_WithCancel(t *testing.T) {
 	cancel() // Cancel immediately
 
 	execCtx := models.ExecutionContext{
-		ID:          "test-exec-1",
-		TriggerData: map[string]any{},
-		Metadata:    map[string]any{},
-		Variables:   map[string]any{},
-		WorkflowID:  "test-workflow-1",
-		StepResults: map[string]any{
-			"data": "test value",
+		ID:                  "test-exec-1",
+		TriggerData:         map[string]any{},
+		Metadata:            map[string]any{},
+		Variables:           map[string]any{},
+		PublishedWorkflowID: "test-workflow-1",
+		NodeResults: map[string]models.NodeResult{
+			"data": {
+				NodeID: "data",
+				Data:   map[string]any{"value": "test value"},
+				Status: "success",
+			},
 		},
 	}
 

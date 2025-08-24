@@ -15,15 +15,21 @@ import (
 )
 
 func RenderWithContext(input string, executionCtx *models.ExecutionContext) (any, error) {
+	// Flatten node results for easier template access
+	flattenedNodeResults := make(map[string]any)
+	for nodeID, result := range executionCtx.NodeResults {
+		flattenedNodeResults[nodeID] = result.Data
+	}
+
 	enhancedData := map[string]any{
-		"step_results": executionCtx.StepResults,
+		"node_results": flattenedNodeResults,
 		"variables":    executionCtx.Variables,
 		"trigger_data": executionCtx.TriggerData,
 		"metadata":     executionCtx.Metadata,
 		"env":          getEnvVars(),
 		"execution": map[string]any{
-			"id":          executionCtx.ID,
-			"workflow_id": executionCtx.WorkflowID,
+			"id":                    executionCtx.ID,
+			"published_workflow_id": executionCtx.PublishedWorkflowID,
 		},
 	}
 

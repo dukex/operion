@@ -38,13 +38,13 @@ func TestPersistence_SaveWorkflow(t *testing.T) {
 		Name:        "Test Workflow",
 		Description: "Test workflow description",
 		Status:      models.WorkflowStatusActive,
-		Steps: []*models.WorkflowStep{
+		Nodes: []*models.WorkflowNode{
 			{
-				ID:       "step-1",
-				Name:     "Test Step",
-				ActionID: "log",
-				UID:      "test_step",
-				Configuration: map[string]any{
+				ID:       "node-1",
+				Name:     "Test Node",
+				NodeType: "log",
+				Category: models.CategoryTypeAction,
+				Config: map[string]any{
 					"message": "test",
 				},
 				Enabled: true,
@@ -53,7 +53,7 @@ func TestPersistence_SaveWorkflow(t *testing.T) {
 	}
 
 	// Save workflow
-	err := persistence.SaveWorkflow(t.Context(), workflow)
+	err := persistence.WorkflowRepository().Save(t.Context(), workflow)
 	require.NoError(t, err)
 
 	// Verify file was created
@@ -77,7 +77,7 @@ func TestPersistence_SaveWorkflow_UpdatesTimestamp(t *testing.T) {
 	}
 
 	// Save workflow
-	err := persistence.SaveWorkflow(t.Context(), workflow)
+	err := persistence.WorkflowRepository().Save(t.Context(), workflow)
 	require.NoError(t, err)
 
 	// Verify CreatedAt was preserved and UpdatedAt was set
@@ -96,13 +96,13 @@ func TestPersistence_WorkflowByID(t *testing.T) {
 		Name:        "Fetch Test Workflow",
 		Description: "Test workflow for fetching",
 		Status:      models.WorkflowStatusActive,
-		Steps: []*models.WorkflowStep{
+		Nodes: []*models.WorkflowNode{
 			{
-				ID:       "step-1",
-				Name:     "Test Step",
-				ActionID: "log",
-				UID:      "test_step",
-				Configuration: map[string]any{
+				ID:       "node-1",
+				Name:     "Test Node",
+				NodeType: "log",
+				Category: models.CategoryTypeAction,
+				Config: map[string]any{
 					"message": "test",
 				},
 				Enabled: true,
@@ -111,11 +111,11 @@ func TestPersistence_WorkflowByID(t *testing.T) {
 	}
 
 	// Save workflow
-	err := persistence.SaveWorkflow(t.Context(), originalWorkflow)
+	err := persistence.WorkflowRepository().Save(t.Context(), originalWorkflow)
 	require.NoError(t, err)
 
 	// Fetch workflow
-	fetchedWorkflow, err := persistence.WorkflowByID(t.Context(), "fetch-workflow")
+	fetchedWorkflow, err := persistence.WorkflowRepository().GetByID(t.Context(), "fetch-workflow")
 	require.NoError(t, err)
 	require.NotNil(t, fetchedWorkflow)
 
@@ -124,8 +124,8 @@ func TestPersistence_WorkflowByID(t *testing.T) {
 	assert.Equal(t, "Fetch Test Workflow", fetchedWorkflow.Name)
 	assert.Equal(t, "Test workflow for fetching", fetchedWorkflow.Description)
 	assert.Equal(t, models.WorkflowStatusActive, fetchedWorkflow.Status)
-	assert.Len(t, fetchedWorkflow.Steps, 1)
-	assert.Equal(t, "step-1", fetchedWorkflow.Steps[0].ID)
+	assert.Len(t, fetchedWorkflow.Nodes, 1)
+	assert.Equal(t, "node-1", fetchedWorkflow.Nodes[0].ID)
 }
 
 func TestPersistence_WorkflowByID_NotFound(t *testing.T) {
@@ -134,7 +134,7 @@ func TestPersistence_WorkflowByID_NotFound(t *testing.T) {
 	persistence := NewPersistence(testDir)
 
 	// Try to fetch non-existent workflow
-	workflow, err := persistence.WorkflowByID(t.Context(), "non-existent")
+	workflow, err := persistence.WorkflowRepository().GetByID(t.Context(), "non-existent")
 	require.NoError(t, err)
 	require.Nil(t, workflow)
 }
@@ -165,12 +165,12 @@ func TestPersistence_Workflows(t *testing.T) {
 
 	// Save all workflows
 	for _, workflow := range workflows {
-		err := persistence.SaveWorkflow(t.Context(), workflow)
+		err := persistence.WorkflowRepository().Save(t.Context(), workflow)
 		require.NoError(t, err)
 	}
 
 	// Fetch all workflows
-	fetchedWorkflows, err := persistence.Workflows(t.Context())
+	fetchedWorkflows, err := persistence.WorkflowRepository().GetAll(t.Context())
 	require.NoError(t, err)
 	require.Len(t, fetchedWorkflows, 3)
 
@@ -191,7 +191,7 @@ func TestPersistence_Workflows_EmptyDirectory(t *testing.T) {
 	persistence := NewPersistence(testDir)
 
 	// Fetch workflows from empty directory
-	workflows, err := persistence.Workflows(t.Context())
+	workflows, err := persistence.WorkflowRepository().GetAll(t.Context())
 	require.NoError(t, err)
 	assert.Empty(t, workflows)
 }
@@ -202,7 +202,7 @@ func TestPersistence_Workflows_NoDirectory(t *testing.T) {
 	persistence := NewPersistence(testDir)
 
 	// Try to fetch workflows without creating directory first
-	workflows, err := persistence.Workflows(t.Context())
+	workflows, err := persistence.WorkflowRepository().GetAll(t.Context())
 	// fs.Glob on a non-existent directory returns empty slice with no error
 	assert.NoError(t, err)
 	assert.Empty(t, workflows)
@@ -220,7 +220,7 @@ func TestPersistence_DeleteWorkflow(t *testing.T) {
 	}
 
 	// Save workflow
-	err := persistence.SaveWorkflow(t.Context(), workflow)
+	err := persistence.WorkflowRepository().Save(t.Context(), workflow)
 	require.NoError(t, err)
 
 	// Verify file exists
@@ -228,7 +228,7 @@ func TestPersistence_DeleteWorkflow(t *testing.T) {
 	assert.FileExists(t, filePath)
 
 	// Delete workflow
-	err = persistence.DeleteWorkflow(t.Context(), "delete-workflow")
+	err = persistence.WorkflowRepository().Delete(t.Context(), "delete-workflow")
 	require.NoError(t, err)
 
 	// Verify file was deleted
@@ -241,6 +241,6 @@ func TestPersistence_DeleteWorkflow_NotFound(t *testing.T) {
 	persistence := NewPersistence(testDir)
 
 	// Try to delete non-existent workflow (should not error)
-	err := persistence.DeleteWorkflow(t.Context(), "non-existent")
+	err := persistence.WorkflowRepository().Delete(t.Context(), "non-existent")
 	assert.NoError(t, err)
 }

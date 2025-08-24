@@ -18,11 +18,11 @@ The project follows a clean, layered architecture with clear separation of conce
 
 ### Key Domain Models
 
-- **Workflow** - Contains triggers, steps, variables, and metadata
-- **WorkflowStep** - Individual workflow steps with actions
+- **Workflow** - Contains triggers, nodes, variables, and metadata
+- **WorkflowNode** - Individual workflow nodes with actions
 - **Action Interface** - Contract for executable actions (pluggable architecture)
 - **Trigger Interface** - Contract for workflow triggers (extensible system)
-- **ExecutionContext** - Carries state between workflow steps
+- **ExecutionContext** - Carries state between workflow nodes
 
 ### Plugin Architecture
 
@@ -206,7 +206,7 @@ The project uses GitHub Actions for continuous integration and quality assurance
 ### Database Persistence
 
 #### PostgreSQL Implementation
-- **Normalized Schema** - Separate tables for workflows, workflow_triggers, and workflow_steps
+- **Normalized Schema** - Separate tables for workflows, workflow_triggers, and workflow_nodes
 - **Automatic Migrations** - Database schema is automatically created and updated on startup via `MigrationManager`
 - **Schema Versioning** - Uses `schema_migrations` table to track applied migrations
 - **Soft Deletes** - Workflows are soft deleted using `deleted_at` timestamp
@@ -218,7 +218,7 @@ The project uses GitHub Actions for continuous integration and quality assurance
 #### Schema Structure
 - **workflows** table stores core workflow data (id, name, description, variables, metadata, status, timestamps)
 - **workflow_triggers** table stores trigger definitions with foreign key to workflows
-- **workflow_steps** table stores step definitions with foreign key to workflows and unique constraint on workflow_id + uid
+- **workflow_nodes** table stores node definitions with foreign key to workflows
 - **schema_migrations** table tracks migration versions and timestamps
 - **UUID v7 Support** - All table IDs use time-ordered UUID v7 with auto-generation for better performance and natural sorting
 - Comprehensive indexes on foreign keys, status, owner, creation time, and deletion timestamp for performance

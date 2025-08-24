@@ -149,12 +149,12 @@ func TestHTTPRequestAction_Execute_Success(t *testing.T) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
-		ID:          "test-execution",
-		WorkflowID:  "test-workflow",
-		TriggerData: make(map[string]any),
-		Variables:   make(map[string]any),
-		StepResults: make(map[string]any),
-		Metadata:    make(map[string]any),
+		ID:                  "test-execution",
+		PublishedWorkflowID: "test-workflow",
+		TriggerData:         make(map[string]any),
+		Variables:           make(map[string]any),
+		NodeResults:         make(map[string]models.NodeResult),
+		Metadata:            make(map[string]any),
 	}
 
 	result, err := action.Execute(t.Context(), execCtx, logger)
@@ -220,12 +220,12 @@ func TestHTTPRequestAction_Execute_POST_WithBody(t *testing.T) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
-		ID:          "test-execution",
-		WorkflowID:  "test-workflow",
-		TriggerData: make(map[string]any),
-		Variables:   make(map[string]any),
-		StepResults: make(map[string]any),
-		Metadata:    make(map[string]any),
+		ID:                  "test-execution",
+		PublishedWorkflowID: "test-workflow",
+		TriggerData:         make(map[string]any),
+		Variables:           make(map[string]any),
+		NodeResults:         make(map[string]models.NodeResult),
+		Metadata:            make(map[string]any),
 	}
 
 	result, err := action.Execute(t.Context(), execCtx, logger)
@@ -279,12 +279,12 @@ func TestHTTPRequestAction_Execute_WithRetry(t *testing.T) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
-		ID:          "test-execution",
-		WorkflowID:  "test-workflow",
-		TriggerData: make(map[string]any),
-		Variables:   make(map[string]any),
-		StepResults: make(map[string]any),
-		Metadata:    make(map[string]any),
+		ID:                  "test-execution",
+		PublishedWorkflowID: "test-workflow",
+		TriggerData:         make(map[string]any),
+		Variables:           make(map[string]any),
+		NodeResults:         make(map[string]models.NodeResult),
+		Metadata:            make(map[string]any),
 	}
 
 	result, err := action.Execute(t.Context(), execCtx, logger)
@@ -324,7 +324,7 @@ func TestHTTPRequestAction_Execute_WithTemplating(t *testing.T) {
 		Host:     strings.Split(server.URL, "://")[1],
 		Protocol: strings.Split(server.URL, "://")[0],
 		Path:     "/",
-		Body:     `{"user_id": "{{ .step_results.previous_step.user_id}}" }`,
+		Body:     `{"user_id": "{{ .node_results.previous_step.user_id}}" }`,
 		Headers: map[string]string{
 			"Content-Type": "application/json",
 		},
@@ -334,14 +334,18 @@ func TestHTTPRequestAction_Execute_WithTemplating(t *testing.T) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
-		ID:          "test-execution",
-		WorkflowID:  "test-workflow",
-		TriggerData: make(map[string]any),
-		Variables:   make(map[string]any),
-		Metadata:    make(map[string]any),
-		StepResults: map[string]any{
-			"previous_step": map[string]any{
-				"user_id": "user123",
+		ID:                  "test-execution",
+		PublishedWorkflowID: "test-workflow",
+		TriggerData:         make(map[string]any),
+		Variables:           make(map[string]any),
+		Metadata:            make(map[string]any),
+		NodeResults: map[string]models.NodeResult{
+			"previous_step": {
+				NodeID: "previous_step",
+				Data: map[string]any{
+					"user_id": "user123",
+				},
+				Status: "completed",
 			},
 		},
 	}
@@ -379,12 +383,12 @@ func TestHTTPRequestAction_Execute_Timeout(t *testing.T) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
-		ID:          "test-execution",
-		WorkflowID:  "test-workflow",
-		TriggerData: make(map[string]any),
-		Variables:   make(map[string]any),
-		StepResults: make(map[string]any),
-		Metadata:    make(map[string]any),
+		ID:                  "test-execution",
+		PublishedWorkflowID: "test-workflow",
+		TriggerData:         make(map[string]any),
+		Variables:           make(map[string]any),
+		NodeResults:         make(map[string]models.NodeResult),
+		Metadata:            make(map[string]any),
 	}
 
 	_, err := action.Execute(t.Context(), execCtx, logger)
@@ -420,12 +424,12 @@ func TestHTTPRequestAction_Execute_NonJSONResponse(t *testing.T) {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	execCtx := models.ExecutionContext{
-		ID:          "test-execution",
-		WorkflowID:  "test-workflow",
-		TriggerData: make(map[string]any),
-		Variables:   make(map[string]any),
-		StepResults: make(map[string]any),
-		Metadata:    make(map[string]any),
+		ID:                  "test-execution",
+		PublishedWorkflowID: "test-workflow",
+		TriggerData:         make(map[string]any),
+		Variables:           make(map[string]any),
+		NodeResults:         make(map[string]models.NodeResult),
+		Metadata:            make(map[string]any),
 	}
 
 	result, err := action.Execute(t.Context(), execCtx, logger)

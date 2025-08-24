@@ -158,10 +158,11 @@ func (k *KafkaProvider) Configure(workflows []*models.Workflow) (map[string]stri
 			continue
 		}
 
-		for _, trigger := range wf.WorkflowTriggers {
-			if trigger.ProviderID == "kafka" {
-				if sourceID := k.processKafkaTrigger(wf.ID, trigger); sourceID != "" {
-					triggerToSource[trigger.ID] = sourceID
+		// Filter trigger nodes with kafka provider
+		for _, node := range wf.Nodes {
+			if node.IsTriggerNode() && node.ProviderID != nil && *node.ProviderID == "kafka" {
+				if sourceID := k.processKafkaTriggerNode(wf.ID, node); sourceID != "" {
+					triggerToSource[node.ID] = sourceID
 					sourceCount++
 				}
 			}
@@ -193,16 +194,19 @@ func (k *KafkaProvider) Prepare(ctx context.Context) error {
 	return nil
 }
 
-// processKafkaTrigger handles the creation of a Kafka source for a trigger with Kafka type.
+// processKafkaTriggerNode handles the creation of a Kafka source for a trigger node with Kafka type.
 // Returns the sourceID if a source was successfully created, empty string otherwise.
-func (k *KafkaProvider) processKafkaTrigger(workflowID string, trigger *models.WorkflowTrigger) string {
-	sourceID := trigger.SourceID
+func (k *KafkaProvider) processKafkaTriggerNode(workflowID string, node *models.WorkflowNode) string {
+	sourceID := ""
+	if node.SourceID != nil {
+		sourceID = *node.SourceID
+	}
 	if sourceID == "" {
 		// Generate a new UUID for the sourceID
 		sourceID = uuid.New().String()
-		k.logger.Info("Generated source_id for Kafka trigger",
+		k.logger.Info("Generated source_id for Kafka trigger node",
 			"workflow_id", workflowID,
-			"trigger_id", trigger.ID,
+			"node_id", node.ID,
 			"generated_source_id", sourceID)
 	}
 
@@ -219,7 +223,7 @@ func (k *KafkaProvider) processKafkaTrigger(workflowID string, trigger *models.W
 	if existingSource != nil {
 		k.logger.Debug("Kafka source already exists", "source_id", sourceID)
 		// Update configuration if needed
-		if err := existingSource.UpdateConfiguration(trigger.Configuration); err != nil {
+		if err := existingSource.UpdateConfiguration(node.Config); err != nil {
 			k.logger.Error("Failed to update Kafka source configuration",
 				"source_id", sourceID,
 				"error", err)
@@ -238,7 +242,7 @@ func (k *KafkaProvider) processKafkaTrigger(workflowID string, trigger *models.W
 	}
 
 	// Create new Kafka source
-	source, err := kafkaModels.NewKafkaSource(sourceID, trigger.Configuration)
+	source, err := kafkaModels.NewKafkaSource(sourceID, node.Config)
 	if err != nil {
 		k.logger.Error("Failed to create Kafka source",
 			"source_id", sourceID,

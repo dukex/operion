@@ -123,7 +123,7 @@ func TestLogAction_Execute(t *testing.T) {
 				"message": "Hello, World!",
 			},
 			execCtx: models.ExecutionContext{
-				StepResults: make(map[string]any),
+				NodeResults: make(map[string]models.NodeResult),
 			},
 			expectedMsg:   "Hello, World!",
 			expectedLevel: "info",
@@ -136,7 +136,7 @@ func TestLogAction_Execute(t *testing.T) {
 				"level":   "debug",
 			},
 			execCtx: models.ExecutionContext{
-				StepResults: make(map[string]any),
+				NodeResults: make(map[string]models.NodeResult),
 			},
 			expectedMsg:   "Debug message",
 			expectedLevel: "debug",
@@ -145,15 +145,19 @@ func TestLogAction_Execute(t *testing.T) {
 		{
 			name: "message with templating",
 			config: map[string]any{
-				"message": "Processing workflow: {{.step_results.step1.status}}",
+				"message": "Processing workflow: {{.node_results.step1.status}}",
 				"level":   "info",
 			},
 			execCtx: models.ExecutionContext{
-				ID:         "exec-123",
-				WorkflowID: "workflow-456",
-				StepResults: map[string]any{
-					"step1": map[string]any{
-						"status": "success",
+				ID:                  "exec-123",
+				PublishedWorkflowID: "workflow-456",
+				NodeResults: map[string]models.NodeResult{
+					"step1": {
+						NodeID: "step1",
+						Data: map[string]any{
+							"status": "success",
+						},
+						Status: "success",
 					},
 				},
 			},
@@ -165,7 +169,7 @@ func TestLogAction_Execute(t *testing.T) {
 			name:   "empty message",
 			config: map[string]any{},
 			execCtx: models.ExecutionContext{
-				StepResults: make(map[string]any),
+				NodeResults: make(map[string]models.NodeResult),
 			},
 			expectedMsg:   "",
 			expectedLevel: "info",
@@ -204,8 +208,14 @@ func TestLogAction_Execute_WithCancel(t *testing.T) {
 	cancel() // Cancel immediately
 
 	execCtx := models.ExecutionContext{
-		StepResults: map[string]any{
-			"test": "data",
+		NodeResults: map[string]models.NodeResult{
+			"test": {
+				NodeID: "test",
+				Data: map[string]any{
+					"value": "data",
+				},
+				Status: "success",
+			},
 		},
 	}
 
@@ -239,9 +249,15 @@ func TestLogAction_Execute_LargeStepResults(t *testing.T) {
 	}
 
 	execCtx := models.ExecutionContext{
-		ID:          "exec-large",
-		WorkflowID:  "workflow-large",
-		StepResults: largeData,
+		ID:                  "exec-large",
+		PublishedWorkflowID: "workflow-large",
+		NodeResults: map[string]models.NodeResult{
+			"large_data": {
+				NodeID: "large_data",
+				Data:   largeData,
+				Status: "success",
+			},
+		},
 	}
 
 	result, err := action.Execute(t.Context(), execCtx, logger)

@@ -67,13 +67,13 @@ func TestHTTPRequestAction_EnhancedTemplating(t *testing.T) {
 		Headers: map[string]string{
 			"Authorization": "Bearer {{ .env.TEST_API_TOKEN }}",
 			"Content-Type":  "application/json",
-			"X-Workflow-ID": "{{ .execution.workflow_id }}",
+			"X-Workflow-ID": "{{ .execution.published_workflow_id }}",
 		},
 		Body: `{
 			"user_id": "{{ .variables.user_id }}",
-			"workflow_id": "{{ .execution.workflow_id }}",
+			"workflow_id": "{{ .execution.published_workflow_id }}",
 			"api_endpoint": "{{ .variables.config.api_endpoint }}",
-			"order_total": {{ .step_results.price_calculation.total }}
+			"order_total": {{ .node_results.price_calculation.total }}
 		}`,
 		Timeout: 10 * time.Second, // Increase timeout
 		Retry: httprequest.RetryConfig{
@@ -84,8 +84,8 @@ func TestHTTPRequestAction_EnhancedTemplating(t *testing.T) {
 
 	// Create execution context with all data types
 	executionCtx := models.ExecutionContext{
-		ID:         "exec-789",
-		WorkflowID: "test-workflow",
+		ID:                  "exec-789",
+		PublishedWorkflowID: "test-workflow",
 		Variables: map[string]any{
 			"user_id": 123,
 			"config": map[string]any{
@@ -93,14 +93,22 @@ func TestHTTPRequestAction_EnhancedTemplating(t *testing.T) {
 				"version":      "v1",
 			},
 		},
-		StepResults: map[string]any{
-			"price_calculation": map[string]any{
-				"total":    100.0,
-				"currency": "USD",
+		NodeResults: map[string]models.NodeResult{
+			"price_calculation": {
+				NodeID: "price_calculation",
+				Data: map[string]any{
+					"total":    100.0,
+					"currency": "USD",
+				},
+				Status: "completed",
 			},
-			"user_lookup": map[string]any{
-				"name":   "john_doe",
-				"active": true,
+			"user_lookup": {
+				NodeID: "user_lookup",
+				Data: map[string]any{
+					"name":   "john_doe",
+					"active": true,
+				},
+				Status: "completed",
 			},
 		},
 		TriggerData: map[string]any{
@@ -174,12 +182,12 @@ func TestHTTPRequestAction_EnvironmentVariableAccess(t *testing.T) {
 	}
 
 	executionCtx := models.ExecutionContext{
-		ID:          "env-test",
-		WorkflowID:  "env-test-workflow",
-		TriggerData: make(map[string]any),
-		Variables:   make(map[string]any),
-		StepResults: make(map[string]any),
-		Metadata:    make(map[string]any),
+		ID:                  "env-test",
+		PublishedWorkflowID: "env-test-workflow",
+		TriggerData:         make(map[string]any),
+		Variables:           make(map[string]any),
+		NodeResults:         make(map[string]models.NodeResult),
+		Metadata:            make(map[string]any),
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))

@@ -36,24 +36,37 @@ func createTestLogger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 }
 
-func createTestWorkflow(id string, triggers []*models.WorkflowTrigger) *models.Workflow {
+func createTestWorkflow(id string, triggerNodes []*models.WorkflowNode) *models.Workflow {
 	return &models.Workflow{
-		ID:               id,
-		Name:             "Test Workflow " + id,
-		Status:           models.WorkflowStatusActive,
-		WorkflowTriggers: triggers,
-		Steps:            []*models.WorkflowStep{},
-		Variables:        map[string]any{},
-		Metadata:         map[string]any{},
+		ID:          id,
+		Name:        "Test Workflow " + id,
+		Status:      models.WorkflowStatusActive,
+		Nodes:       triggerNodes,
+		Connections: []*models.Connection{},
+		Variables:   map[string]any{},
+		Metadata:    map[string]any{},
 	}
 }
 
-func createWebhookTrigger(id, sourceID string, config map[string]any) *models.WorkflowTrigger {
-	return &models.WorkflowTrigger{
-		ID:            id,
-		ProviderID:    webhookTriggerType,
-		SourceID:      sourceID,
-		Configuration: config,
+func createWebhookTriggerNode(id, sourceID string, config map[string]any) *models.WorkflowNode {
+	var sourceIDPtr *string
+	if sourceID != "" {
+		sourceIDPtr = &sourceID
+	}
+
+	providerID := "webhook"
+	eventType := "webhook_request"
+
+	return &models.WorkflowNode{
+		ID:         id,
+		NodeType:   "trigger:webhook",
+		Category:   models.CategoryTypeTrigger,
+		Name:       "Webhook Trigger " + id,
+		Config:     config,
+		SourceID:   sourceIDPtr,
+		ProviderID: &providerID,
+		EventType:  &eventType,
+		Enabled:    true,
 	}
 }
 
@@ -164,8 +177,18 @@ func TestWebhookProvider_Configure(t *testing.T) {
 		{
 			name: "workflow without webhook triggers",
 			workflows: []*models.Workflow{
-				createTestWorkflow("workflow-1", []*models.WorkflowTrigger{
-					{ID: "trigger-1", ProviderID: "scheduler", SourceID: "source-123", EventType: "schedule_due"},
+				createTestWorkflow("workflow-1", []*models.WorkflowNode{
+					{
+						ID:         "trigger-1",
+						NodeType:   "trigger:scheduler",
+						Category:   models.CategoryTypeTrigger,
+						Name:       "Non-webhook Trigger",
+						Config:     map[string]any{},
+						ProviderID: func(s string) *string { return &s }("scheduler"),
+						SourceID:   func(s string) *string { return &s }("source-123"),
+						EventType:  func(s string) *string { return &s }("schedule_due"),
+						Enabled:    true,
+					},
 				}),
 			},
 			expected: 0,
@@ -173,8 +196,8 @@ func TestWebhookProvider_Configure(t *testing.T) {
 		{
 			name: "single webhook trigger",
 			workflows: []*models.Workflow{
-				createTestWorkflow("workflow-1", []*models.WorkflowTrigger{
-					createWebhookTrigger("trigger-1", "source-123", map[string]any{}),
+				createTestWorkflow("workflow-1", []*models.WorkflowNode{
+					createWebhookTriggerNode("trigger-1", "source-123", map[string]any{}),
 				}),
 			},
 			expected: 1,
@@ -182,9 +205,9 @@ func TestWebhookProvider_Configure(t *testing.T) {
 		{
 			name: "multiple webhook triggers different sources",
 			workflows: []*models.Workflow{
-				createTestWorkflow("workflow-1", []*models.WorkflowTrigger{
-					createWebhookTrigger("trigger-1", "source-123", map[string]any{}),
-					createWebhookTrigger("trigger-2", "source-456", map[string]any{}),
+				createTestWorkflow("workflow-1", []*models.WorkflowNode{
+					createWebhookTriggerNode("trigger-1", "source-123", map[string]any{}),
+					createWebhookTriggerNode("trigger-2", "source-456", map[string]any{}),
 				}),
 			},
 			expected: 2,
@@ -192,9 +215,9 @@ func TestWebhookProvider_Configure(t *testing.T) {
 		{
 			name: "multiple webhook triggers same source",
 			workflows: []*models.Workflow{
-				createTestWorkflow("workflow-1", []*models.WorkflowTrigger{
-					createWebhookTrigger("trigger-1", "source-123", map[string]any{}),
-					createWebhookTrigger("trigger-2", "source-123", map[string]any{}),
+				createTestWorkflow("workflow-1", []*models.WorkflowNode{
+					createWebhookTriggerNode("trigger-1", "source-123", map[string]any{}),
+					createWebhookTriggerNode("trigger-2", "source-123", map[string]any{}),
 				}),
 			},
 			expected: 1, // Should not create duplicate
@@ -205,8 +228,8 @@ func TestWebhookProvider_Configure(t *testing.T) {
 				{
 					ID:     "workflow-1",
 					Status: models.WorkflowStatusInactive,
-					WorkflowTriggers: []*models.WorkflowTrigger{
-						createWebhookTrigger("trigger-1", "source-123", map[string]any{}),
+					Nodes: []*models.WorkflowNode{
+						createWebhookTriggerNode("trigger-1", "source-123", map[string]any{}),
 					},
 				},
 			},
@@ -215,8 +238,8 @@ func TestWebhookProvider_Configure(t *testing.T) {
 		{
 			name: "webhook trigger without source_id generates UUID",
 			workflows: []*models.Workflow{
-				createTestWorkflow("workflow-1", []*models.WorkflowTrigger{
-					{ID: "trigger-1", ProviderID: webhookTriggerType, SourceID: ""}, // No source ID
+				createTestWorkflow("workflow-1", []*models.WorkflowNode{
+					createWebhookTriggerNode("trigger-1", "", map[string]any{}), // No source ID
 				}),
 			},
 			expected: 1, // Now generates UUID and creates source
@@ -224,8 +247,8 @@ func TestWebhookProvider_Configure(t *testing.T) {
 		{
 			name: "webhook with JSON schema configuration",
 			workflows: []*models.Workflow{
-				createTestWorkflow("workflow-1", []*models.WorkflowTrigger{
-					createWebhookTrigger("trigger-1", "source-schema", map[string]any{
+				createTestWorkflow("workflow-1", []*models.WorkflowNode{
+					createWebhookTriggerNode("trigger-1", "source-schema", map[string]any{
 						"json_schema": map[string]any{
 							"type": "object",
 							"properties": map[string]any{
@@ -270,15 +293,21 @@ func TestWebhookProvider_Configure(t *testing.T) {
 					continue
 				}
 
-				for _, trigger := range workflow.WorkflowTriggers {
-					if trigger.ProviderID == webhookTriggerType && trigger.SourceID != "" {
+				// Filter trigger nodes from all nodes
+				for _, node := range workflow.Nodes {
+					if node.Category != models.CategoryTypeTrigger {
+						continue
+					}
+
+					trigger := node // rename for compatibility
+					if trigger.ProviderID != nil && *trigger.ProviderID == "webhook" && trigger.SourceID != nil && *trigger.SourceID != "" {
 						found := false
 
 						for _, source := range sources {
-							if source.ID == trigger.SourceID {
+							if source.ID == *trigger.SourceID {
 								found = true
 
-								assert.Equal(t, trigger.Configuration, source.Configuration)
+								assert.Equal(t, trigger.Config, source.Configuration)
 								assert.NotEmpty(t, source.ExternalID.String())
 								assert.True(t, source.Active)
 

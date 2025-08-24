@@ -22,13 +22,23 @@ clean:
 	rm -rf ./bin
 
 test:
-	go test ./...
+	@echo "Running PostgreSQL persistence tests serially..."
+	go test -p=1 ./pkg/persistence/postgresql
+	@echo "Running all other tests in parallel..."
+	go test $(shell go list ./... | grep -v "pkg/persistence/postgresql")
 
 test-all: test
 
 test-coverage:
-	go test -coverprofile=coverage.out ./...
+	@echo "Running PostgreSQL persistence tests serially with coverage..."
+	go test -p=1 -coverprofile=coverage-postgres.out -covermode=atomic ./pkg/persistence/postgresql
+	@echo "Running all other tests in parallel with coverage..."
+	go test -coverprofile=coverage-other.out -covermode=atomic $$(go list ./... | grep -v "pkg/persistence/postgresql")
+	@echo "Combining coverage reports..."
+	echo "mode: atomic" > coverage.out
+	grep -h -v "mode: atomic" coverage-postgres.out coverage-other.out >> coverage.out
 	go tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report generated: coverage.html"
 
 fmt:
 	go fmt ./...

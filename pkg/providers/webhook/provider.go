@@ -151,10 +151,11 @@ func (w *WebhookProvider) Configure(workflows []*models.Workflow) (map[string]st
 			continue
 		}
 
-		for _, trigger := range wf.WorkflowTriggers {
-			if trigger.ProviderID == "webhook" {
-				if sourceID := w.processWebhookTrigger(wf.ID, trigger); sourceID != "" {
-					triggerToSource[trigger.ID] = sourceID
+		// Filter trigger nodes with webhook provider
+		for _, node := range wf.Nodes {
+			if node.IsTriggerNode() && node.ProviderID != nil && *node.ProviderID == "webhook" {
+				if sourceID := w.processWebhookTriggerNode(wf.ID, node); sourceID != "" {
+					triggerToSource[node.ID] = sourceID
 					sourceCount++
 				}
 			}
@@ -204,16 +205,19 @@ func (w *WebhookProvider) Prepare(ctx context.Context) error {
 	return nil
 }
 
-// processWebhookTrigger handles the creation of a webhook source for a trigger with webhook type.
+// processWebhookTriggerNode handles the creation of a webhook source for a trigger node with webhook type.
 // Returns the sourceID if a source was successfully created, empty string otherwise.
-func (w *WebhookProvider) processWebhookTrigger(workflowID string, trigger *models.WorkflowTrigger) string {
-	sourceID := trigger.SourceID
+func (w *WebhookProvider) processWebhookTriggerNode(workflowID string, node *models.WorkflowNode) string {
+	sourceID := ""
+	if node.SourceID != nil {
+		sourceID = *node.SourceID
+	}
 	if sourceID == "" {
 		// Generate a new UUID for the sourceID
 		sourceID = uuid.New().String()
-		w.logger.Info("Generated source_id for webhook trigger",
+		w.logger.Info("Generated source_id for webhook trigger node",
 			"workflow_id", workflowID,
-			"trigger_id", trigger.ID,
+			"node_id", node.ID,
 			"generated_source_id", sourceID)
 	}
 
@@ -230,7 +234,7 @@ func (w *WebhookProvider) processWebhookTrigger(workflowID string, trigger *mode
 	if existingSource != nil {
 		w.logger.Debug("Webhook source already exists", "source_id", sourceID)
 		// Update configuration if needed
-		existingSource.UpdateConfiguration(trigger.Configuration)
+		existingSource.UpdateConfiguration(node.Config)
 
 		// Save updated source to persistence
 		if err := w.webhookPersistence.SaveWebhookSource(existingSource); err != nil {
@@ -243,7 +247,7 @@ func (w *WebhookProvider) processWebhookTrigger(workflowID string, trigger *mode
 	}
 
 	// Create new webhook source
-	source, err := webhookModels.NewWebhookSource(sourceID, trigger.Configuration)
+	source, err := webhookModels.NewWebhookSource(sourceID, node.Config)
 	if err != nil {
 		w.logger.Error("Failed to create webhook source",
 			"source_id", sourceID,

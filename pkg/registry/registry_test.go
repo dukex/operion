@@ -174,7 +174,7 @@ func TestRegistry_RegisterAndCreateAction(t *testing.T) {
 
 	// Verify action can be executed
 	execCtx := models.ExecutionContext{
-		StepResults: make(map[string]any),
+		NodeResults: make(map[string]models.NodeResult),
 	}
 
 	result, err := action.Execute(t.Context(), execCtx, logger)
@@ -357,10 +357,10 @@ func TestMockAction_Execute(t *testing.T) {
 	}
 
 	execCtx := models.ExecutionContext{
-		ID:         "exec-123",
-		WorkflowID: "workflow-456",
-		StepResults: map[string]any{
-			"previous": "data",
+		ID:                  "exec-123",
+		PublishedWorkflowID: "workflow-456",
+		NodeResults: map[string]models.NodeResult{
+			"previous": {NodeID: "prev", Data: map[string]any{"value": "data"}, Status: "success"},
 		},
 	}
 

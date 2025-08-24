@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/dukex/operion/pkg/cmd"
+	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/workflow"
 	"github.com/go-playground/validator/v10"
 	"github.com/urfave/cli/v3"
@@ -82,18 +83,30 @@ func NewValidateCommand() *cli.Command {
 
 			for _, workflow := range workflows {
 				_, _ = fmt.Fprintf(os.Stdout, "\nWorkflow: %s (%s)\n", workflow.Name, workflow.ID)
-				if len(workflow.WorkflowTriggers) == 0 {
-					_, _ = fmt.Fprintf(os.Stdout, "    ❌ INVALID: No triggers found for this workflow.\n")
-					invalidTriggers++
 
+				// Find trigger nodes in the workflow
+				triggerNodes := make([]*models.WorkflowNode, 0)
+				for _, node := range workflow.Nodes {
+					if node.IsTriggerNode() {
+						triggerNodes = append(triggerNodes, node)
+					}
+				}
+
+				if len(triggerNodes) == 0 {
+					_, _ = fmt.Fprintf(os.Stdout, "    ❌ INVALID: No trigger nodes found for this workflow.\n")
+					invalidTriggers++
 					continue
 				}
 
-				for _, workflowTrigger := range workflow.WorkflowTriggers {
-					_, _ = fmt.Fprintf(os.Stdout, "  WorkflowTrigger: %s (SourceID: %s)\n", workflowTrigger.ID, workflowTrigger.SourceID)
+				for _, triggerNode := range triggerNodes {
+					sourceID := "(none)"
+					if triggerNode.SourceID != nil {
+						sourceID = *triggerNode.SourceID
+					}
+					_, _ = fmt.Fprintf(os.Stdout, "  Trigger Node: %s (SourceID: %s)\n", triggerNode.ID, sourceID)
 
 					// Validate struct fields
-					err = validate.Struct(workflowTrigger)
+					err = validate.Struct(triggerNode)
 					if err != nil {
 						var validationErrors validator.ValidationErrors
 						if errors.As(err, &validationErrors) {
@@ -107,17 +120,20 @@ func NewValidateCommand() *cli.Command {
 					}
 
 					// Validate that SourceID is not empty
-					if workflowTrigger.SourceID == "" {
-						_, _ = fmt.Fprintf(os.Stdout, "    ❌ INVALID: SourceID is required for source-based triggers\n")
+					if triggerNode.SourceID == nil || *triggerNode.SourceID == "" {
+						_, _ = fmt.Fprintf(os.Stdout, "    ❌ INVALID: SourceID is required for source-based trigger nodes\n")
 						invalidTriggers++
 
 						continue
 					}
 
 					// Use ProviderID as the source provider type - this should always be set
-					sourceProviderType := workflowTrigger.ProviderID
+					var sourceProviderType string
+					if triggerNode.ProviderID != nil {
+						sourceProviderType = *triggerNode.ProviderID
+					}
 					if sourceProviderType == "" {
-						panic(fmt.Sprintf("ProviderID is empty for workflow %s, trigger %s - this should not happen", workflow.ID, workflowTrigger.ID))
+						panic(fmt.Sprintf("ProviderID is empty for workflow %s, trigger node %s - this should not happen", workflow.ID, triggerNode.ID))
 					}
 
 					// Validate that the source provider exists

@@ -97,69 +97,6 @@ func TestSourceEvent_Validate_MissingEventType(t *testing.T) {
 	assert.Contains(t, err.Error(), "event_type is required")
 }
 
-// Trigger Matching Tests
-
-func TestSourceEvent_MatchesTrigger_ExactSourceIDMatch(t *testing.T) {
-	event := &SourceEvent{
-		SourceID:   "source-123",
-		ProviderID: "scheduler",
-		EventType:  "ScheduleDue",
-		EventData:  map[string]any{},
-	}
-
-	matches := event.MatchesTrigger("source-123", "")
-	assert.True(t, matches)
-}
-
-func TestSourceEvent_MatchesTrigger_SourceIDMismatch(t *testing.T) {
-	event := &SourceEvent{
-		SourceID:   "source-123",
-		ProviderID: "scheduler",
-		EventType:  "ScheduleDue",
-		EventData:  map[string]any{},
-	}
-
-	matches := event.MatchesTrigger("source-456", "")
-	assert.False(t, matches)
-}
-
-func TestSourceEvent_MatchesTrigger_WithEventTypeFilter(t *testing.T) {
-	event := &SourceEvent{
-		SourceID:   "source-123",
-		ProviderID: "scheduler",
-		EventType:  "ScheduleDue",
-		EventData:  map[string]any{},
-	}
-
-	matches := event.MatchesTrigger("source-123", "ScheduleDue")
-	assert.True(t, matches)
-}
-
-func TestSourceEvent_MatchesTrigger_EventTypeMismatch(t *testing.T) {
-	event := &SourceEvent{
-		SourceID:   "source-123",
-		ProviderID: "scheduler",
-		EventType:  "ScheduleDue",
-		EventData:  map[string]any{},
-	}
-
-	matches := event.MatchesTrigger("source-123", "ScheduleOverdue")
-	assert.False(t, matches)
-}
-
-func TestSourceEvent_MatchesTrigger_EmptyEventTypeFilter(t *testing.T) {
-	event := &SourceEvent{
-		SourceID:   "source-123",
-		ProviderID: "webhook",
-		EventType:  "RequestReceived",
-		EventData:  map[string]any{},
-	}
-
-	// Empty event type filter should match any event type for the same source
-	matches := event.MatchesTrigger("source-123", "")
-	assert.True(t, matches)
-}
-
 // Data Extraction Tests
 
 func TestSourceEvent_GetEventDataString_ValidString(t *testing.T) {

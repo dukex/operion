@@ -25,8 +25,9 @@ func dropDb(ctx context.Context, t *testing.T, databaseURL string) {
 	db, err := sql.Open("postgres", databaseURL)
 	require.NoError(t, err)
 
-	for _, table := range []string{"workflow_steps", "workflow_triggers", "workflows", "schema_migrations"} {
-		_, err = db.ExecContext(ctx, "DROP TABLE IF EXISTS "+table)
+	// Drop tables in reverse dependency order (children first, parents last)
+	for _, table := range []string{"node_executions", "execution_contexts", "workflow_connections_new", "workflow_ports", "workflow_connections", "workflow_nodes", "workflows", "schema_migrations"} {
+		_, err = db.ExecContext(ctx, "DROP TABLE IF EXISTS "+table+" CASCADE")
 		require.NoError(t, err)
 	}
 
@@ -74,11 +75,6 @@ func setupTestDB(t *testing.T) (*postgresql.Persistence, context.Context, string
 	return persistence, ctx, databaseURL
 }
 
-// Helper function to create string pointers.
-func stringPtr(s string) *string {
-	return &s
-}
-
 func TestNewPersistence_Migrations(t *testing.T) {
 	_, ctx, databaseURL := setupTestDB(t)
 
@@ -120,34 +116,32 @@ func TestNewPersistence_HealthCheck(t *testing.T) {
 func TestNewPersistence_SaveAndRetrieveWorkflow(t *testing.T) {
 	p, ctx, _ := setupTestDB(t)
 
+	sourceID := uuid.New().String()
 	workflow := &models.Workflow{
 		Name:        "Test Workflow",
 		Description: "A test workflow",
-		WorkflowTriggers: []*models.WorkflowTrigger{
+		Nodes: []*models.WorkflowNode{
 			{
-				ID:          uuid.New().String(),
-				Name:        "Daily Schedule",
-				Description: "Runs daily at midnight",
-				SourceID:    uuid.New().String(),
-				EventType:   "schedule_due",
-				ProviderID:  "scheduler",
-				Configuration: map[string]any{
-					"cron": "0 0 * * *",
-				},
+				ID:         "trigger1",
+				NodeType:   "trigger:scheduler",
+				Category:   models.CategoryTypeTrigger,
+				Name:       "Daily Schedule",
+				Config:     map[string]any{"cron": "0 0 * * *"},
+				SourceID:   &sourceID,
+				ProviderID: &[]string{"scheduler"}[0],
+				EventType:  &[]string{"schedule_due"}[0],
+				Enabled:    true,
 			},
-		},
-		Steps: []*models.WorkflowStep{
 			{
-				ID:       uuid.New().String(),
-				UID:      "step1",
-				ActionID: "log",
+				ID:       "step1",
+				NodeType: "log",
+				Category: models.CategoryTypeAction,
 				Name:     "Log Message",
-				Configuration: map[string]any{
-					"message": "Hello World",
-				},
-				Enabled: true,
+				Config:   map[string]any{"message": "Hello World"},
+				Enabled:  true,
 			},
 		},
+		Connections: []*models.Connection{},
 		Variables: map[string]any{
 			"test_var": "test_value",
 		},
@@ -158,13 +152,13 @@ func TestNewPersistence_SaveAndRetrieveWorkflow(t *testing.T) {
 		Owner: "test-user",
 	}
 
-	err := p.SaveWorkflow(ctx, workflow)
+	err := p.WorkflowRepository().Save(ctx, workflow)
 	require.NoError(t, err)
 	assert.False(t, workflow.CreatedAt.IsZero())
 	assert.False(t, workflow.UpdatedAt.IsZero())
 
 	// Test retrieving workflow by ID
-	retrieved, err := p.WorkflowByID(ctx, workflow.ID)
+	retrieved, err := p.WorkflowRepository().GetByID(ctx, workflow.ID)
 	require.NoError(t, err)
 	require.NotNil(t, retrieved)
 
@@ -173,13 +167,30 @@ func TestNewPersistence_SaveAndRetrieveWorkflow(t *testing.T) {
 	assert.Equal(t, workflow.Description, retrieved.Description)
 	assert.Equal(t, workflow.Status, retrieved.Status)
 	assert.Equal(t, workflow.Owner, retrieved.Owner)
-	assert.Len(t, retrieved.WorkflowTriggers, len(workflow.WorkflowTriggers))
-	assert.Len(t, retrieved.Steps, len(workflow.Steps))
+
+	// Count trigger nodes in retrieved workflow
+	triggerNodeCount := 0
+	expectedTriggerNodeCount := 0
+
+	for _, node := range retrieved.Nodes {
+		if node.IsTriggerNode() {
+			triggerNodeCount++
+		}
+	}
+
+	for _, node := range workflow.Nodes {
+		if node.IsTriggerNode() {
+			expectedTriggerNodeCount++
+		}
+	}
+
+	assert.Equal(t, expectedTriggerNodeCount, triggerNodeCount, "Should have same number of trigger nodes")
+	assert.Len(t, retrieved.Nodes, len(workflow.Nodes))
 	assert.Equal(t, workflow.Variables["test_var"], retrieved.Variables["test_var"])
 	assert.Equal(t, workflow.Metadata["created_by"], retrieved.Metadata["created_by"])
 
 	// Test retrieving non-existent workflow
-	notFound, err := p.WorkflowByID(ctx, uuid.NewString())
+	notFound, err := p.WorkflowRepository().GetByID(ctx, uuid.NewString())
 	require.NoError(t, err)
 	assert.Nil(t, notFound)
 }
@@ -187,39 +198,37 @@ func TestNewPersistence_SaveAndRetrieveWorkflow(t *testing.T) {
 func TestNewPersistence_UpdateWorkflow(t *testing.T) {
 	p, ctx, _ := setupTestDB(t)
 
+	sourceID := uuid.New().String()
 	workflow := &models.Workflow{
 		Name:        "Test Workflow",
 		Description: "A test workflow",
-		WorkflowTriggers: []*models.WorkflowTrigger{
+		Nodes: []*models.WorkflowNode{
 			{
-				ID:          uuid.New().String(),
-				Name:        "Daily Schedule",
-				Description: "Runs daily at midnight",
-				SourceID:    uuid.New().String(),
-				EventType:   "schedule_due",
-				ProviderID:  "scheduler",
-				Configuration: map[string]any{
-					"cron": "0 0 * * *",
-				},
+				ID:         "trigger1",
+				NodeType:   "trigger:scheduler",
+				Category:   models.CategoryTypeTrigger,
+				Name:       "Daily Schedule",
+				Config:     map[string]any{"cron": "0 0 * * *"},
+				SourceID:   &sourceID,
+				ProviderID: &[]string{"scheduler"}[0],
+				EventType:  &[]string{"schedule_due"}[0],
+				Enabled:    true,
 			},
-		},
-		Steps: []*models.WorkflowStep{
 			{
-				ID:       uuid.New().String(),
-				UID:      "step1",
-				ActionID: "log",
+				ID:       "step1",
+				NodeType: "log",
+				Category: models.CategoryTypeAction,
 				Name:     "Log Message",
-				Configuration: map[string]any{
-					"message": "Hello World",
-				},
-				Enabled: true,
+				Config:   map[string]any{"message": "Hello World"},
+				Enabled:  true,
 			},
 		},
-		Status: models.WorkflowStatusActive,
-		Owner:  "test-user",
+		Connections: []*models.Connection{},
+		Status:      models.WorkflowStatusActive,
+		Owner:       "test-user",
 	}
 
-	err := p.SaveWorkflow(ctx, workflow)
+	err := p.WorkflowRepository().Save(ctx, workflow)
 	require.NoError(t, err)
 
 	initialUpdatedAt := workflow.UpdatedAt
@@ -232,11 +241,11 @@ func TestNewPersistence_UpdateWorkflow(t *testing.T) {
 	workflow.Description = "An updated test workflow"
 	workflow.Status = models.WorkflowStatusPaused
 
-	err = p.SaveWorkflow(ctx, workflow)
+	err = p.WorkflowRepository().Save(ctx, workflow)
 	require.NoError(t, err)
 
 	// Verify update
-	retrieved, err := p.WorkflowByID(ctx, workflow.ID)
+	retrieved, err := p.WorkflowRepository().GetByID(ctx, workflow.ID)
 	require.NoError(t, err)
 	require.NotNil(t, retrieved)
 
@@ -249,70 +258,78 @@ func TestNewPersistence_UpdateWorkflow(t *testing.T) {
 func TestNewPersistence_ListWorkflows(t *testing.T) {
 	p, ctx, _ := setupTestDB(t)
 
+	sourceID3 := uuid.New().String()
+	sourceID4 := uuid.New().String()
+
 	workflows := []*models.Workflow{
 		{
 			Name:        "Test Workflow 3",
 			Description: "Description 3",
-			WorkflowTriggers: []*models.WorkflowTrigger{
+			Nodes: []*models.WorkflowNode{
 				{
-					SourceID:   uuid.New().String(),
-					EventType:  "schedule_due",
-					ProviderID: "scheduler",
-					Configuration: map[string]any{
-						"cron": "0 0 * * *",
-					},
+					ID:         "trigger1",
+					NodeType:   "trigger:scheduler",
+					Category:   models.CategoryTypeTrigger,
+					Name:       "Daily Schedule",
+					Config:     map[string]any{"cron": "0 0 * * *"},
+					SourceID:   &sourceID3,
+					ProviderID: &[]string{"scheduler"}[0],
+					EventType:  &[]string{"schedule_due"}[0],
+					Enabled:    true,
 				},
-			},
-			Steps: []*models.WorkflowStep{
 				{
-					UID:      "step1",
-					ActionID: "log",
+					ID:       "step1",
+					NodeType: "log",
+					Category: models.CategoryTypeAction,
 					Name:     "Log Message 3",
-					Configuration: map[string]any{
+					Config: map[string]any{
 						"message": "Hello 3",
 					},
 					Enabled: true,
 				},
 			},
-			Status: models.WorkflowStatusActive,
-			Owner:  "test-user",
+			Connections: []*models.Connection{},
+			Status:      models.WorkflowStatusActive,
+			Owner:       "test-user",
 		},
 		{
-
 			Name:        "Test Workflow 4",
 			Description: "Description 4",
-			WorkflowTriggers: []*models.WorkflowTrigger{
+			Nodes: []*models.WorkflowNode{
 				{
-					SourceID:   uuid.New().String(),
-					EventType:  "schedule_due",
-					ProviderID: "scheduler",
-					Configuration: map[string]any{
-						"cron": "0 0 * * *",
-					},
+					ID:         "trigger1",
+					NodeType:   "trigger:scheduler",
+					Category:   models.CategoryTypeTrigger,
+					Name:       "Daily Schedule",
+					Config:     map[string]any{"cron": "0 0 * * *"},
+					SourceID:   &sourceID4,
+					ProviderID: &[]string{"scheduler"}[0],
+					EventType:  &[]string{"schedule_due"}[0],
+					Enabled:    true,
 				},
-			},
-			Steps: []*models.WorkflowStep{
 				{
-					UID:      "step1",
-					ActionID: "log",
+					ID:       "step1",
+					NodeType: "log",
+					Category: models.CategoryTypeAction,
 					Name:     "Log Message 4",
-					Configuration: map[string]any{
+					Config: map[string]any{
 						"message": "Hello 4",
 					},
 					Enabled: true,
 				},
 			},
-			Status: models.WorkflowStatusInactive,
-			Owner:  "test-user",
+			Connections: []*models.Connection{},
+			Status:      models.WorkflowStatusInactive,
+			Owner:       "test-user",
 		},
 	}
 
 	for _, workflow := range workflows {
-		err := p.SaveWorkflow(ctx, workflow)
+		err := p.WorkflowRepository().Save(ctx, workflow)
 		require.NoError(t, err)
 	}
 
-	retrieved, err := p.Workflows(ctx)
+	retrieved, err := p.WorkflowRepository().GetAll(ctx)
 	require.NoError(t, err)
 
 	assert.Len(t, retrieved, len(workflows))
@@ -321,134 +338,165 @@ func TestNewPersistence_ListWorkflows(t *testing.T) {
 func TestNewPersistence_DeleteWorkflow(t *testing.T) {
 	p, ctx, _ := setupTestDB(t)
 
+	sourceID := uuid.New().String()
+
 	workflow := &models.Workflow{
 		Name:        "Test Workflow to Delete",
 		Description: "A test workflow for deletion",
-		WorkflowTriggers: []*models.WorkflowTrigger{
+		Nodes: []*models.WorkflowNode{
 			{
-				ID:          uuid.New().String(),
-				Name:        "Daily Schedule",
-				Description: "Runs daily at midnight",
-				SourceID:    uuid.New().String(),
-				EventType:   "schedule_due",
-				ProviderID:  "scheduler",
-				Configuration: map[string]any{
-					"cron": "0 0 * * *",
-				},
+				ID:         "trigger1",
+				NodeType:   "trigger:scheduler",
+				Category:   models.CategoryTypeTrigger,
+				Name:       "Daily Schedule",
+				Config:     map[string]any{"cron": "0 0 * * *"},
+				SourceID:   &sourceID,
+				ProviderID: &[]string{"scheduler"}[0],
+				EventType:  &[]string{"schedule_due"}[0],
+				Enabled:    true,
 			},
-		},
-		Steps: []*models.WorkflowStep{
 			{
-				UID:      "step1",
-				ActionID: "log",
+				ID:       "step1",
+				NodeType: "log",
+				Category: models.CategoryTypeAction,
 				Name:     "Log Delete Message",
-				Configuration: map[string]any{
+				Config: map[string]any{
 					"message": "Hello Delete",
 				},
 				Enabled: true,
 			},
 		},
-		Status: models.WorkflowStatusActive,
-		Owner:  "test-user",
+		Connections: []*models.Connection{},
+		Status:      models.WorkflowStatusActive,
+		Owner:       "test-user",
 	}
 
 	// Save workflow
-	err := p.SaveWorkflow(ctx, workflow)
+	err := p.WorkflowRepository().Save(ctx, workflow)
 	require.NoError(t, err)
 
 	// Verify it exists
-	retrieved, err := p.WorkflowByID(ctx, workflow.ID)
+	retrieved, err := p.WorkflowRepository().GetByID(ctx, workflow.ID)
 	require.NoError(t, err)
 	require.NotNil(t, retrieved)
 
 	// Delete workflow
-	err = p.DeleteWorkflow(ctx, workflow.ID)
+	err = p.WorkflowRepository().Delete(ctx, workflow.ID)
 	require.NoError(t, err)
 
 	// Verify it's gone (soft delete)
-	deleted, err := p.WorkflowByID(ctx, workflow.ID)
+	deleted, err := p.WorkflowRepository().GetByID(ctx, workflow.ID)
 	require.NoError(t, err)
 	assert.Nil(t, deleted)
 
 	// Delete non-existent workflow (should not error)
-	err = p.DeleteWorkflow(ctx, uuid.NewString())
+	err = p.WorkflowRepository().Delete(ctx, uuid.NewString())
 	assert.NoError(t, err)
 }
 
 func TestNewPersistence_ComplexWorkflow(t *testing.T) {
 	p, ctx, _ := setupTestDB(t)
 
+	schedulerSourceID := uuid.New().String()
+	webhookSourceID := uuid.New().String()
+
 	workflow := &models.Workflow{
 		Name:        "Complex Test Workflow",
 		Description: "A complex workflow with multiple triggers and steps",
-		WorkflowTriggers: []*models.WorkflowTrigger{
+		Nodes: []*models.WorkflowNode{
 			{
-				SourceID:   uuid.New().String(),
-				EventType:  "schedule_due",
-				ProviderID: "scheduler",
-				Configuration: map[string]any{
+				ID:       "scheduler_trigger",
+				NodeType: "trigger:scheduler",
+				Category: models.CategoryTypeTrigger,
+				Name:     "Daily Schedule",
+				Config: map[string]any{
 					"cron":        "0 0 * * *",
 					"workflow_id": "test-complex-workflow",
 					"enabled":     true,
 				},
+				SourceID:   &schedulerSourceID,
+				ProviderID: &[]string{"scheduler"}[0],
+				EventType:  &[]string{"schedule_due"}[0],
+				Enabled:    true,
 			},
 			{
-				SourceID:   uuid.New().String(),
-				EventType:  "webhook_received",
-				ProviderID: "webhook",
-				Configuration: map[string]any{
+				ID:       "webhook_trigger",
+				NodeType: "trigger:webhook",
+				Category: models.CategoryTypeTrigger,
+				Name:     "Webhook Handler",
+				Config: map[string]any{
 					"path":        "/webhook/test",
 					"method":      "POST",
 					"workflow_id": "test-complex-workflow",
 				},
+				SourceID:   &webhookSourceID,
+				ProviderID: &[]string{"webhook"}[0],
+				EventType:  &[]string{"webhook_received"}[0],
+				Enabled:    true,
 			},
-		},
-		Steps: []*models.WorkflowStep{
 			{
-				UID:      "fetch_data",
-				ActionID: "http_request",
+				ID:       "fetch_data",
+				NodeType: "http_request",
+				Category: models.CategoryTypeAction,
 				Name:     "Fetch Data",
-				Configuration: map[string]any{
+				Config: map[string]any{
 					"url":    "https://api.example.com/data",
 					"method": "GET",
 					"headers": map[string]any{
 						"Authorization": "Bearer token",
 					},
 				},
-				OnSuccess: stringPtr("transform_data"),
-				OnFailure: stringPtr("error_handler"),
-				Enabled:   true,
+				Enabled: true,
 			},
 			{
-				UID:      "transform_data",
-				ActionID: "transform",
+				ID:       "transform_data",
+				NodeType: "transform",
+				Category: models.CategoryTypeAction,
 				Name:     "Transform Data",
-				Configuration: map[string]any{
+				Config: map[string]any{
 					"expression": "$.data",
 					"input":      "{{steps.fetch_data.body}}",
 				},
-				OnSuccess: stringPtr("log_result"),
-				Enabled:   true,
+				Enabled: true,
 			},
 			{
-				UID:      "log_result",
-				ActionID: "log",
+				ID:       "log_result",
+				NodeType: "log",
+				Category: models.CategoryTypeAction,
 				Name:     "Log Result",
-				Configuration: map[string]any{
+				Config: map[string]any{
 					"message": "Processing completed: {{steps.transform_data.result}}",
 					"level":   "info",
 				},
 				Enabled: true,
 			},
 			{
-				UID:      "error_handler",
-				ActionID: "log",
+				ID:       "error_handler",
+				NodeType: "log",
+				Category: models.CategoryTypeAction,
 				Name:     "Error Handler",
-				Configuration: map[string]any{
+				Config: map[string]any{
 					"message": "Error occurred: {{steps.fetch_data.error}}",
 					"level":   "error",
 				},
 				Enabled: true,
+			},
+		},
+		Connections: []*models.Connection{
+			{
+				ID:         "conn1",
+				SourcePort: "fetch_data:success",
+				TargetPort: "transform_data:input",
+			},
+			{
+				ID:         "conn2",
+				SourcePort: "fetch_data:failure",
+				TargetPort: "error_handler:input",
+			},
+			{
+				ID:         "conn3",
+				SourcePort: "transform_data:success",
+				TargetPort: "log_result:input",
 			},
 		},
 		Variables: map[string]any{
@@ -465,55 +513,91 @@ func TestNewPersistence_ComplexWorkflow(t *testing.T) {
 		Owner: "test-user",
 	}
 
-	err := p.SaveWorkflow(ctx, workflow)
+	err := p.WorkflowRepository().Save(ctx, workflow)
 	require.NoError(t, err)
 
 	// Retrieve and verify
-	retrieved, err := p.WorkflowByID(ctx, workflow.ID)
+	retrieved, err := p.WorkflowRepository().GetByID(ctx, workflow.ID)
 	require.NoError(t, err)
 	require.NotNil(t, retrieved)
 
 	assert.Equal(t, workflow.ID, retrieved.ID)
 	assert.Equal(t, workflow.Name, retrieved.Name)
-	assert.Len(t, retrieved.WorkflowTriggers, len(workflow.WorkflowTriggers))
-	assert.Len(t, retrieved.Steps, len(workflow.Steps))
+	assert.Len(t, retrieved.Nodes, len(workflow.Nodes))
 
-	// Verify first trigger
-	assert.Len(t, retrieved.WorkflowTriggers, 2)
-
-	for _, trigger := range retrieved.WorkflowTriggers {
-		switch trigger.ProviderID {
-		case "scheduler":
-			assert.Equal(t, "0 0 * * *", trigger.Configuration["cron"])
-			assert.Equal(t, true, trigger.Configuration["enabled"])
-		case "webhook":
-			assert.Equal(t, "/webhook/test", trigger.Configuration["path"])
-			assert.Equal(t, "POST", trigger.Configuration["method"])
+	// Verify trigger nodes
+	triggerNodes := make([]*models.WorkflowNode, 0)
+	for _, node := range retrieved.Nodes {
+		if node.Category == models.CategoryTypeTrigger {
+			triggerNodes = append(triggerNodes, node)
 		}
 	}
 
-	assert.Len(t, retrieved.Steps, len(workflow.Steps))
+	assert.Len(t, triggerNodes, 2)
 
-	for _, step := range retrieved.Steps {
-		switch step.UID {
+	for _, trigger := range triggerNodes {
+		switch *trigger.ProviderID {
+		case "scheduler":
+			assert.Equal(t, "0 0 * * *", trigger.Config["cron"])
+			assert.Equal(t, true, trigger.Config["enabled"])
+			assert.Equal(t, "trigger:scheduler", trigger.NodeType)
+			assert.Equal(t, "schedule_due", *trigger.EventType)
+		case "webhook":
+			assert.Equal(t, "/webhook/test", trigger.Config["path"])
+			assert.Equal(t, "POST", trigger.Config["method"])
+			assert.Equal(t, "trigger:webhook", trigger.NodeType)
+			assert.Equal(t, "webhook_received", *trigger.EventType)
+		}
+	}
+
+	assert.Len(t, retrieved.Nodes, len(workflow.Nodes))
+
+	for _, node := range retrieved.Nodes {
+		switch node.ID {
+		case "scheduler_trigger":
+			assert.Equal(t, "trigger:scheduler", node.NodeType)
+			assert.Equal(t, models.CategoryTypeTrigger, node.Category)
+			assert.Equal(t, "0 0 * * *", node.Config["cron"])
+			assert.Equal(t, "scheduler", *node.ProviderID)
+			assert.Equal(t, "schedule_due", *node.EventType)
+		case "webhook_trigger":
+			assert.Equal(t, "trigger:webhook", node.NodeType)
+			assert.Equal(t, models.CategoryTypeTrigger, node.Category)
+			assert.Equal(t, "/webhook/test", node.Config["path"])
+			assert.Equal(t, "webhook", *node.ProviderID)
+			assert.Equal(t, "webhook_received", *node.EventType)
 		case "fetch_data":
-			assert.Equal(t, "http_request", step.ActionID)
-			assert.Equal(t, "https://api.example.com/data", step.Configuration["url"])
-			assert.Equal(t, "GET", step.Configuration["method"])
-			assert.NotNil(t, step.OnSuccess)
-			assert.Equal(t, "transform_data", *step.OnSuccess)
+			assert.Equal(t, "http_request", node.NodeType)
+			assert.Equal(t, models.CategoryTypeAction, node.Category)
+			assert.Equal(t, "https://api.example.com/data", node.Config["url"])
+			assert.Equal(t, "GET", node.Config["method"])
 		case "transform_data":
-			assert.Equal(t, "transform", step.ActionID)
-			assert.Equal(t, "$.data", step.Configuration["expression"])
-			assert.Equal(t, "{{steps.fetch_data.body}}", step.Configuration["input"])
-			assert.NotNil(t, step.OnSuccess)
-			assert.Equal(t, "log_result", *step.OnSuccess)
+			assert.Equal(t, "transform", node.NodeType)
+			assert.Equal(t, models.CategoryTypeAction, node.Category)
+			assert.Equal(t, "$.data", node.Config["expression"])
+			assert.Equal(t, "{{steps.fetch_data.body}}", node.Config["input"])
 		case "log_result":
-			assert.Equal(t, "log", step.ActionID)
-			assert.Equal(t, "Processing completed: {{steps.transform_data.result}}", step.Configuration["message"])
+			assert.Equal(t, "log", node.NodeType)
+			assert.Equal(t, models.CategoryTypeAction, node.Category)
+			assert.Equal(t, "Processing completed: {{steps.transform_data.result}}", node.Config["message"])
 		case "error_handler":
-			assert.Equal(t, "log", step.ActionID)
-			assert.Equal(t, "Error occurred: {{steps.fetch_data.error}}", step.Configuration["message"])
+			assert.Equal(t, "log", node.NodeType)
+			assert.Equal(t, models.CategoryTypeAction, node.Category)
+			assert.Equal(t, "Error occurred: {{steps.fetch_data.error}}", node.Config["message"])
+		}
+	}
+
+	// Verify connections
+	assert.Len(t, retrieved.Connections, len(workflow.Connections))
+
+	for _, conn := range retrieved.Connections {
+		switch conn.SourcePort {
+		case "fetch_data:success":
+			assert.Equal(t, "transform_data:input", conn.TargetPort)
+		case "fetch_data:failure":
+			assert.Equal(t, "error_handler:input", conn.TargetPort)
+		case "transform_data:success":
+			assert.Equal(t, "log_result:input", conn.TargetPort)
 		}
 	}
 

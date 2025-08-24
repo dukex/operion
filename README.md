@@ -9,7 +9,7 @@ Operion enables you to create automated workflows through:
 - **Source Providers**: Self-contained modules that generate events from external sources (scheduler, webhook, kafka)
 - **Triggers**: Workflow trigger definitions that specify conditions for workflow execution
 - **Actions**: Operations executed in workflows (HTTP requests, file operations, logging, data transformation)
-- **Context**: Data sharing between workflow steps
+- **Context**: Data sharing between workflow nodes
 - **Workers**: Background processes that execute workflows
 - **Source Manager**: Orchestrates source providers and manages their lifecycle
 - **Activator**: Bridges source events to workflow executions
@@ -88,7 +88,7 @@ DATABASE_URL=postgres://user:password@localhost:5432/operion
 ```
 
 The PostgreSQL persistence layer includes:
-- Normalized schema with separate tables for workflows, triggers, and steps
+- Normalized schema with separate tables for workflows, triggers, and nodes
 - JSONB storage for configuration data
 - Automated schema migrations with version tracking
 - Soft delete functionality
@@ -178,9 +178,9 @@ The system uses a modern event-driven architecture with complete provider isolat
    - Listens to source events from event bus  
    - Matches events to workflow triggers
    - Publishes `WorkflowTriggered` events for matched workflows
-4. **Worker Service** - Executes workflows step-by-step:
-   - Processes `WorkflowTriggered` events and `WorkflowStepAvailable` events
-   - Publishes granular events: `WorkflowStepFinished`, `WorkflowStepFailed`, `WorkflowFinished`
+4. **Worker Service** - Executes workflows node-by-node:
+   - Processes `WorkflowTriggered` events and `NodeActivation` events
+   - Publishes granular events: `NodeExecutionFinished`, `NodeExecutionFailed`, `WorkflowFinished`
 
 **Legacy Architecture (deprecated):**
 1. **Direct workflow triggering** - Legacy trigger support (to be removed)
@@ -254,7 +254,7 @@ Actions now use a standardized contract with:
 
 ### Workflow Execution Model
 
-The executor now operates on an event-driven, step-by-step model:
+Operion operates on an event-driven, node-by-node execution model:
 
 - **Execution Context**: Maintains state across steps with `ExecutionContext.StepResults`
 - **Step Isolation**: Each step processed as individual event for scalability

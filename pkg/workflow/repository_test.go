@@ -25,18 +25,20 @@ func TestRepository_Create(t *testing.T) {
 	workflow := &models.Workflow{
 		Name:        "Test Workflow",
 		Description: "Test workflow description",
-		Steps: []*models.WorkflowStep{
+		Status:      models.WorkflowStatusDraft,
+		Nodes: []*models.WorkflowNode{
 			{
 				ID:       "step-1",
 				Name:     "Test Step",
-				ActionID: "log",
-				UID:      "test_step",
-				Configuration: map[string]any{
+				NodeType: "log",
+				Category: models.CategoryTypeAction,
+				Config: map[string]any{
 					"message": "test",
 				},
 				Enabled: true,
 			},
 		},
+		Connections: []*models.Connection{},
 	}
 
 	// Create workflow
@@ -52,10 +54,10 @@ func TestRepository_Create(t *testing.T) {
 	assert.False(t, created.UpdatedAt.IsZero())
 
 	// Verify status was set
-	assert.Equal(t, models.WorkflowStatusInactive, created.Status)
+	assert.Equal(t, models.WorkflowStatusDraft, created.Status)
 
 	// Clean up
-	err = persistence.DeleteWorkflow(t.Context(), created.ID)
+	err = persistence.WorkflowRepository().Delete(t.Context(), created.ID)
 	assert.NoError(t, err)
 }
 

@@ -66,8 +66,16 @@ jobs:
           version: latest
           only-new-issues: true
 
-      - name: Run tests
-        run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
+      - name: Run PostgreSQL tests (serial)
+        run: go test -race -p=1 -coverprofile=coverage-postgres.out -covermode=atomic ./pkg/persistence/postgresql
+
+      - name: Run other tests (parallel)  
+        run: go test -race -coverprofile=coverage-other.out -covermode=atomic $(go list ./... | grep -v "pkg/persistence/postgresql")
+
+      - name: Combine coverage reports
+        run: |
+          echo "mode: atomic" > coverage.out
+          grep -h -v "mode: atomic" coverage-postgres.out coverage-other.out >> coverage.out
 
       - name: Generate coverage report
         run: go tool cover -html=coverage.out -o coverage.html

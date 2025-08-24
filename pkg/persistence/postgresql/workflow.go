@@ -63,9 +63,9 @@ func (r *WorkflowRepository) GetAll(ctx context.Context) ([]*models.Workflow, er
 			return nil, fmt.Errorf("failed to scan workflow: %w", err)
 		}
 
-		err = r.loadWorkflowTriggersAndSteps(ctx, workflow)
+		err = r.loadWorkflowTriggersAndNodes(ctx, workflow)
 		if err != nil {
-			return nil, fmt.Errorf("failed to load workflow triggers and steps: %w", err)
+			return nil, fmt.Errorf("failed to load workflow triggers and nodes: %w", err)
 		}
 
 		workflows = append(workflows, workflow)
@@ -107,8 +107,8 @@ func (r *WorkflowRepository) GetByID(ctx context.Context, id string) (*models.Wo
 		return nil, fmt.Errorf("failed to scan workflow: %w", err)
 	}
 
-	if err := r.loadWorkflowTriggersAndSteps(ctx, workflow); err != nil {
-		return nil, fmt.Errorf("failed to load workflow triggers and steps: %w", err)
+	if err := r.loadWorkflowTriggersAndNodes(ctx, workflow); err != nil {
+		return nil, fmt.Errorf("failed to load workflow triggers and nodes: %w", err)
 	}
 
 	return workflow, nil
@@ -188,25 +188,24 @@ variables, status, metadata, owner, created_at, updated_at, deleted_at)
 		return fmt.Errorf("failed to save workflow base: %w", err)
 	}
 
-	// Delete existing triggers and steps (for updates)
-	_, err = tx.ExecContext(ctx, "DELETE FROM workflow_triggers WHERE workflow_id = $1", workflow.ID)
+	// Delete existing nodes and connections (for updates)
+	_, err = tx.ExecContext(ctx, "DELETE FROM workflow_connections WHERE workflow_id = $1", workflow.ID)
 	if err != nil {
-		return fmt.Errorf("failed to delete existing triggers: %w", err)
+		return fmt.Errorf("failed to delete existing connections: %w", err)
 	}
 
-	_, err = tx.ExecContext(ctx, "DELETE FROM workflow_steps WHERE workflow_id = $1", workflow.ID)
+	_, err = tx.ExecContext(ctx, "DELETE FROM workflow_nodes WHERE workflow_id = $1", workflow.ID)
 	if err != nil {
-		return fmt.Errorf("failed to delete existing steps: %w", err)
+		return fmt.Errorf("failed to delete existing nodes: %w", err)
 	}
 
-	// Save triggers
-	if err := r.saveWorkflowTriggers(ctx, tx, workflow); err != nil {
-		return fmt.Errorf("failed to save workflow triggers: %w", err)
+	// Save nodes and connections
+	if err := r.saveWorkflowNodes(ctx, tx, workflow); err != nil {
+		return fmt.Errorf("failed to save workflow nodes: %w", err)
 	}
 
-	// Save steps
-	if err := r.saveWorkflowSteps(ctx, tx, workflow); err != nil {
-		return fmt.Errorf("failed to save workflow steps: %w", err)
+	if err := r.saveWorkflowConnections(ctx, tx, workflow); err != nil {
+		return fmt.Errorf("failed to save workflow connections: %w", err)
 	}
 
 	// Commit transaction
@@ -239,82 +238,20 @@ func (r *WorkflowRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (r *WorkflowRepository) loadWorkflowTriggersAndSteps(ctx context.Context, workflow *models.Workflow) error {
-	triggersQuery := `
-		SELECT 
-			id
-		  , name
-		  , description
-		  , source_id
-		  , event_type
-		  , provider_id
-		  , configuration
-		FROM workflow_triggers
+func (r *WorkflowRepository) loadWorkflowTriggersAndNodes(ctx context.Context, workflow *models.Workflow) error {
+	// Triggers are now part of nodes, so we only load nodes with all trigger fields
+
+	// Load nodes with trigger fields
+	nodesQuery := `
+		SELECT id, node_type, category, name, config, enabled, position_x, position_y, source_id, provider_id, event_type
+		FROM workflow_nodes
 		WHERE workflow_id = $1
 		ORDER BY created_at
 	`
 
-	rows, err := r.db.QueryContext(ctx, triggersQuery, workflow.ID)
+	rows, err := r.db.QueryContext(ctx, nodesQuery, workflow.ID)
 	if err != nil {
-		return fmt.Errorf("failed to query workflow triggers: %w", err)
-	}
-
-	defer func() {
-		err := rows.Close()
-		if err != nil {
-			r.logger.ErrorContext(ctx, "failed to close rows", "error", err)
-		}
-	}()
-
-	var triggers []*models.WorkflowTrigger
-
-	for rows.Next() {
-		var (
-			trigger    models.WorkflowTrigger
-			configJSON []byte
-		)
-
-		err := rows.Scan(
-			&trigger.ID,
-			&trigger.Name,
-			&trigger.Description,
-			&trigger.SourceID,
-			&trigger.EventType,
-			&trigger.ProviderID,
-			&configJSON,
-		)
-		if err != nil {
-			return fmt.Errorf("failed to scan trigger: %w", err)
-		}
-
-		if configJSON != nil {
-			err := json.Unmarshal(configJSON, &trigger.Configuration)
-			if err != nil {
-				return fmt.Errorf("failed to unmarshal trigger configuration: %w", err)
-			}
-		}
-
-		triggers = append(triggers, &trigger)
-	}
-
-	if err := rows.Err(); err != nil {
-		return fmt.Errorf("error iterating triggers: %w", err)
-	}
-
-	workflow.WorkflowTriggers = triggers
-
-	// Load steps
-	stepsQuery := `
-		SELECT id, uid, name, action_id, configuration, conditional_language,
-		       conditional_expression, on_success, on_failure, enabled
-		FROM workflow_steps
-		WHERE workflow_id = $1
-		ORDER BY created_at
-	`
-
-	rows, err = r.db.QueryContext(ctx, stepsQuery, workflow.ID)
-	if err != nil {
-		return fmt.Errorf("failed to query workflow steps: %w", err)
+		return fmt.Errorf("failed to query workflow nodes: %w", err)
 	}
 
 	defer func() {
@@ -324,127 +261,168 @@ func (r *WorkflowRepository) loadWorkflowTriggersAndSteps(ctx context.Context, w
 		}
 	}()
 
-	var steps []*models.WorkflowStep
+	var nodes []*models.WorkflowNode
 
 	for rows.Next() {
 		var (
-			step                                       models.WorkflowStep
-			configJSON                                 []byte
-			conditionalLanguage, conditionalExpression sql.NullString
+			node       models.WorkflowNode
+			configJSON []byte
 		)
 
 		err := rows.Scan(
-			&step.ID,
-			&step.UID,
-			&step.Name,
-			&step.ActionID,
+			&node.ID,
+			&node.NodeType,
+			&node.Category,
+			&node.Name,
 			&configJSON,
-			&conditionalLanguage,
-			&conditionalExpression,
-			&step.OnSuccess,
-			&step.OnFailure,
-			&step.Enabled,
+			&node.Enabled,
+			&node.PositionX,
+			&node.PositionY,
+			&node.SourceID,
+			&node.ProviderID,
+			&node.EventType,
 		)
 		if err != nil {
-			return fmt.Errorf("failed to scan step: %w", err)
+			return fmt.Errorf("failed to scan node: %w", err)
 		}
 
 		if configJSON != nil {
-			err := json.Unmarshal(configJSON, &step.Configuration)
+			err := json.Unmarshal(configJSON, &node.Config)
 			if err != nil {
-				return fmt.Errorf("failed to unmarshal step configuration: %w", err)
+				return fmt.Errorf("failed to unmarshal node configuration: %w", err)
 			}
 		}
 
-		steps = append(steps, &step)
+		nodes = append(nodes, &node)
 	}
 
 	if err := rows.Err(); err != nil {
-		return fmt.Errorf("error iterating steps: %w", err)
+		return fmt.Errorf("error iterating nodes: %w", err)
 	}
 
-	workflow.Steps = steps
+	workflow.Nodes = nodes
+
+	// Load connections
+	connectionsQuery := `
+		SELECT id, source_node_id, source_port, target_node_id, target_port
+		FROM workflow_connections
+		WHERE workflow_id = $1
+		ORDER BY created_at
+	`
+
+	rows, err = r.db.QueryContext(ctx, connectionsQuery, workflow.ID)
+	if err != nil {
+		return fmt.Errorf("failed to query workflow connections: %w", err)
+	}
+
+	defer func() {
+		err := rows.Close()
+		if err != nil {
+			r.logger.Error("failed to close rows", "error", err)
+		}
+	}()
+
+	var connections []*models.Connection
+
+	for rows.Next() {
+		var (
+			connection                                         models.Connection
+			sourceNodeID, sourcePort, targetNodeID, targetPort string
+		)
+
+		err := rows.Scan(
+			&connection.ID,
+			&sourceNodeID,
+			&sourcePort,
+			&targetNodeID,
+			&targetPort,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to scan connection: %w", err)
+		}
+
+		// Convert old database format to new Connection struct format
+		connection.SourcePort = sourceNodeID + ":" + sourcePort
+		connection.TargetPort = targetNodeID + ":" + targetPort
+
+		connections = append(connections, &connection)
+	}
+
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("error iterating connections: %w", err)
+	}
+
+	workflow.Connections = connections
 
 	return nil
 }
 
-// saveWorkflowTriggers saves triggers for a workflow.
-func (r *WorkflowRepository) saveWorkflowTriggers(ctx context.Context, tx *sql.Tx, workflow *models.Workflow) error {
-	for _, trigger := range workflow.WorkflowTriggers {
-		configJSON, err := json.Marshal(trigger.Configuration)
+// Triggers are now saved as part of nodes - no separate trigger saving function needed
+
+// saveWorkflowNodes saves nodes for a workflow.
+func (r *WorkflowRepository) saveWorkflowNodes(ctx context.Context, tx *sql.Tx, workflow *models.Workflow) error {
+	for _, node := range workflow.Nodes {
+		configJSON, err := json.Marshal(node.Config)
 		if err != nil {
-			return fmt.Errorf("failed to marshal trigger configuration: %w", err)
-		}
-
-		if len(trigger.ID) == 0 {
-			id, err := uuid.NewV7()
-			if err != nil {
-				return fmt.Errorf("failed to generate trigger ID: %w", err)
-			}
-
-			trigger.ID = id.String()
+			return fmt.Errorf("failed to marshal node configuration: %w", err)
 		}
 
 		query := `
-			INSERT INTO workflow_triggers (id, workflow_id, name, description, source_id, event_type, provider_id, configuration)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+			INSERT INTO workflow_nodes (id, workflow_id, node_type, category, name, config, enabled, position_x, position_y, source_id, provider_id, event_type)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		`
 
 		_, err = tx.ExecContext(ctx, query,
-			trigger.ID,
+			node.ID,
 			workflow.ID,
-			trigger.Name,
-			trigger.Description,
-			trigger.SourceID,
-			trigger.EventType,
-			trigger.ProviderID,
+			node.NodeType,
+			node.Category,
+			node.Name,
 			configJSON,
+			node.Enabled,
+			node.PositionX,
+			node.PositionY,
+			node.SourceID,
+			node.ProviderID,
+			node.EventType,
 		)
 		if err != nil {
-			return fmt.Errorf("failed to save trigger: %w", err)
+			return fmt.Errorf("failed to save node: %w", err)
 		}
 	}
 
 	return nil
 }
 
-// saveWorkflowSteps saves steps for a workflow.
-func (r *WorkflowRepository) saveWorkflowSteps(ctx context.Context, tx *sql.Tx, workflow *models.Workflow) error {
-	for _, step := range workflow.Steps {
-		configJSON, err := json.Marshal(step.Configuration)
-		if err != nil {
-			return fmt.Errorf("failed to marshal step configuration: %w", err)
+// saveWorkflowConnections saves connections for a workflow.
+func (r *WorkflowRepository) saveWorkflowConnections(ctx context.Context, tx *sql.Tx, workflow *models.Workflow) error {
+	for _, connection := range workflow.Connections {
+		// Parse port IDs to extract node IDs and port names
+		sourceNodeID, sourcePortName, sourceOK := models.ParsePortID(connection.SourcePort)
+		if !sourceOK {
+			return fmt.Errorf("invalid source port ID format: %s", connection.SourcePort)
 		}
 
-		if step.ID == "" {
-			id, err := uuid.NewV7()
-			if err != nil {
-				return fmt.Errorf("failed to generate step ID: %w", err)
-			}
-
-			step.ID = id.String()
+		targetNodeID, targetPortName, targetOK := models.ParsePortID(connection.TargetPort)
+		if !targetOK {
+			return fmt.Errorf("invalid target port ID format: %s", connection.TargetPort)
 		}
 
 		query := `
-			INSERT INTO workflow_steps (id, workflow_id, uid, name, action_id, configuration,
-			                          on_success, on_failure, enabled)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-		
+			INSERT INTO workflow_connections (id, workflow_id, source_node_id, source_port, target_node_id, target_port)
+			VALUES ($1, $2, $3, $4, $5, $6)
 		`
 
-		_, err = tx.ExecContext(ctx, query,
-			step.ID,
+		_, err := tx.ExecContext(ctx, query,
+			connection.ID,
 			workflow.ID,
-			step.UID,
-			step.Name,
-			step.ActionID,
-			configJSON,
-			step.OnSuccess,
-			step.OnFailure,
-			step.Enabled,
+			sourceNodeID,
+			sourcePortName,
+			targetNodeID,
+			targetPortName,
 		)
 		if err != nil {
-			return fmt.Errorf("failed to save step: %w", err)
+			return fmt.Errorf("failed to save connection: %w", err)
 		}
 	}
 
@@ -493,25 +471,30 @@ func (r *WorkflowRepository) scanWorkflowBase(scanner interface {
 	return &workflow, nil
 }
 
-// GetTriggersBySourceEventAndProvider returns triggers matching the specified criteria.
-func (r *WorkflowRepository) GetTriggersBySourceEventAndProvider(ctx context.Context, sourceID, eventType, providerID string, status models.WorkflowStatus) ([]*models.TriggerMatch, error) {
+// FindTriggersBySourceEventAndProvider returns trigger nodes matching the specified criteria.
+func (r *WorkflowRepository) FindTriggersBySourceEventAndProvider(ctx context.Context, sourceID, eventType, providerID string, status models.WorkflowStatus) ([]*models.TriggerNodeMatch, error) {
 	query := `
 		SELECT 
 			w.id as workflow_id,
-			t.id,
-			t.name,
-			t.description,
-			t.source_id,
-			t.event_type,
-			t.provider_id,
-			t.configuration
+			n.id,
+			n.node_type,
+			n.category,
+			n.name,
+			n.config,
+			n.enabled,
+			n.position_x,
+			n.position_y,
+			n.source_id,
+			n.provider_id,
+			n.event_type
 		FROM workflows w
-		JOIN workflow_triggers t ON w.id = t.workflow_id
+		JOIN workflow_nodes n ON w.id = n.workflow_id
 		WHERE w.deleted_at IS NULL
 		  AND w.status = $1
-		  AND t.source_id = $2
-		  AND t.event_type = $3
-		  AND t.provider_id = $4
+		  AND n.category = 'trigger'
+		  AND n.source_id = $2
+		  AND n.event_type = $3
+		  AND n.provider_id = $4
 		ORDER BY w.created_at DESC
 	`
 
@@ -527,39 +510,43 @@ func (r *WorkflowRepository) GetTriggersBySourceEventAndProvider(ctx context.Con
 		}
 	}()
 
-	var matches []*models.TriggerMatch
+	var matches []*models.TriggerNodeMatch
 
 	for rows.Next() {
 		var (
 			workflowID string
-			trigger    models.WorkflowTrigger
+			node       models.WorkflowNode
 			configJSON []byte
 		)
 
 		err := rows.Scan(
 			&workflowID,
-			&trigger.ID,
-			&trigger.Name,
-			&trigger.Description,
-			&trigger.SourceID,
-			&trigger.EventType,
-			&trigger.ProviderID,
+			&node.ID,
+			&node.NodeType,
+			&node.Category,
+			&node.Name,
 			&configJSON,
+			&node.Enabled,
+			&node.PositionX,
+			&node.PositionY,
+			&node.SourceID,
+			&node.ProviderID,
+			&node.EventType,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan trigger match: %w", err)
+			return nil, fmt.Errorf("failed to scan trigger node match: %w", err)
 		}
 
 		if configJSON != nil {
-			err := json.Unmarshal(configJSON, &trigger.Configuration)
+			err := json.Unmarshal(configJSON, &node.Config)
 			if err != nil {
-				return nil, fmt.Errorf("failed to unmarshal trigger configuration: %w", err)
+				return nil, fmt.Errorf("failed to unmarshal node configuration: %w", err)
 			}
 		}
 
-		matches = append(matches, &models.TriggerMatch{
-			WorkflowID: workflowID,
-			Trigger:    &trigger,
+		matches = append(matches, &models.TriggerNodeMatch{
+			WorkflowID:  workflowID,
+			TriggerNode: &node,
 		})
 	}
 
