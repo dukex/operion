@@ -221,18 +221,19 @@ func (s *PublishingService) createPublishedCopy(original *models.Workflow) *mode
 
 	// Create deep copy of the workflow
 	published := &models.Workflow{
-		ID:          publishedID,
-		Name:        original.Name,
-		Description: original.Description,
-		Status:      models.WorkflowStatusPublished,
-		ParentID:    original.ID, // Reference to original workflow
-		PublishedID: "",          // Published workflows don't have their own published ID
-		Variables:   copyMap(original.Variables),
-		Metadata:    copyMap(original.Metadata),
-		Owner:       original.Owner,
-		CreatedAt:   now,
-		UpdatedAt:   now,
-		PublishedAt: &now,
+		ID:              publishedID,
+		Name:            original.Name,
+		Description:     original.Description,
+		Status:          models.WorkflowStatusPublished,
+		WorkflowGroupID: original.WorkflowGroupID, // Same group as original
+		ParentID:        original.ID,              // Reference to original workflow
+		PublishedID:     "",                       // Published workflows don't have their own published ID
+		Variables:       copyMap(original.Variables),
+		Metadata:        copyMap(original.Metadata),
+		Owner:           original.Owner,
+		CreatedAt:       now,
+		UpdatedAt:       now,
+		PublishedAt:     &now,
 	}
 
 	// Trigger data is now part of nodes, so no separate triggers to copy
@@ -291,4 +292,19 @@ func copyStringPointer(original *string) *string {
 	value := *original
 
 	return &value
+}
+
+// GetWorkflowVersions returns all versions of a workflow by group ID.
+func (s *PublishingService) GetWorkflowVersions(ctx context.Context, workflowGroupID string) ([]*models.Workflow, error) {
+	return s.persistence.WorkflowRepository().GetWorkflowVersions(ctx, workflowGroupID)
+}
+
+// GetLatestDraft returns the current draft version by group ID.
+func (s *PublishingService) GetLatestDraft(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
+	return s.persistence.WorkflowRepository().GetLatestDraftByGroupID(ctx, workflowGroupID)
+}
+
+// GetCurrentPublished returns the current published version by group ID.
+func (s *PublishingService) GetCurrentPublished(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
+	return s.persistence.WorkflowRepository().GetCurrentPublishedByGroupID(ctx, workflowGroupID)
 }

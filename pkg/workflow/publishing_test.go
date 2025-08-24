@@ -56,6 +56,45 @@ func (r *testWorkflowRepository) UpdatePublishedID(ctx context.Context, workflow
 	return fmt.Errorf("workflow not found: %s", workflowID)
 }
 
+func (r *testWorkflowRepository) GetWorkflowVersions(ctx context.Context, workflowGroupID string) ([]*models.Workflow, error) {
+	var versions []*models.Workflow
+
+	for _, workflow := range r.workflows {
+		if workflow.WorkflowGroupID == workflowGroupID {
+			versions = append(versions, workflow)
+		}
+	}
+
+	return versions, nil
+}
+
+func (r *testWorkflowRepository) GetLatestDraftByGroupID(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
+	var latestDraft *models.Workflow
+
+	for _, workflow := range r.workflows {
+		if workflow.WorkflowGroupID == workflowGroupID && workflow.ParentID == "" {
+			if latestDraft == nil || workflow.CreatedAt.After(latestDraft.CreatedAt) {
+				latestDraft = workflow
+			}
+		}
+	}
+
+	return latestDraft, nil
+}
+
+func (r *testWorkflowRepository) GetCurrentPublishedByGroupID(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
+	var currentPublished *models.Workflow
+	for _, workflow := range r.workflows {
+		if workflow.WorkflowGroupID == workflowGroupID && workflow.Status == models.WorkflowStatusPublished {
+			if currentPublished == nil || workflow.CreatedAt.After(currentPublished.CreatedAt) {
+				currentPublished = workflow
+			}
+		}
+	}
+
+	return currentPublished, nil
+}
+
 func (r *testWorkflowRepository) FindTriggersBySourceEventAndProvider(ctx context.Context, sourceID, eventType, providerID string, status models.WorkflowStatus) ([]*models.TriggerNodeMatch, error) {
 	return nil, nil
 }
@@ -311,15 +350,16 @@ func createValidWorkflow() *models.Workflow {
 	workflowID := uuid.New().String()
 
 	return &models.Workflow{
-		ID:          workflowID,
-		Name:        "Test Workflow",
-		Description: "A test workflow for publishing",
-		Status:      models.WorkflowStatusDraft,
-		Owner:       "test-user",
-		CreatedAt:   now,
-		UpdatedAt:   now,
-		Variables:   map[string]any{"env": "test"},
-		Metadata:    map[string]any{"version": "1.0"},
+		ID:              workflowID,
+		Name:            "Test Workflow",
+		Description:     "A test workflow for publishing",
+		Status:          models.WorkflowStatusDraft,
+		WorkflowGroupID: workflowID, // Set workflow_group_id = id for new workflows
+		Owner:           "test-user",
+		CreatedAt:       now,
+		UpdatedAt:       now,
+		Variables:       map[string]any{"env": "test"},
+		Metadata:        map[string]any{"version": "1.0"},
 		Nodes: []*models.WorkflowNode{
 			{
 				ID:         "trigger-1",
@@ -410,6 +450,7 @@ func createPublishedWorkflow() *models.Workflow {
 	workflow := createValidWorkflow()
 	workflow.Status = models.WorkflowStatusPublished
 	workflow.ParentID = "original-workflow-id"
+	workflow.WorkflowGroupID = "group-id" // Override with specific group ID
 	now := time.Now()
 	workflow.PublishedAt = &now
 

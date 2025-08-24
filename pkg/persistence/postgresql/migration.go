@@ -12,6 +12,7 @@ func migrations() map[int]string {
 				status VARCHAR(50) NOT NULL,
 				metadata JSONB,
 				owner VARCHAR(255),
+				workflow_group_id UUID NOT NULL,
 				published_id UUID,
 				parent_id UUID,
 				published_at TIMESTAMP WITH TIME ZONE,
@@ -24,6 +25,7 @@ func migrations() map[int]string {
 			CREATE INDEX idx_workflows_owner ON workflows(owner);
 			CREATE INDEX idx_workflows_created_at ON workflows(created_at);
 			CREATE INDEX idx_workflows_deleted_at ON workflows(deleted_at);
+			CREATE INDEX idx_workflows_workflow_group_id ON workflows(workflow_group_id);
 			CREATE INDEX idx_workflows_published_id ON workflows(published_id);
 			CREATE INDEX idx_workflows_parent_id ON workflows(parent_id);
 			CREATE INDEX idx_workflows_published_at ON workflows(published_at);

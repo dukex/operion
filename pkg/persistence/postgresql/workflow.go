@@ -35,6 +35,7 @@ func (r *WorkflowRepository) GetAll(ctx context.Context) ([]*models.Workflow, er
 		  , status
 		  , metadata
 		  , owner
+		  , workflow_group_id
 		  , published_id
 		  , parent_id
 		  , published_at
@@ -92,6 +93,7 @@ func (r *WorkflowRepository) GetByID(ctx context.Context, id string) (*models.Wo
 		  , status
 		  , metadata
 		  , owner
+		  , workflow_group_id
 		  , published_id
 		  , parent_id
 		  , published_at
@@ -139,6 +141,11 @@ func (r *WorkflowRepository) Save(ctx context.Context, workflow *models.Workflow
 		workflow.ID = id.String()
 	}
 
+	// Set workflow_group_id = id for new workflows (when WorkflowGroupID is empty)
+	if workflow.WorkflowGroupID == "" {
+		workflow.WorkflowGroupID = workflow.ID
+	}
+
 	// Start transaction
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -165,8 +172,8 @@ func (r *WorkflowRepository) Save(ctx context.Context, workflow *models.Workflow
 	// Save workflow base data
 	workflowQuery := `
 		INSERT INTO workflows (id, name, description,
-variables, status, metadata, owner, published_id, parent_id, published_at, created_at, updated_at, deleted_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+variables, status, metadata, owner, workflow_group_id, published_id, parent_id, published_at, created_at, updated_at, deleted_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 		ON CONFLICT (id) DO UPDATE SET
 			name = EXCLUDED.name,
 			description = EXCLUDED.description,
@@ -174,6 +181,7 @@ variables, status, metadata, owner, published_id, parent_id, published_at, creat
 			status = EXCLUDED.status,
 			metadata = EXCLUDED.metadata,
 			owner = EXCLUDED.owner,
+			workflow_group_id = EXCLUDED.workflow_group_id,
 			published_id = EXCLUDED.published_id,
 			parent_id = EXCLUDED.parent_id,
 			published_at = EXCLUDED.published_at,
@@ -182,7 +190,13 @@ variables, status, metadata, owner, published_id, parent_id, published_at, creat
 	`
 
 	// Convert empty UUID strings to NULL for PostgreSQL compatibility
-	var publishedIDParam, parentIDParam any
+	var workflowGroupIDParam, publishedIDParam, parentIDParam any
+	if workflow.WorkflowGroupID == "" {
+		workflowGroupIDParam = nil
+	} else {
+		workflowGroupIDParam = workflow.WorkflowGroupID
+	}
+
 	if workflow.PublishedID == "" {
 		publishedIDParam = nil
 	} else {
@@ -203,6 +217,7 @@ variables, status, metadata, owner, published_id, parent_id, published_at, creat
 		workflow.Status,
 		metadataJSON,
 		workflow.Owner,
+		workflowGroupIDParam,
 		publishedIDParam,
 		parentIDParam,
 		workflow.PublishedAt,
@@ -488,9 +503,9 @@ func (r *WorkflowRepository) scanWorkflowBase(scanner interface {
 	Scan(dest ...any) error
 }) (*models.Workflow, error) {
 	var (
-		workflow                    models.Workflow
-		variablesJSON, metadataJSON []byte
-		publishedID, parentID       sql.NullString
+		workflow                               models.Workflow
+		variablesJSON, metadataJSON            []byte
+		workflowGroupID, publishedID, parentID sql.NullString
 	)
 
 	err := scanner.Scan(
@@ -501,6 +516,7 @@ func (r *WorkflowRepository) scanWorkflowBase(scanner interface {
 		&workflow.Status,
 		&metadataJSON,
 		&workflow.Owner,
+		&workflowGroupID,
 		&publishedID,
 		&parentID,
 		&workflow.PublishedAt,
@@ -513,6 +529,10 @@ func (r *WorkflowRepository) scanWorkflowBase(scanner interface {
 	}
 
 	// Convert nullable strings to regular strings
+	if workflowGroupID.Valid {
+		workflow.WorkflowGroupID = workflowGroupID.String
+	}
+
 	if publishedID.Valid {
 		workflow.PublishedID = publishedID.String
 	}
@@ -537,6 +557,149 @@ func (r *WorkflowRepository) scanWorkflowBase(scanner interface {
 	}
 
 	return &workflow, nil
+}
+
+// GetWorkflowVersions returns all versions of a workflow by group ID.
+func (r *WorkflowRepository) GetWorkflowVersions(ctx context.Context, workflowGroupID string) ([]*models.Workflow, error) {
+	query := `
+		SELECT
+			id
+		  , name
+		  , description
+		  , variables
+		  , status
+		  , metadata
+		  , owner
+		  , workflow_group_id
+		  , published_id
+		  , parent_id
+		  , published_at
+		  , created_at
+		  , updated_at
+		  , deleted_at
+		FROM workflows
+		WHERE workflow_group_id = $1 AND deleted_at IS NULL
+		ORDER BY created_at DESC
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, workflowGroupID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query workflow versions: %w", err)
+	}
+
+	defer func(ctx context.Context, r *WorkflowRepository) {
+		err := rows.Close()
+		if err != nil {
+			r.logger.ErrorContext(ctx, "failed to close rows", "error", err)
+		}
+	}(ctx, r)
+
+	var workflows []*models.Workflow
+
+	for rows.Next() {
+		workflow, err := r.scanWorkflowBase(rows)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan workflow: %w", err)
+		}
+
+		err = r.loadWorkflowNodes(ctx, workflow)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load workflow nodes: %w", err)
+		}
+
+		workflows = append(workflows, workflow)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("error iterating workflows: %w", err)
+	}
+
+	return workflows, nil
+}
+
+// GetLatestDraftByGroupID returns the current draft version of a workflow group.
+func (r *WorkflowRepository) GetLatestDraftByGroupID(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
+	query := `
+		SELECT
+			id
+		  , name
+		  , description
+		  , variables
+		  , status
+		  , metadata
+		  , owner
+		  , workflow_group_id
+		  , published_id
+		  , parent_id
+		  , published_at
+		  , created_at
+		  , updated_at
+		  , deleted_at
+		FROM workflows
+		WHERE workflow_group_id = $1 AND parent_id IS NULL AND deleted_at IS NULL
+		ORDER BY created_at DESC
+		LIMIT 1
+	`
+
+	row := r.db.QueryRowContext(ctx, query, workflowGroupID)
+
+	workflow, err := r.scanWorkflowBase(row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+
+		return nil, fmt.Errorf("failed to scan workflow: %w", err)
+	}
+
+	if err := r.loadWorkflowNodes(ctx, workflow); err != nil {
+		return nil, fmt.Errorf("failed to load workflow nodes: %w", err)
+	}
+
+	return workflow, nil
+}
+
+// GetCurrentPublishedByGroupID returns the current published version of a workflow group.
+func (r *WorkflowRepository) GetCurrentPublishedByGroupID(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
+	query := `
+		SELECT
+			id
+		  , name
+		  , description
+		  , variables
+		  , status
+		  , metadata
+		  , owner
+		  , workflow_group_id
+		  , published_id
+		  , parent_id
+		  , published_at
+		  , created_at
+		  , updated_at
+		  , deleted_at
+		FROM workflows
+		WHERE workflow_group_id = $1 AND status = 'published' AND deleted_at IS NULL
+		ORDER BY created_at DESC
+		LIMIT 1
+	`
+
+	row := r.db.QueryRowContext(ctx, query, workflowGroupID)
+
+	workflow, err := r.scanWorkflowBase(row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+
+		return nil, fmt.Errorf("failed to scan workflow: %w", err)
+	}
+
+	if err := r.loadWorkflowNodes(ctx, workflow); err != nil {
+		return nil, fmt.Errorf("failed to load workflow nodes: %w", err)
+	}
+
+	return workflow, nil
 }
 
 // FindTriggersBySourceEventAndProvider returns trigger nodes matching the specified criteria.

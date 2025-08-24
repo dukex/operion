@@ -51,6 +51,33 @@ func (m *MockWorkflowRepository) UpdatePublishedID(ctx context.Context, workflow
 	return args.Error(0)
 }
 
+func (m *MockWorkflowRepository) GetWorkflowVersions(ctx context.Context, workflowGroupID string) ([]*models.Workflow, error) {
+	args := m.Called(ctx, workflowGroupID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+
+	return args.Get(0).([]*models.Workflow), args.Error(1)
+}
+
+func (m *MockWorkflowRepository) GetLatestDraftByGroupID(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
+	args := m.Called(ctx, workflowGroupID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+
+	return args.Get(0).(*models.Workflow), args.Error(1)
+}
+
+func (m *MockWorkflowRepository) GetCurrentPublishedByGroupID(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
+	args := m.Called(ctx, workflowGroupID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+
+	return args.Get(0).(*models.Workflow), args.Error(1)
+}
+
 func (m *MockWorkflowRepository) FindTriggersBySourceEventAndProvider(ctx context.Context, sourceID, eventType, providerID string, status models.WorkflowStatus) ([]*models.TriggerNodeMatch, error) {
 	args := m.Called(ctx, sourceID, eventType, providerID, status)
 	if args.Get(0) == nil {

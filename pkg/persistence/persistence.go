@@ -30,6 +30,11 @@ type WorkflowRepository interface {
 	Delete(ctx context.Context, id string) error
 	UpdatePublishedID(ctx context.Context, workflowID, publishedID string) error
 
+	// Workflow versioning operations
+	GetWorkflowVersions(ctx context.Context, workflowGroupID string) ([]*models.Workflow, error)
+	GetLatestDraftByGroupID(ctx context.Context, workflowGroupID string) (*models.Workflow, error)
+	GetCurrentPublishedByGroupID(ctx context.Context, workflowGroupID string) (*models.Workflow, error)
+
 	// Trigger operations (deprecated - will be removed)
 	FindTriggersBySourceEventAndProvider(ctx context.Context, sourceID, eventType, providerID string, status models.WorkflowStatus) ([]*models.TriggerNodeMatch, error)
 }

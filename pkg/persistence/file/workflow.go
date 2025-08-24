@@ -169,3 +169,60 @@ func (wr *WorkflowRepository) FindTriggersBySourceEventAndProvider(ctx context.C
 
 	return matches, nil
 }
+
+// GetWorkflowVersions returns all versions of a workflow by group ID.
+func (wr *WorkflowRepository) GetWorkflowVersions(ctx context.Context, workflowGroupID string) ([]*models.Workflow, error) {
+	workflows, err := wr.GetAll(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all workflows: %w", err)
+	}
+
+	var versions []*models.Workflow
+
+	for _, workflow := range workflows {
+		if workflow.WorkflowGroupID == workflowGroupID {
+			versions = append(versions, workflow)
+		}
+	}
+
+	return versions, nil
+}
+
+// GetLatestDraftByGroupID returns the current draft version of a workflow group.
+func (wr *WorkflowRepository) GetLatestDraftByGroupID(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
+	workflows, err := wr.GetAll(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all workflows: %w", err)
+	}
+
+	var latestDraft *models.Workflow
+
+	for _, workflow := range workflows {
+		if workflow.WorkflowGroupID == workflowGroupID && workflow.ParentID == "" {
+			if latestDraft == nil || workflow.CreatedAt.After(latestDraft.CreatedAt) {
+				latestDraft = workflow
+			}
+		}
+	}
+
+	return latestDraft, nil
+}
+
+// GetCurrentPublishedByGroupID returns the current published version of a workflow group.
+func (wr *WorkflowRepository) GetCurrentPublishedByGroupID(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
+	workflows, err := wr.GetAll(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all workflows: %w", err)
+	}
+
+	var currentPublished *models.Workflow
+	for _, workflow := range workflows {
+		if workflow.WorkflowGroupID == workflowGroupID && workflow.Status == models.WorkflowStatusPublished {
+			if currentPublished == nil || workflow.CreatedAt.After(currentPublished.CreatedAt) {
+				currentPublished = workflow
+			}
+		}
+	}
+
+	return currentPublished, nil
+}
