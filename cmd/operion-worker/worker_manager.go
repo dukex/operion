@@ -75,6 +75,7 @@ func (w *WorkerManager) handleNodeActivation(ctx context.Context, event any) err
 	nodeActivationEvent, ok := event.(*events.NodeActivation)
 	if !ok {
 		w.logger.ErrorContext(ctx, "Invalid event type for NodeActivation")
+
 		return nil
 	}
 
@@ -220,6 +221,7 @@ func (w *WorkerManager) handleNodeActivation(ctx context.Context, event any) err
 	err = w.activateNextNodes(ctx, nodeActivationEvent.PublishedWorkflowID, nodeActivationEvent.ExecutionID, nodeActivationEvent.NodeID, outputs)
 	if err != nil {
 		logger.ErrorContext(ctx, "Failed to activate next nodes", "error", err)
+
 		return err
 	}
 

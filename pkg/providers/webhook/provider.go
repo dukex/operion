@@ -212,6 +212,7 @@ func (w *WebhookProvider) processWebhookTriggerNode(workflowID string, node *mod
 	if node.SourceID != nil {
 		sourceID = *node.SourceID
 	}
+
 	if sourceID == "" {
 		// Generate a new UUID for the sourceID
 		sourceID = uuid.New().String()

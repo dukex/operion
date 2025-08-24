@@ -95,6 +95,7 @@ func NewValidateCommand() *cli.Command {
 				if len(triggerNodes) == 0 {
 					_, _ = fmt.Fprintf(os.Stdout, "    ❌ INVALID: No trigger nodes found for this workflow.\n")
 					invalidTriggers++
+
 					continue
 				}
 

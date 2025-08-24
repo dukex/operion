@@ -261,6 +261,7 @@ func (s *SchedulerProvider) processScheduleTriggerNode(workflowID string, node *
 	if node.SourceID != nil {
 		sourceID = *node.SourceID
 	}
+
 	if sourceID == "" {
 		// Generate a new UUID for the sourceID
 		sourceID = uuid.New().String()
