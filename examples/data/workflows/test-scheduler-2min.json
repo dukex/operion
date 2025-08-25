@@ -78,7 +78,9 @@
     "test_mode": true,
     "interval": "2-minutes"
   },
-  "status": "active",
+  "status": "published",
+  "workflow_group_id": "test-scheduler-2min",
+  "published_at": "2023-10-01T00:00:00Z",
   "metadata": {
     "author": "Operion Test",
     "description": "Test workflow for multi-schedule orchestrator functionality",

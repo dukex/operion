@@ -40,7 +40,7 @@ func createTestWorkflow(id string, triggerNodes []*models.WorkflowNode) *models.
 	return &models.Workflow{
 		ID:          id,
 		Name:        "Test Workflow " + id,
-		Status:      models.WorkflowStatusActive,
+		Status:      models.WorkflowStatusPublished,
 		Nodes:       triggerNodes,
 		Connections: []*models.Connection{},
 		Variables:   map[string]any{},
@@ -227,7 +227,7 @@ func TestWebhookProvider_Configure(t *testing.T) {
 			workflows: []*models.Workflow{
 				{
 					ID:     "workflow-1",
-					Status: models.WorkflowStatusInactive,
+					Status: models.WorkflowStatusDraft,
 					Nodes: []*models.WorkflowNode{
 						createWebhookTriggerNode("trigger-1", "source-123", map[string]any{}),
 					},
@@ -289,7 +289,7 @@ func TestWebhookProvider_Configure(t *testing.T) {
 
 			// Verify source properties for webhook triggers
 			for _, workflow := range tt.workflows {
-				if workflow.Status != models.WorkflowStatusActive {
+				if workflow.Status != models.WorkflowStatusPublished {
 					continue
 				}
 

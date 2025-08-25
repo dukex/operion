@@ -2,7 +2,9 @@
   "id": "github-repo-monitor",
   "name": "GitHub Repository Monitor",
   "description": "Monitor GitHub repository activity including new issues, pull requests, and releases",
-  "status": "active",
+  "status": "published",
+  "workflow_group_id": "github-repo-monitor",
+  "published_at": "2023-10-01T00:00:00Z",
   "nodes": [
     {
       "id": "github-schedule",

@@ -114,60 +114,136 @@ func (wr *WorkflowRepository) Delete(_ context.Context, id string) error {
 	return nil
 }
 
-// UpdatePublishedID updates only the published_id field of a workflow.
-func (wr *WorkflowRepository) UpdatePublishedID(ctx context.Context, workflowID, publishedID string) error {
-	// Load the existing workflow
-	workflow, err := wr.GetByID(ctx, workflowID)
+// GetCurrentWorkflow returns the current version (published if exists, otherwise draft)
+func (wr *WorkflowRepository) GetCurrentWorkflow(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
+	// Try published first
+	published, err := wr.GetPublishedWorkflow(ctx, workflowGroupID)
 	if err != nil {
-		return fmt.Errorf("failed to get workflow: %w", err)
+		return nil, err
+	}
+	if published != nil {
+		return published, nil
 	}
 
-	if workflow == nil {
-		return fmt.Errorf("workflow not found: %s", workflowID)
-	}
-
-	// Update only the published_id and updated_at fields
-	workflow.PublishedID = publishedID
-	workflow.UpdatedAt = time.Now().UTC()
-
-	// Save the updated workflow
-	return wr.Save(ctx, workflow)
+	// Fall back to draft
+	return wr.GetDraftWorkflow(ctx, workflowGroupID)
 }
 
-// FindTriggersBySourceEventAndProvider returns workflow triggers that match source ID, event type, provider ID, and workflow status.
-func (wr *WorkflowRepository) FindTriggersBySourceEventAndProvider(ctx context.Context, sourceID, eventType, providerID string, status models.WorkflowStatus) ([]*models.TriggerNodeMatch, error) {
-	// Get all workflows
+// GetDraftWorkflow returns the draft version of a workflow group
+func (wr *WorkflowRepository) GetDraftWorkflow(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
 	workflows, err := wr.GetAll(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get workflows: %w", err)
+		return nil, fmt.Errorf("failed to get all workflows: %w", err)
 	}
 
-	var matches []*models.TriggerNodeMatch
-
+	var latestDraft *models.Workflow
 	for _, workflow := range workflows {
-		// Skip workflows that don't match the status filter
-		if status != "" && workflow.Status != status {
-			continue
-		}
-
-		// Check each node for trigger nodes that match
-		for _, node := range workflow.Nodes {
-			// Check if this is a trigger node matching our criteria
-			if node.Category == models.CategoryTypeTrigger &&
-				node.SourceID != nil && *node.SourceID == sourceID &&
-				node.EventType != nil && *node.EventType == eventType &&
-				node.ProviderID != nil && *node.ProviderID == providerID &&
-				node.Enabled {
-				match := &models.TriggerNodeMatch{
-					WorkflowID:  workflow.ID,
-					TriggerNode: node,
-				}
-				matches = append(matches, match)
+		if workflow.WorkflowGroupID == workflowGroupID && workflow.Status == models.WorkflowStatusDraft {
+			if latestDraft == nil || workflow.CreatedAt.After(latestDraft.CreatedAt) {
+				latestDraft = workflow
 			}
 		}
 	}
 
-	return matches, nil
+	return latestDraft, nil
+}
+
+// GetPublishedWorkflow returns the published version of a workflow group
+func (wr *WorkflowRepository) GetPublishedWorkflow(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
+	workflows, err := wr.GetAll(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all workflows: %w", err)
+	}
+
+	var currentPublished *models.Workflow
+	for _, workflow := range workflows {
+		if workflow.WorkflowGroupID == workflowGroupID && workflow.Status == models.WorkflowStatusPublished {
+			if currentPublished == nil || workflow.CreatedAt.After(currentPublished.CreatedAt) {
+				currentPublished = workflow
+			}
+		}
+	}
+
+	return currentPublished, nil
+}
+
+// PublishWorkflow handles the publish operation
+func (wr *WorkflowRepository) PublishWorkflow(ctx context.Context, workflowID string) error {
+	// Get the workflow being published
+	workflow, err := wr.GetByID(ctx, workflowID)
+	if err != nil {
+		return fmt.Errorf("failed to get workflow: %w", err)
+	}
+	if workflow == nil {
+		return fmt.Errorf("workflow not found: %s", workflowID)
+	}
+
+	// Get all workflows to find ones in the same group
+	allWorkflows, err := wr.GetAll(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get all workflows: %w", err)
+	}
+
+	// Set all other workflows in group to unpublished
+	for _, wf := range allWorkflows {
+		if wf.WorkflowGroupID == workflow.WorkflowGroupID && wf.Status == models.WorkflowStatusPublished {
+			wf.Status = models.WorkflowStatusUnpublished
+			wf.UpdatedAt = time.Now().UTC()
+			if err := wr.Save(ctx, wf); err != nil {
+				return fmt.Errorf("failed to unpublish workflow %s: %w", wf.ID, err)
+			}
+		}
+	}
+
+	// Set current workflow to published
+	workflow.Status = models.WorkflowStatusPublished
+	workflow.UpdatedAt = time.Now().UTC()
+	if workflow.PublishedAt == nil {
+		now := time.Now().UTC()
+		workflow.PublishedAt = &now
+	}
+
+	return wr.Save(ctx, workflow)
+}
+
+// CreateDraftFromPublished creates a draft copy from published version
+func (wr *WorkflowRepository) CreateDraftFromPublished(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
+	// Check if draft already exists
+	existingDraft, err := wr.GetDraftWorkflow(ctx, workflowGroupID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check existing draft: %w", err)
+	}
+	if existingDraft != nil {
+		return existingDraft, nil
+	}
+
+	// Get published workflow
+	publishedWorkflow, err := wr.GetPublishedWorkflow(ctx, workflowGroupID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get published workflow: %w", err)
+	}
+	if publishedWorkflow == nil {
+		return nil, fmt.Errorf("no published workflow found for group: %s", workflowGroupID)
+	}
+
+	// Create draft copy
+	draftWorkflow := *publishedWorkflow
+
+	// Generate new ID (simple approach for file-based)
+	draftWorkflow.ID = workflowGroupID + "-draft-" + fmt.Sprintf("%d", time.Now().Unix())
+
+	// Set as draft
+	draftWorkflow.Status = models.WorkflowStatusDraft
+	draftWorkflow.CreatedAt = time.Now().UTC()
+	draftWorkflow.UpdatedAt = time.Now().UTC()
+	draftWorkflow.PublishedAt = nil
+
+	// Save the draft
+	if err := wr.Save(ctx, &draftWorkflow); err != nil {
+		return nil, fmt.Errorf("failed to save draft workflow: %w", err)
+	}
+
+	return &draftWorkflow, nil
 }
 
 // GetWorkflowVersions returns all versions of a workflow by group ID.
@@ -186,43 +262,4 @@ func (wr *WorkflowRepository) GetWorkflowVersions(ctx context.Context, workflowG
 	}
 
 	return versions, nil
-}
-
-// GetLatestDraftByGroupID returns the current draft version of a workflow group.
-func (wr *WorkflowRepository) GetLatestDraftByGroupID(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
-	workflows, err := wr.GetAll(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get all workflows: %w", err)
-	}
-
-	var latestDraft *models.Workflow
-
-	for _, workflow := range workflows {
-		if workflow.WorkflowGroupID == workflowGroupID && workflow.ParentID == "" {
-			if latestDraft == nil || workflow.CreatedAt.After(latestDraft.CreatedAt) {
-				latestDraft = workflow
-			}
-		}
-	}
-
-	return latestDraft, nil
-}
-
-// GetCurrentPublishedByGroupID returns the current published version of a workflow group.
-func (wr *WorkflowRepository) GetCurrentPublishedByGroupID(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
-	workflows, err := wr.GetAll(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get all workflows: %w", err)
-	}
-
-	var currentPublished *models.Workflow
-	for _, workflow := range workflows {
-		if workflow.WorkflowGroupID == workflowGroupID && workflow.Status == models.WorkflowStatusPublished {
-			if currentPublished == nil || workflow.CreatedAt.After(currentPublished.CreatedAt) {
-				currentPublished = workflow
-			}
-		}
-	}
-
-	return currentPublished, nil
 }

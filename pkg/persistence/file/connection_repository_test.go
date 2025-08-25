@@ -41,7 +41,7 @@ func TestConnectionRepository_GetConnectionsFromPublishedWorkflow(t *testing.T) 
 				TargetPort: "node3:secondary",
 			},
 		},
-		Status: models.WorkflowStatusActive,
+		Status: models.WorkflowStatusPublished,
 	}
 
 	err := persistence.WorkflowRepository().Save(ctx, workflow)
@@ -96,7 +96,7 @@ func TestConnectionRepository_GetConnectionsByTargetNode(t *testing.T) {
 				TargetPort: "source2:main", // Different target
 			},
 		},
-		Status: models.WorkflowStatusActive,
+		Status: models.WorkflowStatusPublished,
 	}
 
 	err := persistence.WorkflowRepository().Save(ctx, workflow)
@@ -145,7 +145,7 @@ func TestConnectionRepository_GetAllConnectionsFromPublishedWorkflow(t *testing.
 				TargetPort: "nodeB:error",
 			},
 		},
-		Status: models.WorkflowStatusActive,
+		Status: models.WorkflowStatusPublished,
 	}
 
 	err := persistence.WorkflowRepository().Save(ctx, workflow)
@@ -183,7 +183,7 @@ func TestConnectionRepository_SaveConnection_NewConnection(t *testing.T) {
 			{ID: "nodeY", Name: "Node Y", NodeType: "transform"},
 		},
 		Connections: []*models.Connection{},
-		Status:      models.WorkflowStatusActive,
+		Status:      models.WorkflowStatusPublished,
 	}
 
 	err := persistence.WorkflowRepository().Save(ctx, workflow)
@@ -228,7 +228,7 @@ func TestConnectionRepository_SaveConnection_UpdateExisting(t *testing.T) {
 		Name:        "Test Workflow Update Connection",
 		Nodes:       []*models.WorkflowNode{},
 		Connections: []*models.Connection{existingConnection},
-		Status:      models.WorkflowStatusActive,
+		Status:      models.WorkflowStatusPublished,
 	}
 
 	err := persistence.WorkflowRepository().Save(ctx, workflow)
@@ -278,7 +278,7 @@ func TestConnectionRepository_DeleteConnection(t *testing.T) {
 				TargetPort: "nodeC:main",
 			},
 		},
-		Status: models.WorkflowStatusActive,
+		Status: models.WorkflowStatusPublished,
 	}
 
 	err := persistence.WorkflowRepository().Save(ctx, workflow)
@@ -307,7 +307,7 @@ func TestConnectionRepository_DeleteConnection_NotFound(t *testing.T) {
 		ID:          "test-workflow-delete-not-found",
 		Name:        "Test Workflow Delete Not Found",
 		Connections: []*models.Connection{},
-		Status:      models.WorkflowStatusActive,
+		Status:      models.WorkflowStatusPublished,
 	}
 
 	err := persistence.WorkflowRepository().Save(ctx, workflow)
@@ -336,7 +336,7 @@ func TestConnectionRepository_GetConnectionsByWorkflow(t *testing.T) {
 			{ID: "conn1", SourcePort: "a:out", TargetPort: "b:in"},
 			{ID: "conn2", SourcePort: "b:out", TargetPort: "c:in"},
 		},
-		Status: models.WorkflowStatusActive,
+		Status: models.WorkflowStatusPublished,
 	}
 
 	err := persistence.WorkflowRepository().Save(ctx, workflow)

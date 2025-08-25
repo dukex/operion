@@ -186,7 +186,7 @@ func (a *Activator) findTriggerNodesForSourceEvent(ctx context.Context, sourceEv
 		sourceEvent.SourceID,
 		sourceEvent.EventType,
 		sourceEvent.ProviderID,
-		models.WorkflowStatusActive,
+		models.WorkflowStatusPublished,
 	)
 	if err != nil {
 		a.logger.Error("Failed to fetch matching trigger nodes", "error", err)

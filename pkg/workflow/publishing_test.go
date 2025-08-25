@@ -2,16 +2,17 @@ package workflow
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
 	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/persistence"
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-// Simple test workflow repository implementation.
+// Simple test workflow repository implementation with new interface
 type testWorkflowRepository struct {
 	workflows map[string]*models.Workflow
 }
@@ -21,13 +22,11 @@ func (r *testWorkflowRepository) GetAll(ctx context.Context) ([]*models.Workflow
 	for _, w := range r.workflows {
 		workflows = append(workflows, w)
 	}
-
 	return workflows, nil
 }
 
 func (r *testWorkflowRepository) Save(ctx context.Context, workflow *models.Workflow) error {
 	r.workflows[workflow.ID] = workflow
-
 	return nil
 }
 
@@ -35,83 +34,109 @@ func (r *testWorkflowRepository) GetByID(ctx context.Context, id string) (*model
 	if workflow, exists := r.workflows[id]; exists {
 		return workflow, nil
 	}
-
 	return nil, nil
 }
 
 func (r *testWorkflowRepository) Delete(ctx context.Context, id string) error {
 	delete(r.workflows, id)
-
 	return nil
-}
-
-func (r *testWorkflowRepository) UpdatePublishedID(ctx context.Context, workflowID, publishedID string) error {
-	if workflow, exists := r.workflows[workflowID]; exists {
-		workflow.PublishedID = publishedID
-		workflow.UpdatedAt = time.Now()
-
-		return nil
-	}
-
-	return fmt.Errorf("workflow not found: %s", workflowID)
 }
 
 func (r *testWorkflowRepository) GetWorkflowVersions(ctx context.Context, workflowGroupID string) ([]*models.Workflow, error) {
 	var versions []*models.Workflow
-
-	for _, workflow := range r.workflows {
-		if workflow.WorkflowGroupID == workflowGroupID {
-			versions = append(versions, workflow)
+	for _, w := range r.workflows {
+		if w.WorkflowGroupID == workflowGroupID {
+			versions = append(versions, w)
 		}
 	}
-
 	return versions, nil
 }
 
-func (r *testWorkflowRepository) GetLatestDraftByGroupID(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
-	var latestDraft *models.Workflow
-
-	for _, workflow := range r.workflows {
-		if workflow.WorkflowGroupID == workflowGroupID && workflow.ParentID == "" {
-			if latestDraft == nil || workflow.CreatedAt.After(latestDraft.CreatedAt) {
-				latestDraft = workflow
-			}
-		}
+func (r *testWorkflowRepository) GetCurrentWorkflow(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
+	// Try published first, then draft
+	published, _ := r.GetPublishedWorkflow(ctx, workflowGroupID)
+	if published != nil {
+		return published, nil
 	}
-
-	return latestDraft, nil
+	return r.GetDraftWorkflow(ctx, workflowGroupID)
 }
 
-func (r *testWorkflowRepository) GetCurrentPublishedByGroupID(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
-	var currentPublished *models.Workflow
-	for _, workflow := range r.workflows {
-		if workflow.WorkflowGroupID == workflowGroupID && workflow.Status == models.WorkflowStatusPublished {
-			if currentPublished == nil || workflow.CreatedAt.After(currentPublished.CreatedAt) {
-				currentPublished = workflow
-			}
+func (r *testWorkflowRepository) GetDraftWorkflow(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
+	for _, w := range r.workflows {
+		if w.WorkflowGroupID == workflowGroupID && w.Status == models.WorkflowStatusDraft {
+			return w, nil
 		}
 	}
-
-	return currentPublished, nil
-}
-
-func (r *testWorkflowRepository) FindTriggersBySourceEventAndProvider(ctx context.Context, sourceID, eventType, providerID string, status models.WorkflowStatus) ([]*models.TriggerNodeMatch, error) {
 	return nil, nil
 }
 
-// Simple test persistence implementation.
+func (r *testWorkflowRepository) GetPublishedWorkflow(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
+	for _, w := range r.workflows {
+		if w.WorkflowGroupID == workflowGroupID && w.Status == models.WorkflowStatusPublished {
+			return w, nil
+		}
+	}
+	return nil, nil
+}
+
+func (r *testWorkflowRepository) PublishWorkflow(ctx context.Context, workflowID string) error {
+	workflow, exists := r.workflows[workflowID]
+	if !exists {
+		return nil // workflow not found
+	}
+
+	// Set all other workflows in group to unpublished
+	for _, w := range r.workflows {
+		if w.WorkflowGroupID == workflow.WorkflowGroupID && w.Status == models.WorkflowStatusPublished {
+			w.Status = models.WorkflowStatusUnpublished
+		}
+	}
+
+	// Set current workflow to published
+	workflow.Status = models.WorkflowStatusPublished
+	if workflow.PublishedAt == nil {
+		now := time.Now().UTC()
+		workflow.PublishedAt = &now
+	}
+
+	return nil
+}
+
+func (r *testWorkflowRepository) CreateDraftFromPublished(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
+	// Check if draft already exists
+	draft, _ := r.GetDraftWorkflow(ctx, workflowGroupID)
+	if draft != nil {
+		return draft, nil
+	}
+
+	// Get published workflow
+	published, err := r.GetPublishedWorkflow(ctx, workflowGroupID)
+	if err != nil || published == nil {
+		return nil, err
+	}
+
+	// Create draft copy
+	draftWorkflow := *published
+	draftWorkflow.ID = uuid.New().String()
+	draftWorkflow.Status = models.WorkflowStatusDraft
+	draftWorkflow.CreatedAt = time.Now().UTC()
+	draftWorkflow.UpdatedAt = time.Now().UTC()
+	draftWorkflow.PublishedAt = nil
+
+	r.workflows[draftWorkflow.ID] = &draftWorkflow
+	return &draftWorkflow, nil
+}
+
+// Simple test persistence implementation
 type testPersistence struct {
 	workflowRepo *testWorkflowRepository
 }
 
+func (p *testPersistence) HealthCheck(ctx context.Context) error { return nil }
+func (p *testPersistence) Close(ctx context.Context) error       { return nil }
+
 func (p *testPersistence) WorkflowRepository() persistence.WorkflowRepository {
 	return p.workflowRepo
-}
-
-func (p *testPersistence) HealthCheck(ctx context.Context) error { return nil }
-
-func (p *testPersistence) WorkflowTriggersBySourceEventAndProvider(ctx context.Context, sourceID, eventType, providerID string, status models.WorkflowStatus) ([]*models.TriggerNodeMatch, error) {
-	return nil, nil
 }
 
 func (p *testPersistence) NodeRepository() persistence.NodeRepository             { return nil }
@@ -122,342 +147,120 @@ func (p *testPersistence) ExecutionContextRepository() persistence.ExecutionCont
 func (p *testPersistence) InputCoordinationRepository() persistence.InputCoordinationRepository {
 	return nil
 }
-func (p *testPersistence) Close(ctx context.Context) error { return nil }
 
-func TestPublishWorkflow_Success(t *testing.T) {
-	// Create test persistence
-	testPersistence := &testPersistence{
+func createTestPersistence() *testPersistence {
+	return &testPersistence{
 		workflowRepo: &testWorkflowRepository{
 			workflows: make(map[string]*models.Workflow),
 		},
 	}
-
-	// Create publishing service
-	service := NewPublishingService(testPersistence)
-
-	// Create a valid workflow
-	workflow := createValidWorkflow()
-	testPersistence.workflowRepo.workflows[workflow.ID] = workflow
-
-	// Publish the workflow
-	publishedWorkflow, err := service.PublishWorkflow(context.Background(), workflow.ID)
-	if err != nil {
-		t.Fatalf("Failed to publish workflow: %v", err)
-	}
-
-	if publishedWorkflow == nil {
-		t.Fatal("Published workflow should not be nil")
-	}
-
-	// Verify published workflow properties
-	if publishedWorkflow.Status != models.WorkflowStatusPublished {
-		t.Errorf("Expected status %s, got %s", models.WorkflowStatusPublished, publishedWorkflow.Status)
-	}
-
-	if publishedWorkflow.ParentID != workflow.ID {
-		t.Errorf("Expected parent ID %s, got %s", workflow.ID, publishedWorkflow.ParentID)
-	}
-
-	if publishedWorkflow.PublishedID != "" {
-		t.Error("Published workflows should not have their own published ID")
-	}
-
-	if publishedWorkflow.ID == workflow.ID {
-		t.Error("Published workflow should have different ID than original")
-	}
-
-	if publishedWorkflow.PublishedAt == nil {
-		t.Error("Published workflow should have published timestamp")
-	}
-
-	// Verify original workflow was updated
-	originalWorkflow := testPersistence.workflowRepo.workflows[workflow.ID]
-	if originalWorkflow.PublishedID != publishedWorkflow.ID {
-		t.Errorf("Expected original workflow published ID to be %s, got %s", publishedWorkflow.ID, originalWorkflow.PublishedID)
-	}
-
-	// Verify nodes were copied
-	if len(publishedWorkflow.Nodes) != len(workflow.Nodes) {
-		t.Errorf("Expected %d nodes, got %d", len(workflow.Nodes), len(publishedWorkflow.Nodes))
-	}
-
-	for i, node := range publishedWorkflow.Nodes {
-		if node.NodeType != workflow.Nodes[i].NodeType {
-			t.Errorf("Node type mismatch at index %d: expected %s, got %s", i, workflow.Nodes[i].NodeType, node.NodeType)
-		}
-
-		if node.ID != workflow.Nodes[i].ID {
-			t.Errorf("Node ID should be preserved: expected %s, got %s", workflow.Nodes[i].ID, node.ID)
-		}
-	}
-
-	// Verify connections were copied
-	if len(publishedWorkflow.Connections) != len(workflow.Connections) {
-		t.Errorf("Expected %d connections, got %d", len(workflow.Connections), len(publishedWorkflow.Connections))
-	}
-
-	for i, conn := range publishedWorkflow.Connections {
-		if conn.SourcePort != workflow.Connections[i].SourcePort {
-			t.Errorf("Connection source port mismatch: expected %s, got %s", workflow.Connections[i].SourcePort, conn.SourcePort)
-		}
-
-		if conn.TargetPort != workflow.Connections[i].TargetPort {
-			t.Errorf("Connection target port mismatch: expected %s, got %s", workflow.Connections[i].TargetPort, conn.TargetPort)
-		}
-	}
-
-	// Verify trigger nodes were copied (count trigger nodes)
-	triggerNodeCount := 0
-	originalTriggerNodeCount := 0
-
-	for _, node := range publishedWorkflow.Nodes {
-		if node.IsTriggerNode() {
-			triggerNodeCount++
-		}
-	}
-
-	for _, node := range workflow.Nodes {
-		if node.IsTriggerNode() {
-			originalTriggerNodeCount++
-		}
-	}
-
-	if triggerNodeCount != originalTriggerNodeCount {
-		t.Errorf("Expected %d trigger nodes, got %d", originalTriggerNodeCount, triggerNodeCount)
-	}
 }
 
-func TestPublishWorkflow_ValidationErrors(t *testing.T) {
-	testPersistence := &testPersistence{
-		workflowRepo: &testWorkflowRepository{
-			workflows: make(map[string]*models.Workflow),
-		},
-	}
-	service := NewPublishingService(testPersistence)
+func TestPublishingService_PublishWorkflow_Success(t *testing.T) {
+	persistence := createTestPersistence()
+	service := NewPublishingService(persistence)
 
-	tests := []struct {
-		name     string
-		workflow *models.Workflow
-		wantErr  string
-	}{
-		{
-			name:     "workflow with no nodes",
-			workflow: createWorkflowWithNoNodes(),
-			wantErr:  "cannot publish workflow with no nodes",
-		},
-		{
-			name:     "workflow with no trigger nodes",
-			workflow: createWorkflowWithNoTriggerNodes(),
-			wantErr:  "cannot publish workflow with no trigger nodes",
-		},
-		{
-			name:     "workflow with invalid connections",
-			workflow: createWorkflowWithInvalidConnections(),
-			wantErr:  "connection references non-existent source node",
-		},
-		{
-			name:     "already published workflow",
-			workflow: createPublishedWorkflow(),
-			wantErr:  "cannot publish a workflow that is already a published version",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			testPersistence.workflowRepo.workflows[tt.workflow.ID] = tt.workflow
-
-			_, err := service.PublishWorkflow(context.Background(), tt.workflow.ID)
-			if err == nil {
-				t.Fatalf("Expected error for test case: %s", tt.name)
-			}
-
-			if fmt.Sprintf("%v", err) == "" || len(fmt.Sprintf("%v", err)) == 0 {
-				t.Fatalf("Expected non-empty error message")
-			}
-			// Note: We're not checking exact error messages to keep tests simple
-		})
-	}
-}
-
-func TestGetPublishedWorkflow(t *testing.T) {
-	testPersistence := &testPersistence{
-		workflowRepo: &testWorkflowRepository{
-			workflows: make(map[string]*models.Workflow),
-		},
-	}
-	service := NewPublishingService(testPersistence)
-
-	// Create a published workflow
-	publishedWorkflow := createPublishedWorkflow()
-	testPersistence.workflowRepo.workflows[publishedWorkflow.ID] = publishedWorkflow
-
-	// Test getting published workflow
-	result, err := service.GetPublishedWorkflow(context.Background(), publishedWorkflow.ID)
-	if err != nil {
-		t.Fatalf("Failed to get published workflow: %v", err)
-	}
-
-	if result.ID != publishedWorkflow.ID {
-		t.Errorf("Expected ID %s, got %s", publishedWorkflow.ID, result.ID)
-	}
-
-	if result.Status != models.WorkflowStatusPublished {
-		t.Errorf("Expected status %s, got %s", models.WorkflowStatusPublished, result.Status)
-	}
-}
-
-func TestIsPublished(t *testing.T) {
-	testPersistence := &testPersistence{
-		workflowRepo: &testWorkflowRepository{
-			workflows: make(map[string]*models.Workflow),
-		},
-	}
-	service := NewPublishingService(testPersistence)
-
-	// Test workflow with published version
-	workflowWithPublished := createValidWorkflow()
-	workflowWithPublished.PublishedID = "published-id"
-	testPersistence.workflowRepo.workflows[workflowWithPublished.ID] = workflowWithPublished
-
-	isPublished, err := service.IsPublished(context.Background(), workflowWithPublished.ID)
-	if err != nil {
-		t.Fatalf("Failed to check if published: %v", err)
-	}
-
-	if !isPublished {
-		t.Error("Expected workflow to be published")
-	}
-
-	// Test workflow without published version
-	workflowWithoutPublished := createValidWorkflow()
-	workflowWithoutPublished.ID = "workflow-2"
-	testPersistence.workflowRepo.workflows[workflowWithoutPublished.ID] = workflowWithoutPublished
-
-	isPublished, err = service.IsPublished(context.Background(), workflowWithoutPublished.ID)
-	if err != nil {
-		t.Fatalf("Failed to check if published: %v", err)
-	}
-
-	if isPublished {
-		t.Error("Expected workflow to not be published")
-	}
-}
-
-// Helper functions for creating test workflows
-
-func createValidWorkflow() *models.Workflow {
-	now := time.Now()
-	workflowID := uuid.New().String()
-
-	return &models.Workflow{
-		ID:              workflowID,
+	// Create a valid draft workflow
+	workflow := &models.Workflow{
+		ID:              "test-workflow",
 		Name:            "Test Workflow",
-		Description:     "A test workflow for publishing",
+		Description:     "Test description",
 		Status:          models.WorkflowStatusDraft,
-		WorkflowGroupID: workflowID, // Set workflow_group_id = id for new workflows
-		Owner:           "test-user",
-		CreatedAt:       now,
-		UpdatedAt:       now,
-		Variables:       map[string]any{"env": "test"},
-		Metadata:        map[string]any{"version": "1.0"},
+		WorkflowGroupID: "test-group",
 		Nodes: []*models.WorkflowNode{
 			{
-				ID:         "trigger-1",
-				NodeType:   "trigger:webhook",
-				Category:   "trigger",
-				Name:       "Webhook Trigger",
-				Config:     map[string]any{"path": "/webhook"},
-				PositionX:  50,
-				PositionY:  50,
-				Enabled:    true,
-				SourceID:   stringPtr("webhook-source"),
-				ProviderID: stringPtr("webhook"),
-				EventType:  stringPtr("webhook"),
-			},
-			{
-				ID:        "node-1",
-				NodeType:  "httprequest",
-				Category:  "action",
-				Name:      "HTTP Request Node",
-				Config:    map[string]any{"url": "https://api.example.com"},
-				PositionX: 100,
-				PositionY: 100,
-				Enabled:   true,
-			},
-			{
-				ID:        "node-2",
-				NodeType:  "log",
-				Category:  "action",
-				Name:      "Log Node",
-				Config:    map[string]any{"message": "Request completed"},
-				PositionX: 200,
-				PositionY: 200,
-				Enabled:   true,
-			},
-		},
-		Connections: []*models.Connection{
-			{
-				ID:         uuid.New().String(),
-				SourcePort: "trigger-1:output",
-				TargetPort: "node-1:input",
-			},
-			{
-				ID:         uuid.New().String(),
-				SourcePort: "node-1:success",
-				TargetPort: "node-2:main",
+				ID:       "trigger-1",
+				Category: models.CategoryTypeTrigger,
+				Enabled:  true,
 			},
 		},
 	}
+
+	// Save the draft workflow
+	err := persistence.workflowRepo.Save(context.Background(), workflow)
+	require.NoError(t, err)
+
+	// Publish the workflow
+	published, err := service.PublishWorkflow(context.Background(), "test-workflow")
+	require.NoError(t, err)
+	require.NotNil(t, published)
+
+	// Verify the workflow is published
+	assert.Equal(t, models.WorkflowStatusPublished, published.Status)
+	assert.NotNil(t, published.PublishedAt)
 }
 
-func createWorkflowWithNoNodes() *models.Workflow {
-	workflow := createValidWorkflow()
-	workflow.Nodes = []*models.WorkflowNode{}
-	workflow.Connections = []*models.Connection{}
+func TestPublishingService_PublishWorkflow_ValidationError(t *testing.T) {
+	persistence := createTestPersistence()
+	service := NewPublishingService(persistence)
 
-	return workflow
-}
-
-func createWorkflowWithNoTriggerNodes() *models.Workflow {
-	workflow := createValidWorkflow()
-	// Remove trigger nodes, only keep action nodes
-	actionNodes := make([]*models.WorkflowNode, 0)
-
-	for _, node := range workflow.Nodes {
-		if !node.IsTriggerNode() {
-			actionNodes = append(actionNodes, node)
-		}
+	// Create an invalid workflow (no trigger nodes)
+	workflow := &models.Workflow{
+		ID:              "invalid-workflow",
+		Name:            "Invalid Workflow",
+		Description:     "Test description",
+		Status:          models.WorkflowStatusDraft,
+		WorkflowGroupID: "test-group",
+		Nodes:           []*models.WorkflowNode{}, // No trigger nodes
 	}
 
-	workflow.Nodes = actionNodes
+	// Save the invalid workflow
+	err := persistence.workflowRepo.Save(context.Background(), workflow)
+	require.NoError(t, err)
 
-	return workflow
+	// Try to publish - should fail validation
+	_, err = service.PublishWorkflow(context.Background(), "invalid-workflow")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "must have at least one node")
 }
 
-func createWorkflowWithInvalidConnections() *models.Workflow {
-	workflow := createValidWorkflow()
-	// Add connection to non-existent node
-	workflow.Connections = append(workflow.Connections, &models.Connection{
-		ID:         uuid.New().String(),
-		SourcePort: "non-existent-node:output",
-		TargetPort: "node-2:input",
-	})
+func TestPublishingService_GetPublishedWorkflow(t *testing.T) {
+	persistence := createTestPersistence()
+	service := NewPublishingService(persistence)
 
-	return workflow
+	// Create and save a published workflow
+	workflow := &models.Workflow{
+		ID:              "published-workflow",
+		Name:            "Published Workflow",
+		Status:          models.WorkflowStatusPublished,
+		WorkflowGroupID: "test-group",
+	}
+
+	err := persistence.workflowRepo.Save(context.Background(), workflow)
+	require.NoError(t, err)
+
+	// Test getting published workflow
+	retrieved, err := service.GetPublishedWorkflow(context.Background(), "test-group")
+	require.NoError(t, err)
+	assert.Equal(t, "published-workflow", retrieved.ID)
+	assert.Equal(t, models.WorkflowStatusPublished, retrieved.Status)
 }
 
-func createPublishedWorkflow() *models.Workflow {
-	workflow := createValidWorkflow()
-	workflow.Status = models.WorkflowStatusPublished
-	workflow.ParentID = "original-workflow-id"
-	workflow.WorkflowGroupID = "group-id" // Override with specific group ID
-	now := time.Now()
-	workflow.PublishedAt = &now
+func TestPublishingService_CreateDraftFromPublished(t *testing.T) {
+	persistence := createTestPersistence()
+	service := NewPublishingService(persistence)
 
-	return workflow
-}
+	// Create and save a published workflow
+	published := &models.Workflow{
+		ID:              "published-workflow",
+		Name:            "Published Workflow",
+		Status:          models.WorkflowStatusPublished,
+		WorkflowGroupID: "test-group",
+		Nodes:           []*models.WorkflowNode{{ID: "node1", Name: "Test Node"}},
+	}
 
-// Helper function to create string pointers.
-func stringPtr(s string) *string {
-	return &s
+	err := persistence.workflowRepo.Save(context.Background(), published)
+	require.NoError(t, err)
+
+	// Create draft from published
+	draft, err := service.CreateDraftFromPublished(context.Background(), "test-group")
+	require.NoError(t, err)
+	require.NotNil(t, draft)
+
+	// Verify draft properties
+	assert.Equal(t, models.WorkflowStatusDraft, draft.Status)
+	assert.Equal(t, "test-group", draft.WorkflowGroupID)
+	assert.NotEqual(t, published.ID, draft.ID) // Should have different ID
+	assert.Nil(t, draft.PublishedAt)
+	assert.Len(t, draft.Nodes, 1) // Should copy nodes
 }

@@ -221,7 +221,7 @@ func (s *SchedulerProvider) Configure(workflows []*models.Workflow) (map[string]
 	scheduleCount := 0
 
 	for _, wf := range workflows {
-		if wf.Status != models.WorkflowStatusActive {
+		if wf.Status != models.WorkflowStatusPublished {
 			continue
 		}
 

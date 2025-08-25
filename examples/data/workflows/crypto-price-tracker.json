@@ -2,7 +2,9 @@
   "id": "crypto-price-tracker",
   "name": "Cryptocurrency Price Tracker",
   "description": "Track multiple cryptocurrency prices and detect significant price movements using CoinGecko API",
-  "status": "active",
+  "status": "published",
+  "workflow_group_id": "crypto-price-tracker",
+  "published_at": "2023-10-01T00:00:00Z",
   "nodes": [
     {
       "id": "crypto-schedule",

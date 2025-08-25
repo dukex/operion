@@ -72,7 +72,7 @@ func createTestWorkflowWithConnections(t *testing.T) *models.Workflow {
 				TargetPort: "error_handler:input",
 			},
 		},
-		Status: models.WorkflowStatusActive,
+		Status: models.WorkflowStatusPublished,
 		Owner:  "test-user",
 	}
 }

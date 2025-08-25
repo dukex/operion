@@ -37,7 +37,7 @@ func TestPersistence_SaveWorkflow(t *testing.T) {
 		ID:          "test-workflow",
 		Name:        "Test Workflow",
 		Description: "Test workflow description",
-		Status:      models.WorkflowStatusActive,
+		Status:      models.WorkflowStatusPublished,
 		Nodes: []*models.WorkflowNode{
 			{
 				ID:       "node-1",
@@ -95,7 +95,7 @@ func TestPersistence_WorkflowByID(t *testing.T) {
 		ID:          "fetch-workflow",
 		Name:        "Fetch Test Workflow",
 		Description: "Test workflow for fetching",
-		Status:      models.WorkflowStatusActive,
+		Status:      models.WorkflowStatusPublished,
 		Nodes: []*models.WorkflowNode{
 			{
 				ID:       "node-1",
@@ -123,7 +123,7 @@ func TestPersistence_WorkflowByID(t *testing.T) {
 	assert.Equal(t, "fetch-workflow", fetchedWorkflow.ID)
 	assert.Equal(t, "Fetch Test Workflow", fetchedWorkflow.Name)
 	assert.Equal(t, "Test workflow for fetching", fetchedWorkflow.Description)
-	assert.Equal(t, models.WorkflowStatusActive, fetchedWorkflow.Status)
+	assert.Equal(t, models.WorkflowStatusPublished, fetchedWorkflow.Status)
 	assert.Len(t, fetchedWorkflow.Nodes, 1)
 	assert.Equal(t, "node-1", fetchedWorkflow.Nodes[0].ID)
 }
@@ -149,17 +149,17 @@ func TestPersistence_Workflows(t *testing.T) {
 		{
 			ID:     "workflow-1",
 			Name:   "First Workflow",
-			Status: models.WorkflowStatusActive,
+			Status: models.WorkflowStatusPublished,
 		},
 		{
 			ID:     "workflow-2",
 			Name:   "Second Workflow",
-			Status: models.WorkflowStatusInactive,
+			Status: models.WorkflowStatusDraft,
 		},
 		{
 			ID:     "workflow-3",
 			Name:   "Third Workflow",
-			Status: models.WorkflowStatusActive,
+			Status: models.WorkflowStatusPublished,
 		},
 	}
 

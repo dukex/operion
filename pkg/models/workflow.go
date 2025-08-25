@@ -7,23 +7,18 @@ import "time"
 type WorkflowStatus string
 
 const (
-	WorkflowStatusDraft     WorkflowStatus = "draft"
-	WorkflowStatusPublished WorkflowStatus = "published"
-	WorkflowStatusActive    WorkflowStatus = "active"   // Backward compatibility
-	WorkflowStatusInactive  WorkflowStatus = "inactive" // Backward compatibility
-	WorkflowStatusPaused    WorkflowStatus = "paused"   // Backward compatibility
-	WorkflowStatusError     WorkflowStatus = "error"    // Backward compatibility
+	WorkflowStatusDraft       WorkflowStatus = "draft"       // Editable, not executable
+	WorkflowStatusPublished   WorkflowStatus = "published"   // Current active, executable
+	WorkflowStatusUnpublished WorkflowStatus = "unpublished" // Historical, not executable
 )
 
-// Workflow represents a node-based workflow with published versioning support.
+// Workflow represents a node-based workflow with simplified versioning support.
 type Workflow struct {
 	ID              string          `json:"id"`
 	Name            string          `json:"name"                   validate:"required,min=3"`
 	Description     string          `json:"description"            validate:"required"`
 	Status          WorkflowStatus  `json:"status"                 validate:"required"`
 	WorkflowGroupID string          `json:"workflow_group_id"` // Stable ID linking all versions
-	PublishedID     string          `json:"published_id"`      // ID of published version (if this is a draft)
-	ParentID        string          `json:"parent_id"`         // Original workflow ID (if this is a published copy)
 	Nodes           []*WorkflowNode `json:"nodes"`             // Node instances in the workflow
 	Connections     []*Connection   `json:"connections"`       // Connections between nodes
 	Variables       map[string]any  `json:"variables"`

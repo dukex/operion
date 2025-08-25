@@ -2,7 +2,9 @@
   "id": "news-aggregator",
   "name": "News Aggregator and Sentiment Analysis",
   "description": "Aggregate news from multiple sources and analyze trends using NewsAPI",
-  "status": "active",
+  "status": "published",
+  "workflow_group_id": "news-aggregator",
+  "published_at": "2023-10-01T00:00:00Z",
   "nodes": [
     {
       "id": "news-schedule",

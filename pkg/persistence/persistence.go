@@ -23,20 +23,19 @@ type Persistence interface {
 
 // WorkflowRepository provides workflow-related persistence operations.
 type WorkflowRepository interface {
-	// Workflow CRUD operations
+	// Basic CRUD operations
 	GetAll(ctx context.Context) ([]*models.Workflow, error)
 	Save(ctx context.Context, workflow *models.Workflow) error
 	GetByID(ctx context.Context, id string) (*models.Workflow, error)
 	Delete(ctx context.Context, id string) error
-	UpdatePublishedID(ctx context.Context, workflowID, publishedID string) error
 
-	// Workflow versioning operations
+	// Simplified versioning methods
 	GetWorkflowVersions(ctx context.Context, workflowGroupID string) ([]*models.Workflow, error)
-	GetLatestDraftByGroupID(ctx context.Context, workflowGroupID string) (*models.Workflow, error)
-	GetCurrentPublishedByGroupID(ctx context.Context, workflowGroupID string) (*models.Workflow, error)
-
-	// Trigger operations (deprecated - will be removed)
-	FindTriggersBySourceEventAndProvider(ctx context.Context, sourceID, eventType, providerID string, status models.WorkflowStatus) ([]*models.TriggerNodeMatch, error)
+	GetCurrentWorkflow(ctx context.Context, workflowGroupID string) (*models.Workflow, error) // draft or published
+	GetDraftWorkflow(ctx context.Context, workflowGroupID string) (*models.Workflow, error)   // draft only
+	GetPublishedWorkflow(ctx context.Context, workflowGroupID string) (*models.Workflow, error)
+	PublishWorkflow(ctx context.Context, workflowID string) error                                   // NEW: handle publish logic in repo
+	CreateDraftFromPublished(ctx context.Context, workflowGroupID string) (*models.Workflow, error) // NEW: create draft copy
 }
 
 // NodeRepository provides access to workflow node data.

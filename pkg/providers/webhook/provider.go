@@ -147,7 +147,7 @@ func (w *WebhookProvider) Configure(workflows []*models.Workflow) (map[string]st
 	sourceCount := 0
 
 	for _, wf := range workflows {
-		if wf.Status != models.WorkflowStatusActive {
+		if wf.Status != models.WorkflowStatusPublished {
 			continue
 		}
 

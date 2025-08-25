@@ -128,10 +128,7 @@ func TestWorkflow_StatusConstants(t *testing.T) {
 	}{
 		{"draft", WorkflowStatusDraft},
 		{"published", WorkflowStatusPublished},
-		{"active", WorkflowStatusActive},     // backward compatibility
-		{"inactive", WorkflowStatusInactive}, // backward compatibility
-		{"paused", WorkflowStatusPaused},     // backward compatibility
-		{"error", WorkflowStatusError},       // backward compatibility
+		{"unpublished", WorkflowStatusUnpublished},
 	}
 
 	for _, tc := range testCases {
@@ -163,15 +160,14 @@ func TestWorkflow_StatusConstants(t *testing.T) {
 	}
 }
 
-func TestWorkflow_PublishedVersioning(t *testing.T) {
+func TestWorkflow_SimplifiedVersioning(t *testing.T) {
 	// Test draft workflow
 	draft := &Workflow{
-		ID:          "wf-draft-123",
-		Name:        "My Workflow",
-		Description: "Draft workflow for testing",
-		Status:      WorkflowStatusDraft,
-		PublishedID: "wf-published-456", // References published version
-		ParentID:    "",                 // No parent (this is the original)
+		ID:              "wf-draft-123",
+		Name:            "My Workflow",
+		Description:     "Draft workflow for testing",
+		Status:          WorkflowStatusDraft,
+		WorkflowGroupID: "workflow-group-1",
 		Nodes: []*WorkflowNode{
 			{
 				ID:       "node-1",
@@ -187,12 +183,11 @@ func TestWorkflow_PublishedVersioning(t *testing.T) {
 
 	// Test published workflow
 	published := &Workflow{
-		ID:          "wf-published-456",
-		Name:        "My Workflow",
-		Description: "Published workflow for testing",
-		Status:      WorkflowStatusPublished,
-		PublishedID: "",             // No published ID (this IS the published version)
-		ParentID:    "wf-draft-123", // References original draft
+		ID:              "wf-published-456",
+		Name:            "My Workflow",
+		Description:     "Published workflow for testing",
+		Status:          WorkflowStatusPublished,
+		WorkflowGroupID: "workflow-group-1", // Same group as draft
 		Nodes: []*WorkflowNode{
 			{
 				ID:       "node-1",
@@ -206,9 +201,28 @@ func TestWorkflow_PublishedVersioning(t *testing.T) {
 		UpdatedAt: time.Now().UTC().Add(-1 * time.Hour),
 		PublishedAt: func() *time.Time {
 			t := time.Now().UTC()
-
 			return &t
 		}(),
+	}
+
+	// Test unpublished workflow
+	unpublished := &Workflow{
+		ID:              "wf-unpublished-789",
+		Name:            "My Workflow",
+		Description:     "Unpublished workflow for testing",
+		Status:          WorkflowStatusUnpublished,
+		WorkflowGroupID: "workflow-group-1", // Same group
+		Nodes: []*WorkflowNode{
+			{
+				ID:       "node-1",
+				NodeType: "http_request",
+				Name:     "API Call",
+				Config:   map[string]any{"url": "https://api.example.com"},
+				Enabled:  true,
+			},
+		},
+		CreatedAt: time.Now().UTC().Add(-2 * time.Hour),
+		UpdatedAt: time.Now().UTC().Add(-2 * time.Hour),
 	}
 
 	testCases := []struct {
@@ -217,6 +231,7 @@ func TestWorkflow_PublishedVersioning(t *testing.T) {
 	}{
 		{"draft workflow", draft},
 		{"published workflow", published},
+		{"unpublished workflow", unpublished},
 	}
 
 	for _, tc := range testCases {
@@ -236,8 +251,7 @@ func TestWorkflow_PublishedVersioning(t *testing.T) {
 
 			assert.Equal(t, tc.workflow.ID, deserialized.ID)
 			assert.Equal(t, tc.workflow.Status, deserialized.Status)
-			assert.Equal(t, tc.workflow.PublishedID, deserialized.PublishedID)
-			assert.Equal(t, tc.workflow.ParentID, deserialized.ParentID)
+			assert.Equal(t, tc.workflow.WorkflowGroupID, deserialized.WorkflowGroupID)
 
 			if tc.workflow.PublishedAt != nil {
 				require.NotNil(t, deserialized.PublishedAt)

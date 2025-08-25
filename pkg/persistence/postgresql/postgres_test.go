@@ -145,7 +145,7 @@ func TestNewPersistence_SaveAndRetrieveWorkflow(t *testing.T) {
 		Variables: map[string]any{
 			"test_var": "test_value",
 		},
-		Status: models.WorkflowStatusActive,
+		Status: models.WorkflowStatusPublished,
 		Metadata: map[string]any{
 			"created_by": "test",
 		},
@@ -224,7 +224,7 @@ func TestNewPersistence_UpdateWorkflow(t *testing.T) {
 			},
 		},
 		Connections: []*models.Connection{},
-		Status:      models.WorkflowStatusActive,
+		Status:      models.WorkflowStatusPublished,
 		Owner:       "test-user",
 	}
 
@@ -239,7 +239,7 @@ func TestNewPersistence_UpdateWorkflow(t *testing.T) {
 	// Update workflow
 	workflow.Name = "Updated Test Workflow"
 	workflow.Description = "An updated test workflow"
-	workflow.Status = models.WorkflowStatusPaused
+	workflow.Status = models.WorkflowStatusDraft
 
 	err = p.WorkflowRepository().Save(ctx, workflow)
 	require.NoError(t, err)
@@ -251,7 +251,7 @@ func TestNewPersistence_UpdateWorkflow(t *testing.T) {
 
 	assert.Equal(t, "Updated Test Workflow", retrieved.Name)
 	assert.Equal(t, "An updated test workflow", retrieved.Description)
-	assert.Equal(t, models.WorkflowStatusPaused, retrieved.Status)
+	assert.Equal(t, models.WorkflowStatusDraft, retrieved.Status)
 	assert.True(t, retrieved.UpdatedAt.After(initialUpdatedAt))
 }
 
@@ -289,7 +289,7 @@ func TestNewPersistence_ListWorkflows(t *testing.T) {
 				},
 			},
 			Connections: []*models.Connection{},
-			Status:      models.WorkflowStatusActive,
+			Status:      models.WorkflowStatusPublished,
 			Owner:       "test-user",
 		},
 		{
@@ -319,7 +319,7 @@ func TestNewPersistence_ListWorkflows(t *testing.T) {
 				},
 			},
 			Connections: []*models.Connection{},
-			Status:      models.WorkflowStatusInactive,
+			Status:      models.WorkflowStatusDraft,
 			Owner:       "test-user",
 		},
 	}
@@ -367,7 +367,7 @@ func TestNewPersistence_DeleteWorkflow(t *testing.T) {
 			},
 		},
 		Connections: []*models.Connection{},
-		Status:      models.WorkflowStatusActive,
+		Status:      models.WorkflowStatusPublished,
 		Owner:       "test-user",
 	}
 
@@ -504,7 +504,7 @@ func TestNewPersistence_ComplexWorkflow(t *testing.T) {
 			"timeout":      30,
 			"retry_count":  3,
 		},
-		Status: models.WorkflowStatusActive,
+		Status: models.WorkflowStatusPublished,
 		Metadata: map[string]any{
 			"version":     "1.0.0",
 			"environment": "test",

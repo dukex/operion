@@ -7,7 +7,9 @@
     "execution_count": 0,
     "test_mode": true
   },
-  "status": "active",
+  "status": "published",
+  "workflow_group_id": "test-scheduler-source",
+  "published_at": "2023-10-01T00:00:00Z",
   "metadata": {
     "author": "Operion Test",
     "description": "Test workflow for scheduler source provider functionality with database persistence",

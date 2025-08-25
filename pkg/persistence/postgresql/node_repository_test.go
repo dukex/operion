@@ -43,7 +43,7 @@ func createTestWorkflowForNodes(t *testing.T) *models.Workflow {
 				PositionY: 400,
 			},
 		},
-		Status: models.WorkflowStatusActive,
+		Status: models.WorkflowStatusPublished,
 		Owner:  "test-user",
 	}
 }
@@ -239,7 +239,7 @@ func TestNodeRepository_FindTriggerNodesBySourceEventAndProvider(t *testing.T) {
 				Enabled:    true,
 			},
 		},
-		Status: models.WorkflowStatusActive,
+		Status: models.WorkflowStatusPublished,
 		Owner:  "test-user",
 	}
 
@@ -260,7 +260,7 @@ func TestNodeRepository_FindTriggerNodesBySourceEventAndProvider(t *testing.T) {
 				Enabled:    true,
 			},
 		},
-		Status: models.WorkflowStatusActive,
+		Status: models.WorkflowStatusPublished,
 		Owner:  "test-user",
 	}
 
@@ -281,7 +281,7 @@ func TestNodeRepository_FindTriggerNodesBySourceEventAndProvider(t *testing.T) {
 				Enabled:    true,
 			},
 		},
-		Status: models.WorkflowStatusInactive, // Different status
+		Status: models.WorkflowStatusDraft, // Different status
 		Owner:  "test-user",
 	}
 
@@ -296,7 +296,7 @@ func TestNodeRepository_FindTriggerNodesBySourceEventAndProvider(t *testing.T) {
 	nodeRepo := p.NodeRepository()
 
 	// Test finding triggers by source, event, and provider for active workflows
-	matches, err := nodeRepo.FindTriggerNodesBySourceEventAndProvider(ctx, sourceID1, "schedule_due", "scheduler", models.WorkflowStatusActive)
+	matches, err := nodeRepo.FindTriggerNodesBySourceEventAndProvider(ctx, sourceID1, "schedule_due", "scheduler", models.WorkflowStatusPublished)
 	require.NoError(t, err)
 
 	assert.Len(t, matches, 1) // Should only find workflow1 (workflow3 is inactive)
@@ -304,7 +304,7 @@ func TestNodeRepository_FindTriggerNodesBySourceEventAndProvider(t *testing.T) {
 	assert.Equal(t, "trigger1", matches[0].TriggerNode.ID)
 
 	// Test finding webhook triggers
-	matches, err = nodeRepo.FindTriggerNodesBySourceEventAndProvider(ctx, sourceID2, "webhook_received", "webhook", models.WorkflowStatusActive)
+	matches, err = nodeRepo.FindTriggerNodesBySourceEventAndProvider(ctx, sourceID2, "webhook_received", "webhook", models.WorkflowStatusPublished)
 	require.NoError(t, err)
 
 	assert.Len(t, matches, 1)
@@ -312,7 +312,7 @@ func TestNodeRepository_FindTriggerNodesBySourceEventAndProvider(t *testing.T) {
 	assert.Equal(t, "trigger2", matches[0].TriggerNode.ID)
 
 	// Test finding triggers with different status
-	matches, err = nodeRepo.FindTriggerNodesBySourceEventAndProvider(ctx, sourceID1, "schedule_due", "scheduler", models.WorkflowStatusInactive)
+	matches, err = nodeRepo.FindTriggerNodesBySourceEventAndProvider(ctx, sourceID1, "schedule_due", "scheduler", models.WorkflowStatusDraft)
 	require.NoError(t, err)
 
 	assert.Len(t, matches, 1) // Should find workflow3
@@ -320,7 +320,7 @@ func TestNodeRepository_FindTriggerNodesBySourceEventAndProvider(t *testing.T) {
 	assert.Equal(t, "trigger3", matches[0].TriggerNode.ID)
 
 	// Test finding non-existent triggers
-	matches, err = nodeRepo.FindTriggerNodesBySourceEventAndProvider(ctx, "non-existent", "schedule_due", "scheduler", models.WorkflowStatusActive)
+	matches, err = nodeRepo.FindTriggerNodesBySourceEventAndProvider(ctx, "non-existent", "schedule_due", "scheduler", models.WorkflowStatusPublished)
 	require.NoError(t, err)
 
 	assert.Len(t, matches, 0)

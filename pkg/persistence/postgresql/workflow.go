@@ -36,8 +36,6 @@ func (r *WorkflowRepository) GetAll(ctx context.Context) ([]*models.Workflow, er
 		  , metadata
 		  , owner
 		  , workflow_group_id
-		  , published_id
-		  , parent_id
 		  , published_at
 		  , created_at
 		  , updated_at
@@ -94,8 +92,6 @@ func (r *WorkflowRepository) GetByID(ctx context.Context, id string) (*models.Wo
 		  , metadata
 		  , owner
 		  , workflow_group_id
-		  , published_id
-		  , parent_id
 		  , published_at
 		  , created_at
 		  , updated_at
@@ -172,8 +168,8 @@ func (r *WorkflowRepository) Save(ctx context.Context, workflow *models.Workflow
 	// Save workflow base data
 	workflowQuery := `
 		INSERT INTO workflows (id, name, description,
-variables, status, metadata, owner, workflow_group_id, published_id, parent_id, published_at, created_at, updated_at, deleted_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+variables, status, metadata, owner, workflow_group_id, published_at, created_at, updated_at, deleted_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		ON CONFLICT (id) DO UPDATE SET
 			name = EXCLUDED.name,
 			description = EXCLUDED.description,
@@ -182,31 +178,17 @@ variables, status, metadata, owner, workflow_group_id, published_id, parent_id, 
 			metadata = EXCLUDED.metadata,
 			owner = EXCLUDED.owner,
 			workflow_group_id = EXCLUDED.workflow_group_id,
-			published_id = EXCLUDED.published_id,
-			parent_id = EXCLUDED.parent_id,
 			published_at = EXCLUDED.published_at,
 			updated_at = EXCLUDED.updated_at,
 			deleted_at = EXCLUDED.deleted_at
 	`
 
 	// Convert empty UUID strings to NULL for PostgreSQL compatibility
-	var workflowGroupIDParam, publishedIDParam, parentIDParam any
+	var workflowGroupIDParam any
 	if workflow.WorkflowGroupID == "" {
 		workflowGroupIDParam = nil
 	} else {
 		workflowGroupIDParam = workflow.WorkflowGroupID
-	}
-
-	if workflow.PublishedID == "" {
-		publishedIDParam = nil
-	} else {
-		publishedIDParam = workflow.PublishedID
-	}
-
-	if workflow.ParentID == "" {
-		parentIDParam = nil
-	} else {
-		parentIDParam = workflow.ParentID
 	}
 
 	_, err = tx.ExecContext(ctx, workflowQuery,
@@ -218,8 +200,6 @@ variables, status, metadata, owner, workflow_group_id, published_id, parent_id, 
 		metadataJSON,
 		workflow.Owner,
 		workflowGroupIDParam,
-		publishedIDParam,
-		parentIDParam,
 		workflow.PublishedAt,
 		workflow.CreatedAt,
 		workflow.UpdatedAt,
@@ -279,33 +259,202 @@ func (r *WorkflowRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-// UpdatePublishedID updates only the published_id field of a workflow.
-func (r *WorkflowRepository) UpdatePublishedID(ctx context.Context, workflowID, publishedID string) error {
-	query := `UPDATE workflows SET published_id = $1, updated_at = NOW() WHERE id = $2 AND deleted_at IS NULL`
+// GetCurrentWorkflow returns the current version (published if exists, otherwise draft)
+func (r *WorkflowRepository) GetCurrentWorkflow(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
+	// Try published first, then draft
+	query := `
+		SELECT
+			id
+		  , name
+		  , description
+		  , variables
+		  , status
+		  , metadata
+		  , owner
+		  , workflow_group_id
+		  , published_at
+		  , created_at
+		  , updated_at
+		  , deleted_at
+		FROM workflows 
+		WHERE workflow_group_id = $1 AND status IN ('published', 'draft') AND deleted_at IS NULL 
+		ORDER BY CASE WHEN status = 'published' THEN 0 ELSE 1 END
+		LIMIT 1
+	`
 
-	// Convert empty UUID string to NULL for PostgreSQL compatibility
-	var publishedIDParam any
-	if publishedID == "" {
-		publishedIDParam = nil
-	} else {
-		publishedIDParam = publishedID
-	}
+	row := r.db.QueryRowContext(ctx, query, workflowGroupID)
 
-	result, err := r.db.ExecContext(ctx, query, publishedIDParam, workflowID)
+	workflow, err := r.scanWorkflowBase(row)
 	if err != nil {
-		return fmt.Errorf("failed to update published_id: %w", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to scan workflow: %w", err)
 	}
 
-	rowsAffected, err := result.RowsAffected()
+	if err := r.loadWorkflowNodes(ctx, workflow); err != nil {
+		return nil, fmt.Errorf("failed to load workflow nodes: %w", err)
+	}
+
+	return workflow, nil
+}
+
+// GetDraftWorkflow returns the draft version of a workflow group
+func (r *WorkflowRepository) GetDraftWorkflow(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
+	query := `
+		SELECT
+			id
+		  , name
+		  , description
+		  , variables
+		  , status
+		  , metadata
+		  , owner
+		  , workflow_group_id
+		  , published_at
+		  , created_at
+		  , updated_at
+		  , deleted_at
+		FROM workflows
+		WHERE workflow_group_id = $1 AND status = 'draft' AND deleted_at IS NULL
+		ORDER BY created_at DESC
+		LIMIT 1
+	`
+
+	row := r.db.QueryRowContext(ctx, query, workflowGroupID)
+
+	workflow, err := r.scanWorkflowBase(row)
 	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to scan workflow: %w", err)
 	}
 
-	if rowsAffected == 0 {
-		return fmt.Errorf("workflow not found or already deleted: %s", workflowID)
+	if err := r.loadWorkflowNodes(ctx, workflow); err != nil {
+		return nil, fmt.Errorf("failed to load workflow nodes: %w", err)
 	}
 
-	return nil
+	return workflow, nil
+}
+
+// GetPublishedWorkflow returns the published version of a workflow group
+func (r *WorkflowRepository) GetPublishedWorkflow(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
+	query := `
+		SELECT
+			id
+		  , name
+		  , description
+		  , variables
+		  , status
+		  , metadata
+		  , owner
+		  , workflow_group_id
+		  , published_at
+		  , created_at
+		  , updated_at
+		  , deleted_at
+		FROM workflows
+		WHERE workflow_group_id = $1 AND status = 'published' AND deleted_at IS NULL
+		ORDER BY created_at DESC
+		LIMIT 1
+	`
+
+	row := r.db.QueryRowContext(ctx, query, workflowGroupID)
+
+	workflow, err := r.scanWorkflowBase(row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to scan workflow: %w", err)
+	}
+
+	if err := r.loadWorkflowNodes(ctx, workflow); err != nil {
+		return nil, fmt.Errorf("failed to load workflow nodes: %w", err)
+	}
+
+	return workflow, nil
+}
+
+// PublishWorkflow handles the publish operation
+func (r *WorkflowRepository) PublishWorkflow(ctx context.Context, workflowID string) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Get the workflow being published
+	workflow, err := r.GetByID(ctx, workflowID)
+	if err != nil {
+		return fmt.Errorf("failed to get workflow: %w", err)
+	}
+	if workflow == nil {
+		return fmt.Errorf("workflow not found: %s", workflowID)
+	}
+
+	// Set all other workflows in group to unpublished
+	_, err = tx.ExecContext(ctx,
+		"UPDATE workflows SET status = 'unpublished' WHERE workflow_group_id = $1 AND status = 'published'",
+		workflow.WorkflowGroupID)
+	if err != nil {
+		return fmt.Errorf("failed to unpublish existing workflows: %w", err)
+	}
+
+	// Set current workflow to published (set published_at if not already set)
+	_, err = tx.ExecContext(ctx,
+		"UPDATE workflows SET status = 'published', updated_at = NOW(), published_at = COALESCE(published_at, NOW()) WHERE id = $1",
+		workflowID)
+	if err != nil {
+		return fmt.Errorf("failed to publish workflow: %w", err)
+	}
+
+	return tx.Commit()
+}
+
+// CreateDraftFromPublished creates a draft copy from published version
+func (r *WorkflowRepository) CreateDraftFromPublished(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
+	// Check if draft already exists
+	existingDraft, err := r.GetDraftWorkflow(ctx, workflowGroupID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check existing draft: %w", err)
+	}
+	if existingDraft != nil {
+		return existingDraft, nil
+	}
+
+	// Get published workflow
+	publishedWorkflow, err := r.GetPublishedWorkflow(ctx, workflowGroupID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get published workflow: %w", err)
+	}
+	if publishedWorkflow == nil {
+		return nil, fmt.Errorf("no published workflow found for group: %s", workflowGroupID)
+	}
+
+	// Create draft copy
+	draftWorkflow := *publishedWorkflow
+
+	// Generate new ID for draft
+	id, err := uuid.NewV7()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate workflow ID: %w", err)
+	}
+	draftWorkflow.ID = id.String()
+
+	// Set as draft
+	draftWorkflow.Status = models.WorkflowStatusDraft
+	draftWorkflow.CreatedAt = time.Now().UTC()
+	draftWorkflow.UpdatedAt = time.Now().UTC()
+	draftWorkflow.PublishedAt = nil
+
+	// Save the draft
+	if err := r.Save(ctx, &draftWorkflow); err != nil {
+		return nil, fmt.Errorf("failed to save draft workflow: %w", err)
+	}
+
+	return &draftWorkflow, nil
 }
 
 func (r *WorkflowRepository) loadWorkflowNodes(ctx context.Context, workflow *models.Workflow) error {
@@ -503,9 +652,9 @@ func (r *WorkflowRepository) scanWorkflowBase(scanner interface {
 	Scan(dest ...any) error
 }) (*models.Workflow, error) {
 	var (
-		workflow                               models.Workflow
-		variablesJSON, metadataJSON            []byte
-		workflowGroupID, publishedID, parentID sql.NullString
+		workflow                    models.Workflow
+		variablesJSON, metadataJSON []byte
+		workflowGroupID             sql.NullString
 	)
 
 	err := scanner.Scan(
@@ -517,8 +666,6 @@ func (r *WorkflowRepository) scanWorkflowBase(scanner interface {
 		&metadataJSON,
 		&workflow.Owner,
 		&workflowGroupID,
-		&publishedID,
-		&parentID,
 		&workflow.PublishedAt,
 		&workflow.CreatedAt,
 		&workflow.UpdatedAt,
@@ -531,14 +678,6 @@ func (r *WorkflowRepository) scanWorkflowBase(scanner interface {
 	// Convert nullable strings to regular strings
 	if workflowGroupID.Valid {
 		workflow.WorkflowGroupID = workflowGroupID.String
-	}
-
-	if publishedID.Valid {
-		workflow.PublishedID = publishedID.String
-	}
-
-	if parentID.Valid {
-		workflow.ParentID = parentID.String
 	}
 
 	// Unmarshal JSON fields
@@ -571,8 +710,6 @@ func (r *WorkflowRepository) GetWorkflowVersions(ctx context.Context, workflowGr
 		  , metadata
 		  , owner
 		  , workflow_group_id
-		  , published_id
-		  , parent_id
 		  , published_at
 		  , created_at
 		  , updated_at
@@ -616,174 +753,4 @@ func (r *WorkflowRepository) GetWorkflowVersions(ctx context.Context, workflowGr
 	}
 
 	return workflows, nil
-}
-
-// GetLatestDraftByGroupID returns the current draft version of a workflow group.
-func (r *WorkflowRepository) GetLatestDraftByGroupID(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
-	query := `
-		SELECT
-			id
-		  , name
-		  , description
-		  , variables
-		  , status
-		  , metadata
-		  , owner
-		  , workflow_group_id
-		  , published_id
-		  , parent_id
-		  , published_at
-		  , created_at
-		  , updated_at
-		  , deleted_at
-		FROM workflows
-		WHERE workflow_group_id = $1 AND parent_id IS NULL AND deleted_at IS NULL
-		ORDER BY created_at DESC
-		LIMIT 1
-	`
-
-	row := r.db.QueryRowContext(ctx, query, workflowGroupID)
-
-	workflow, err := r.scanWorkflowBase(row)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
-
-		return nil, fmt.Errorf("failed to scan workflow: %w", err)
-	}
-
-	if err := r.loadWorkflowNodes(ctx, workflow); err != nil {
-		return nil, fmt.Errorf("failed to load workflow nodes: %w", err)
-	}
-
-	return workflow, nil
-}
-
-// GetCurrentPublishedByGroupID returns the current published version of a workflow group.
-func (r *WorkflowRepository) GetCurrentPublishedByGroupID(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
-	query := `
-		SELECT
-			id
-		  , name
-		  , description
-		  , variables
-		  , status
-		  , metadata
-		  , owner
-		  , workflow_group_id
-		  , published_id
-		  , parent_id
-		  , published_at
-		  , created_at
-		  , updated_at
-		  , deleted_at
-		FROM workflows
-		WHERE workflow_group_id = $1 AND status = 'published' AND deleted_at IS NULL
-		ORDER BY created_at DESC
-		LIMIT 1
-	`
-
-	row := r.db.QueryRowContext(ctx, query, workflowGroupID)
-
-	workflow, err := r.scanWorkflowBase(row)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
-
-		return nil, fmt.Errorf("failed to scan workflow: %w", err)
-	}
-
-	if err := r.loadWorkflowNodes(ctx, workflow); err != nil {
-		return nil, fmt.Errorf("failed to load workflow nodes: %w", err)
-	}
-
-	return workflow, nil
-}
-
-// FindTriggersBySourceEventAndProvider returns trigger nodes matching the specified criteria.
-func (r *WorkflowRepository) FindTriggersBySourceEventAndProvider(ctx context.Context, sourceID, eventType, providerID string, status models.WorkflowStatus) ([]*models.TriggerNodeMatch, error) {
-	query := `
-		SELECT 
-			w.id as workflow_id,
-			n.id,
-			n.node_type,
-			n.category,
-			n.name,
-			n.config,
-			n.enabled,
-			n.position_x,
-			n.position_y,
-			n.source_id,
-			n.provider_id,
-			n.event_type
-		FROM workflows w
-		JOIN workflow_nodes n ON w.id = n.workflow_id
-		WHERE w.deleted_at IS NULL
-		  AND w.status = $1
-		  AND n.category = 'trigger'
-		  AND n.source_id = $2
-		  AND n.event_type = $3
-		  AND n.provider_id = $4
-		ORDER BY w.created_at DESC
-	`
-
-	rows, err := r.db.QueryContext(ctx, query, status, sourceID, eventType, providerID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query workflow triggers: %w", err)
-	}
-
-	defer func() {
-		err := rows.Close()
-		if err != nil {
-			r.logger.ErrorContext(ctx, "failed to close rows", "error", err)
-		}
-	}()
-
-	var matches []*models.TriggerNodeMatch
-
-	for rows.Next() {
-		var (
-			workflowID string
-			node       models.WorkflowNode
-			configJSON []byte
-		)
-
-		err := rows.Scan(
-			&workflowID,
-			&node.ID,
-			&node.NodeType,
-			&node.Category,
-			&node.Name,
-			&configJSON,
-			&node.Enabled,
-			&node.PositionX,
-			&node.PositionY,
-			&node.SourceID,
-			&node.ProviderID,
-			&node.EventType,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan trigger node match: %w", err)
-		}
-
-		if configJSON != nil {
-			err := json.Unmarshal(configJSON, &node.Config)
-			if err != nil {
-				return nil, fmt.Errorf("failed to unmarshal node configuration: %w", err)
-			}
-		}
-
-		matches = append(matches, &models.TriggerNodeMatch{
-			WorkflowID:  workflowID,
-			TriggerNode: &node,
-		})
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating trigger matches: %w", err)
-	}
-
-	return matches, nil
 }

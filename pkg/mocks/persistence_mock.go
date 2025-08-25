@@ -45,12 +45,6 @@ func (m *MockWorkflowRepository) Delete(ctx context.Context, id string) error {
 	return args.Error(0)
 }
 
-func (m *MockWorkflowRepository) UpdatePublishedID(ctx context.Context, workflowID, publishedID string) error {
-	args := m.Called(ctx, workflowID, publishedID)
-
-	return args.Error(0)
-}
-
 func (m *MockWorkflowRepository) GetWorkflowVersions(ctx context.Context, workflowGroupID string) ([]*models.Workflow, error) {
 	args := m.Called(ctx, workflowGroupID)
 	if args.Get(0) == nil {
@@ -60,7 +54,7 @@ func (m *MockWorkflowRepository) GetWorkflowVersions(ctx context.Context, workfl
 	return args.Get(0).([]*models.Workflow), args.Error(1)
 }
 
-func (m *MockWorkflowRepository) GetLatestDraftByGroupID(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
+func (m *MockWorkflowRepository) GetCurrentWorkflow(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
 	args := m.Called(ctx, workflowGroupID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -69,7 +63,7 @@ func (m *MockWorkflowRepository) GetLatestDraftByGroupID(ctx context.Context, wo
 	return args.Get(0).(*models.Workflow), args.Error(1)
 }
 
-func (m *MockWorkflowRepository) GetCurrentPublishedByGroupID(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
+func (m *MockWorkflowRepository) GetDraftWorkflow(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
 	args := m.Called(ctx, workflowGroupID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -78,13 +72,27 @@ func (m *MockWorkflowRepository) GetCurrentPublishedByGroupID(ctx context.Contex
 	return args.Get(0).(*models.Workflow), args.Error(1)
 }
 
-func (m *MockWorkflowRepository) FindTriggersBySourceEventAndProvider(ctx context.Context, sourceID, eventType, providerID string, status models.WorkflowStatus) ([]*models.TriggerNodeMatch, error) {
-	args := m.Called(ctx, sourceID, eventType, providerID, status)
+func (m *MockWorkflowRepository) GetPublishedWorkflow(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
+	args := m.Called(ctx, workflowGroupID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 
-	return args.Get(0).([]*models.TriggerNodeMatch), args.Error(1)
+	return args.Get(0).(*models.Workflow), args.Error(1)
+}
+
+func (m *MockWorkflowRepository) PublishWorkflow(ctx context.Context, workflowID string) error {
+	args := m.Called(ctx, workflowID)
+	return args.Error(0)
+}
+
+func (m *MockWorkflowRepository) CreateDraftFromPublished(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
+	args := m.Called(ctx, workflowGroupID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+
+	return args.Get(0).(*models.Workflow), args.Error(1)
 }
 
 // MockPersistence is a mock implementation of persistence.Persistence interface.

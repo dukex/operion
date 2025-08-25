@@ -154,7 +154,7 @@ func (k *KafkaProvider) Configure(workflows []*models.Workflow) (map[string]stri
 	sourceCount := 0
 
 	for _, wf := range workflows {
-		if wf.Status != models.WorkflowStatusActive {
+		if wf.Status != models.WorkflowStatusPublished {
 			continue
 		}
 

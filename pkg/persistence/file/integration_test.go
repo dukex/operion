@@ -103,7 +103,7 @@ func createTestWorkflow() *models.Workflow {
 			"version":     "1.0",
 			"description": "Processes incoming Kafka order messages",
 		},
-		Status: models.WorkflowStatusActive,
+		Status: models.WorkflowStatusPublished,
 	}
 }
 
@@ -129,7 +129,7 @@ func testNodeRepositoryOperations(t *testing.T, persistence *Persistence, workfl
 
 	// Find trigger nodes by source/event/provider
 	triggerMatches, err := nodeRepo.FindTriggerNodesBySourceEventAndProvider(
-		ctx, "kafka-source", "kafka_message", "kafka", models.WorkflowStatusActive)
+		ctx, "kafka-source", "kafka_message", "kafka", models.WorkflowStatusPublished)
 	require.NoError(t, err)
 	assert.Len(t, triggerMatches, 1)
 	assert.Equal(t, workflow.ID, triggerMatches[0].WorkflowID)
@@ -299,7 +299,7 @@ func TestNodeBasedWorkflowExecution_MultipleWorkflows(t *testing.T) {
 				Enabled:    true,
 			},
 		},
-		Status: models.WorkflowStatusActive,
+		Status: models.WorkflowStatusPublished,
 	}
 
 	workflow2 := &models.Workflow{
@@ -318,7 +318,7 @@ func TestNodeBasedWorkflowExecution_MultipleWorkflows(t *testing.T) {
 				Enabled:    true,
 			},
 		},
-		Status: models.WorkflowStatusActive,
+		Status: models.WorkflowStatusPublished,
 	}
 
 	// Save both workflows
@@ -331,7 +331,7 @@ func TestNodeBasedWorkflowExecution_MultipleWorkflows(t *testing.T) {
 	// Test finding trigger nodes by source/event/provider
 	nodeRepo := persistence.NodeRepository()
 	matches, err := nodeRepo.FindTriggerNodesBySourceEventAndProvider(
-		ctx, "webhook-source", "webhook_received", "webhook", models.WorkflowStatusActive)
+		ctx, "webhook-source", "webhook_received", "webhook", models.WorkflowStatusPublished)
 	require.NoError(t, err)
 	assert.Len(t, matches, 2)
 
@@ -359,7 +359,7 @@ func TestNodeBasedWorkflowExecution_DynamicNodeOperations(t *testing.T) {
 		Connections: []*models.Connection{},
 		Variables:   map[string]any{},
 		Metadata:    map[string]any{},
-		Status:      models.WorkflowStatusActive,
+		Status:      models.WorkflowStatusPublished,
 	}
 
 	// Save the workflow
@@ -410,7 +410,7 @@ func TestNodeBasedWorkflowExecution_ErrorScenarios(t *testing.T) {
 
 	// Test empty repository operations
 	matches, err := nodeRepo.FindTriggerNodesBySourceEventAndProvider(
-		ctx, "any-source", "any-event", "any-provider", models.WorkflowStatusActive)
+		ctx, "any-source", "any-event", "any-provider", models.WorkflowStatusPublished)
 	require.NoError(t, err)
 	assert.Empty(t, matches)
 

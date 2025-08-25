@@ -71,7 +71,7 @@ func TestRepository_FetchByID(t *testing.T) {
 		ID:          "fetch-test-workflow",
 		Name:        "Fetch Test Workflow",
 		Description: "Test workflow for fetching",
-		Status:      models.WorkflowStatusActive,
+		Status:      models.WorkflowStatusPublished,
 	}
 
 	// Save workflow
@@ -114,12 +114,12 @@ func TestRepository_FetchAll(t *testing.T) {
 		{
 
 			Name:   "First Workflow",
-			Status: models.WorkflowStatusActive,
+			Status: models.WorkflowStatusPublished,
 		},
 		{
 
 			Name:   "Second Workflow",
-			Status: models.WorkflowStatusInactive,
+			Status: models.WorkflowStatusDraft,
 		},
 	}
 
@@ -158,7 +158,7 @@ func TestRepository_Update(t *testing.T) {
 	originalWorkflow := &models.Workflow{
 		Name:        "Original Workflow",
 		Description: "Original description",
-		Status:      models.WorkflowStatusInactive,
+		Status:      models.WorkflowStatusDraft,
 	}
 
 	workflowCreated, err := repo.Create(t.Context(), originalWorkflow)
@@ -168,7 +168,7 @@ func TestRepository_Update(t *testing.T) {
 	updatedWorkflow := &models.Workflow{
 		Name:        "Updated Workflow",
 		Description: "Updated description",
-		Status:      models.WorkflowStatusActive,
+		Status:      models.WorkflowStatusPublished,
 	}
 
 	result, err := repo.Update(t.Context(), workflowCreated.ID, updatedWorkflow)
@@ -179,7 +179,7 @@ func TestRepository_Update(t *testing.T) {
 	assert.Equal(t, workflowCreated.ID, result.ID)
 	assert.Equal(t, "Updated Workflow", result.Name)
 	assert.Equal(t, "Updated description", result.Description)
-	assert.Equal(t, models.WorkflowStatusActive, result.Status)
+	assert.Equal(t, models.WorkflowStatusPublished, result.Status)
 
 	assert.WithinDuration(t, originalWorkflow.CreatedAt, result.CreatedAt, 0)
 	assert.True(t,

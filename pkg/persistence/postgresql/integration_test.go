@@ -133,7 +133,7 @@ func createCompleteTestWorkflow(t *testing.T) *models.Workflow {
 			"environment": "test",
 			"created_by":  "integration_test",
 		},
-		Status: models.WorkflowStatusActive,
+		Status: models.WorkflowStatusPublished,
 		Owner:  "test-user",
 	}
 }
@@ -192,7 +192,7 @@ func testWorkflowOperations(t *testing.T, p *postgresql.Persistence, ctx context
 
 	// Step 5: Test trigger node finding functionality
 	sourceID := *workflow.Nodes[0].SourceID
-	triggerMatches, err := nodeRepo.FindTriggerNodesBySourceEventAndProvider(ctx, sourceID, "webhook_received", "webhook", models.WorkflowStatusActive)
+	triggerMatches, err := nodeRepo.FindTriggerNodesBySourceEventAndProvider(ctx, sourceID, "webhook_received", "webhook", models.WorkflowStatusPublished)
 	require.NoError(t, err)
 	assert.Len(t, triggerMatches, 1)
 	assert.Equal(t, workflow.ID, triggerMatches[0].WorkflowID)
@@ -432,7 +432,7 @@ func TestRepositoryIntegration_MultipleWorkflowsExecution(t *testing.T) {
 					TargetPort: fmt.Sprintf("action_%d:input", i+1),
 				},
 			},
-			Status: models.WorkflowStatusActive,
+			Status: models.WorkflowStatusPublished,
 			Owner:  "test-user",
 		}
 
@@ -497,7 +497,7 @@ func TestRepositoryIntegration_MultipleWorkflowsExecution(t *testing.T) {
 
 	// Test trigger node finding across multiple workflows
 	// All workflows use scheduler provider with schedule_due event
-	allTriggers, err := p.NodeRepository().FindTriggerNodesBySourceEventAndProvider(ctx, "", "schedule_due", "scheduler", models.WorkflowStatusActive)
+	allTriggers, err := p.NodeRepository().FindTriggerNodesBySourceEventAndProvider(ctx, "", "schedule_due", "scheduler", models.WorkflowStatusPublished)
 	require.NoError(t, err)
 	assert.Len(t, allTriggers, 0) // Should be 0 because we're searching for empty sourceID
 

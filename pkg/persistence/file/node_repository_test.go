@@ -37,7 +37,7 @@ func TestNodeRepository_GetNodesFromPublishedWorkflow(t *testing.T) {
 				Enabled:  true,
 			},
 		},
-		Status: models.WorkflowStatusActive,
+		Status: models.WorkflowStatusPublished,
 	}
 
 	// Save workflow
@@ -88,7 +88,7 @@ func TestNodeRepository_GetNodeFromPublishedWorkflow(t *testing.T) {
 				Enabled:  true,
 			},
 		},
-		Status: models.WorkflowStatusActive,
+		Status: models.WorkflowStatusPublished,
 	}
 
 	err := persistence.WorkflowRepository().Save(ctx, workflow)
@@ -118,7 +118,7 @@ func TestNodeRepository_GetNodeFromPublishedWorkflow_NotFound(t *testing.T) {
 		ID:     "test-workflow-not-found",
 		Name:   "Test Workflow",
 		Nodes:  []*models.WorkflowNode{},
-		Status: models.WorkflowStatusActive,
+		Status: models.WorkflowStatusPublished,
 	}
 
 	err := persistence.WorkflowRepository().Save(ctx, workflow)
@@ -145,7 +145,7 @@ func TestNodeRepository_SaveNode_NewNode(t *testing.T) {
 		ID:     "test-workflow-save-node",
 		Name:   "Test Workflow Save Node",
 		Nodes:  []*models.WorkflowNode{},
-		Status: models.WorkflowStatusActive,
+		Status: models.WorkflowStatusPublished,
 	}
 
 	err := persistence.WorkflowRepository().Save(ctx, workflow)
@@ -194,7 +194,7 @@ func TestNodeRepository_SaveNode_UpdateExisting(t *testing.T) {
 		ID:     "test-workflow-update-node",
 		Name:   "Test Workflow Update Node",
 		Nodes:  []*models.WorkflowNode{existingNode},
-		Status: models.WorkflowStatusActive,
+		Status: models.WorkflowStatusPublished,
 	}
 
 	err := persistence.WorkflowRepository().Save(ctx, workflow)
@@ -251,7 +251,7 @@ func TestNodeRepository_DeleteNode(t *testing.T) {
 				Enabled:  true,
 			},
 		},
-		Status: models.WorkflowStatusActive,
+		Status: models.WorkflowStatusPublished,
 	}
 
 	err := persistence.WorkflowRepository().Save(ctx, workflow)
@@ -308,7 +308,7 @@ func TestNodeRepository_FindTriggerNodesBySourceEventAndProvider(t *testing.T) {
 				Enabled:  true,
 			},
 		},
-		Status: models.WorkflowStatusActive,
+		Status: models.WorkflowStatusPublished,
 	}
 
 	workflow2 := &models.Workflow{
@@ -327,7 +327,7 @@ func TestNodeRepository_FindTriggerNodesBySourceEventAndProvider(t *testing.T) {
 				Enabled:    true,
 			},
 		},
-		Status: models.WorkflowStatusActive,
+		Status: models.WorkflowStatusPublished,
 	}
 
 	workflow3 := &models.Workflow{
@@ -346,7 +346,7 @@ func TestNodeRepository_FindTriggerNodesBySourceEventAndProvider(t *testing.T) {
 				Enabled:    true,
 			},
 		},
-		Status: models.WorkflowStatusActive,
+		Status: models.WorkflowStatusPublished,
 	}
 
 	// Save all workflows
@@ -360,7 +360,7 @@ func TestNodeRepository_FindTriggerNodesBySourceEventAndProvider(t *testing.T) {
 	// Test FindTriggerNodesBySourceEventAndProvider
 	nodeRepo := persistence.NodeRepository()
 	matches, err := nodeRepo.FindTriggerNodesBySourceEventAndProvider(
-		ctx, "source-123", "kafka_message", "kafka", models.WorkflowStatusActive)
+		ctx, "source-123", "kafka_message", "kafka", models.WorkflowStatusPublished)
 
 	// Verify
 	require.NoError(t, err)
@@ -394,7 +394,7 @@ func TestNodeRepository_FindTriggerNodesBySourceEventAndProvider_NoMatches(t *te
 	// Test with empty persistence
 	nodeRepo := persistence.NodeRepository()
 	matches, err := nodeRepo.FindTriggerNodesBySourceEventAndProvider(
-		ctx, "non-existent", "non-existent", "non-existent", models.WorkflowStatusActive)
+		ctx, "non-existent", "non-existent", "non-existent", models.WorkflowStatusPublished)
 
 	// Verify
 	require.NoError(t, err)

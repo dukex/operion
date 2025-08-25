@@ -73,7 +73,7 @@ func (r *Repository) Create(ctx context.Context, workflow *models.Workflow) (*mo
 	workflow.UpdatedAt = now
 
 	if workflow.Status == "" {
-		workflow.Status = models.WorkflowStatusInactive
+		workflow.Status = models.WorkflowStatusDraft
 	}
 
 	err := r.persistence.WorkflowRepository().Save(ctx, workflow)
