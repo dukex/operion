@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/dukex/operion/pkg/models"
@@ -114,13 +115,14 @@ func (wr *WorkflowRepository) Delete(_ context.Context, id string) error {
 	return nil
 }
 
-// GetCurrentWorkflow returns the current version (published if exists, otherwise draft)
+// GetCurrentWorkflow returns the current version (published if exists, otherwise draft).
 func (wr *WorkflowRepository) GetCurrentWorkflow(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
 	// Try published first
 	published, err := wr.GetPublishedWorkflow(ctx, workflowGroupID)
 	if err != nil {
 		return nil, err
 	}
+
 	if published != nil {
 		return published, nil
 	}
@@ -129,7 +131,7 @@ func (wr *WorkflowRepository) GetCurrentWorkflow(ctx context.Context, workflowGr
 	return wr.GetDraftWorkflow(ctx, workflowGroupID)
 }
 
-// GetDraftWorkflow returns the draft version of a workflow group
+// GetDraftWorkflow returns the draft version of a workflow group.
 func (wr *WorkflowRepository) GetDraftWorkflow(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
 	workflows, err := wr.GetAll(ctx)
 	if err != nil {
@@ -148,7 +150,7 @@ func (wr *WorkflowRepository) GetDraftWorkflow(ctx context.Context, workflowGrou
 	return latestDraft, nil
 }
 
-// GetPublishedWorkflow returns the published version of a workflow group
+// GetPublishedWorkflow returns the published version of a workflow group.
 func (wr *WorkflowRepository) GetPublishedWorkflow(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
 	workflows, err := wr.GetAll(ctx)
 	if err != nil {
@@ -167,13 +169,14 @@ func (wr *WorkflowRepository) GetPublishedWorkflow(ctx context.Context, workflow
 	return currentPublished, nil
 }
 
-// PublishWorkflow handles the publish operation
+// PublishWorkflow handles the publish operation.
 func (wr *WorkflowRepository) PublishWorkflow(ctx context.Context, workflowID string) error {
 	// Get the workflow being published
 	workflow, err := wr.GetByID(ctx, workflowID)
 	if err != nil {
 		return fmt.Errorf("failed to get workflow: %w", err)
 	}
+
 	if workflow == nil {
 		return fmt.Errorf("workflow not found: %s", workflowID)
 	}
@@ -188,6 +191,7 @@ func (wr *WorkflowRepository) PublishWorkflow(ctx context.Context, workflowID st
 	for _, wf := range allWorkflows {
 		if wf.WorkflowGroupID == workflow.WorkflowGroupID && wf.Status == models.WorkflowStatusPublished {
 			wf.Status = models.WorkflowStatusUnpublished
+
 			wf.UpdatedAt = time.Now().UTC()
 			if err := wr.Save(ctx, wf); err != nil {
 				return fmt.Errorf("failed to unpublish workflow %s: %w", wf.ID, err)
@@ -197,6 +201,7 @@ func (wr *WorkflowRepository) PublishWorkflow(ctx context.Context, workflowID st
 
 	// Set current workflow to published
 	workflow.Status = models.WorkflowStatusPublished
+
 	workflow.UpdatedAt = time.Now().UTC()
 	if workflow.PublishedAt == nil {
 		now := time.Now().UTC()
@@ -206,13 +211,14 @@ func (wr *WorkflowRepository) PublishWorkflow(ctx context.Context, workflowID st
 	return wr.Save(ctx, workflow)
 }
 
-// CreateDraftFromPublished creates a draft copy from published version
+// CreateDraftFromPublished creates a draft copy from published version.
 func (wr *WorkflowRepository) CreateDraftFromPublished(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
 	// Check if draft already exists
 	existingDraft, err := wr.GetDraftWorkflow(ctx, workflowGroupID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check existing draft: %w", err)
 	}
+
 	if existingDraft != nil {
 		return existingDraft, nil
 	}
@@ -222,6 +228,7 @@ func (wr *WorkflowRepository) CreateDraftFromPublished(ctx context.Context, work
 	if err != nil {
 		return nil, fmt.Errorf("failed to get published workflow: %w", err)
 	}
+
 	if publishedWorkflow == nil {
 		return nil, fmt.Errorf("no published workflow found for group: %s", workflowGroupID)
 	}
@@ -230,7 +237,7 @@ func (wr *WorkflowRepository) CreateDraftFromPublished(ctx context.Context, work
 	draftWorkflow := *publishedWorkflow
 
 	// Generate new ID (simple approach for file-based)
-	draftWorkflow.ID = workflowGroupID + "-draft-" + fmt.Sprintf("%d", time.Now().Unix())
+	draftWorkflow.ID = workflowGroupID + "-draft-" + strconv.FormatInt(time.Now().Unix(), 10)
 
 	// Set as draft
 	draftWorkflow.Status = models.WorkflowStatusDraft

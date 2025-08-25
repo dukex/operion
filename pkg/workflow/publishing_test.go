@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Simple test workflow repository implementation with new interface
+// Simple test workflow repository implementation with new interface.
 type testWorkflowRepository struct {
 	workflows map[string]*models.Workflow
 }
@@ -22,11 +22,13 @@ func (r *testWorkflowRepository) GetAll(ctx context.Context) ([]*models.Workflow
 	for _, w := range r.workflows {
 		workflows = append(workflows, w)
 	}
+
 	return workflows, nil
 }
 
 func (r *testWorkflowRepository) Save(ctx context.Context, workflow *models.Workflow) error {
 	r.workflows[workflow.ID] = workflow
+
 	return nil
 }
 
@@ -34,21 +36,25 @@ func (r *testWorkflowRepository) GetByID(ctx context.Context, id string) (*model
 	if workflow, exists := r.workflows[id]; exists {
 		return workflow, nil
 	}
+
 	return nil, nil
 }
 
 func (r *testWorkflowRepository) Delete(ctx context.Context, id string) error {
 	delete(r.workflows, id)
+
 	return nil
 }
 
 func (r *testWorkflowRepository) GetWorkflowVersions(ctx context.Context, workflowGroupID string) ([]*models.Workflow, error) {
 	var versions []*models.Workflow
+
 	for _, w := range r.workflows {
 		if w.WorkflowGroupID == workflowGroupID {
 			versions = append(versions, w)
 		}
 	}
+
 	return versions, nil
 }
 
@@ -58,6 +64,7 @@ func (r *testWorkflowRepository) GetCurrentWorkflow(ctx context.Context, workflo
 	if published != nil {
 		return published, nil
 	}
+
 	return r.GetDraftWorkflow(ctx, workflowGroupID)
 }
 
@@ -67,6 +74,7 @@ func (r *testWorkflowRepository) GetDraftWorkflow(ctx context.Context, workflowG
 			return w, nil
 		}
 	}
+
 	return nil, nil
 }
 
@@ -76,6 +84,7 @@ func (r *testWorkflowRepository) GetPublishedWorkflow(ctx context.Context, workf
 			return w, nil
 		}
 	}
+
 	return nil, nil
 }
 
@@ -124,10 +133,11 @@ func (r *testWorkflowRepository) CreateDraftFromPublished(ctx context.Context, w
 	draftWorkflow.PublishedAt = nil
 
 	r.workflows[draftWorkflow.ID] = &draftWorkflow
+
 	return &draftWorkflow, nil
 }
 
-// Simple test persistence implementation
+// Simple test persistence implementation.
 type testPersistence struct {
 	workflowRepo *testWorkflowRepository
 }

@@ -107,7 +107,7 @@ func (p *Persistence) DeleteWorkflow(ctx context.Context, id string) error {
 }
 
 // WorkflowTriggersBySourceEventAndProvider finds triggers by source ID, event type, and provider ID.
-// Deprecated: Use NodeRepository.FindTriggerNodesBySourceEventAndProvider instead
+// Deprecated: Use NodeRepository.FindTriggerNodesBySourceEventAndProvider instead.
 func (p *Persistence) WorkflowTriggersBySourceEventAndProvider(ctx context.Context, sourceID, eventType, providerID string, status models.WorkflowStatus) ([]*models.TriggerNodeMatch, error) {
 	return p.nodeRepo.FindTriggerNodesBySourceEventAndProvider(ctx, sourceID, eventType, providerID, status)
 }

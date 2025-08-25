@@ -83,6 +83,7 @@ func (m *MockWorkflowRepository) GetPublishedWorkflow(ctx context.Context, workf
 
 func (m *MockWorkflowRepository) PublishWorkflow(ctx context.Context, workflowID string) error {
 	args := m.Called(ctx, workflowID)
+
 	return args.Error(0)
 }
 

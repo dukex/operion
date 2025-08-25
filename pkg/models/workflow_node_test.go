@@ -201,6 +201,7 @@ func TestWorkflow_SimplifiedVersioning(t *testing.T) {
 		UpdatedAt: time.Now().UTC().Add(-1 * time.Hour),
 		PublishedAt: func() *time.Time {
 			t := time.Now().UTC()
+
 			return &t
 		}(),
 	}

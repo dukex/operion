@@ -259,7 +259,7 @@ func (r *WorkflowRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-// GetCurrentWorkflow returns the current version (published if exists, otherwise draft)
+// GetCurrentWorkflow returns the current version (published if exists, otherwise draft).
 func (r *WorkflowRepository) GetCurrentWorkflow(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
 	// Try published first, then draft
 	query := `
@@ -289,6 +289,7 @@ func (r *WorkflowRepository) GetCurrentWorkflow(ctx context.Context, workflowGro
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
+
 		return nil, fmt.Errorf("failed to scan workflow: %w", err)
 	}
 
@@ -299,7 +300,7 @@ func (r *WorkflowRepository) GetCurrentWorkflow(ctx context.Context, workflowGro
 	return workflow, nil
 }
 
-// GetDraftWorkflow returns the draft version of a workflow group
+// GetDraftWorkflow returns the draft version of a workflow group.
 func (r *WorkflowRepository) GetDraftWorkflow(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
 	query := `
 		SELECT
@@ -328,6 +329,7 @@ func (r *WorkflowRepository) GetDraftWorkflow(ctx context.Context, workflowGroup
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
+
 		return nil, fmt.Errorf("failed to scan workflow: %w", err)
 	}
 
@@ -338,7 +340,7 @@ func (r *WorkflowRepository) GetDraftWorkflow(ctx context.Context, workflowGroup
 	return workflow, nil
 }
 
-// GetPublishedWorkflow returns the published version of a workflow group
+// GetPublishedWorkflow returns the published version of a workflow group.
 func (r *WorkflowRepository) GetPublishedWorkflow(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
 	query := `
 		SELECT
@@ -367,6 +369,7 @@ func (r *WorkflowRepository) GetPublishedWorkflow(ctx context.Context, workflowG
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
+
 		return nil, fmt.Errorf("failed to scan workflow: %w", err)
 	}
 
@@ -377,19 +380,23 @@ func (r *WorkflowRepository) GetPublishedWorkflow(ctx context.Context, workflowG
 	return workflow, nil
 }
 
-// PublishWorkflow handles the publish operation
+// PublishWorkflow handles the publish operation.
 func (r *WorkflowRepository) PublishWorkflow(ctx context.Context, workflowID string) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+
+	defer func() {
+		_ = tx.Rollback() // Ignore rollback errors in defer
+	}()
 
 	// Get the workflow being published
 	workflow, err := r.GetByID(ctx, workflowID)
 	if err != nil {
 		return fmt.Errorf("failed to get workflow: %w", err)
 	}
+
 	if workflow == nil {
 		return fmt.Errorf("workflow not found: %s", workflowID)
 	}
@@ -413,13 +420,14 @@ func (r *WorkflowRepository) PublishWorkflow(ctx context.Context, workflowID str
 	return tx.Commit()
 }
 
-// CreateDraftFromPublished creates a draft copy from published version
+// CreateDraftFromPublished creates a draft copy from published version.
 func (r *WorkflowRepository) CreateDraftFromPublished(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
 	// Check if draft already exists
 	existingDraft, err := r.GetDraftWorkflow(ctx, workflowGroupID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check existing draft: %w", err)
 	}
+
 	if existingDraft != nil {
 		return existingDraft, nil
 	}
@@ -429,6 +437,7 @@ func (r *WorkflowRepository) CreateDraftFromPublished(ctx context.Context, workf
 	if err != nil {
 		return nil, fmt.Errorf("failed to get published workflow: %w", err)
 	}
+
 	if publishedWorkflow == nil {
 		return nil, fmt.Errorf("no published workflow found for group: %s", workflowGroupID)
 	}
@@ -441,6 +450,7 @@ func (r *WorkflowRepository) CreateDraftFromPublished(ctx context.Context, workf
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate workflow ID: %w", err)
 	}
+
 	draftWorkflow.ID = id.String()
 
 	// Set as draft
