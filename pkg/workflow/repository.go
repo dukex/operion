@@ -43,7 +43,7 @@ func (r *Repository) HealthCheck(ctx context.Context) (string, bool) {
 
 // FetchAll retrieves all workflows.
 func (r *Repository) FetchAll(ctx context.Context) ([]*models.Workflow, error) {
-	workflows, err := r.persistence.Workflows(ctx)
+	workflows, err := r.persistence.WorkflowRepository().GetAll(ctx)
 	if err != nil {
 		return make([]*models.Workflow, 0), err
 	}
@@ -53,7 +53,7 @@ func (r *Repository) FetchAll(ctx context.Context) ([]*models.Workflow, error) {
 
 // FetchByID retrieves a workflow by its ID.
 func (r *Repository) FetchByID(ctx context.Context, id string) (*models.Workflow, error) {
-	workflow, err := r.persistence.WorkflowByID(ctx, id)
+	workflow, err := r.persistence.WorkflowRepository().GetByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -73,10 +73,10 @@ func (r *Repository) Create(ctx context.Context, workflow *models.Workflow) (*mo
 	workflow.UpdatedAt = now
 
 	if workflow.Status == "" {
-		workflow.Status = models.WorkflowStatusInactive
+		workflow.Status = models.WorkflowStatusDraft
 	}
 
-	err := r.persistence.SaveWorkflow(ctx, workflow)
+	err := r.persistence.WorkflowRepository().Save(ctx, workflow)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +90,7 @@ func (r *Repository) Update(
 	workflowID string,
 	workflow *models.Workflow,
 ) (*models.Workflow, error) {
-	existing, err := r.persistence.WorkflowByID(ctx, workflowID)
+	existing, err := r.persistence.WorkflowRepository().GetByID(ctx, workflowID)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +103,7 @@ func (r *Repository) Update(
 	workflow.CreatedAt = existing.CreatedAt
 	workflow.UpdatedAt = time.Now().UTC()
 
-	err = r.persistence.SaveWorkflow(ctx, workflow)
+	err = r.persistence.WorkflowRepository().Save(ctx, workflow)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +113,7 @@ func (r *Repository) Update(
 
 // Delete removes a workflow by its ID.
 func (r *Repository) Delete(ctx context.Context, workflowID string) error {
-	existing, err := r.persistence.WorkflowByID(ctx, workflowID)
+	existing, err := r.persistence.WorkflowRepository().GetByID(ctx, workflowID)
 	if err != nil {
 		return err
 	}
@@ -122,7 +122,7 @@ func (r *Repository) Delete(ctx context.Context, workflowID string) error {
 		return ErrWorkflowNotFound
 	}
 
-	err = r.persistence.DeleteWorkflow(ctx, workflowID)
+	err = r.persistence.WorkflowRepository().Delete(ctx, workflowID)
 	if err != nil {
 		return fmt.Errorf("failed to delete workflow: %w", err)
 	}

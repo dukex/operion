@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/dukex/operion/pkg/cmd"
+	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/workflow"
 	"github.com/go-playground/validator/v10"
 	"github.com/urfave/cli/v3"
@@ -17,8 +18,8 @@ var validate *validator.Validate
 
 // Static error variables for linter compliance.
 var (
-	ErrInvalidTriggers = errors.New("invalid triggers found")
-	ErrInvalidSteps    = errors.New("invalid steps found")
+	ErrInvalidTriggerNodes = errors.New("invalid trigger nodes found")
+	ErrInvalidNodes        = errors.New("invalid nodes found")
 )
 
 func NewValidateCommand() *cli.Command {
@@ -56,30 +57,43 @@ func NewValidateCommand() *cli.Command {
 				return fmt.Errorf("failed to fetch workflows: %w", err)
 			}
 
-			logger.Info("Validating source triggers", "workflows", len(workflows))
+			logger.Info("Validating source trigger nodes", "workflows", len(workflows))
 
-			_, _ = fmt.Fprintln(os.Stdout, "Source Trigger Validation Results:")
-			_, _ = fmt.Fprintln(os.Stdout, "==================================")
+			_, _ = fmt.Fprintln(os.Stdout, "Source Trigger Node Validation Results:")
+			_, _ = fmt.Fprintln(os.Stdout, "========================================")
 
-			validTriggers := 0
-			invalidTriggers := 0
-			validSteps := 0
-			invalidSteps := 0
+			validTriggerNodes := 0
+			invalidTriggerNodes := 0
+			validNodes := 0
+			invalidNodes := 0
 
 			for _, workflow := range workflows {
 				_, _ = fmt.Fprintf(os.Stdout, "\nWorkflow: %s (%s)\n", workflow.Name, workflow.ID)
-				if len(workflow.WorkflowTriggers) == 0 {
-					_, _ = fmt.Fprintf(os.Stdout, "    ❌ INVALID: No triggers found for this workflow.\n")
-					invalidTriggers++
+
+				// Find trigger nodes in the workflow
+				triggerNodes := make([]*models.WorkflowNode, 0)
+				for _, node := range workflow.Nodes {
+					if node.IsTriggerNode() {
+						triggerNodes = append(triggerNodes, node)
+					}
+				}
+
+				if len(triggerNodes) == 0 {
+					_, _ = fmt.Fprintf(os.Stdout, "    ❌ INVALID: No trigger nodes found for this workflow.\n")
+					invalidTriggerNodes++
 
 					continue
 				}
 
-				for _, workflowTrigger := range workflow.WorkflowTriggers {
-					_, _ = fmt.Fprintf(os.Stdout, "  WorkflowTrigger: %s (SourceID: %s)\n", workflowTrigger.ID, workflowTrigger.SourceID)
+				for _, triggerNode := range triggerNodes {
+					sourceID := "(none)"
+					if triggerNode.SourceID != nil {
+						sourceID = *triggerNode.SourceID
+					}
+					_, _ = fmt.Fprintf(os.Stdout, "  Trigger Node: %s (SourceID: %s)\n", triggerNode.ID, sourceID)
 
 					// Validate struct fields
-					err = validate.Struct(workflowTrigger)
+					err = validate.Struct(triggerNode)
 					if err != nil {
 						var validationErrors validator.ValidationErrors
 						if errors.As(err, &validationErrors) {
@@ -87,15 +101,15 @@ func NewValidateCommand() *cli.Command {
 						} else {
 							_, _ = fmt.Fprintf(os.Stdout, "    ❌ INVALID: %v\n", err)
 						}
-						invalidTriggers++
+						invalidTriggerNodes++
 
 						continue
 					}
 
 					// Validate that SourceID is not empty (required for activator)
-					if workflowTrigger.SourceID == "" {
-						_, _ = fmt.Fprintf(os.Stdout, "    ❌ INVALID: SourceID is required for activator-based triggers\n")
-						invalidTriggers++
+					if triggerNode.SourceID == nil || *triggerNode.SourceID == "" {
+						_, _ = fmt.Fprintf(os.Stdout, "    ❌ INVALID: SourceID is required for activator-based trigger nodes\n")
+						invalidTriggerNodes++
 
 						continue
 					}
@@ -105,14 +119,17 @@ func NewValidateCommand() *cli.Command {
 					// that the activator can process
 
 					_, _ = fmt.Fprintf(os.Stdout, "    ✅ VALID\n")
-					validTriggers++
+					validTriggerNodes++
 				}
 
-				for _, step := range workflow.Steps {
-					_, _ = fmt.Fprintf(os.Stdout, "  Step: %s\n", step.Name)
+				// Validate all nodes (including action nodes)
+				for _, node := range workflow.Nodes {
+					if node.IsTriggerNode() {
+						continue // Already validated above
+					}
+					_, _ = fmt.Fprintf(os.Stdout, "  Action Node: %s\n", node.Name)
 
-					err = validate.Struct(step)
-
+					err = validate.Struct(node)
 					if err != nil {
 						var validationErrors validator.ValidationErrors
 						if errors.As(err, &validationErrors) {
@@ -120,31 +137,31 @@ func NewValidateCommand() *cli.Command {
 						} else {
 							_, _ = fmt.Fprintf(os.Stdout, "    ❌ INVALID: %v\n", err)
 						}
-						invalidSteps++
+						invalidNodes++
 					} else {
-						validSteps++
+						validNodes++
 						_, _ = fmt.Fprintf(os.Stdout, "    ✅ VALID\n")
 					}
 				}
 			}
 
 			_, _ = fmt.Fprintf(os.Stdout, "\nValidation Summary:\n")
-			_, _ = fmt.Fprintf(os.Stdout, "  Total triggers: %d\n", invalidTriggers+validTriggers)
-			_, _ = fmt.Fprintf(os.Stdout, "  Valid triggers: %d\n", validTriggers)
-			_, _ = fmt.Fprintf(os.Stdout, "  Invalid triggers: %d\n", invalidTriggers)
-			_, _ = fmt.Fprintf(os.Stdout, "  Total steps: %d\n", invalidSteps+validSteps)
-			_, _ = fmt.Fprintf(os.Stdout, "  Valid steps: %d\n", validSteps)
-			_, _ = fmt.Fprintf(os.Stdout, "  Invalid steps: %d\n", invalidSteps)
+			_, _ = fmt.Fprintf(os.Stdout, "  Total trigger nodes: %d\n", invalidTriggerNodes+validTriggerNodes)
+			_, _ = fmt.Fprintf(os.Stdout, "  Valid trigger nodes: %d\n", validTriggerNodes)
+			_, _ = fmt.Fprintf(os.Stdout, "  Invalid trigger nodes: %d\n", invalidTriggerNodes)
+			_, _ = fmt.Fprintf(os.Stdout, "  Total action nodes: %d\n", invalidNodes+validNodes)
+			_, _ = fmt.Fprintf(os.Stdout, "  Valid action nodes: %d\n", validNodes)
+			_, _ = fmt.Fprintf(os.Stdout, "  Invalid action nodes: %d\n", invalidNodes)
 
-			if invalidTriggers > 0 {
-				return fmt.Errorf("%w: %d", ErrInvalidTriggers, invalidTriggers)
+			if invalidTriggerNodes > 0 {
+				return fmt.Errorf("%w: %d", ErrInvalidTriggerNodes, invalidTriggerNodes)
 			}
 
-			if invalidSteps > 0 {
-				return fmt.Errorf("%w: %d", ErrInvalidSteps, invalidSteps)
+			if invalidNodes > 0 {
+				return fmt.Errorf("%w: %d", ErrInvalidNodes, invalidNodes)
 			}
 
-			_, _ = fmt.Fprintln(os.Stdout, "All triggers and steps are valid for activator processing! ✅")
+			_, _ = fmt.Fprintln(os.Stdout, "All trigger nodes and action nodes are valid for activator processing! ✅")
 
 			return nil
 		},

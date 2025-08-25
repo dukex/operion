@@ -221,19 +221,18 @@ func (s *SchedulerProvider) Configure(workflows []*models.Workflow) (map[string]
 	scheduleCount := 0
 
 	for _, wf := range workflows {
-		if wf.Status != models.WorkflowStatusActive {
+		if wf.Status != models.WorkflowStatusPublished {
 			continue
 		}
 
-		for _, trigger := range wf.WorkflowTriggers {
-			if trigger.ProviderID != "scheduler" {
-				continue
-			}
-
-			if cronExpr, exists := trigger.Configuration["cron_expression"]; exists {
-				if sourceID := s.processScheduleTrigger(wf.ID, trigger, cronExpr); sourceID != "" {
-					triggerToSource[trigger.ID] = sourceID
-					scheduleCount++
+		// Filter trigger nodes with scheduler provider
+		for _, node := range wf.Nodes {
+			if node.IsTriggerNode() && node.ProviderID != nil && *node.ProviderID == "scheduler" {
+				if cronExpr, exists := node.Config["cron_expression"]; exists {
+					if sourceID := s.processScheduleTriggerNode(wf.ID, node, cronExpr); sourceID != "" {
+						triggerToSource[node.ID] = sourceID
+						scheduleCount++
+					}
 				}
 			}
 		}
@@ -255,16 +254,20 @@ func (s *SchedulerProvider) Prepare(ctx context.Context) error {
 	return nil
 }
 
-// processScheduleTrigger handles the creation of a schedule for a trigger with cron_expression.
+// processScheduleTriggerNode handles the creation of a schedule for a trigger node with cron_expression.
 // Returns the sourceID if a schedule was successfully created, empty string otherwise.
-func (s *SchedulerProvider) processScheduleTrigger(workflowID string, trigger *models.WorkflowTrigger, cronExpr any) string {
-	sourceID := trigger.SourceID
+func (s *SchedulerProvider) processScheduleTriggerNode(workflowID string, node *models.WorkflowNode, cronExpr any) string {
+	sourceID := ""
+	if node.SourceID != nil {
+		sourceID = *node.SourceID
+	}
+
 	if sourceID == "" {
 		// Generate a new UUID for the sourceID
 		sourceID = uuid.New().String()
-		s.logger.Info("Generated source_id for scheduler trigger",
+		s.logger.Info("Generated source_id for scheduler trigger node",
 			"workflow_id", workflowID,
-			"trigger_id", trigger.ID,
+			"node_id", node.ID,
 			"generated_source_id", sourceID)
 	}
 

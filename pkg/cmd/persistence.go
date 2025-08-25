@@ -21,7 +21,7 @@ const (
 func NewPersistence(ctx context.Context, logger *slog.Logger, databaseURL string) persistence.Persistence {
 	provider := parsePersistenceProvider(databaseURL)
 
-	logger.InfoContext(ctx, "Using persistence provider", "provider", provider)
+	logger.InfoContext(ctx, "Using persistence provider", "provider", provider, "database_url", databaseURL)
 
 	switch provider {
 	case PostgresqlProvider:
@@ -32,6 +32,8 @@ func NewPersistence(ctx context.Context, logger *slog.Logger, databaseURL string
 		}
 
 		return persistence
+	case FileProvider:
+		return file.NewPersistence(databaseURL)
 	default:
 		return file.NewPersistence(databaseURL)
 	}

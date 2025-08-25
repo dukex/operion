@@ -66,12 +66,30 @@ func (eb *WatermillEventBus) Subscribe(ctx context.Context) error {
 				event = &events.WorkflowFinished{}
 			case events.WorkflowFailedEvent:
 				event = &events.WorkflowFailed{}
-			case events.WorkflowStepAvailableEvent:
-				event = &events.WorkflowStepAvailable{}
-			case events.WorkflowStepFinishedEvent:
-				event = &events.WorkflowStepFinished{}
-			case events.WorkflowStepFailedEvent:
-				event = &events.WorkflowStepFailed{}
+			case events.NodeActivationEvent:
+				event = &events.NodeActivation{}
+			case events.NodeCompletionEvent:
+				event = &events.NodeCompletion{}
+			case events.NodeExecutionFinishedEvent:
+				event = &events.NodeExecutionFinished{}
+			case events.NodeExecutionFailedEvent:
+				event = &events.NodeExecutionFailed{}
+			case events.WorkflowExecutionStartedEvent:
+				event = &events.WorkflowExecutionStarted{}
+			case events.WorkflowExecutionCompletedEvent:
+				event = &events.WorkflowExecutionCompleted{}
+			case events.WorkflowExecutionFailedEvent:
+				event = &events.WorkflowExecutionFailed{}
+			case events.WorkflowExecutionCancelledEvent:
+				event = &events.WorkflowExecutionCancelled{}
+			case events.WorkflowExecutionTimeoutEvent:
+				event = &events.WorkflowExecutionTimeout{}
+			case events.WorkflowExecutionPausedEvent:
+				event = &events.WorkflowExecutionPaused{}
+			case events.WorkflowExecutionResumedEvent:
+				event = &events.WorkflowExecutionResumed{}
+			case events.WorkflowVariablesUpdatedEvent:
+				event = &events.WorkflowVariablesUpdated{}
 			default:
 				msg.Nack()
 
