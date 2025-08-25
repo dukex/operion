@@ -1,16 +1,16 @@
 # Operion
 
-A cloud-native workflow automation platform built in Go that enables event-driven workflows with configurable triggers and actions. Designed for Kubernetes deployments and following cloud-native principles.
+A cloud-native workflow automation platform built in Go that enables event-driven workflows with node-based execution and connections. Designed for Kubernetes deployments and following cloud-native principles.
 
 ## Overview
 
 Operion enables you to create automated workflows through:
 
 - **Source Providers**: Self-contained modules that generate events from external sources (scheduler, webhook, kafka)
-- **Triggers**: Workflow trigger definitions that specify conditions for workflow execution
-- **Actions**: Operations executed in workflows (HTTP requests, file operations, logging, data transformation)
-- **Context**: Data sharing between workflow nodes
-- **Workers**: Background processes that execute workflows
+- **Nodes**: Individual executable units in workflows (triggers, actions, conditionals, transforms)
+- **Connections**: Links between node ports that define data flow and execution order
+- **Context**: Data sharing between workflow nodes through execution context
+- **Workers**: Background processes that execute workflows node-by-node
 - **Source Manager**: Orchestrates source providers and manages their lifecycle
 - **Activator**: Bridges source events to workflow executions
 
@@ -20,7 +20,8 @@ Operion enables you to create automated workflows through:
 
 - **Cloud-Native** - Stateless, container-first design optimized for Kubernetes
 - **Event-Driven** - Decoupled architecture with pub/sub messaging for scalability
-- **Extensible** - Plugin system with dynamic .so file loading for triggers and actions
+- **Node-Based Architecture** - Visual workflow creation with nodes and connections
+- **Extensible** - Plugin system with dynamic .so file loading for nodes
 - **REST API** - HTTP interface for managing workflows
 - **CLI Tools** - Command-line interfaces for activator, source manager, and worker services
 - **Multiple Storage Options** - File-based, PostgreSQL, and cloud storage support
@@ -36,7 +37,7 @@ The project follows a clean, layered architecture with clear separation of conce
 - **Business Logic** (`pkg/workflow/`) - Workflow execution and management
 - **Providers** (`pkg/providers/`) - Self-contained event generation modules with isolated persistence
 - **Infrastructure** (`pkg/persistence/`, `pkg/event_bus/`) - External integrations and data access
-- **Extensions** (`pkg/registry/`) - Plugin system for actions and triggers with .so file loading
+- **Extensions** (`pkg/registry/`) - Plugin system for nodes with .so file loading
 - **Interface Layer** (`cmd/`) - Entry points (API server, CLI tools, service managers)
 
 ## Installation
@@ -88,7 +89,7 @@ DATABASE_URL=postgres://user:password@localhost:5432/operion
 ```
 
 The PostgreSQL persistence layer includes:
-- Normalized schema with separate tables for workflows, triggers, and nodes
+- Normalized schema with separate tables for workflows, workflow_nodes, and workflow_connections
 - JSONB storage for configuration data
 - Automated schema migrations with version tracking
 - Soft delete functionality
@@ -205,21 +206,23 @@ curl http://localhost:3000/
 
 See `./examples/data/workflows/bitcoin-price.json` for a complete workflow example that:
 
-- Triggers every minute via cron schedule (`schedule` trigger)
-- Fetches Bitcoin price data from CoinPaprika API (`http_request` action)
-- Processes the data using Go template transformation (`transform` action)
-- Posts processed data to webhook endpoint (`http_request` action)
-- Logs errors if any step fails (`log` action)
+- **Trigger Node**: Scheduler node that triggers every minute via cron schedule
+- **HTTP Request Node**: Fetches Bitcoin price data from CoinPaprika API
+- **Transform Node**: Processes the data using Go template transformation
+- **HTTP Request Node**: Posts processed data to webhook endpoint
+- **Log Node**: Logs errors if any step fails
+- **Connections**: Define the flow between nodes using source and target ports
 
-#### New Action Contract
+#### Node-Based Architecture
 
-Actions now use a standardized contract with:
+Nodes use a standardized interface with:
 
-- **Factory Pattern**: Actions created via `ActionFactory.Create(config)`
-- **Execution Context**: Access to previous step results via `ExecutionContext.StepResults`
+- **Factory Pattern**: Nodes created via `NodeFactory.Create(config)`
+- **Execution Context**: Access to previous node results via `ExecutionContext`
+- **Input/Output Ports**: Structured connection points for data flow
 - **Template Support**: Go template system for dynamic configuration
-- **Structured Logging**: Each action receives a structured logger
-- **Result Mapping**: Step results stored by `uid` for cross-step references
+- **Structured Logging**: Each node receives a structured logger
+- **Result Mapping**: Node results stored by ID for cross-node references
 
 ## Current Implementation
 
@@ -230,37 +233,39 @@ Actions now use a standardized contract with:
   - Manages its own schedule models and lifecycle
   - Configurable via `SCHEDULER_PERSISTENCE_URL` environment variable
 
-### Available Triggers (Legacy)
+### Available Nodes
 
-- **Schedule** (`pkg/triggers/schedule/`) - Cron-based execution using robfig/cron with native implementation
-- **Kafka** (`pkg/triggers/kafka/`) - Message-based triggering from Kafka topics with native implementation  
-- **Redis Queue** (`pkg/triggers/queue/`) - Redis-based queue consumption for task processing
-- **Webhook** (`pkg/triggers/webhook/`) - HTTP endpoint triggers for external integrations
+#### Trigger Nodes
+- **Scheduler** (`pkg/nodes/trigger/scheduler`) - Cron-based scheduling with robfig/cron
+- **Kafka** (`pkg/nodes/trigger/kafka`) - Message-based triggering from Kafka topics
+- **Webhook** (`pkg/nodes/trigger/webhook`) - HTTP endpoint triggers for external integrations
 
-### Available Actions
+#### Action Nodes
+- **HTTP Request** (`pkg/nodes/httprequest/`) - Make HTTP calls with retry logic, templating, and JSON/string response handling
+- **Transform** (`pkg/nodes/transform/`) - Process data using Go templates
+- **Log** (`pkg/nodes/log/`) - Output structured log messages for debugging and monitoring
+- **Conditional** (`pkg/nodes/conditional/`) - Conditional branching based on data evaluation
+- **Switch** (`pkg/nodes/switch/`) - Multi-path routing based on expression evaluation
+- **Merge** (`pkg/nodes/merge/`) - Combine multiple input streams into single output
 
-- **HTTP Request** (`pkg/actions/http_request/`) - Make HTTP calls with retry logic, templating, and JSON/string response handling
-- **Transform** (`pkg/actions/transform/`) - Process data using Go templates with templating
-- **Log** (`pkg/actions/log/`) - Output structured log messages for debugging and monitoring
-- **Plugin Actions**: Custom actions via .so plugins (example in `examples/plugins/actions/log/`)
 
 ### Plugin System
 
 - Dynamic loading of `.so` plugin files from `./plugins` directory
-- Factory pattern with `ActionFactory` and `TriggerFactory` interfaces
+- Factory pattern with `NodeFactory` interfaces
 - Protocol-based interfaces in `pkg/protocol/` for type safety
 - Example plugins available in `examples/plugins/`
-- **Native vs Plugin Actions**: Core actions built-in for performance, plugins for extensibility
+- **Native vs Plugin Nodes**: Core nodes built-in for performance, plugins for extensibility
 
 ### Workflow Execution Model
 
 Operion operates on an event-driven, node-by-node execution model:
 
-- **Execution Context**: Maintains state across steps with `ExecutionContext.StepResults`
-- **Step Isolation**: Each step processed as individual event for scalability
+- **Execution Context**: Maintains state across nodes with `ExecutionContext`
+- **Node Isolation**: Each node processed as individual event for scalability
 - **Event Publishing**: Granular events published for monitoring and debugging
-- **State Management**: Step results stored by `uid` and accessible via Go templates
-- **Error Handling**: Failed steps can route to different next steps via `on_failure`
+- **State Management**: Node results stored by ID and accessible via Go templates
+- **Port-Based Routing**: Success and error outputs route through different ports to connected nodes
 
 ## Development
 
@@ -310,8 +315,8 @@ cd examples/plugins/actions/log
 make
 
 # Build custom plugin
-# Create plugin.go implementing protocol.ActionFactory or protocol.TriggerFactory
-# Export symbol: var Action protocol.ActionFactory = &MyActionFactory{}
+# Create plugin.go implementing protocol.NodeFactory
+# Export symbol: var Node protocol.NodeFactory = &MyNodeFactory{}
 go build -buildmode=plugin -o plugin.so plugin.go
 ```
 
