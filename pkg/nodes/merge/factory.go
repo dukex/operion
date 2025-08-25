@@ -56,25 +56,16 @@ func (f *MergeNodeFactory) Schema() map[string]any {
 				"default":     "all",
 				"examples":    []string{"all", "any", "first"},
 			},
-			"timeout": map[string]any{
-				"type":        "integer",
-				"description": "Timeout in seconds to wait for inputs (1-300)",
-				"minimum":     1,
-				"maximum":     300,
-				"default":     30,
-			},
 		},
 		"required": []string{"input_ports"},
 		"examples": []map[string]any{
 			{
 				"input_ports": []string{"validation_result", "enrichment_data"},
 				"merge_mode":  "all",
-				"timeout":     60,
 			},
 			{
 				"input_ports": []string{"primary_api", "backup_api", "cache_fallback"},
 				"merge_mode":  "first",
-				"timeout":     10,
 			},
 			{
 				"input_ports": []string{"user_data", "permissions", "preferences"},

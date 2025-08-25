@@ -4,7 +4,6 @@ package merge
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/dukex/operion/pkg/models"
 )
@@ -23,7 +22,6 @@ type MergeNode struct {
 	id         string
 	inputPorts []string
 	mergeMode  string // "all", "any", "first"
-	timeout    int    // timeout in seconds
 }
 
 // NewMergeNode creates a new merge node.
@@ -49,17 +47,10 @@ func NewMergeNode(id string, config map[string]any) (*MergeNode, error) {
 		mergeMode = mode
 	}
 
-	// Parse timeout (optional, defaults to 30 seconds)
-	timeout := 30
-	if t, ok := config["timeout"].(float64); ok {
-		timeout = int(t)
-	}
-
 	return &MergeNode{
 		id:         id,
 		inputPorts: inputPorts,
 		mergeMode:  mergeMode,
-		timeout:    timeout,
 	}, nil
 }
 
@@ -84,17 +75,11 @@ func (n *MergeNode) GetInputRequirements() models.InputRequirements {
 		waitMode = models.WaitModeFirst
 	}
 
-	var timeout *time.Duration
-	if n.timeout > 0 {
-		timeoutDuration := time.Duration(n.timeout) * time.Second
-		timeout = &timeoutDuration
-	}
-
 	return models.InputRequirements{
 		RequiredPorts: n.inputPorts,
 		OptionalPorts: []string{},
 		WaitMode:      waitMode,
-		Timeout:       timeout,
+		Timeout:       nil,
 	}
 }
 
@@ -228,13 +213,6 @@ func (n *MergeNode) Validate(config map[string]any) error {
 		validModes := map[string]bool{MergeModeAll: true, MergeModeAny: true, MergeModeFirst: true}
 		if !validModes[mode] {
 			return fmt.Errorf("invalid merge_mode: %s (must be 'all', 'any', or 'first')", mode)
-		}
-	}
-
-	// Validate timeout if provided
-	if timeout, ok := config["timeout"].(float64); ok {
-		if timeout < 1 || timeout > 300 {
-			return errors.New("timeout must be between 1 and 300 seconds")
 		}
 	}
 

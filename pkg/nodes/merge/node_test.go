@@ -2,7 +2,6 @@ package merge
 
 import (
 	"testing"
-	"time"
 
 	"github.com/dukex/operion/pkg/models"
 	"github.com/stretchr/testify/assert"
@@ -13,7 +12,6 @@ func TestNewMergeNode(t *testing.T) {
 	config := map[string]any{
 		"input_ports": []any{"left", "right"},
 		"merge_mode":  "all",
-		"timeout":     30.0,
 	}
 
 	node, err := NewMergeNode("test-merge", config)
@@ -22,7 +20,6 @@ func TestNewMergeNode(t *testing.T) {
 	assert.Equal(t, "merge", node.Type())
 	assert.Equal(t, []string{"left", "right"}, node.inputPorts)
 	assert.Equal(t, MergeModeAll, node.mergeMode)
-	assert.Equal(t, 30, node.timeout)
 }
 
 func TestNewMergeNode_DefaultValues(t *testing.T) {
@@ -33,7 +30,6 @@ func TestNewMergeNode_DefaultValues(t *testing.T) {
 	node, err := NewMergeNode("test-merge", config)
 	require.NoError(t, err)
 	assert.Equal(t, MergeModeAll, node.mergeMode)
-	assert.Equal(t, 30, node.timeout)
 }
 
 func TestNewMergeNode_InvalidConfig(t *testing.T) {
@@ -56,7 +52,6 @@ func TestMergeNode_GetInputRequirements_All(t *testing.T) {
 	config := map[string]any{
 		"input_ports": []any{"left", "right", "center"},
 		"merge_mode":  "all",
-		"timeout":     45.0,
 	}
 
 	node, err := NewMergeNode("test-merge", config)
@@ -66,15 +61,13 @@ func TestMergeNode_GetInputRequirements_All(t *testing.T) {
 	assert.Equal(t, []string{"left", "right", "center"}, requirements.RequiredPorts)
 	assert.Equal(t, []string{}, requirements.OptionalPorts)
 	assert.Equal(t, models.WaitModeAll, requirements.WaitMode)
-	assert.NotNil(t, requirements.Timeout)
-	assert.Equal(t, 45*time.Second, *requirements.Timeout)
+	assert.Nil(t, requirements.Timeout)
 }
 
 func TestMergeNode_GetInputRequirements_Any(t *testing.T) {
 	config := map[string]any{
 		"input_ports": []any{"left", "right"},
 		"merge_mode":  "any",
-		"timeout":     10.0,
 	}
 
 	node, err := NewMergeNode("test-merge", config)
@@ -84,15 +77,13 @@ func TestMergeNode_GetInputRequirements_Any(t *testing.T) {
 	assert.Equal(t, []string{"left", "right"}, requirements.RequiredPorts)
 	assert.Equal(t, []string{}, requirements.OptionalPorts)
 	assert.Equal(t, models.WaitModeAny, requirements.WaitMode)
-	assert.NotNil(t, requirements.Timeout)
-	assert.Equal(t, 10*time.Second, *requirements.Timeout)
+	assert.Nil(t, requirements.Timeout)
 }
 
 func TestMergeNode_GetInputRequirements_First(t *testing.T) {
 	config := map[string]any{
 		"input_ports": []any{"left", "right"},
 		"merge_mode":  "first",
-		"timeout":     0.0, // No timeout
 	}
 
 	node, err := NewMergeNode("test-merge", config)
@@ -203,7 +194,6 @@ func TestMergeNode_Execute_InvalidMergeMode(t *testing.T) {
 		id:         "test-merge",
 		inputPorts: []string{"left", "right"},
 		mergeMode:  "invalid-mode",
-		timeout:    30,
 	}
 
 	ctx := models.ExecutionContext{
@@ -309,7 +299,6 @@ func TestMergeNode_Validate(t *testing.T) {
 	validConfig := map[string]any{
 		"input_ports": []any{"left", "right"},
 		"merge_mode":  "all",
-		"timeout":     30.0,
 	}
 	err := node.Validate(validConfig)
 	assert.NoError(t, err)
@@ -336,21 +325,4 @@ func TestMergeNode_Validate(t *testing.T) {
 	err = node.Validate(invalidConfig)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid merge_mode")
-
-	// Invalid timeout
-	invalidConfig = map[string]any{
-		"input_ports": []any{"left", "right"},
-		"timeout":     500.0, // Too high
-	}
-	err = node.Validate(invalidConfig)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "timeout must be between 1 and 300 seconds")
-
-	invalidConfig = map[string]any{
-		"input_ports": []any{"left", "right"},
-		"timeout":     0.5, // Too low
-	}
-	err = node.Validate(invalidConfig)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "timeout must be between 1 and 300 seconds")
 }
