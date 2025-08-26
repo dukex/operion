@@ -222,12 +222,12 @@ func TestLogNode_Validate(t *testing.T) {
 func TestLogNode_Schema(t *testing.T) {
 	node := &LogNode{id: "test-node"}
 
-	inputPorts := node.GetInputPorts()
+	inputPorts := node.InputPorts()
 	if len(inputPorts) == 0 {
 		t.Error("Expected input ports to be defined")
 	}
 
-	outputPorts := node.GetOutputPorts()
+	outputPorts := node.OutputPorts()
 	if len(outputPorts) != 2 {
 		t.Errorf("Expected 2 output ports, got: %d", len(outputPorts))
 	}

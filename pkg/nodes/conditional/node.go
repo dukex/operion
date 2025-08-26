@@ -127,8 +127,8 @@ func (n *ConditionalNode) createErrorResult(errorMessage string) map[string]mode
 	}
 }
 
-// GetInputPorts returns the input ports for the node.
-func (n *ConditionalNode) GetInputPorts() []models.InputPort {
+// InputPorts returns the input ports for the node.
+func (n *ConditionalNode) InputPorts() []models.InputPort {
 	return []models.InputPort{
 		{
 			Port: models.Port{
@@ -141,8 +141,8 @@ func (n *ConditionalNode) GetInputPorts() []models.InputPort {
 	}
 }
 
-// GetOutputPorts returns the output ports for the node.
-func (n *ConditionalNode) GetOutputPorts() []models.OutputPort {
+// OutputPorts returns the output ports for the node.
+func (n *ConditionalNode) OutputPorts() []models.OutputPort {
 	return []models.OutputPort{
 		{
 			Port: models.Port{

@@ -218,7 +218,7 @@ func TestMergeNode_Execute_InvalidMergeMode(t *testing.T) {
 	assert.Contains(t, errorOutput.Data["error"], "unknown merge mode")
 }
 
-func TestMergeNode_GetInputPorts(t *testing.T) {
+func TestMergeNode_InputPorts(t *testing.T) {
 	config := map[string]any{
 		"input_ports": []any{"left", "right", "center"},
 		"merge_mode":  "all",
@@ -227,7 +227,7 @@ func TestMergeNode_GetInputPorts(t *testing.T) {
 	node, err := NewMergeNode("test-merge", config)
 	require.NoError(t, err)
 
-	inputPorts := node.GetInputPorts()
+	inputPorts := node.InputPorts()
 	assert.Equal(t, 3, len(inputPorts))
 
 	// Check port details
@@ -242,7 +242,7 @@ func TestMergeNode_GetInputPorts(t *testing.T) {
 	}
 }
 
-func TestMergeNode_GetInputPorts_AnyMode(t *testing.T) {
+func TestMergeNode_InputPorts_AnyMode(t *testing.T) {
 	config := map[string]any{
 		"input_ports": []any{"left", "right"},
 		"merge_mode":  "any",
@@ -251,14 +251,14 @@ func TestMergeNode_GetInputPorts_AnyMode(t *testing.T) {
 	node, err := NewMergeNode("test-merge", config)
 	require.NoError(t, err)
 
-	inputPorts := node.GetInputPorts()
+	inputPorts := node.InputPorts()
 	assert.Equal(t, 2, len(inputPorts))
 
 	// Required information is now available through InputRequirements()
 	// Ports themselves no longer have the Required field
 }
 
-func TestMergeNode_GetOutputPorts(t *testing.T) {
+func TestMergeNode_OutputPorts(t *testing.T) {
 	config := map[string]any{
 		"input_ports": []any{"left", "right"},
 	}
@@ -266,7 +266,7 @@ func TestMergeNode_GetOutputPorts(t *testing.T) {
 	node, err := NewMergeNode("test-merge", config)
 	require.NoError(t, err)
 
-	outputPorts := node.GetOutputPorts()
+	outputPorts := node.OutputPorts()
 	assert.Equal(t, 2, len(outputPorts))
 
 	// Check merged port

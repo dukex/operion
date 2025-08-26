@@ -18,11 +18,11 @@ type Node interface {
 	// Execute processes inputs and returns outputs for this node.
 	Execute(ctx models.ExecutionContext, inputs map[string]models.NodeResult) (map[string]models.NodeResult, error)
 
-	// GetInputPorts returns the input ports available on this node.
-	GetInputPorts() []models.InputPort
+	// InputPorts returns the input ports available on this node.
+	InputPorts() []models.InputPort
 
-	// GetOutputPorts returns the output ports available on this node.
-	GetOutputPorts() []models.OutputPort
+	// OutputPorts returns the output ports available on this node.
+	OutputPorts() []models.OutputPort
 
 	// Validate checks if the provided configuration is valid for this node.
 	Validate(config map[string]any) error

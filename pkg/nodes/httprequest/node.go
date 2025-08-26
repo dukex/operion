@@ -276,8 +276,8 @@ func (n *HTTPRequestNode) createErrorResult(errorMessage string) map[string]mode
 	}
 }
 
-// GetInputPorts returns the input ports for the node.
-func (n *HTTPRequestNode) GetInputPorts() []models.InputPort {
+// InputPorts returns the input ports for the node.
+func (n *HTTPRequestNode) InputPorts() []models.InputPort {
 	return []models.InputPort{
 		{
 			Port: models.Port{
@@ -290,8 +290,8 @@ func (n *HTTPRequestNode) GetInputPorts() []models.InputPort {
 	}
 }
 
-// GetOutputPorts returns the output ports for the node.
-func (n *HTTPRequestNode) GetOutputPorts() []models.OutputPort {
+// OutputPorts returns the output ports for the node.
+func (n *HTTPRequestNode) OutputPorts() []models.OutputPort {
 	return []models.OutputPort{
 		{
 			Port: models.Port{

@@ -282,7 +282,7 @@ func TestHTTPRequestNode_Validate(t *testing.T) {
 func TestHTTPRequestNode_Schema(t *testing.T) {
 	node := &HTTPRequestNode{id: "test-node"}
 
-	inputPorts := node.GetInputPorts()
+	inputPorts := node.InputPorts()
 	if len(inputPorts) == 0 {
 		t.Error("Expected input ports to be defined")
 	}
@@ -302,7 +302,7 @@ func TestHTTPRequestNode_Schema(t *testing.T) {
 		t.Error("Expected main input port to be defined")
 	}
 
-	outputPorts := node.GetOutputPorts()
+	outputPorts := node.OutputPorts()
 	if len(outputPorts) != 2 {
 		t.Errorf("Expected 2 output ports, got: %d", len(outputPorts))
 	}

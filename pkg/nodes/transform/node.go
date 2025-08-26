@@ -79,8 +79,8 @@ func (n *TransformNode) createErrorResult(errorMessage string) map[string]models
 	}
 }
 
-// GetInputPorts returns the input ports for the node.
-func (n *TransformNode) GetInputPorts() []models.InputPort {
+// InputPorts returns the input ports for the node.
+func (n *TransformNode) InputPorts() []models.InputPort {
 	return []models.InputPort{
 		{
 			Port: models.Port{
@@ -93,8 +93,8 @@ func (n *TransformNode) GetInputPorts() []models.InputPort {
 	}
 }
 
-// GetOutputPorts returns the output ports for the node.
-func (n *TransformNode) GetOutputPorts() []models.OutputPort {
+// OutputPorts returns the output ports for the node.
+func (n *TransformNode) OutputPorts() []models.OutputPort {
 	return []models.OutputPort{
 		{
 			Port: models.Port{

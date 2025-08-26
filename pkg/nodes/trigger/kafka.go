@@ -122,8 +122,8 @@ func (n *KafkaTriggerNode) createErrorResult(message string) map[string]models.N
 	}
 }
 
-// GetInputPorts returns the input ports for the Kafka trigger node.
-func (n *KafkaTriggerNode) GetInputPorts() []models.InputPort {
+// InputPorts returns the input ports for the Kafka trigger node.
+func (n *KafkaTriggerNode) InputPorts() []models.InputPort {
 	return []models.InputPort{
 		{
 			Port: models.Port{
@@ -149,8 +149,8 @@ func (n *KafkaTriggerNode) GetInputPorts() []models.InputPort {
 	}
 }
 
-// GetOutputPorts returns the output ports for the Kafka trigger node.
-func (n *KafkaTriggerNode) GetOutputPorts() []models.OutputPort {
+// OutputPorts returns the output ports for the Kafka trigger node.
+func (n *KafkaTriggerNode) OutputPorts() []models.OutputPort {
 	return []models.OutputPort{
 		{
 			Port: models.Port{

@@ -131,8 +131,8 @@ func (n *SwitchNode) createErrorResult(errorMessage string) map[string]models.No
 	}
 }
 
-// GetInputPorts returns the input ports for the node.
-func (n *SwitchNode) GetInputPorts() []models.InputPort {
+// InputPorts returns the input ports for the node.
+func (n *SwitchNode) InputPorts() []models.InputPort {
 	return []models.InputPort{
 		{
 			Port: models.Port{
@@ -145,8 +145,8 @@ func (n *SwitchNode) GetInputPorts() []models.InputPort {
 	}
 }
 
-// GetOutputPorts returns the output ports for the node.
-func (n *SwitchNode) GetOutputPorts() []models.OutputPort {
+// OutputPorts returns the output ports for the node.
+func (n *SwitchNode) OutputPorts() []models.OutputPort {
 	ports := []models.OutputPort{
 		{
 			Port: models.Port{

@@ -309,10 +309,10 @@ func TestSwitchNode_Validate(t *testing.T) {
 	}
 }
 
-func TestSwitchNode_GetInputPorts(t *testing.T) {
+func TestSwitchNode_InputPorts(t *testing.T) {
 	node := &SwitchNode{id: "test-node"}
 
-	inputPorts := node.GetInputPorts()
+	inputPorts := node.InputPorts()
 	if len(inputPorts) != 1 {
 		t.Errorf("Expected 1 input port, got: %d", len(inputPorts))
 	}
@@ -322,7 +322,7 @@ func TestSwitchNode_GetInputPorts(t *testing.T) {
 	}
 }
 
-func TestSwitchNode_GetOutputPorts(t *testing.T) {
+func TestSwitchNode_OutputPorts(t *testing.T) {
 	// Create node with some cases
 	config := map[string]any{
 		"value": "{{.variables.status}}",
@@ -343,7 +343,7 @@ func TestSwitchNode_GetOutputPorts(t *testing.T) {
 		t.Fatalf("Failed to create node: %v", err)
 	}
 
-	outputPorts := node.GetOutputPorts()
+	outputPorts := node.OutputPorts()
 
 	// Should have default, error, and case-specific ports
 	expectedMinPorts := 4 // default, error, active_path, inactive_path

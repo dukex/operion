@@ -40,7 +40,7 @@ func (m *mockNode) Execute(ctx models.ExecutionContext, inputs map[string]models
 	}, nil
 }
 
-func (m *mockNode) GetInputPorts() []models.InputPort {
+func (m *mockNode) InputPorts() []models.InputPort {
 	return []models.InputPort{{
 		Port: models.Port{
 			ID:     m.id + ":input",
@@ -50,7 +50,7 @@ func (m *mockNode) GetInputPorts() []models.InputPort {
 	}}
 }
 
-func (m *mockNode) GetOutputPorts() []models.OutputPort {
+func (m *mockNode) OutputPorts() []models.OutputPort {
 	return []models.OutputPort{{
 		Port: models.Port{
 			ID:     m.id + ":output",

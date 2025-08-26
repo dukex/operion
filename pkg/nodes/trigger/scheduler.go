@@ -104,8 +104,8 @@ func (n *SchedulerTriggerNode) createErrorResult(message string) map[string]mode
 	}
 }
 
-// GetInputPorts returns the input ports for the scheduler trigger node.
-func (n *SchedulerTriggerNode) GetInputPorts() []models.InputPort {
+// InputPorts returns the input ports for the scheduler trigger node.
+func (n *SchedulerTriggerNode) InputPorts() []models.InputPort {
 	return []models.InputPort{
 		{
 			Port: models.Port{
@@ -137,8 +137,8 @@ func (n *SchedulerTriggerNode) InputRequirements() models.InputRequirements {
 	}
 }
 
-// GetOutputPorts returns the output ports for the scheduler trigger node.
-func (n *SchedulerTriggerNode) GetOutputPorts() []models.OutputPort {
+// OutputPorts returns the output ports for the scheduler trigger node.
+func (n *SchedulerTriggerNode) OutputPorts() []models.OutputPort {
 	return []models.OutputPort{
 		{
 			Port: models.Port{

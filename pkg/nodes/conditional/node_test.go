@@ -197,12 +197,12 @@ func TestConditionalNode_Validate(t *testing.T) {
 func TestConditionalNode_Schema(t *testing.T) {
 	node := &ConditionalNode{id: "test-node"}
 
-	inputPorts := node.GetInputPorts()
+	inputPorts := node.InputPorts()
 	if len(inputPorts) == 0 {
 		t.Error("Expected input ports to be defined")
 	}
 
-	outputPorts := node.GetOutputPorts()
+	outputPorts := node.OutputPorts()
 	if len(outputPorts) != 3 {
 		t.Errorf("Expected 3 output ports, got: %d", len(outputPorts))
 	}

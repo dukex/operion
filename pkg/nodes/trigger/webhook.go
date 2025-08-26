@@ -115,8 +115,8 @@ func (n *WebhookTriggerNode) createErrorResult(message string) map[string]models
 	}
 }
 
-// GetInputPorts returns the input ports for the webhook trigger node.
-func (n *WebhookTriggerNode) GetInputPorts() []models.InputPort {
+// InputPorts returns the input ports for the webhook trigger node.
+func (n *WebhookTriggerNode) InputPorts() []models.InputPort {
 	return []models.InputPort{
 		{
 			Port: models.Port{
@@ -150,8 +150,8 @@ func (n *WebhookTriggerNode) InputRequirements() models.InputRequirements {
 	}
 }
 
-// GetOutputPorts returns the output ports for the webhook trigger node.
-func (n *WebhookTriggerNode) GetOutputPorts() []models.OutputPort {
+// OutputPorts returns the output ports for the webhook trigger node.
+func (n *WebhookTriggerNode) OutputPorts() []models.OutputPort {
 	return []models.OutputPort{
 		{
 			Port: models.Port{

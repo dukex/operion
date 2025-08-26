@@ -141,8 +141,8 @@ func (n *MergeNode) createErrorResult(errorMessage string) map[string]models.Nod
 	}
 }
 
-// GetInputPorts returns the input ports for the node (dynamic based on configuration).
-func (n *MergeNode) GetInputPorts() []models.InputPort {
+// InputPorts returns the input ports for the node (dynamic based on configuration).
+func (n *MergeNode) InputPorts() []models.InputPort {
 	ports := make([]models.InputPort, 0, len(n.inputPorts))
 
 	for _, port := range n.inputPorts {
@@ -159,8 +159,8 @@ func (n *MergeNode) GetInputPorts() []models.InputPort {
 	return ports
 }
 
-// GetOutputPorts returns the output ports for the node.
-func (n *MergeNode) GetOutputPorts() []models.OutputPort {
+// OutputPorts returns the output ports for the node.
+func (n *MergeNode) OutputPorts() []models.OutputPort {
 	return []models.OutputPort{
 		{
 			Port: models.Port{

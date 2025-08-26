@@ -201,10 +201,10 @@ func TestTransformNode_Validate(t *testing.T) {
 	}
 }
 
-func TestTransformNode_GetInputPorts(t *testing.T) {
+func TestTransformNode_InputPorts(t *testing.T) {
 	node := &TransformNode{id: "test-node"}
 
-	inputPorts := node.GetInputPorts()
+	inputPorts := node.InputPorts()
 	if len(inputPorts) != 1 {
 		t.Errorf("Expected 1 input port, got: %d", len(inputPorts))
 	}
@@ -214,10 +214,10 @@ func TestTransformNode_GetInputPorts(t *testing.T) {
 	}
 }
 
-func TestTransformNode_GetOutputPorts(t *testing.T) {
+func TestTransformNode_OutputPorts(t *testing.T) {
 	node := &TransformNode{id: "test-node"}
 
-	outputPorts := node.GetOutputPorts()
+	outputPorts := node.OutputPorts()
 	if len(outputPorts) != 2 {
 		t.Errorf("Expected 2 output ports, got: %d", len(outputPorts))
 	}

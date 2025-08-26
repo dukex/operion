@@ -129,8 +129,8 @@ func (n *LogNode) createErrorResult(errorMessage string) map[string]models.NodeR
 	}
 }
 
-// GetInputPorts returns the input ports for the node.
-func (n *LogNode) GetInputPorts() []models.InputPort {
+// InputPorts returns the input ports for the node.
+func (n *LogNode) InputPorts() []models.InputPort {
 	return []models.InputPort{
 		{
 			Port: models.Port{
@@ -143,8 +143,8 @@ func (n *LogNode) GetInputPorts() []models.InputPort {
 	}
 }
 
-// GetOutputPorts returns the output ports for the node.
-func (n *LogNode) GetOutputPorts() []models.OutputPort {
+// OutputPorts returns the output ports for the node.
+func (n *LogNode) OutputPorts() []models.OutputPort {
 	return []models.OutputPort{
 		{
 			Port: models.Port{
