@@ -44,7 +44,7 @@ func createTestTriggerNodeMatches(workflowID, triggerID, sourceID string) []*mod
 			WorkflowID: workflowID,
 			TriggerNode: &models.WorkflowNode{
 				ID:         triggerID,
-				NodeType:   "trigger:scheduler",
+				Type:       "trigger:scheduler",
 				Category:   models.CategoryTypeTrigger,
 				Name:       "Test Trigger",
 				SourceID:   &sourceID,
@@ -204,7 +204,7 @@ func TestActivator_HandleSourceEvent_MultipleMatchingTriggers(t *testing.T) {
 			WorkflowID: "workflow-123",
 			TriggerNode: &models.WorkflowNode{
 				ID:         "trigger-123",
-				NodeType:   "trigger:scheduler",
+				Type:       "trigger:scheduler",
 				Category:   models.CategoryTypeTrigger,
 				Name:       "Test Trigger 123",
 				SourceID:   &[]string{"source-123"}[0],
@@ -217,7 +217,7 @@ func TestActivator_HandleSourceEvent_MultipleMatchingTriggers(t *testing.T) {
 			WorkflowID: "workflow-456",
 			TriggerNode: &models.WorkflowNode{
 				ID:         "trigger-456",
-				NodeType:   "trigger:scheduler",
+				Type:       "trigger:scheduler",
 				Category:   models.CategoryTypeTrigger,
 				Name:       "Test Trigger 456",
 				SourceID:   &[]string{"source-123"}[0],
@@ -268,7 +268,7 @@ func TestActivator_HandleSourceEvent_PublishFailure(t *testing.T) {
 			WorkflowID: "workflow-123",
 			TriggerNode: &models.WorkflowNode{
 				ID:         "trigger-123",
-				NodeType:   "trigger:scheduler",
+				Type:       "trigger:scheduler",
 				Category:   models.CategoryTypeTrigger,
 				Name:       "Test Trigger 123",
 				SourceID:   &[]string{"source-123"}[0],
@@ -316,7 +316,7 @@ func TestActivator_FindTriggersForSourceEvent_Success(t *testing.T) {
 			WorkflowID: "workflow-123",
 			TriggerNode: &models.WorkflowNode{
 				ID:         "trigger-123",
-				NodeType:   "trigger:scheduler",
+				Type:       "trigger:scheduler",
 				Category:   models.CategoryTypeTrigger,
 				Name:       "Test Trigger 123",
 				SourceID:   &[]string{"source-123"}[0],

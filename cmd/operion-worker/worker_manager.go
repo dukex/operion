@@ -237,7 +237,7 @@ func (w *WorkerManager) executeNodeWithInputs(
 	execCtx *models.ExecutionContext,
 ) (map[string]models.NodeResult, error) {
 	// Create node instance using registry
-	nodeInstance, err := w.registry.CreateNode(ctx, node.NodeType, node.ID, node.Config)
+	nodeInstance, err := w.registry.CreateNode(ctx, node.Type, node.ID, node.Config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create node instance: %w", err)
 	}
@@ -365,10 +365,10 @@ func convertNodeResultsToOutputData(outputs map[string]models.NodeResult) map[st
 // This allows nodes to declare their coordination needs via the NodeInputRequirements interface.
 func (w *WorkerManager) getNodeInputRequirements(ctx context.Context, node *models.WorkflowNode) models.InputRequirements {
 	// Create the node instance (lightweight operation for purely functional nodes)
-	nodeImpl, err := w.registry.CreateNode(ctx, node.NodeType, node.ID, node.Config)
+	nodeImpl, err := w.registry.CreateNode(ctx, node.Type, node.ID, node.Config)
 	if err != nil {
 		w.logger.WarnContext(ctx, "Could not create node for requirements, using defaults",
-			"node_type", node.NodeType, "error", err)
+			"node_type", node.Type, "error", err)
 
 		return models.DefaultInputRequirements()
 	}

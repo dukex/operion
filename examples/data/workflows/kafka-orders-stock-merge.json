@@ -6,7 +6,7 @@
     {
       "id": "stock-kafka-trigger",
       "name": "Stock Kafka Trigger",
-      "node_type": "trigger:kafka",
+      "type": "trigger:kafka",
       "category": "trigger",
       "config": {
         "brokers": ["localhost:29092"],
@@ -23,7 +23,7 @@
     {
       "id": "orders-kafka-trigger",
       "name": "Orders Kafka Trigger",
-      "node_type": "trigger:kafka",
+      "type": "trigger:kafka",
       "category": "trigger",
       "config": {
         "brokers": ["localhost:29092"],
@@ -40,7 +40,7 @@
     {
       "id": "merge-orders-stock",
       "name": "Merge Orders and Stock",
-      "node_type": "merge",
+      "type": "merge",
       "category": "action",
       "config": {
         "input_ports": ["orders_input", "stock_input"],
@@ -53,7 +53,7 @@
     {
       "id": "log-merged-data",
       "name": "Log Merged Data Success",
-      "node_type": "log",
+      "type": "log",
       "category": "action",
       "config": {
         "level": "info",

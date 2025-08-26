@@ -30,7 +30,7 @@ type Connection struct {
 // WorkflowNode represents a node instance in a workflow.
 type WorkflowNode struct {
 	ID         string         `json:"id"                    validate:"required"`
-	NodeType   string         `json:"node_type"             validate:"required"`
+	Type       string         `json:"type"                  validate:"required"`
 	Category   CategoryType   `json:"category"              validate:"required"`
 	Config     map[string]any `json:"config"`
 	PositionX  int            `json:"position_x"`

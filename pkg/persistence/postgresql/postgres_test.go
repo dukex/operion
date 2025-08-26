@@ -123,7 +123,7 @@ func TestNewPersistence_SaveAndRetrieveWorkflow(t *testing.T) {
 		Nodes: []*models.WorkflowNode{
 			{
 				ID:         "trigger1",
-				NodeType:   "trigger:scheduler",
+				Type:       "trigger:scheduler",
 				Category:   models.CategoryTypeTrigger,
 				Name:       "Daily Schedule",
 				Config:     map[string]any{"cron": "0 0 * * *"},
@@ -134,7 +134,7 @@ func TestNewPersistence_SaveAndRetrieveWorkflow(t *testing.T) {
 			},
 			{
 				ID:       "step1",
-				NodeType: "log",
+				Type:     "log",
 				Category: models.CategoryTypeAction,
 				Name:     "Log Message",
 				Config:   map[string]any{"message": "Hello World"},
@@ -205,7 +205,7 @@ func TestNewPersistence_UpdateWorkflow(t *testing.T) {
 		Nodes: []*models.WorkflowNode{
 			{
 				ID:         "trigger1",
-				NodeType:   "trigger:scheduler",
+				Type:       "trigger:scheduler",
 				Category:   models.CategoryTypeTrigger,
 				Name:       "Daily Schedule",
 				Config:     map[string]any{"cron": "0 0 * * *"},
@@ -216,7 +216,7 @@ func TestNewPersistence_UpdateWorkflow(t *testing.T) {
 			},
 			{
 				ID:       "step1",
-				NodeType: "log",
+				Type:     "log",
 				Category: models.CategoryTypeAction,
 				Name:     "Log Message",
 				Config:   map[string]any{"message": "Hello World"},
@@ -268,7 +268,7 @@ func TestNewPersistence_ListWorkflows(t *testing.T) {
 			Nodes: []*models.WorkflowNode{
 				{
 					ID:         "trigger1",
-					NodeType:   "trigger:scheduler",
+					Type:       "trigger:scheduler",
 					Category:   models.CategoryTypeTrigger,
 					Name:       "Daily Schedule",
 					Config:     map[string]any{"cron": "0 0 * * *"},
@@ -279,7 +279,7 @@ func TestNewPersistence_ListWorkflows(t *testing.T) {
 				},
 				{
 					ID:       "step1",
-					NodeType: "log",
+					Type:     "log",
 					Category: models.CategoryTypeAction,
 					Name:     "Log Message 3",
 					Config: map[string]any{
@@ -298,7 +298,7 @@ func TestNewPersistence_ListWorkflows(t *testing.T) {
 			Nodes: []*models.WorkflowNode{
 				{
 					ID:         "trigger1",
-					NodeType:   "trigger:scheduler",
+					Type:       "trigger:scheduler",
 					Category:   models.CategoryTypeTrigger,
 					Name:       "Daily Schedule",
 					Config:     map[string]any{"cron": "0 0 * * *"},
@@ -309,7 +309,7 @@ func TestNewPersistence_ListWorkflows(t *testing.T) {
 				},
 				{
 					ID:       "step1",
-					NodeType: "log",
+					Type:     "log",
 					Category: models.CategoryTypeAction,
 					Name:     "Log Message 4",
 					Config: map[string]any{
@@ -346,7 +346,7 @@ func TestNewPersistence_DeleteWorkflow(t *testing.T) {
 		Nodes: []*models.WorkflowNode{
 			{
 				ID:         "trigger1",
-				NodeType:   "trigger:scheduler",
+				Type:       "trigger:scheduler",
 				Category:   models.CategoryTypeTrigger,
 				Name:       "Daily Schedule",
 				Config:     map[string]any{"cron": "0 0 * * *"},
@@ -357,7 +357,7 @@ func TestNewPersistence_DeleteWorkflow(t *testing.T) {
 			},
 			{
 				ID:       "step1",
-				NodeType: "log",
+				Type:     "log",
 				Category: models.CategoryTypeAction,
 				Name:     "Log Delete Message",
 				Config: map[string]any{
@@ -406,7 +406,7 @@ func TestNewPersistence_ComplexWorkflow(t *testing.T) {
 		Nodes: []*models.WorkflowNode{
 			{
 				ID:       "scheduler_trigger",
-				NodeType: "trigger:scheduler",
+				Type:     "trigger:scheduler",
 				Category: models.CategoryTypeTrigger,
 				Name:     "Daily Schedule",
 				Config: map[string]any{
@@ -421,7 +421,7 @@ func TestNewPersistence_ComplexWorkflow(t *testing.T) {
 			},
 			{
 				ID:       "webhook_trigger",
-				NodeType: "trigger:webhook",
+				Type:     "trigger:webhook",
 				Category: models.CategoryTypeTrigger,
 				Name:     "Webhook Handler",
 				Config: map[string]any{
@@ -436,7 +436,7 @@ func TestNewPersistence_ComplexWorkflow(t *testing.T) {
 			},
 			{
 				ID:       "fetch_data",
-				NodeType: "http_request",
+				Type:     "http_request",
 				Category: models.CategoryTypeAction,
 				Name:     "Fetch Data",
 				Config: map[string]any{
@@ -450,7 +450,7 @@ func TestNewPersistence_ComplexWorkflow(t *testing.T) {
 			},
 			{
 				ID:       "transform_data",
-				NodeType: "transform",
+				Type:     "transform",
 				Category: models.CategoryTypeAction,
 				Name:     "Transform Data",
 				Config: map[string]any{
@@ -461,7 +461,7 @@ func TestNewPersistence_ComplexWorkflow(t *testing.T) {
 			},
 			{
 				ID:       "log_result",
-				NodeType: "log",
+				Type:     "log",
 				Category: models.CategoryTypeAction,
 				Name:     "Log Result",
 				Config: map[string]any{
@@ -472,7 +472,7 @@ func TestNewPersistence_ComplexWorkflow(t *testing.T) {
 			},
 			{
 				ID:       "error_handler",
-				NodeType: "log",
+				Type:     "log",
 				Category: models.CategoryTypeAction,
 				Name:     "Error Handler",
 				Config: map[string]any{
@@ -540,12 +540,12 @@ func TestNewPersistence_ComplexWorkflow(t *testing.T) {
 		case "scheduler":
 			assert.Equal(t, "0 0 * * *", trigger.Config["cron"])
 			assert.Equal(t, true, trigger.Config["enabled"])
-			assert.Equal(t, "trigger:scheduler", trigger.NodeType)
+			assert.Equal(t, "trigger:scheduler", trigger.Type)
 			assert.Equal(t, "schedule_due", *trigger.EventType)
 		case "webhook":
 			assert.Equal(t, "/webhook/test", trigger.Config["path"])
 			assert.Equal(t, "POST", trigger.Config["method"])
-			assert.Equal(t, "trigger:webhook", trigger.NodeType)
+			assert.Equal(t, "trigger:webhook", trigger.Type)
 			assert.Equal(t, "webhook_received", *trigger.EventType)
 		}
 	}
@@ -555,33 +555,33 @@ func TestNewPersistence_ComplexWorkflow(t *testing.T) {
 	for _, node := range retrieved.Nodes {
 		switch node.ID {
 		case "scheduler_trigger":
-			assert.Equal(t, "trigger:scheduler", node.NodeType)
+			assert.Equal(t, "trigger:scheduler", node.Type)
 			assert.Equal(t, models.CategoryTypeTrigger, node.Category)
 			assert.Equal(t, "0 0 * * *", node.Config["cron"])
 			assert.Equal(t, "scheduler", *node.ProviderID)
 			assert.Equal(t, "schedule_due", *node.EventType)
 		case "webhook_trigger":
-			assert.Equal(t, "trigger:webhook", node.NodeType)
+			assert.Equal(t, "trigger:webhook", node.Type)
 			assert.Equal(t, models.CategoryTypeTrigger, node.Category)
 			assert.Equal(t, "/webhook/test", node.Config["path"])
 			assert.Equal(t, "webhook", *node.ProviderID)
 			assert.Equal(t, "webhook_received", *node.EventType)
 		case "fetch_data":
-			assert.Equal(t, "http_request", node.NodeType)
+			assert.Equal(t, "http_request", node.Type)
 			assert.Equal(t, models.CategoryTypeAction, node.Category)
 			assert.Equal(t, "https://api.example.com/data", node.Config["url"])
 			assert.Equal(t, "GET", node.Config["method"])
 		case "transform_data":
-			assert.Equal(t, "transform", node.NodeType)
+			assert.Equal(t, "transform", node.Type)
 			assert.Equal(t, models.CategoryTypeAction, node.Category)
 			assert.Equal(t, "$.data", node.Config["expression"])
 			assert.Equal(t, "{{steps.fetch_data.body}}", node.Config["input"])
 		case "log_result":
-			assert.Equal(t, "log", node.NodeType)
+			assert.Equal(t, "log", node.Type)
 			assert.Equal(t, models.CategoryTypeAction, node.Category)
 			assert.Equal(t, "Processing completed: {{steps.transform_data.result}}", node.Config["message"])
 		case "error_handler":
-			assert.Equal(t, "log", node.NodeType)
+			assert.Equal(t, "log", node.Type)
 			assert.Equal(t, models.CategoryTypeAction, node.Category)
 			assert.Equal(t, "Error occurred: {{steps.fetch_data.error}}", node.Config["message"])
 		}

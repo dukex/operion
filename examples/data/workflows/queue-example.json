@@ -10,7 +10,7 @@
     {
       "id": "redis-queue-trigger",
       "name": "Redis Queue Trigger",
-      "node_type": "trigger:queue",
+      "type": "trigger:queue",
       "category": "trigger",
       "config": {
         "provider": "redis",
@@ -38,7 +38,7 @@
       "position_x": 100,
       "position_y": 100,
       "enabled": true,
-      "node_type": "log",
+      "type": "log",
       "category": "action"
     },
     {
@@ -50,7 +50,7 @@
       "position_x": 300,
       "position_y": 100,
       "enabled": true,
-      "node_type": "transform",
+      "type": "transform",
       "category": "action"
     },
     {
@@ -67,7 +67,7 @@
       "position_x": 500,
       "position_y": 100,
       "enabled": true,
-      "node_type": "httprequest",
+      "type": "httprequest",
       "category": "action"
     },
     {
@@ -80,7 +80,7 @@
       "position_x": 700,
       "position_y": 100,
       "enabled": true,
-      "node_type": "log",
+      "type": "log",
       "category": "action"
     }
   ],

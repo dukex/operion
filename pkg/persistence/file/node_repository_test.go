@@ -23,7 +23,7 @@ func TestNodeRepository_GetNodesFromPublishedWorkflow(t *testing.T) {
 			{
 				ID:       "node1",
 				Name:     "First Node",
-				NodeType: "log",
+				Type:     "log",
 				Category: models.CategoryTypeAction,
 				Config:   map[string]any{"message": "test1"},
 				Enabled:  true,
@@ -31,7 +31,7 @@ func TestNodeRepository_GetNodesFromPublishedWorkflow(t *testing.T) {
 			{
 				ID:       "node2",
 				Name:     "Second Node",
-				NodeType: "transform",
+				Type:     "transform",
 				Category: models.CategoryTypeAction,
 				Config:   map[string]any{"expression": "test2"},
 				Enabled:  true,
@@ -71,7 +71,7 @@ func TestNodeRepository_GetNodeFromPublishedWorkflow(t *testing.T) {
 			{
 				ID:       "target-node",
 				Name:     "Target Node",
-				NodeType: "httprequest",
+				Type:     "httprequest",
 				Category: models.CategoryTypeAction,
 				Config: map[string]any{
 					"url":    "https://api.example.com",
@@ -82,7 +82,7 @@ func TestNodeRepository_GetNodeFromPublishedWorkflow(t *testing.T) {
 			{
 				ID:       "other-node",
 				Name:     "Other Node",
-				NodeType: "log",
+				Type:     "log",
 				Category: models.CategoryTypeAction,
 				Config:   map[string]any{"message": "other"},
 				Enabled:  true,
@@ -103,7 +103,7 @@ func TestNodeRepository_GetNodeFromPublishedWorkflow(t *testing.T) {
 	require.NotNil(t, node)
 	assert.Equal(t, "target-node", node.ID)
 	assert.Equal(t, "Target Node", node.Name)
-	assert.Equal(t, "httprequest", node.NodeType)
+	assert.Equal(t, "httprequest", node.Type)
 	assert.Equal(t, "https://api.example.com", node.Config["url"])
 }
 
@@ -155,7 +155,7 @@ func TestNodeRepository_SaveNode_NewNode(t *testing.T) {
 	newNode := &models.WorkflowNode{
 		ID:       "new-node",
 		Name:     "New Node",
-		NodeType: "transform",
+		Type:     "transform",
 		Category: models.CategoryTypeAction,
 		Config:   map[string]any{"expression": "{{.data}}"},
 		Enabled:  true,
@@ -184,7 +184,7 @@ func TestNodeRepository_SaveNode_UpdateExisting(t *testing.T) {
 	existingNode := &models.WorkflowNode{
 		ID:       "existing-node",
 		Name:     "Original Name",
-		NodeType: "log",
+		Type:     "log",
 		Category: models.CategoryTypeAction,
 		Config:   map[string]any{"message": "original"},
 		Enabled:  true,
@@ -204,7 +204,7 @@ func TestNodeRepository_SaveNode_UpdateExisting(t *testing.T) {
 	updatedNode := &models.WorkflowNode{
 		ID:       "existing-node",
 		Name:     "Updated Name",
-		NodeType: "log",
+		Type:     "log",
 		Category: models.CategoryTypeAction,
 		Config:   map[string]any{"message": "updated"},
 		Enabled:  false,
@@ -237,7 +237,7 @@ func TestNodeRepository_DeleteNode(t *testing.T) {
 			{
 				ID:       "node-to-delete",
 				Name:     "Node To Delete",
-				NodeType: "log",
+				Type:     "log",
 				Category: models.CategoryTypeAction,
 				Config:   map[string]any{"message": "delete me"},
 				Enabled:  true,
@@ -245,7 +245,7 @@ func TestNodeRepository_DeleteNode(t *testing.T) {
 			{
 				ID:       "node-to-keep",
 				Name:     "Node To Keep",
-				NodeType: "transform",
+				Type:     "transform",
 				Category: models.CategoryTypeAction,
 				Config:   map[string]any{"expression": "keep me"},
 				Enabled:  true,
@@ -291,7 +291,7 @@ func TestNodeRepository_FindTriggerNodesBySourceEventAndProvider(t *testing.T) {
 			{
 				ID:         "trigger-1",
 				Name:       "Kafka Trigger",
-				NodeType:   "trigger:kafka",
+				Type:       "trigger:kafka",
 				Category:   models.CategoryTypeTrigger,
 				SourceID:   stringPtr("source-123"),
 				EventType:  stringPtr("kafka_message"),
@@ -302,7 +302,7 @@ func TestNodeRepository_FindTriggerNodesBySourceEventAndProvider(t *testing.T) {
 			{
 				ID:       "action-1",
 				Name:     "Process Order",
-				NodeType: "log",
+				Type:     "log",
 				Category: models.CategoryTypeAction,
 				Config:   map[string]any{"message": "processing"},
 				Enabled:  true,
@@ -318,7 +318,7 @@ func TestNodeRepository_FindTriggerNodesBySourceEventAndProvider(t *testing.T) {
 			{
 				ID:         "trigger-2",
 				Name:       "Another Kafka Trigger",
-				NodeType:   "trigger:kafka",
+				Type:       "trigger:kafka",
 				Category:   models.CategoryTypeTrigger,
 				SourceID:   stringPtr("source-123"),
 				EventType:  stringPtr("kafka_message"),
@@ -337,7 +337,7 @@ func TestNodeRepository_FindTriggerNodesBySourceEventAndProvider(t *testing.T) {
 			{
 				ID:         "trigger-3",
 				Name:       "Schedule Trigger",
-				NodeType:   "trigger:schedule",
+				Type:       "trigger:schedule",
 				Category:   models.CategoryTypeTrigger,
 				SourceID:   stringPtr("source-456"),
 				EventType:  stringPtr("schedule_due"),
@@ -418,7 +418,7 @@ func TestNodeRepository_WorkflowNotFound(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "workflow not found")
 
-	node := &models.WorkflowNode{ID: "test", Name: "Test", NodeType: "log"}
+	node := &models.WorkflowNode{ID: "test", Name: "Test", Type: "log"}
 	err = nodeRepo.SaveNode(ctx, "non-existent-workflow", node)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "workflow not found")

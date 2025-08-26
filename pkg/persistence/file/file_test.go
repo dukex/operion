@@ -42,7 +42,7 @@ func TestPersistence_SaveWorkflow(t *testing.T) {
 			{
 				ID:       "node-1",
 				Name:     "Test Node",
-				NodeType: "log",
+				Type:     "log",
 				Category: models.CategoryTypeAction,
 				Config: map[string]any{
 					"message": "test",
@@ -100,7 +100,7 @@ func TestPersistence_WorkflowByID(t *testing.T) {
 			{
 				ID:       "node-1",
 				Name:     "Test Node",
-				NodeType: "log",
+				Type:     "log",
 				Category: models.CategoryTypeAction,
 				Config: map[string]any{
 					"message": "test",

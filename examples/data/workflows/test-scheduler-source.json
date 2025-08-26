@@ -27,7 +27,7 @@
     {
       "id": "scheduler-trigger-1",
       "name": "Test Schedule Trigger",
-      "node_type": "trigger:scheduler",
+      "type": "trigger:scheduler",
       "category": "trigger",
       "config": {
         "cron_expression": "*/1 * * * *",

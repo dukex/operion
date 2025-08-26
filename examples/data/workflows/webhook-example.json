@@ -12,7 +12,7 @@
     {
       "id": "webhook-trigger-1",
       "name": "Webhook Trigger",
-      "node_type": "trigger:webhook",
+      "type": "trigger:webhook",
       "category": "trigger",
       "config": {
         "id": "example-webhook",
@@ -28,7 +28,7 @@
     {
       "id": "log-webhook-data",
       "name": "Log Webhook Data",
-      "node_type": "log",
+      "type": "log",
       "category": "action",
       "config": {
         "message": "Received webhook data: {{.trigger_data.body}}"
@@ -40,7 +40,7 @@
     {
       "id": "transform-data",
       "name": "Transform Data",
-      "node_type": "transform",
+      "type": "transform",
       "category": "action",
       "config": {
         "expression": "{ \"processed\": true, \"timestamp\": \"{{.trigger_data.timestamp}}\", \"method\": \"{{.trigger_data.method}}\", \"headers\": {{.trigger_data.headers | toJson}} }"
@@ -52,7 +52,7 @@
     {
       "id": "log-processed",
       "name": "Log Processed",
-      "node_type": "log",
+      "type": "log",
       "category": "action",
       "config": {
         "message": "{{ $data := index .node_results \"transform-data\" }}Processed webhook data: {{ $data | toJson }}"

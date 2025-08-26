@@ -6,7 +6,7 @@
     {
       "id": "scheduler-trigger-2min",
       "name": "2 Minute Schedule Trigger",
-      "node_type": "trigger:scheduler",
+      "type": "trigger:scheduler",
       "category": "trigger",
       "config": {
         "cron_expression": "*/2 * * * *",
@@ -28,7 +28,7 @@
       "position_x": 100,
       "position_y": 100,
       "enabled": true,
-      "node_type": "log",
+      "type": "log",
       "category": "action"
     },
     {
@@ -40,7 +40,7 @@
       "position_x": 300,
       "position_y": 100,
       "enabled": true,
-      "node_type": "transform",
+      "type": "transform",
       "category": "action"
     },
     {
@@ -52,7 +52,7 @@
       "position_x": 500,
       "position_y": 100,
       "enabled": true,
-      "node_type": "log",
+      "type": "log",
       "category": "action"
     }
   ],

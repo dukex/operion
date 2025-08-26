@@ -9,7 +9,7 @@
     {
       "id": "github-schedule",
       "name": "GitHub Monitor Schedule Trigger",
-      "node_type": "trigger:scheduler",
+      "type": "trigger:scheduler",
       "category": "trigger",
       "config": {
         "cron": "0 */6 * * *",
@@ -40,7 +40,7 @@
       "position_x": 100,
       "position_y": 100,
       "enabled": true,
-      "node_type": "httprequest",
+      "type": "httprequest",
       "category": "action"
     },
     {
@@ -58,7 +58,7 @@
       "position_x": 100,
       "position_y": 250,
       "enabled": true,
-      "node_type": "httprequest",
+      "type": "httprequest",
       "category": "action"
     },
     {
@@ -76,7 +76,7 @@
       "position_x": 100,
       "position_y": 400,
       "enabled": true,
-      "node_type": "httprequest",
+      "type": "httprequest",
       "category": "action"
     },
     {
@@ -88,7 +88,7 @@
       "position_x": 300,
       "position_y": 250,
       "enabled": true,
-      "node_type": "transform",
+      "type": "transform",
       "category": "action"
     },
     {
@@ -100,7 +100,7 @@
       "position_x": 500,
       "position_y": 250,
       "enabled": true,
-      "node_type": "log",
+      "type": "log",
       "category": "action"
     },
     {
@@ -112,7 +112,7 @@
       "position_x": 700,
       "position_y": 250,
       "enabled": true,
-      "node_type": "transform",
+      "type": "transform",
       "category": "action"
     },
     {
@@ -130,7 +130,7 @@
       "position_x": 900,
       "position_y": 250,
       "enabled": true,
-      "node_type": "httprequest",
+      "type": "httprequest",
       "category": "action"
     },
     {
@@ -142,7 +142,7 @@
       "position_x": 1100,
       "position_y": 200,
       "enabled": true,
-      "node_type": "log",
+      "type": "log",
       "category": "action"
     },
     {
@@ -154,7 +154,7 @@
       "position_x": 300,
       "position_y": 100,
       "enabled": true,
-      "node_type": "log",
+      "type": "log",
       "category": "action"
     },
     {
@@ -166,7 +166,7 @@
       "position_x": 300,
       "position_y": 250,
       "enabled": true,
-      "node_type": "log",
+      "type": "log",
       "category": "action"
     },
     {
@@ -178,7 +178,7 @@
       "position_x": 300,
       "position_y": 400,
       "enabled": true,
-      "node_type": "log",
+      "type": "log",
       "category": "action"
     },
     {
@@ -190,7 +190,7 @@
       "position_x": 1100,
       "position_y": 300,
       "enabled": true,
-      "node_type": "log",
+      "type": "log",
       "category": "action"
     }
   ],

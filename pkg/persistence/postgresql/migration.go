@@ -30,7 +30,7 @@ func migrations() map[int]string {
 			CREATE TABLE workflow_nodes (
 				workflow_id UUID NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
 				id VARCHAR(255) NOT NULL,
-				node_type VARCHAR(255) NOT NULL,
+				type VARCHAR(255) NOT NULL,
 				category VARCHAR(50) NOT NULL DEFAULT 'action',
 				config JSONB DEFAULT '{}',
 				position_x INT DEFAULT 0,
@@ -46,7 +46,7 @@ func migrations() map[int]string {
 			);
 
 			CREATE INDEX idx_workflow_nodes_workflow_id ON workflow_nodes(workflow_id);
-			CREATE INDEX idx_workflow_nodes_type ON workflow_nodes(node_type);
+			CREATE INDEX idx_workflow_nodes_type ON workflow_nodes(type);
 			CREATE INDEX idx_workflow_nodes_category ON workflow_nodes(category);
 			CREATE INDEX idx_workflow_nodes_source_id ON workflow_nodes(source_id);
 			CREATE INDEX idx_workflow_nodes_provider_id ON workflow_nodes(provider_id);

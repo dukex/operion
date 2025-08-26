@@ -131,7 +131,7 @@ func TestWorkerManager_BasicWorkflowExecution(t *testing.T) {
 			{
 				ID:       "node1",
 				Name:     "Log Node",
-				NodeType: "log",
+				Type:     "log",
 				Category: models.CategoryTypeAction,
 				Config: map[string]any{
 					"message": "Test message",

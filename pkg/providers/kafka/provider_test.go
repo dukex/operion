@@ -59,7 +59,7 @@ func createKafkaTriggerNode(id, sourceID string, config map[string]any) *models.
 
 	return &models.WorkflowNode{
 		ID:         id,
-		NodeType:   "trigger:kafka",
+		Type:       "trigger:kafka",
 		Category:   models.CategoryTypeTrigger,
 		Name:       "Kafka Trigger " + id,
 		Config:     config,
@@ -154,7 +154,7 @@ func TestKafkaProvider_Configure(t *testing.T) {
 				createTestWorkflow("workflow-1", []*models.WorkflowNode{
 					{
 						ID:         "trigger-1",
-						NodeType:   "trigger:webhook",
+						Type:       "trigger:webhook",
 						Category:   models.CategoryTypeTrigger,
 						Name:       "Webhook Trigger",
 						ProviderID: &[]string{"webhook"}[0],

@@ -25,7 +25,7 @@ func NewNodeRepository(db *sql.DB, logger *slog.Logger) *NodeRepository {
 // GetNodesFromPublishedWorkflow retrieves all nodes from a published workflow.
 func (nr *NodeRepository) GetNodesFromPublishedWorkflow(ctx context.Context, publishedWorkflowID string) ([]*models.WorkflowNode, error) {
 	query := `
-		SELECT id, node_type, category, name, config, enabled, position_x, position_y, source_id, provider_id, event_type
+		SELECT id, type, category, name, config, enabled, position_x, position_y, source_id, provider_id, event_type
 		FROM workflow_nodes
 		WHERE workflow_id = $1
 		ORDER BY created_at
@@ -63,7 +63,7 @@ func (nr *NodeRepository) GetNodesFromPublishedWorkflow(ctx context.Context, pub
 // GetNodeFromPublishedWorkflow retrieves a specific node from a published workflow.
 func (nr *NodeRepository) GetNodeFromPublishedWorkflow(ctx context.Context, publishedWorkflowID, nodeID string) (*models.WorkflowNode, error) {
 	query := `
-		SELECT id, node_type, category, name, config, enabled, position_x, position_y, source_id, provider_id, event_type
+		SELECT id, type, category, name, config, enabled, position_x, position_y, source_id, provider_id, event_type
 		FROM workflow_nodes
 		WHERE workflow_id = $1 AND id = $2
 	`
@@ -90,10 +90,10 @@ func (nr *NodeRepository) SaveNode(ctx context.Context, workflowID string, node 
 	}
 
 	query := `
-		INSERT INTO workflow_nodes (id, workflow_id, node_type, category, name, config, enabled, position_x, position_y, source_id, provider_id, event_type, created_at, updated_at)
+		INSERT INTO workflow_nodes (id, workflow_id, type, category, name, config, enabled, position_x, position_y, source_id, provider_id, event_type, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
 		ON CONFLICT (id, workflow_id) DO UPDATE SET
-			node_type = EXCLUDED.node_type,
+			type = EXCLUDED.type,
 			category = EXCLUDED.category,
 			name = EXCLUDED.name,
 			config = EXCLUDED.config,
@@ -109,7 +109,7 @@ func (nr *NodeRepository) SaveNode(ctx context.Context, workflowID string, node 
 	_, err = nr.db.ExecContext(ctx, query,
 		node.ID,
 		workflowID,
-		node.NodeType,
+		node.Type,
 		node.Category,
 		node.Name,
 		configJSON,
@@ -171,7 +171,7 @@ func (nr *NodeRepository) FindTriggerNodesBySourceEventAndProvider(ctx context.C
 		SELECT 
 			w.id as workflow_id,
 			n.id,
-			n.node_type,
+			n.type,
 			n.category,
 			n.name,
 			n.config,
@@ -216,7 +216,7 @@ func (nr *NodeRepository) FindTriggerNodesBySourceEventAndProvider(ctx context.C
 		err := rows.Scan(
 			&workflowID,
 			&node.ID,
-			&node.NodeType,
+			&node.Type,
 			&node.Category,
 			&node.Name,
 			&configJSON,
@@ -262,7 +262,7 @@ func (nr *NodeRepository) scanNode(scanner interface {
 
 	err := scanner.Scan(
 		&node.ID,
-		&node.NodeType,
+		&node.Type,
 		&node.Category,
 		&node.Name,
 		&configJSON,

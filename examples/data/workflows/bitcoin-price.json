@@ -6,7 +6,7 @@
     {
       "id": "3c18ab9e-a291-4e1a-b8fd-e3a02299d8ce",
       "name": "Scheduled Trigger",
-      "node_type": "trigger:scheduler",
+      "type": "trigger:scheduler",
       "category": "trigger",
       "config": {
         "cron_expression": "*/1 * * * *",
@@ -21,7 +21,7 @@
     },
     {
       "id": "c90f6195-d6fb-4519-803d-cf32f5f86c48",
-      "node_type": "httprequest",
+      "type": "httprequest",
       "category": "action",
       "config": {
         "url": "https://api.coinpaprika.com/v1/coins/btc-bitcoin/ohlcv/today",
@@ -41,7 +41,7 @@
     },
     {
       "id": "8de00551-e4de-48bf-aeff-21d394c86a9e",
-      "node_type": "transform",
+      "type": "transform",
       "category": "action",
       "config": {
         "expression": "{{ $data := index .node_results \"c90f6195-d6fb-4519-803d-cf32f5f86c48\" }}{{ $json := $data.json }}{{ if $json.close }}{{ $json.close }}{{ else }}{{ $json.open }}{{ end }}"
@@ -53,7 +53,7 @@
     },
     {
       "id": "8866978c-806e-468e-a1f6-d03fa418b238",
-      "node_type": "httprequest",
+      "type": "httprequest",
       "category": "action",
       "config": {
         "url": "https://test-operion.free.beeceptor.com/bitcoin",
@@ -74,7 +74,7 @@
     },
     {
       "id": "temp_l7oaen33g",
-      "node_type": "log",
+      "type": "log",
       "category": "action",
       "config": {
         "message": "Workflow step failed",

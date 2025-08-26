@@ -24,18 +24,18 @@ func TestWorkflow_NodeBased_Validation_ValidWorkflow(t *testing.T) {
 		Nodes: []*WorkflowNode{
 			{
 				ID:       "validate-input",
-				NodeType: "conditional",
+				Type:     "conditional",
 				Category: CategoryTypeAction,
 				Name:     "Validate Input",
 				Config:   map[string]any{"expression": "{{.trigger_data.email}} != ''"},
 				Enabled:  true,
 			},
 			{
-				ID:       "create-user",
-				NodeType: "http_request",
-				Name:     "Create User",
-				Config:   map[string]any{"url": "https://api.example.com/users", "method": "POST"},
-				Enabled:  true,
+				ID:      "create-user",
+				Type:    "http_request",
+				Name:    "Create User",
+				Config:  map[string]any{"url": "https://api.example.com/users", "method": "POST"},
+				Enabled: true,
 			},
 		},
 		Connections: []*Connection{
@@ -170,11 +170,11 @@ func TestWorkflow_SimplifiedVersioning(t *testing.T) {
 		WorkflowGroupID: "workflow-group-1",
 		Nodes: []*WorkflowNode{
 			{
-				ID:       "node-1",
-				NodeType: "http_request",
-				Name:     "API Call",
-				Config:   map[string]any{"url": "https://api.example.com"},
-				Enabled:  true,
+				ID:      "node-1",
+				Type:    "http_request",
+				Name:    "API Call",
+				Config:  map[string]any{"url": "https://api.example.com"},
+				Enabled: true,
 			},
 		},
 		CreatedAt: time.Now().UTC(),
@@ -190,11 +190,11 @@ func TestWorkflow_SimplifiedVersioning(t *testing.T) {
 		WorkflowGroupID: "workflow-group-1", // Same group as draft
 		Nodes: []*WorkflowNode{
 			{
-				ID:       "node-1",
-				NodeType: "http_request",
-				Name:     "API Call",
-				Config:   map[string]any{"url": "https://api.example.com"},
-				Enabled:  true,
+				ID:      "node-1",
+				Type:    "http_request",
+				Name:    "API Call",
+				Config:  map[string]any{"url": "https://api.example.com"},
+				Enabled: true,
 			},
 		},
 		CreatedAt: time.Now().UTC().Add(-1 * time.Hour),
@@ -215,11 +215,11 @@ func TestWorkflow_SimplifiedVersioning(t *testing.T) {
 		WorkflowGroupID: "workflow-group-1", // Same group
 		Nodes: []*WorkflowNode{
 			{
-				ID:       "node-1",
-				NodeType: "http_request",
-				Name:     "API Call",
-				Config:   map[string]any{"url": "https://api.example.com"},
-				Enabled:  true,
+				ID:      "node-1",
+				Type:    "http_request",
+				Name:    "API Call",
+				Config:  map[string]any{"url": "https://api.example.com"},
+				Enabled: true,
 			},
 		},
 		CreatedAt: time.Now().UTC().Add(-2 * time.Hour),
@@ -283,7 +283,7 @@ func TestWorkflow_ComplexNodeGraph_JSONSerialization(t *testing.T) {
 		Nodes: []*WorkflowNode{
 			{
 				ID:        "fetch-data",
-				NodeType:  "http_request",
+				Type:      "http_request",
 				Name:      "Fetch Data",
 				Config:    map[string]any{"url": "{{.variables.api_base_url}}/data", "method": "GET"},
 				PositionX: 100,
@@ -292,7 +292,7 @@ func TestWorkflow_ComplexNodeGraph_JSONSerialization(t *testing.T) {
 			},
 			{
 				ID:        "validate-data",
-				NodeType:  "conditional",
+				Type:      "conditional",
 				Name:      "Validate Data",
 				Config:    map[string]any{"expression": "{{.step_results.fetch_data.status_code}} == 200"},
 				PositionX: 300,
@@ -301,7 +301,7 @@ func TestWorkflow_ComplexNodeGraph_JSONSerialization(t *testing.T) {
 			},
 			{
 				ID:        "process-data",
-				NodeType:  "transform",
+				Type:      "transform",
 				Name:      "Process Data",
 				Config:    map[string]any{"expression": `{"processed": true, "data": {{.step_results.fetch_data.body}}}`},
 				PositionX: 500,
@@ -310,7 +310,7 @@ func TestWorkflow_ComplexNodeGraph_JSONSerialization(t *testing.T) {
 			},
 			{
 				ID:        "handle-error",
-				NodeType:  "log",
+				Type:      "log",
 				Name:      "Handle Error",
 				Config:    map[string]any{"message": "Failed to fetch data: {{.step_results.fetch_data.error}}", "level": "error"},
 				PositionX: 500,
@@ -392,7 +392,7 @@ func TestWorkflow_ComplexNodeGraph_JSONSerialization(t *testing.T) {
 
 	fetchNode := nodeMap["fetch-data"]
 	require.NotNil(t, fetchNode)
-	assert.Equal(t, "http_request", fetchNode.NodeType)
+	assert.Equal(t, "http_request", fetchNode.Type)
 	assert.Equal(t, "Fetch Data", fetchNode.Name)
 	assert.Equal(t, 100, fetchNode.PositionX)
 	assert.Equal(t, 100, fetchNode.PositionY)

@@ -21,7 +21,7 @@ func createTestWorkflowForNodes(t *testing.T) *models.Workflow {
 		Nodes: []*models.WorkflowNode{
 			{
 				ID:         "trigger1",
-				NodeType:   "trigger:scheduler",
+				Type:       "trigger:scheduler",
 				Category:   models.CategoryTypeTrigger,
 				Name:       "Daily Schedule",
 				Config:     map[string]any{"cron": "0 0 * * *"},
@@ -34,7 +34,7 @@ func createTestWorkflowForNodes(t *testing.T) *models.Workflow {
 			},
 			{
 				ID:        "action1",
-				NodeType:  "log",
+				Type:      "log",
 				Category:  models.CategoryTypeAction,
 				Name:      "Log Message",
 				Config:    map[string]any{"message": "Hello World", "level": "info"},
@@ -62,7 +62,7 @@ func TestNodeRepository_SaveAndGetNode(t *testing.T) {
 	// Test SaveNode - new node
 	newNode := &models.WorkflowNode{
 		ID:        "new_node",
-		NodeType:  "transform",
+		Type:      "transform",
 		Category:  models.CategoryTypeAction,
 		Name:      "Transform Data",
 		Config:    map[string]any{"expression": "$.data", "input": "test"},
@@ -80,7 +80,7 @@ func TestNodeRepository_SaveAndGetNode(t *testing.T) {
 	require.NotNil(t, retrieved)
 
 	assert.Equal(t, newNode.ID, retrieved.ID)
-	assert.Equal(t, newNode.NodeType, retrieved.NodeType)
+	assert.Equal(t, newNode.Type, retrieved.Type)
 	assert.Equal(t, newNode.Category, retrieved.Category)
 	assert.Equal(t, newNode.Name, retrieved.Name)
 	assert.Equal(t, newNode.Enabled, retrieved.Enabled)
@@ -186,14 +186,14 @@ func TestNodeRepository_GetNodesFromPublishedWorkflow(t *testing.T) {
 	trigger := nodeMap["trigger1"]
 	require.NotNil(t, trigger)
 	assert.Equal(t, models.CategoryTypeTrigger, trigger.Category)
-	assert.Equal(t, "trigger:scheduler", trigger.NodeType)
+	assert.Equal(t, "trigger:scheduler", trigger.Type)
 	assert.Equal(t, "scheduler", *trigger.ProviderID)
 	assert.Equal(t, "schedule_due", *trigger.EventType)
 
 	action := nodeMap["action1"]
 	require.NotNil(t, action)
 	assert.Equal(t, models.CategoryTypeAction, action.Category)
-	assert.Equal(t, "log", action.NodeType)
+	assert.Equal(t, "log", action.Type)
 	assert.Equal(t, "Hello World", action.Config["message"])
 }
 
@@ -229,7 +229,7 @@ func TestNodeRepository_FindTriggerNodesBySourceEventAndProvider(t *testing.T) {
 		Nodes: []*models.WorkflowNode{
 			{
 				ID:         "trigger1",
-				NodeType:   "trigger:scheduler",
+				Type:       "trigger:scheduler",
 				Category:   models.CategoryTypeTrigger,
 				Name:       "Schedule Trigger",
 				Config:     map[string]any{"cron": "0 0 * * *"},
@@ -250,7 +250,7 @@ func TestNodeRepository_FindTriggerNodesBySourceEventAndProvider(t *testing.T) {
 		Nodes: []*models.WorkflowNode{
 			{
 				ID:         "trigger2",
-				NodeType:   "trigger:webhook",
+				Type:       "trigger:webhook",
 				Category:   models.CategoryTypeTrigger,
 				Name:       "Webhook Trigger",
 				Config:     map[string]any{"path": "/webhook"},
@@ -271,7 +271,7 @@ func TestNodeRepository_FindTriggerNodesBySourceEventAndProvider(t *testing.T) {
 		Nodes: []*models.WorkflowNode{
 			{
 				ID:         "trigger3",
-				NodeType:   "trigger:scheduler",
+				Type:       "trigger:scheduler",
 				Category:   models.CategoryTypeTrigger,
 				Name:       "Another Schedule Trigger",
 				Config:     map[string]any{"cron": "0 12 * * *"},
@@ -346,7 +346,7 @@ func TestNodeRepository_ErrorCases(t *testing.T) {
 	// Test saving node to non-existent workflow
 	newNode := &models.WorkflowNode{
 		ID:       "test_node",
-		NodeType: "log",
+		Type:     "log",
 		Category: models.CategoryTypeAction,
 		Name:     "Test Node",
 		Config:   map[string]any{"message": "test"},

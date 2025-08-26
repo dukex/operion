@@ -21,7 +21,7 @@ func createTestWorkflow() *models.Workflow {
 			{
 				ID:         "kafka-trigger",
 				Name:       "Kafka Order Trigger",
-				NodeType:   "trigger:kafka",
+				Type:       "trigger:kafka",
 				Category:   models.CategoryTypeTrigger,
 				SourceID:   stringPtr("kafka-source"),
 				EventType:  stringPtr("kafka_message"),
@@ -35,7 +35,7 @@ func createTestWorkflow() *models.Workflow {
 			{
 				ID:       "transform-order",
 				Name:     "Transform Order Data",
-				NodeType: "transform",
+				Type:     "transform",
 				Category: models.CategoryTypeAction,
 				Config: map[string]any{
 					"expression": `{
@@ -50,7 +50,7 @@ func createTestWorkflow() *models.Workflow {
 			{
 				ID:       "validate-order",
 				Name:     "Validate Order",
-				NodeType: "httprequest",
+				Type:     "httprequest",
 				Category: models.CategoryTypeAction,
 				Config: map[string]any{
 					"url":    "https://api.example.com/validate",
@@ -69,7 +69,7 @@ func createTestWorkflow() *models.Workflow {
 			{
 				ID:       "log-result",
 				Name:     "Log Processing Result",
-				NodeType: "log",
+				Type:     "log",
 				Category: models.CategoryTypeAction,
 				Config: map[string]any{
 					"message": "Order {{.step_results.transform_order.orderId}} processed with status: {{.step_results.validate_order.status}}",
@@ -290,7 +290,7 @@ func TestNodeBasedWorkflowExecution_MultipleWorkflows(t *testing.T) {
 			{
 				ID:         "trigger-1",
 				Name:       "Webhook Trigger 1",
-				NodeType:   "trigger:webhook",
+				Type:       "trigger:webhook",
 				Category:   models.CategoryTypeTrigger,
 				SourceID:   stringPtr("webhook-source"),
 				EventType:  stringPtr("webhook_received"),
@@ -309,7 +309,7 @@ func TestNodeBasedWorkflowExecution_MultipleWorkflows(t *testing.T) {
 			{
 				ID:         "trigger-2",
 				Name:       "Webhook Trigger 2",
-				NodeType:   "trigger:webhook",
+				Type:       "trigger:webhook",
 				Category:   models.CategoryTypeTrigger,
 				SourceID:   stringPtr("webhook-source"),
 				EventType:  stringPtr("webhook_received"),
@@ -370,7 +370,7 @@ func TestNodeBasedWorkflowExecution_DynamicNodeOperations(t *testing.T) {
 	newNode := &models.WorkflowNode{
 		ID:       "dynamic-node-1",
 		Name:     "Dynamic Node",
-		NodeType: "log",
+		Type:     "log",
 		Category: models.CategoryTypeAction,
 		Config: map[string]any{
 			"message": "Dynamic node test",

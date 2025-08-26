@@ -44,7 +44,7 @@ func createCompleteTestWorkflow(t *testing.T) *models.Workflow {
 		Nodes: []*models.WorkflowNode{
 			{
 				ID:         "webhook_trigger",
-				NodeType:   "trigger:webhook",
+				Type:       "trigger:webhook",
 				Category:   models.CategoryTypeTrigger,
 				Name:       "Webhook Trigger",
 				Config:     map[string]any{"path": "/api/webhook", "method": "POST"},
@@ -57,7 +57,7 @@ func createCompleteTestWorkflow(t *testing.T) *models.Workflow {
 			},
 			{
 				ID:        "validate_data",
-				NodeType:  "transform",
+				Type:      "transform",
 				Category:  models.CategoryTypeAction,
 				Name:      "Validate Data",
 				Config:    map[string]any{"expression": "$.payload", "validation": "required"},
@@ -67,7 +67,7 @@ func createCompleteTestWorkflow(t *testing.T) *models.Workflow {
 			},
 			{
 				ID:        "api_call",
-				NodeType:  "httprequest",
+				Type:      "httprequest",
 				Category:  models.CategoryTypeAction,
 				Name:      "API Call",
 				Config:    map[string]any{"url": "https://api.example.com/process", "method": "POST"},
@@ -77,7 +77,7 @@ func createCompleteTestWorkflow(t *testing.T) *models.Workflow {
 			},
 			{
 				ID:        "log_result",
-				NodeType:  "log",
+				Type:      "log",
 				Category:  models.CategoryTypeAction,
 				Name:      "Log Result",
 				Config:    map[string]any{"message": "Processing complete: {{.result}}", "level": "info"},
@@ -87,7 +87,7 @@ func createCompleteTestWorkflow(t *testing.T) *models.Workflow {
 			},
 			{
 				ID:        "error_handler",
-				NodeType:  "log",
+				Type:      "log",
 				Category:  models.CategoryTypeAction,
 				Name:      "Error Handler",
 				Config:    map[string]any{"message": "Error: {{.error}}", "level": "error"},
@@ -169,7 +169,7 @@ func testWorkflowOperations(t *testing.T, p *postgresql.Persistence, ctx context
 	require.NoError(t, err)
 	require.NotNil(t, triggerNode)
 	assert.Equal(t, models.CategoryTypeTrigger, triggerNode.Category)
-	assert.Equal(t, "trigger:webhook", triggerNode.NodeType)
+	assert.Equal(t, "trigger:webhook", triggerNode.Type)
 
 	// Step 4: Use ConnectionRepository to verify connections
 	connRepo := p.ConnectionRepository()
@@ -339,7 +339,7 @@ func testWorkflowModifications(t *testing.T, p *postgresql.Persistence, ctx cont
 	// Add a new node
 	newNode := &models.WorkflowNode{
 		ID:        "notification",
-		NodeType:  "log",
+		Type:      "log",
 		Category:  models.CategoryTypeAction,
 		Name:      "Send Notification",
 		Config:    map[string]any{"message": "Workflow completed for user {{.user_id}}", "level": "info"},
@@ -407,7 +407,7 @@ func TestRepositoryIntegration_MultipleWorkflowsExecution(t *testing.T) {
 			Nodes: []*models.WorkflowNode{
 				{
 					ID:         fmt.Sprintf("trigger_%d", i+1),
-					NodeType:   "trigger:scheduler",
+					Type:       "trigger:scheduler",
 					Category:   models.CategoryTypeTrigger,
 					Name:       fmt.Sprintf("Schedule Trigger %d", i+1),
 					Config:     map[string]any{"cron": fmt.Sprintf("0 %d * * *", i)},
@@ -418,7 +418,7 @@ func TestRepositoryIntegration_MultipleWorkflowsExecution(t *testing.T) {
 				},
 				{
 					ID:       fmt.Sprintf("action_%d", i+1),
-					NodeType: "log",
+					Type:     "log",
 					Category: models.CategoryTypeAction,
 					Name:     fmt.Sprintf("Log Action %d", i+1),
 					Config:   map[string]any{"message": fmt.Sprintf("Workflow %d executed", i+1)},

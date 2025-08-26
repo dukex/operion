@@ -111,7 +111,7 @@ func TestConnection_JSONSerialization(t *testing.T) {
 func TestWorkflowNode_Validation_ValidNode(t *testing.T) {
 	node := &WorkflowNode{
 		ID:        "node-123",
-		NodeType:  "httprequest",
+		Type:      "httprequest",
 		Category:  CategoryTypeAction,
 		Name:      "API Call",
 		Config:    map[string]any{"url": "https://api.example.com", "method": "GET"},
@@ -135,7 +135,7 @@ func TestWorkflowNode_Validation_MissingFields(t *testing.T) {
 			name: "missing id",
 			node: &WorkflowNode{
 				ID:       "",
-				NodeType: "httprequest",
+				Type:     "httprequest",
 				Category: CategoryTypeAction,
 				Name:     "API Call",
 			},
@@ -145,17 +145,17 @@ func TestWorkflowNode_Validation_MissingFields(t *testing.T) {
 			name: "missing type",
 			node: &WorkflowNode{
 				ID:       "node-123",
-				NodeType: "",
+				Type:     "",
 				Category: CategoryTypeAction,
 				Name:     "API Call",
 			},
-			fieldName: "NodeType",
+			fieldName: "Type",
 		},
 		{
 			name: "missing name",
 			node: &WorkflowNode{
 				ID:       "node-123",
-				NodeType: "httprequest",
+				Type:     "httprequest",
 				Category: CategoryTypeAction,
 				Name:     "",
 			},
@@ -195,7 +195,7 @@ func TestWorkflowNode_Validation_MissingFields(t *testing.T) {
 func TestWorkflowNode_JSONSerialization(t *testing.T) {
 	original := &WorkflowNode{
 		ID:       "node-123",
-		NodeType: "httprequest",
+		Type:     "httprequest",
 		Category: CategoryTypeAction,
 		Name:     "Fetch User Data",
 		Config: map[string]any{
@@ -213,7 +213,7 @@ func TestWorkflowNode_JSONSerialization(t *testing.T) {
 	jsonData, err := json.Marshal(original)
 	require.NoError(t, err)
 	assert.Contains(t, string(jsonData), `"id":"node-123"`)
-	assert.Contains(t, string(jsonData), `"node_type":"httprequest"`)
+	assert.Contains(t, string(jsonData), `"type":"httprequest"`)
 	assert.Contains(t, string(jsonData), `"name":"Fetch User Data"`)
 
 	// Deserialize from JSON
@@ -224,7 +224,7 @@ func TestWorkflowNode_JSONSerialization(t *testing.T) {
 
 	// Verify all fields match
 	assert.Equal(t, original.ID, deserialized.ID)
-	assert.Equal(t, original.NodeType, deserialized.NodeType)
+	assert.Equal(t, original.Type, deserialized.Type)
 	assert.Equal(t, original.Category, deserialized.Category)
 	assert.Equal(t, original.Name, deserialized.Name)
 	assert.Equal(t, original.PositionX, deserialized.PositionX)

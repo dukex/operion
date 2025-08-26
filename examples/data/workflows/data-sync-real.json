@@ -9,7 +9,7 @@
     {
       "id": "sync-schedule",
       "name": "Sync Schedule Trigger",
-      "node_type": "trigger:scheduler",
+      "type": "trigger:scheduler",
       "category": "trigger",
       "config": {
         "cron": "0 2 * * 0",
@@ -40,7 +40,7 @@
       "position_x": 100,
       "position_y": 100,
       "enabled": true,
-      "node_type": "httprequest",
+      "type": "httprequest",
       "category": "action"
     },
     {
@@ -58,7 +58,7 @@
       "position_x": 100,
       "position_y": 250,
       "enabled": true,
-      "node_type": "httprequest",
+      "type": "httprequest",
       "category": "action"
     },
     {
@@ -70,7 +70,7 @@
       "position_x": 100,
       "position_y": 400,
       "enabled": true,
-      "node_type": "transform",
+      "type": "transform",
       "category": "action"
     },
     {
@@ -82,7 +82,7 @@
       "position_x": 300,
       "position_y": 400,
       "enabled": true,
-      "node_type": "transform",
+      "type": "transform",
       "category": "action"
     },
     {
@@ -94,7 +94,7 @@
       "position_x": 500,
       "position_y": 400,
       "enabled": true,
-      "node_type": "transform",
+      "type": "transform",
       "category": "action"
     },
     {
@@ -106,7 +106,7 @@
       "position_x": 700,
       "position_y": 400,
       "enabled": true,
-      "node_type": "transform",
+      "type": "transform",
       "category": "action"
     },
     {
@@ -118,7 +118,7 @@
       "position_x": 900,
       "position_y": 400,
       "enabled": true,
-      "node_type": "log",
+      "type": "log",
       "category": "action"
     },
     {
@@ -136,7 +136,7 @@
       "position_x": 1100,
       "position_y": 400,
       "enabled": true,
-      "node_type": "httprequest",
+      "type": "httprequest",
       "category": "action"
     },
     {
@@ -148,7 +148,7 @@
       "position_x": 1300,
       "position_y": 350,
       "enabled": true,
-      "node_type": "log",
+      "type": "log",
       "category": "action"
     },
     {
@@ -160,7 +160,7 @@
       "position_x": 300,
       "position_y": 100,
       "enabled": true,
-      "node_type": "log",
+      "type": "log",
       "category": "action"
     },
     {
@@ -172,7 +172,7 @@
       "position_x": 300,
       "position_y": 250,
       "enabled": true,
-      "node_type": "log",
+      "type": "log",
       "category": "action"
     },
     {
@@ -184,7 +184,7 @@
       "position_x": 1300,
       "position_y": 450,
       "enabled": true,
-      "node_type": "log",
+      "type": "log",
       "category": "action"
     }
   ],

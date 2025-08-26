@@ -30,7 +30,7 @@ func TestRepository_Create(t *testing.T) {
 			{
 				ID:       "step-1",
 				Name:     "Test Step",
-				NodeType: "log",
+				Type:     "log",
 				Category: models.CategoryTypeAction,
 				Config: map[string]any{
 					"message": "test",

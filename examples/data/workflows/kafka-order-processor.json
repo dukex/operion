@@ -6,7 +6,7 @@
     {
       "id": "orders-kafka-trigger",
       "name": "Orders Kafka Trigger",
-      "node_type": "trigger:kafka",
+      "type": "trigger:kafka",
       "category": "trigger",
       "config": {
         "brokers": ["localhost:29092"],
@@ -23,7 +23,7 @@
     {
       "id": "log-incoming-order",
       "name": "Log Incoming Order",
-      "node_type": "log",
+      "type": "log",
       "category": "action",
       "config": {
         "level": "info",
@@ -36,7 +36,7 @@
     {
       "id": "validate-order-data",
       "name": "Validate Order Data",
-      "node_type": "transform",
+      "type": "transform",
       "category": "action",
       "config": {
         "expression": "{ \"order_id\": \"{{.trigger_data.message.order_id}}\", \"customer_id\": \"{{.trigger_data.message.customer_id}}\", \"total_amount\": {{.trigger_data.message.total_amount}}, \"status\": \"{{.trigger_data.message.status}}\", \"timestamp\": \"{{.trigger_data.timestamp}}\", \"is_valid\": {{ and (ne .trigger_data.message.order_id \"\") (ne .trigger_data.message.customer_id \"\") (gt .trigger_data.message.total_amount 0.0) }} }"
@@ -48,7 +48,7 @@
     {
       "id": "process-valid-order",
       "name": "Process Valid Order",
-      "node_type": "httprequest",
+      "type": "httprequest",
       "category": "action",
       "config": {
         "url": "{{ $order := index .node_results \"validate-order-data\" }}{{.variables.order_api_base}}/{{ $order.order_id }}/process",
@@ -67,7 +67,7 @@
     {
       "id": "send-order-notification",
       "name": "Send Order Notification",
-      "node_type": "httprequest",
+      "type": "httprequest",
       "category": "action",
       "config": {
         "url": "{{.variables.notification_webhook}}",
@@ -85,7 +85,7 @@
     {
       "id": "log-invalid-order",
       "name": "Log Invalid Order",
-      "node_type": "log",
+      "type": "log",
       "category": "action",
       "config": {
         "level": "error",
@@ -98,7 +98,7 @@
     {
       "id": "log-completion",
       "name": "Log Processing Completion",
-      "node_type": "log",
+      "type": "log",
       "category": "action",
       "config": {
         "level": "info",

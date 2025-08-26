@@ -9,7 +9,7 @@
     {
       "id": "crypto-schedule",
       "name": "Crypto Price Schedule Trigger",
-      "node_type": "trigger:scheduler",
+      "type": "trigger:scheduler",
       "category": "trigger",
       "config": {
         "cron": "*/5 * * * *",
@@ -40,7 +40,7 @@
       "position_x": 100,
       "position_y": 100,
       "enabled": true,
-      "node_type": "httprequest",
+      "type": "httprequest",
       "category": "action"
     },
     {
@@ -52,7 +52,7 @@
       "position_x": 300,
       "position_y": 50,
       "enabled": true,
-      "node_type": "transform",
+      "type": "transform",
       "category": "action"
     },
     {
@@ -64,7 +64,7 @@
       "position_x": 300,
       "position_y": 150,
       "enabled": true,
-      "node_type": "transform",
+      "type": "transform",
       "category": "action"
     },
     {
@@ -76,7 +76,7 @@
       "position_x": 500,
       "position_y": 100,
       "enabled": true,
-      "node_type": "transform",
+      "type": "transform",
       "category": "action"
     },
     {
@@ -89,7 +89,7 @@
       "position_x": 700,
       "position_y": 50,
       "enabled": true,
-      "node_type": "log",
+      "type": "log",
       "category": "action"
     },
     {
@@ -111,7 +111,7 @@
       "position_x": 700,
       "position_y": 150,
       "enabled": true,
-      "node_type": "httprequest",
+      "type": "httprequest",
       "category": "action"
     },
     {
@@ -124,7 +124,7 @@
       "position_x": 900,
       "position_y": 100,
       "enabled": true,
-      "node_type": "log",
+      "type": "log",
       "category": "action"
     },
     {
@@ -137,7 +137,7 @@
       "position_x": 300,
       "position_y": 250,
       "enabled": true,
-      "node_type": "log",
+      "type": "log",
       "category": "action"
     },
     {
@@ -150,7 +150,7 @@
       "position_x": 700,
       "position_y": 250,
       "enabled": true,
-      "node_type": "log",
+      "type": "log",
       "category": "action"
     }
   ],

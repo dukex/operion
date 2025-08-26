@@ -472,7 +472,7 @@ func (r *WorkflowRepository) loadWorkflowNodes(ctx context.Context, workflow *mo
 
 	// Load nodes with trigger fields
 	nodesQuery := `
-		SELECT id, node_type, category, name, config, enabled, position_x, position_y, source_id, provider_id, event_type
+		SELECT id, type, category, name, config, enabled, position_x, position_y, source_id, provider_id, event_type
 		FROM workflow_nodes
 		WHERE workflow_id = $1
 		ORDER BY created_at
@@ -500,7 +500,7 @@ func (r *WorkflowRepository) loadWorkflowNodes(ctx context.Context, workflow *mo
 
 		err := rows.Scan(
 			&node.ID,
-			&node.NodeType,
+			&node.Type,
 			&node.Category,
 			&node.Name,
 			&configJSON,
@@ -597,14 +597,14 @@ func (r *WorkflowRepository) saveWorkflowNodes(ctx context.Context, tx *sql.Tx, 
 		}
 
 		query := `
-			INSERT INTO workflow_nodes (id, workflow_id, node_type, category, name, config, enabled, position_x, position_y, source_id, provider_id, event_type)
+			INSERT INTO workflow_nodes (id, workflow_id, type, category, name, config, enabled, position_x, position_y, source_id, provider_id, event_type)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		`
 
 		_, err = tx.ExecContext(ctx, query,
 			node.ID,
 			workflow.ID,
-			node.NodeType,
+			node.Type,
 			node.Category,
 			node.Name,
 			configJSON,

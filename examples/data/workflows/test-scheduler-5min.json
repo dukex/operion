@@ -6,7 +6,7 @@
     {
       "id": "scheduler-trigger-5min",
       "name": "5 Minute Schedule Trigger",
-      "node_type": "trigger:scheduler",
+      "type": "trigger:scheduler",
       "category": "trigger",
       "config": {
         "cron_expression": "*/5 * * * *",
@@ -22,7 +22,7 @@
     {
       "id": "log-5min-trigger",
       "name": "Log 5-Minute Trigger",
-      "node_type": "log",
+      "type": "log",
       "category": "action",
       "config": {
         "message": "5-minute scheduler triggered at {{.trigger_data.published_at}} with cron: {{.trigger_data.cron_expression}}"
@@ -34,7 +34,7 @@
     {
       "id": "process-5min-data",
       "name": "Process 5-Minute Schedule Data",
-      "node_type": "transform",
+      "type": "transform",
       "category": "action",
       "config": {
         "expression": "{\n  \"execution_time\": \"{{now}}\",\n  \"cron_expression\": \"{{.trigger_data.cron_expression}}\",\n  \"interval\": \"5-minutes\",\n  \"due_time\": \"{{.trigger_data.due_at}}\",\n  \"published_time\": \"{{.trigger_data.published_at}}\",\n  \"execution_count\": 1,\n  \"status\": \"success\"\n}"
@@ -46,7 +46,7 @@
     {
       "id": "log-5min-processed",
       "name": "Log 5-Minute Processed Data",
-      "node_type": "log",
+      "type": "log",
       "category": "action",
       "config": {
         "message": "{{ $data := index .node_results \"process-5min-data\" }}5-minute schedule execution #{{ $data.execution_count }} completed. Next execution in ~5 minutes."

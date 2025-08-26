@@ -59,7 +59,7 @@ func createWebhookTriggerNode(id, sourceID string, config map[string]any) *model
 
 	return &models.WorkflowNode{
 		ID:         id,
-		NodeType:   "trigger:webhook",
+		Type:       "trigger:webhook",
 		Category:   models.CategoryTypeTrigger,
 		Name:       "Webhook Trigger " + id,
 		Config:     config,
@@ -180,7 +180,7 @@ func TestWebhookProvider_Configure(t *testing.T) {
 				createTestWorkflow("workflow-1", []*models.WorkflowNode{
 					{
 						ID:         "trigger-1",
-						NodeType:   "trigger:scheduler",
+						Type:       "trigger:scheduler",
 						Category:   models.CategoryTypeTrigger,
 						Name:       "Non-webhook Trigger",
 						Config:     map[string]any{},

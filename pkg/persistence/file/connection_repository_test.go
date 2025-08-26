@@ -20,9 +20,9 @@ func TestConnectionRepository_GetConnectionsFromPublishedWorkflow(t *testing.T) 
 		ID:   "test-workflow-connections",
 		Name: "Test Workflow with Connections",
 		Nodes: []*models.WorkflowNode{
-			{ID: "node1", Name: "Node 1", NodeType: "log", Category: models.CategoryTypeAction},
-			{ID: "node2", Name: "Node 2", NodeType: "transform", Category: models.CategoryTypeAction},
-			{ID: "node3", Name: "Node 3", NodeType: "httprequest", Category: models.CategoryTypeAction},
+			{ID: "node1", Name: "Node 1", Type: "log", Category: models.CategoryTypeAction},
+			{ID: "node2", Name: "Node 2", Type: "transform", Category: models.CategoryTypeAction},
+			{ID: "node3", Name: "Node 3", Type: "httprequest", Category: models.CategoryTypeAction},
 		},
 		Connections: []*models.Connection{
 			{
@@ -75,9 +75,9 @@ func TestConnectionRepository_GetConnectionsByTargetNode(t *testing.T) {
 		ID:   "test-workflow-target-connections",
 		Name: "Test Workflow Target Connections",
 		Nodes: []*models.WorkflowNode{
-			{ID: "source1", Name: "Source 1", NodeType: "log"},
-			{ID: "source2", Name: "Source 2", NodeType: "transform"},
-			{ID: "target1", Name: "Target 1", NodeType: "httprequest"},
+			{ID: "source1", Name: "Source 1", Type: "log"},
+			{ID: "source2", Name: "Source 2", Type: "transform"},
+			{ID: "target1", Name: "Target 1", Type: "httprequest"},
 		},
 		Connections: []*models.Connection{
 			{
@@ -130,8 +130,8 @@ func TestConnectionRepository_GetAllConnectionsFromPublishedWorkflow(t *testing.
 		ID:   "test-workflow-all-connections",
 		Name: "Test Workflow All Connections",
 		Nodes: []*models.WorkflowNode{
-			{ID: "nodeA", Name: "Node A", NodeType: "log"},
-			{ID: "nodeB", Name: "Node B", NodeType: "transform"},
+			{ID: "nodeA", Name: "Node A", Type: "log"},
+			{ID: "nodeB", Name: "Node B", Type: "transform"},
 		},
 		Connections: []*models.Connection{
 			{
@@ -179,8 +179,8 @@ func TestConnectionRepository_SaveConnection_NewConnection(t *testing.T) {
 		ID:   "test-workflow-save-connection",
 		Name: "Test Workflow Save Connection",
 		Nodes: []*models.WorkflowNode{
-			{ID: "nodeX", Name: "Node X", NodeType: "log"},
-			{ID: "nodeY", Name: "Node Y", NodeType: "transform"},
+			{ID: "nodeX", Name: "Node X", Type: "log"},
+			{ID: "nodeY", Name: "Node Y", Type: "transform"},
 		},
 		Connections: []*models.Connection{},
 		Status:      models.WorkflowStatusPublished,

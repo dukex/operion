@@ -102,7 +102,7 @@ func TestAPI_GetWorkflows_WithData(t *testing.T) {
 			{
 				ID:       "node1",
 				Name:     "Log Node",
-				NodeType: "log",
+				Type:     "log",
 				Category: models.CategoryTypeAction,
 				Config: map[string]any{
 					"message": "Test message",
@@ -124,7 +124,7 @@ func TestAPI_GetWorkflows_WithData(t *testing.T) {
 			{
 				ID:       "node1",
 				Name:     "Transform Node",
-				NodeType: "transform",
+				Type:     "transform",
 				Category: models.CategoryTypeAction,
 				Config: map[string]any{
 					"expression": "{ \"result\": \"transformed\" }",
@@ -180,7 +180,7 @@ func TestAPI_GetWorkflow_Success(t *testing.T) {
 			{
 				ID:       "node1",
 				Name:     "HTTP Request Node",
-				NodeType: "http_request",
+				Type:     "http_request",
 				Category: models.CategoryTypeAction,
 				Config: map[string]any{
 					"protocol": "https",
@@ -222,7 +222,7 @@ func TestAPI_GetWorkflow_Success(t *testing.T) {
 	assert.Equal(t, "Specific Test Workflow", returnedWorkflow.Name)
 	assert.Equal(t, models.WorkflowStatus("active"), returnedWorkflow.Status)
 	assert.Len(t, returnedWorkflow.Nodes, 1)
-	assert.Equal(t, "http_request", returnedWorkflow.Nodes[0].NodeType)
+	assert.Equal(t, "http_request", returnedWorkflow.Nodes[0].Type)
 	assert.Equal(t, "test-key", returnedWorkflow.Variables["api_key"])
 }
 
@@ -306,7 +306,7 @@ func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
 			{
 				ID:       "trigger1",
 				Name:     "Integration Test Trigger",
-				NodeType: "trigger:scheduler",
+				Type:     "trigger:scheduler",
 				Category: models.CategoryTypeTrigger,
 				Config: map[string]any{
 					"schedule": "0 0 * * *",
@@ -319,7 +319,7 @@ func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
 			{
 				ID:       "node1",
 				Name:     "Log Initial Message",
-				NodeType: "log",
+				Type:     "log",
 				Category: models.CategoryTypeAction,
 				Config: map[string]any{
 					"message": "Starting integration test workflow",
@@ -329,7 +329,7 @@ func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
 			{
 				ID:       "node2",
 				Name:     "HTTP API Call",
-				NodeType: "http_request",
+				Type:     "http_request",
 				Category: models.CategoryTypeAction,
 				Config: map[string]any{
 					"protocol": "https",
@@ -343,7 +343,7 @@ func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
 			{
 				ID:       "node3",
 				Name:     "Transform Response",
-				NodeType: "transform",
+				Type:     "transform",
 				Category: models.CategoryTypeAction,
 				Config: map[string]any{
 					"expression": "{ \"processed\": true, \"original\": \"{{.node_results.api_call.body}}\" }",
@@ -353,7 +353,7 @@ func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
 			{
 				ID:       "node4",
 				Name:     "Log Error",
-				NodeType: "log",
+				Type:     "log",
 				Category: models.CategoryTypeAction,
 				Config: map[string]any{
 					"message": "API call failed",
@@ -363,7 +363,7 @@ func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
 			{
 				ID:       "node5",
 				Name:     "Final Log",
-				NodeType: "log",
+				Type:     "log",
 				Category: models.CategoryTypeAction,
 				Config: map[string]any{
 					"message": "Integration test completed successfully",
@@ -452,7 +452,7 @@ func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
 
 	// Verify trigger node (first node)
 	triggerNode := fetchedWorkflow.Nodes[0]
-	assert.Equal(t, "trigger:scheduler", triggerNode.NodeType)
+	assert.Equal(t, "trigger:scheduler", triggerNode.Type)
 	assert.Equal(t, models.CategoryTypeTrigger, triggerNode.Category)
 	assert.Equal(t, "scheduler", *triggerNode.ProviderID)
 	assert.Equal(t, "schedule_due", *triggerNode.EventType)
@@ -460,12 +460,12 @@ func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
 
 	// Verify action nodes
 	logNode := fetchedWorkflow.Nodes[1]
-	assert.Equal(t, "log", logNode.NodeType)
+	assert.Equal(t, "log", logNode.Type)
 	assert.Equal(t, models.CategoryTypeAction, logNode.Category)
 	assert.Equal(t, "Starting integration test workflow", logNode.Config["message"])
 
 	httpNode := fetchedWorkflow.Nodes[2]
-	assert.Equal(t, "http_request", httpNode.NodeType)
+	assert.Equal(t, "http_request", httpNode.Type)
 	assert.Equal(t, models.CategoryTypeAction, httpNode.Category)
 	assert.Equal(t, "https", httpNode.Config["protocol"])
 	assert.Equal(t, "httpbin.org", httpNode.Config["host"])

@@ -6,7 +6,7 @@
     {
       "id": "webhook-trigger-1",
       "name": "Webhook Source Trigger",
-      "node_type": "trigger:webhook",
+      "type": "trigger:webhook",
       "category": "trigger",
       "config": {
         "json_schema": {
@@ -39,7 +39,7 @@
       "position_x": 100,
       "position_y": 100,
       "enabled": true,
-      "node_type": "log",
+      "type": "log",
       "category": "action"
     }
   ],

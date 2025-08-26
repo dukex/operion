@@ -21,7 +21,7 @@ func createTestWorkflowWithConnections(t *testing.T) *models.Workflow {
 		Nodes: []*models.WorkflowNode{
 			{
 				ID:         "trigger1",
-				NodeType:   "trigger:webhook",
+				Type:       "trigger:webhook",
 				Category:   models.CategoryTypeTrigger,
 				Name:       "Webhook Trigger",
 				Config:     map[string]any{"path": "/webhook"},
@@ -32,7 +32,7 @@ func createTestWorkflowWithConnections(t *testing.T) *models.Workflow {
 			},
 			{
 				ID:       "transform1",
-				NodeType: "transform",
+				Type:     "transform",
 				Category: models.CategoryTypeAction,
 				Name:     "Transform Data",
 				Config:   map[string]any{"expression": "$.data"},
@@ -40,7 +40,7 @@ func createTestWorkflowWithConnections(t *testing.T) *models.Workflow {
 			},
 			{
 				ID:       "log1",
-				NodeType: "log",
+				Type:     "log",
 				Category: models.CategoryTypeAction,
 				Name:     "Log Result",
 				Config:   map[string]any{"message": "Result: {{.result}}"},
@@ -48,7 +48,7 @@ func createTestWorkflowWithConnections(t *testing.T) *models.Workflow {
 			},
 			{
 				ID:       "error_handler",
-				NodeType: "log",
+				Type:     "log",
 				Category: models.CategoryTypeAction,
 				Name:     "Error Handler",
 				Config:   map[string]any{"message": "Error: {{.error}}", "level": "error"},
