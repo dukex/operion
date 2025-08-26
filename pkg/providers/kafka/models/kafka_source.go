@@ -112,28 +112,17 @@ func extractConnectionDetails(config map[string]any) (ConnectionDetails, error) 
 	}
 
 	// Extract brokers - accept both []string and []any formats
-	if brokersVal, exists := config["brokers"]; exists {
-		if brokersList, ok := brokersVal.([]string); ok && len(brokersList) > 0 {
-			// Direct []string format
-			details.Brokers = brokersList
-		} else if brokersList, ok := brokersVal.([]any); ok && len(brokersList) > 0 {
-			// Array format from JSON unmarshaling - convert to []string
-			var brokerStrings []string
-			for i, broker := range brokersList {
-				if brokerStr, ok := broker.(string); ok && brokerStr != "" {
-					brokerStrings = append(brokerStrings, brokerStr)
-				} else {
-					return details, fmt.Errorf("broker at index %d must be a non-empty string", i)
-				}
-			}
-
-			details.Brokers = brokerStrings
-		} else {
-			return details, errors.New("brokers must be a non-empty array of strings")
-		}
-	} else {
+	brokersVal, exists := config["brokers"]
+	if !exists {
 		return details, errors.New("brokers is required in connection details")
 	}
+
+	brokers, err := parseBrokers(brokersVal)
+	if err != nil {
+		return details, err
+	}
+
+	details.Brokers = brokers
 
 	// Extract optional consumer group
 	if consumerGroupVal, exists := config["consumer_group"]; exists {
@@ -161,6 +150,31 @@ func extractJSONSchema(config map[string]any) map[string]any {
 	}
 
 	return nil
+}
+
+// parseBrokers parses and validates broker configuration from various input formats.
+func parseBrokers(brokersVal any) ([]string, error) {
+	if brokersList, ok := brokersVal.([]string); ok && len(brokersList) > 0 {
+		// Direct []string format
+		return brokersList, nil
+	}
+
+	if brokersList, ok := brokersVal.([]any); ok && len(brokersList) > 0 {
+		// Array format from JSON unmarshaling - convert to []string
+		var brokerStrings []string
+		for i, broker := range brokersList {
+			brokerStr, ok := broker.(string)
+			if !ok || brokerStr == "" {
+				return nil, fmt.Errorf("broker at index %d must be a non-empty string", i)
+			}
+
+			brokerStrings = append(brokerStrings, brokerStr)
+		}
+
+		return brokerStrings, nil
+	}
+
+	return nil, errors.New("brokers must be a non-empty array of strings")
 }
 
 // generateConnectionDetailsID generates a deterministic ID based on connection details and schema.
