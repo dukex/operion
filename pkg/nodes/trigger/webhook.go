@@ -140,8 +140,8 @@ func (n *WebhookTriggerNode) GetInputPorts() []models.InputPort {
 	}
 }
 
-// GetInputRequirements returns the input requirements for the webhook trigger node.
-func (n *WebhookTriggerNode) GetInputRequirements() models.InputRequirements {
+// InputRequirements returns the input requirements for the webhook trigger node.
+func (n *WebhookTriggerNode) InputRequirements() models.InputRequirements {
 	return models.InputRequirements{
 		RequiredPorts: []string{WebhookInputPortExternal}, // ["external"]
 		OptionalPorts: []string{},

@@ -237,7 +237,7 @@ func TestTransformNode_GetOutputPorts(t *testing.T) {
 	}
 }
 
-func TestTransformNode_GetInputRequirements(t *testing.T) {
+func TestTransformNode_InputRequirements(t *testing.T) {
 	// Create transform node
 	config := map[string]any{
 		"expression": "{{.variables.test}}",
@@ -248,8 +248,8 @@ func TestTransformNode_GetInputRequirements(t *testing.T) {
 		t.Fatalf("Failed to create node: %v", err)
 	}
 
-	// Test GetInputRequirements
-	requirements := node.GetInputRequirements()
+	// Test InputRequirements
+	requirements := node.InputRequirements()
 
 	// Verify required ports
 	expectedRequiredPorts := []string{"main"}

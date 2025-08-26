@@ -222,7 +222,7 @@ func TestConditionalNode_Schema(t *testing.T) {
 	}
 }
 
-func TestConditionalNode_GetInputRequirements(t *testing.T) {
+func TestConditionalNode_InputRequirements(t *testing.T) {
 	// Create conditional node
 	config := map[string]any{
 		"condition": "{{.variables.status}} == \"active\"",
@@ -233,8 +233,8 @@ func TestConditionalNode_GetInputRequirements(t *testing.T) {
 		t.Fatalf("Failed to create node: %v", err)
 	}
 
-	// Test GetInputRequirements
-	requirements := node.GetInputRequirements()
+	// Test InputRequirements
+	requirements := node.InputRequirements()
 
 	// Verify required ports
 	expectedRequiredPorts := []string{"main"}

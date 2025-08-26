@@ -375,7 +375,7 @@ func (w *WorkerManager) getNodeInputRequirements(ctx context.Context, node *mode
 
 	// Get requirements from the node itself
 	if reqNode, ok := nodeImpl.(models.NodeInputRequirements); ok {
-		return reqNode.GetInputRequirements()
+		return reqNode.InputRequirements()
 	}
 
 	return models.DefaultInputRequirements()

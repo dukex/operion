@@ -205,8 +205,8 @@ func (n *SwitchNode) GetOutputPorts() []models.OutputPort {
 	return ports
 }
 
-// GetInputRequirements returns the input coordination requirements for the switch node.
-func (n *SwitchNode) GetInputRequirements() models.InputRequirements {
+// InputRequirements returns the input coordination requirements for the switch node.
+func (n *SwitchNode) InputRequirements() models.InputRequirements {
 	return models.InputRequirements{
 		RequiredPorts: []string{InputPortMain},
 		OptionalPorts: []string{},

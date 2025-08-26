@@ -357,7 +357,7 @@ func TestNodeFactory_Schema(t *testing.T) {
 	}
 }
 
-func TestHTTPRequestNode_GetInputRequirements(t *testing.T) {
+func TestHTTPRequestNode_InputRequirements(t *testing.T) {
 	// Create HTTP request node
 	config := map[string]any{
 		"url":    "https://api.example.com/test",
@@ -369,8 +369,8 @@ func TestHTTPRequestNode_GetInputRequirements(t *testing.T) {
 		t.Fatalf("Failed to create node: %v", err)
 	}
 
-	// Test GetInputRequirements
-	requirements := node.GetInputRequirements()
+	// Test InputRequirements
+	requirements := node.InputRequirements()
 
 	// Verify required ports
 	expectedRequiredPorts := []string{"main"}

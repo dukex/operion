@@ -180,8 +180,8 @@ func (n *LogNode) GetOutputPorts() []models.OutputPort {
 	}
 }
 
-// GetInputRequirements returns the input coordination requirements for the log node.
-func (n *LogNode) GetInputRequirements() models.InputRequirements {
+// InputRequirements returns the input coordination requirements for the log node.
+func (n *LogNode) InputRequirements() models.InputRequirements {
 	return models.InputRequirements{
 		RequiredPorts: []string{InputPortMain},
 		OptionalPorts: []string{},

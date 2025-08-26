@@ -127,8 +127,8 @@ func (n *SchedulerTriggerNode) GetInputPorts() []models.InputPort {
 	}
 }
 
-// GetInputRequirements returns the input requirements for the scheduler trigger node.
-func (n *SchedulerTriggerNode) GetInputRequirements() models.InputRequirements {
+// InputRequirements returns the input requirements for the scheduler trigger node.
+func (n *SchedulerTriggerNode) InputRequirements() models.InputRequirements {
 	return models.InputRequirements{
 		RequiredPorts: []string{SchedulerInputPortExternal}, // ["external"]
 		OptionalPorts: []string{},

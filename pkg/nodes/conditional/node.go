@@ -192,8 +192,8 @@ func (n *ConditionalNode) GetOutputPorts() []models.OutputPort {
 	}
 }
 
-// GetInputRequirements returns the input coordination requirements for the conditional node.
-func (n *ConditionalNode) GetInputRequirements() models.InputRequirements {
+// InputRequirements returns the input coordination requirements for the conditional node.
+func (n *ConditionalNode) InputRequirements() models.InputRequirements {
 	return models.InputRequirements{
 		RequiredPorts: []string{InputPortMain},
 		OptionalPorts: []string{},

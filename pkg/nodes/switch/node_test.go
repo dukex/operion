@@ -365,7 +365,7 @@ func TestSwitchNode_GetOutputPorts(t *testing.T) {
 	}
 }
 
-func TestSwitchNode_GetInputRequirements(t *testing.T) {
+func TestSwitchNode_InputRequirements(t *testing.T) {
 	// Create switch node
 	config := map[string]any{
 		"value": "{{.variables.status}}",
@@ -376,8 +376,8 @@ func TestSwitchNode_GetInputRequirements(t *testing.T) {
 		t.Fatalf("Failed to create node: %v", err)
 	}
 
-	// Test GetInputRequirements
-	requirements := node.GetInputRequirements()
+	// Test InputRequirements
+	requirements := node.InputRequirements()
 
 	// Verify required ports
 	expectedRequiredPorts := []string{"main"}

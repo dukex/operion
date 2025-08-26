@@ -191,8 +191,8 @@ func (n *KafkaTriggerNode) GetOutputPorts() []models.OutputPort {
 	}
 }
 
-// GetInputRequirements returns the input requirements for the Kafka trigger node.
-func (n *KafkaTriggerNode) GetInputRequirements() models.InputRequirements {
+// InputRequirements returns the input requirements for the Kafka trigger node.
+func (n *KafkaTriggerNode) InputRequirements() models.InputRequirements {
 	return models.InputRequirements{
 		RequiredPorts: []string{KafkaInputPortExternal}, // ["external"]
 		OptionalPorts: []string{},

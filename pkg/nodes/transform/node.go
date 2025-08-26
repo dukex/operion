@@ -128,8 +128,8 @@ func (n *TransformNode) GetOutputPorts() []models.OutputPort {
 	}
 }
 
-// GetInputRequirements returns the input coordination requirements for the transform node.
-func (n *TransformNode) GetInputRequirements() models.InputRequirements {
+// InputRequirements returns the input coordination requirements for the transform node.
+func (n *TransformNode) InputRequirements() models.InputRequirements {
 	return models.InputRequirements{
 		RequiredPorts: []string{InputPortMain},
 		OptionalPorts: []string{},

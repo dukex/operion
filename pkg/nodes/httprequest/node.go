@@ -328,8 +328,8 @@ func (n *HTTPRequestNode) GetOutputPorts() []models.OutputPort {
 	}
 }
 
-// GetInputRequirements returns the input coordination requirements for the HTTP request node.
-func (n *HTTPRequestNode) GetInputRequirements() models.InputRequirements {
+// InputRequirements returns the input coordination requirements for the HTTP request node.
+func (n *HTTPRequestNode) InputRequirements() models.InputRequirements {
 	return models.InputRequirements{
 		RequiredPorts: []string{InputPortMain},
 		OptionalPorts: []string{},

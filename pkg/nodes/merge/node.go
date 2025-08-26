@@ -64,8 +64,8 @@ func (n *MergeNode) Type() string {
 	return "merge"
 }
 
-// GetInputRequirements returns the input coordination requirements for this merge node.
-func (n *MergeNode) GetInputRequirements() models.InputRequirements {
+// InputRequirements returns the input coordination requirements for this merge node.
+func (n *MergeNode) InputRequirements() models.InputRequirements {
 	waitMode := models.WaitModeAll
 
 	switch n.mergeMode {

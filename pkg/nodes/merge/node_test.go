@@ -48,7 +48,7 @@ func TestNewMergeNode_InvalidConfig(t *testing.T) {
 	assert.Contains(t, err.Error(), "must be a string")
 }
 
-func TestMergeNode_GetInputRequirements_All(t *testing.T) {
+func TestMergeNode_InputRequirements_All(t *testing.T) {
 	config := map[string]any{
 		"input_ports": []any{"left", "right", "center"},
 		"merge_mode":  "all",
@@ -57,14 +57,14 @@ func TestMergeNode_GetInputRequirements_All(t *testing.T) {
 	node, err := NewMergeNode("test-merge", config)
 	require.NoError(t, err)
 
-	requirements := node.GetInputRequirements()
+	requirements := node.InputRequirements()
 	assert.Equal(t, []string{"left", "right", "center"}, requirements.RequiredPorts)
 	assert.Equal(t, []string{}, requirements.OptionalPorts)
 	assert.Equal(t, models.WaitModeAll, requirements.WaitMode)
 	assert.Nil(t, requirements.Timeout)
 }
 
-func TestMergeNode_GetInputRequirements_Any(t *testing.T) {
+func TestMergeNode_InputRequirements_Any(t *testing.T) {
 	config := map[string]any{
 		"input_ports": []any{"left", "right"},
 		"merge_mode":  "any",
@@ -73,14 +73,14 @@ func TestMergeNode_GetInputRequirements_Any(t *testing.T) {
 	node, err := NewMergeNode("test-merge", config)
 	require.NoError(t, err)
 
-	requirements := node.GetInputRequirements()
+	requirements := node.InputRequirements()
 	assert.Equal(t, []string{"left", "right"}, requirements.RequiredPorts)
 	assert.Equal(t, []string{}, requirements.OptionalPorts)
 	assert.Equal(t, models.WaitModeAny, requirements.WaitMode)
 	assert.Nil(t, requirements.Timeout)
 }
 
-func TestMergeNode_GetInputRequirements_First(t *testing.T) {
+func TestMergeNode_InputRequirements_First(t *testing.T) {
 	config := map[string]any{
 		"input_ports": []any{"left", "right"},
 		"merge_mode":  "first",
@@ -89,7 +89,7 @@ func TestMergeNode_GetInputRequirements_First(t *testing.T) {
 	node, err := NewMergeNode("test-merge", config)
 	require.NoError(t, err)
 
-	requirements := node.GetInputRequirements()
+	requirements := node.InputRequirements()
 	assert.Equal(t, []string{"left", "right"}, requirements.RequiredPorts)
 	assert.Equal(t, []string{}, requirements.OptionalPorts)
 	assert.Equal(t, models.WaitModeFirst, requirements.WaitMode)
@@ -237,7 +237,7 @@ func TestMergeNode_GetInputPorts(t *testing.T) {
 		assert.Equal(t, expectedPortName, port.Name)
 		assert.Equal(t, node.ID(), port.NodeID)
 		assert.Equal(t, models.MakePortID(node.ID(), expectedPortName), port.ID)
-		// Required information is now available through GetInputRequirements()
+		// Required information is now available through InputRequirements()
 		assert.Contains(t, port.Description, expectedPortName)
 	}
 }
@@ -254,7 +254,7 @@ func TestMergeNode_GetInputPorts_AnyMode(t *testing.T) {
 	inputPorts := node.GetInputPorts()
 	assert.Equal(t, 2, len(inputPorts))
 
-	// Required information is now available through GetInputRequirements()
+	// Required information is now available through InputRequirements()
 	// Ports themselves no longer have the Required field
 }
 

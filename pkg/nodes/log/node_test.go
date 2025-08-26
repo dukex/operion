@@ -247,7 +247,7 @@ func TestLogNode_Schema(t *testing.T) {
 	}
 }
 
-func TestLogNode_GetInputRequirements(t *testing.T) {
+func TestLogNode_InputRequirements(t *testing.T) {
 	// Create log node
 	config := map[string]any{
 		"message": "test message",
@@ -259,8 +259,8 @@ func TestLogNode_GetInputRequirements(t *testing.T) {
 		t.Fatalf("Failed to create node: %v", err)
 	}
 
-	// Test GetInputRequirements
-	requirements := node.GetInputRequirements()
+	// Test InputRequirements
+	requirements := node.InputRequirements()
 
 	// Verify required ports
 	expectedRequiredPorts := []string{"main"}

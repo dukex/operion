@@ -6,7 +6,7 @@ import "time"
 // NodeInputRequirements interface allows nodes to declare their input coordination needs.
 // This is optional - nodes that don't implement this use protocol.GetDefaultInputRequirements().
 type NodeInputRequirements interface {
-	GetInputRequirements() InputRequirements
+	InputRequirements() InputRequirements
 }
 
 // InputRequirements defines how a node should wait for and coordinate inputs.
