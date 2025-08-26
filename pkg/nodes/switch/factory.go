@@ -4,7 +4,6 @@ package switchnode
 import (
 	"context"
 
-	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/protocol"
 )
 
@@ -12,7 +11,7 @@ import (
 type SwitchNodeFactory struct{}
 
 // Create creates a new SwitchNode instance.
-func (f *SwitchNodeFactory) Create(ctx context.Context, id string, config map[string]any) (models.Node, error) {
+func (f *SwitchNodeFactory) Create(ctx context.Context, id string, config map[string]any) (protocol.Node, error) {
 	return NewSwitchNode(id, config)
 }
 

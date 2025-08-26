@@ -363,10 +363,7 @@ func (k *KafkaProvider) startConsumerManager(ctx context.Context, manager *Consu
 	config.Consumer.Return.Errors = true
 
 	// Create consumer group
-	brokers := strings.Split(manager.connectionDetails.Brokers, ",")
-	for i, broker := range brokers {
-		brokers[i] = strings.TrimSpace(broker)
-	}
+	brokers := manager.connectionDetails.Brokers
 
 	consumer, err := sarama.NewConsumerGroup(brokers, manager.consumerGroup, config)
 	if err != nil {

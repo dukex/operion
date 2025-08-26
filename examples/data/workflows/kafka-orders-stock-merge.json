@@ -4,23 +4,6 @@
   "description": "Consumes from orders and stock topics, merges the data streams, and logs success",
   "nodes": [
     {
-      "id": "orders-kafka-trigger",
-      "name": "Orders Kafka Trigger",
-      "node_type": "trigger:kafka",
-      "category": "trigger",
-      "config": {
-        "brokers": ["localhost:29092"],
-        "consumer_group": "operion-orders-stock-merge",
-        "topic": "orders"
-      },
-      "source_id": "18a00f62-93fc-4512-92ad-6899337c2e4a",
-      "provider_id": "kafka",
-      "event_type": "message_received",
-      "position_x": 50,
-      "position_y": 100,
-      "enabled": true
-    },
-    {
       "id": "stock-kafka-trigger",
       "name": "Stock Kafka Trigger",
       "node_type": "trigger:kafka",
@@ -35,6 +18,23 @@
       "event_type": "message_received",
       "position_x": 50,
       "position_y": 300,
+      "enabled": true
+    },
+    {
+      "id": "orders-kafka-trigger",
+      "name": "Orders Kafka Trigger",
+      "node_type": "trigger:kafka",
+      "category": "trigger",
+      "config": {
+        "brokers": ["localhost:29092"],
+        "consumer_group": "operion-orders-stock-merge",
+        "topic": "orders"
+      },
+      "source_id": "18a00f62-93fc-4512-92ad-6899337c2e4a",
+      "provider_id": "kafka",
+      "event_type": "message_received",
+      "position_x": 50,
+      "position_y": 100,
       "enabled": true
     },
     {
@@ -82,7 +82,7 @@
     }
   ],
   "variables": {},
-  "status": "draft",
+  "status": "published",
   "workflow_group_id": "kafka-orders-stock-merge",
   "owner": "",
   "created_at": "2025-08-25T15:30:00Z",

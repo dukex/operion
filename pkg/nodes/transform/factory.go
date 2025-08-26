@@ -4,7 +4,6 @@ package transform
 import (
 	"context"
 
-	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/protocol"
 )
 
@@ -12,7 +11,7 @@ import (
 type TransformNodeFactory struct{}
 
 // Create creates a new TransformNode instance.
-func (f *TransformNodeFactory) Create(ctx context.Context, id string, config map[string]any) (models.Node, error) {
+func (f *TransformNodeFactory) Create(ctx context.Context, id string, config map[string]any) (protocol.Node, error) {
 	return NewTransformNode(id, config)
 }
 

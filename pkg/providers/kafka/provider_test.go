@@ -172,7 +172,7 @@ func TestKafkaProvider_Configure(t *testing.T) {
 				createTestWorkflow("workflow-1", []*models.WorkflowNode{
 					createKafkaTriggerNode("trigger-1", "source-123", map[string]any{
 						"topic":   "orders",
-						"brokers": "localhost:9092",
+						"brokers": []string{"localhost:9092"},
 					}),
 				}),
 			},
@@ -184,11 +184,11 @@ func TestKafkaProvider_Configure(t *testing.T) {
 				createTestWorkflow("workflow-1", []*models.WorkflowNode{
 					createKafkaTriggerNode("trigger-1", "source-123", map[string]any{
 						"topic":   "orders",
-						"brokers": "localhost:9092",
+						"brokers": []string{"localhost:9092"},
 					}),
 					createKafkaTriggerNode("trigger-2", "source-456", map[string]any{
 						"topic":   "events",
-						"brokers": "localhost:9092",
+						"brokers": []string{"localhost:9092"},
 					}),
 				}),
 			},
@@ -200,11 +200,11 @@ func TestKafkaProvider_Configure(t *testing.T) {
 				createTestWorkflow("workflow-1", []*models.WorkflowNode{
 					createKafkaTriggerNode("trigger-1", "source-123", map[string]any{
 						"topic":   "orders",
-						"brokers": "localhost:9092",
+						"brokers": []string{"localhost:9092"},
 					}),
 					createKafkaTriggerNode("trigger-2", "source-123", map[string]any{
 						"topic":   "orders",
-						"brokers": "localhost:9092",
+						"brokers": []string{"localhost:9092"},
 					}),
 				}),
 			},
@@ -219,7 +219,7 @@ func TestKafkaProvider_Configure(t *testing.T) {
 					Nodes: []*models.WorkflowNode{
 						createKafkaTriggerNode("trigger-1", "source-123", map[string]any{
 							"topic":   "orders",
-							"brokers": "localhost:9092",
+							"brokers": []string{"localhost:9092"},
 						}),
 					},
 					Connections: []*models.Connection{},
@@ -235,7 +235,7 @@ func TestKafkaProvider_Configure(t *testing.T) {
 				createTestWorkflow("workflow-1", []*models.WorkflowNode{
 					createKafkaTriggerNode("trigger-1", "", map[string]any{
 						"topic":   "orders",
-						"brokers": "localhost:9092",
+						"brokers": []string{"localhost:9092"},
 					}),
 				}),
 			},
@@ -247,7 +247,7 @@ func TestKafkaProvider_Configure(t *testing.T) {
 				createTestWorkflow("workflow-1", []*models.WorkflowNode{
 					createKafkaTriggerNode("trigger-1", "source-schema", map[string]any{
 						"topic":   "orders",
-						"brokers": "localhost:9092",
+						"brokers": []string{"localhost:9092"},
 						"json_schema": map[string]any{
 							"type": "object",
 							"properties": map[string]any{
@@ -344,17 +344,17 @@ func TestKafkaProvider_UpdateConsumerManagers(t *testing.T) {
 		createTestWorkflow("workflow-1", []*models.WorkflowNode{
 			createKafkaTriggerNode("trigger-1", "source-1", map[string]any{
 				"topic":   "orders",
-				"brokers": "localhost:9092",
+				"brokers": []string{"localhost:9092"},
 			}),
 			createKafkaTriggerNode("trigger-2", "source-2", map[string]any{
 				"topic":   "orders",
-				"brokers": "localhost:9092",
+				"brokers": []string{"localhost:9092"},
 			}),
 		}),
 		createTestWorkflow("workflow-2", []*models.WorkflowNode{
 			createKafkaTriggerNode("trigger-3", "source-3", map[string]any{
 				"topic":   "events",
-				"brokers": "localhost:9092",
+				"brokers": []string{"localhost:9092"},
 			}),
 		}),
 	}
@@ -515,7 +515,7 @@ func TestKafkaConsumerGroupHandler_ProcessMessage(t *testing.T) {
 	// Create test source without JSON schema
 	source, err := kafkaModels.NewKafkaSource("test-source", map[string]any{
 		"topic":   "orders",
-		"brokers": "localhost:9092",
+		"brokers": []string{"localhost:9092"},
 	})
 	require.NoError(t, err)
 
@@ -585,7 +585,7 @@ func TestKafkaConsumerGroupHandler_ProcessMessageWithSchema(t *testing.T) {
 	// Create test source with JSON schema
 	source, err := kafkaModels.NewKafkaSource("test-source-schema", map[string]any{
 		"topic":   "orders",
-		"brokers": "localhost:9092",
+		"brokers": []string{"localhost:9092"},
 		"json_schema": map[string]any{
 			"type": "object",
 			"properties": map[string]any{

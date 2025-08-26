@@ -131,7 +131,7 @@ func TestPostgresPersistence_SaveAndRetrieveKafkaSource(t *testing.T) {
 	// Create test source
 	config := map[string]any{
 		"topic":   "orders",
-		"brokers": "localhost:9092",
+		"brokers": []string{"localhost:9092"},
 		"json_schema": map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -175,7 +175,7 @@ func TestPostgresPersistence_KafkaSourceByConnectionDetailsID(t *testing.T) {
 	// Create test sources with same connection details
 	config1 := map[string]any{
 		"topic":   "orders",
-		"brokers": "localhost:9092",
+		"brokers": []string{"localhost:9092"},
 	}
 	source1, err := models.NewKafkaSource("source-1", config1)
 	require.NoError(t, err)
@@ -186,7 +186,7 @@ func TestPostgresPersistence_KafkaSourceByConnectionDetailsID(t *testing.T) {
 	// Create source with different connection details
 	config2 := map[string]any{
 		"topic":   "events",
-		"brokers": "localhost:9092",
+		"brokers": []string{"localhost:9092"},
 	}
 	source3, err := models.NewKafkaSource("source-3", config2)
 	require.NoError(t, err)
@@ -232,11 +232,11 @@ func TestPostgresPersistence_KafkaSources(t *testing.T) {
 	assert.Empty(t, sources)
 
 	// Create and save test sources
-	config1 := map[string]any{"topic": "orders", "brokers": "localhost:9092"}
+	config1 := map[string]any{"topic": "orders", "brokers": []string{"localhost:9092"}}
 	source1, err := models.NewKafkaSource("source-1", config1)
 	require.NoError(t, err)
 
-	config2 := map[string]any{"topic": "events", "brokers": "localhost:9092"}
+	config2 := map[string]any{"topic": "events", "brokers": []string{"localhost:9092"}}
 	source2, err := models.NewKafkaSource("source-2", config2)
 	require.NoError(t, err)
 
@@ -262,14 +262,14 @@ func TestPostgresPersistence_ActiveKafkaSources(t *testing.T) {
 	defer cleanupDB(t, databaseURL)
 
 	// Create and save active source
-	config1 := map[string]any{"topic": "orders", "brokers": "localhost:9092"}
+	config1 := map[string]any{"topic": "orders", "brokers": []string{"localhost:9092"}}
 	activeSource, err := models.NewKafkaSource("active-source", config1)
 	require.NoError(t, err)
 	err = persistence.SaveKafkaSource(activeSource)
 	require.NoError(t, err)
 
 	// Create and save inactive source
-	config2 := map[string]any{"topic": "events", "brokers": "localhost:9092"}
+	config2 := map[string]any{"topic": "events", "brokers": []string{"localhost:9092"}}
 	inactiveSource, err := models.NewKafkaSource("inactive-source", config2)
 	require.NoError(t, err)
 	inactiveSource.Active = false
@@ -295,7 +295,7 @@ func TestPostgresPersistence_UpdateKafkaSource(t *testing.T) {
 	defer cleanupDB(t, databaseURL)
 
 	// Create and save initial source
-	config := map[string]any{"topic": "orders", "brokers": "localhost:9092"}
+	config := map[string]any{"topic": "orders", "brokers": []string{"localhost:9092"}}
 	source, err := models.NewKafkaSource("test-source", config)
 	require.NoError(t, err)
 	err = persistence.SaveKafkaSource(source)
@@ -308,7 +308,7 @@ func TestPostgresPersistence_UpdateKafkaSource(t *testing.T) {
 	// Update source configuration
 	newConfig := map[string]any{
 		"topic":          "events",
-		"brokers":        "kafka1:9092,kafka2:9092",
+		"brokers":        []string{"kafka1:9092", "kafka2:9092"},
 		"consumer_group": "operion-events",
 	}
 	err = source.UpdateConfiguration(newConfig)
@@ -324,7 +324,7 @@ func TestPostgresPersistence_UpdateKafkaSource(t *testing.T) {
 	require.NotNil(t, retrievedSource)
 
 	assert.Equal(t, "events", retrievedSource.ConnectionDetails.Topic)
-	assert.Equal(t, "kafka1:9092,kafka2:9092", retrievedSource.ConnectionDetails.Brokers)
+	assert.Equal(t, []string{"kafka1:9092", "kafka2:9092"}, retrievedSource.ConnectionDetails.Brokers)
 	assert.Equal(t, "operion-events", retrievedSource.ConnectionDetails.ConsumerGroup)
 	assert.Equal(t, newConfig, retrievedSource.Configuration)
 
@@ -339,11 +339,11 @@ func TestPostgresPersistence_DeleteKafkaSource(t *testing.T) {
 	defer cleanupDB(t, databaseURL)
 
 	// Create and save test sources
-	config1 := map[string]any{"topic": "orders", "brokers": "localhost:9092"}
+	config1 := map[string]any{"topic": "orders", "brokers": []string{"localhost:9092"}}
 	source1, err := models.NewKafkaSource("source-1", config1)
 	require.NoError(t, err)
 
-	config2 := map[string]any{"topic": "events", "brokers": "localhost:9092"}
+	config2 := map[string]any{"topic": "events", "brokers": []string{"localhost:9092"}}
 	source2, err := models.NewKafkaSource("source-2", config2)
 	require.NoError(t, err)
 
@@ -411,11 +411,11 @@ func TestPostgresPersistence_PersistenceAcrossReconnections(t *testing.T) {
 	require.NoError(t, err)
 
 	// Save sources
-	config1 := map[string]any{"topic": "orders", "brokers": "localhost:9092"}
+	config1 := map[string]any{"topic": "orders", "brokers": []string{"localhost:9092"}}
 	source1, err := models.NewKafkaSource("source-1", config1)
 	require.NoError(t, err)
 
-	config2 := map[string]any{"topic": "events", "brokers": "localhost:9092"}
+	config2 := map[string]any{"topic": "events", "brokers": []string{"localhost:9092"}}
 	source2, err := models.NewKafkaSource("source-2", config2)
 	require.NoError(t, err)
 
@@ -460,7 +460,7 @@ func TestPostgresPersistence_JSONSerialization(t *testing.T) {
 	// Create source with complex JSON schema and configuration
 	config := map[string]any{
 		"topic":   "orders",
-		"brokers": "localhost:9092",
+		"brokers": []string{"localhost:9092"},
 		"json_schema": map[string]any{
 			"type": "object",
 			"properties": map[string]any{

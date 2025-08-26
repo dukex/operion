@@ -11,7 +11,6 @@ import (
 	"plugin"
 	"strings"
 
-	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/protocol"
 )
 
@@ -81,7 +80,7 @@ func (r *Registry) CreateNode(
 	nodeType string,
 	nodeID string,
 	config map[string]any,
-) (models.Node, error) {
+) (protocol.Node, error) {
 	factory, ok := r.nodeFactories[nodeType]
 	if !ok {
 		return nil, fmt.Errorf("node type '%s': %w", nodeType, ErrNodeNotRegistered)

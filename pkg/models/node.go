@@ -20,16 +20,6 @@ const (
 	NodeTypeTriggerKafka     = "trigger:kafka"
 )
 
-// Node represents an executable unit in a workflow graph.
-type Node interface {
-	ID() string
-	Type() string
-	Execute(ctx ExecutionContext, inputs map[string]NodeResult) (map[string]NodeResult, error)
-	GetInputPorts() []InputPort
-	GetOutputPorts() []OutputPort
-	Validate(config map[string]any) error
-}
-
 // Connection connects two ports directly (fully normalized).
 type Connection struct {
 	ID         string `json:"id"`

@@ -22,7 +22,7 @@ func TestNewKafkaSource(t *testing.T) {
 			sourceID: "test-source-1",
 			configuration: map[string]any{
 				"topic":   "orders",
-				"brokers": "localhost:9092",
+				"brokers": []string{"localhost:9092"},
 			},
 			expectError:   false,
 			expectedTopic: "orders",
@@ -32,7 +32,7 @@ func TestNewKafkaSource(t *testing.T) {
 			sourceID: "test-source-2",
 			configuration: map[string]any{
 				"topic":          "events",
-				"brokers":        "kafka1:9092,kafka2:9092",
+				"brokers":        []string{"kafka1:9092", "kafka2:9092"},
 				"consumer_group": "operion-events",
 			},
 			expectError:   false,
@@ -43,7 +43,7 @@ func TestNewKafkaSource(t *testing.T) {
 			sourceID: "test-source-3",
 			configuration: map[string]any{
 				"topic":   "notifications",
-				"brokers": "localhost:9092",
+				"brokers": []string{"localhost:9092"},
 				"json_schema": map[string]any{
 					"type": "object",
 					"properties": map[string]any{
@@ -60,7 +60,7 @@ func TestNewKafkaSource(t *testing.T) {
 			sourceID: "test-source-4",
 			configuration: map[string]any{
 				"topic":   "logs",
-				"brokers": "localhost:9092",
+				"brokers": []string{"localhost:9092"},
 				"kafka_config": map[string]any{
 					"security.protocol": "SASL_SSL",
 					"sasl.mechanism":    "PLAIN",
@@ -72,14 +72,14 @@ func TestNewKafkaSource(t *testing.T) {
 		{
 			name:          "empty source ID",
 			sourceID:      "",
-			configuration: map[string]any{"topic": "test", "brokers": "localhost:9092"},
+			configuration: map[string]any{"topic": "test", "brokers": []string{"localhost:9092"}},
 			expectError:   true,
 		},
 		{
 			name:     "missing topic",
 			sourceID: "test-source-5",
 			configuration: map[string]any{
-				"brokers": "localhost:9092",
+				"brokers": []string{"localhost:9092"},
 			},
 			expectError: true,
 		},
@@ -96,7 +96,7 @@ func TestNewKafkaSource(t *testing.T) {
 			sourceID: "test-source-7",
 			configuration: map[string]any{
 				"topic":   "",
-				"brokers": "localhost:9092",
+				"brokers": []string{"localhost:9092"},
 			},
 			expectError: true,
 		},
@@ -105,7 +105,7 @@ func TestNewKafkaSource(t *testing.T) {
 			sourceID: "test-source-8",
 			configuration: map[string]any{
 				"topic":   "test",
-				"brokers": "",
+				"brokers": []string{},
 			},
 			expectError: true,
 		},
@@ -163,7 +163,7 @@ func TestKafkaSource_Validate(t *testing.T) {
 				ConnectionDetailsID: "test-connection-id",
 				ConnectionDetails: ConnectionDetails{
 					Topic:   "test-topic",
-					Brokers: "localhost:9092",
+					Brokers: []string{"localhost:9092"},
 				},
 			},
 			expectError: false,
@@ -175,7 +175,7 @@ func TestKafkaSource_Validate(t *testing.T) {
 				ConnectionDetailsID: "test-connection-id",
 				ConnectionDetails: ConnectionDetails{
 					Topic:   "test-topic",
-					Brokers: "localhost:9092",
+					Brokers: []string{"localhost:9092"},
 				},
 			},
 			expectError: true,
@@ -187,7 +187,7 @@ func TestKafkaSource_Validate(t *testing.T) {
 				ConnectionDetailsID: "",
 				ConnectionDetails: ConnectionDetails{
 					Topic:   "test-topic",
-					Brokers: "localhost:9092",
+					Brokers: []string{"localhost:9092"},
 				},
 			},
 			expectError: true,
@@ -199,7 +199,7 @@ func TestKafkaSource_Validate(t *testing.T) {
 				ConnectionDetailsID: "test-connection-id",
 				ConnectionDetails: ConnectionDetails{
 					Topic:   "",
-					Brokers: "localhost:9092",
+					Brokers: []string{"localhost:9092"},
 				},
 			},
 			expectError: true,
@@ -211,7 +211,7 @@ func TestKafkaSource_Validate(t *testing.T) {
 				ConnectionDetailsID: "test-connection-id",
 				ConnectionDetails: ConnectionDetails{
 					Topic:   "test-topic",
-					Brokers: "",
+					Brokers: []string{},
 				},
 			},
 			expectError: true,
@@ -270,7 +270,7 @@ func TestKafkaSource_UpdateConfiguration(t *testing.T) {
 	// Create initial source
 	initialConfig := map[string]any{
 		"topic":   "orders",
-		"brokers": "localhost:9092",
+		"brokers": []string{"localhost:9092"},
 	}
 	source, err := NewKafkaSource("test-source", initialConfig)
 	require.NoError(t, err)
@@ -284,7 +284,7 @@ func TestKafkaSource_UpdateConfiguration(t *testing.T) {
 	// Update configuration
 	newConfig := map[string]any{
 		"topic":          "events",
-		"brokers":        "kafka1:9092,kafka2:9092",
+		"brokers":        []string{"kafka1:9092", "kafka2:9092"},
 		"consumer_group": "operion-events",
 		"json_schema": map[string]any{
 			"type": "object",
@@ -300,7 +300,7 @@ func TestKafkaSource_UpdateConfiguration(t *testing.T) {
 	// Verify changes
 	assert.Equal(t, newConfig, source.Configuration)
 	assert.Equal(t, "events", source.ConnectionDetails.Topic)
-	assert.Equal(t, "kafka1:9092,kafka2:9092", source.ConnectionDetails.Brokers)
+	assert.Equal(t, []string{"kafka1:9092", "kafka2:9092"}, source.ConnectionDetails.Brokers)
 	assert.Equal(t, "operion-events", source.ConnectionDetails.ConsumerGroup)
 	assert.True(t, source.HasJSONSchema())
 	assert.Equal(t, newConfig["json_schema"], source.JSONSchema)
@@ -311,7 +311,7 @@ func TestKafkaSource_UpdateConfiguration(t *testing.T) {
 func TestKafkaSource_CanShareConsumerWith(t *testing.T) {
 	config1 := map[string]any{
 		"topic":   "orders",
-		"brokers": "localhost:9092",
+		"brokers": []string{"localhost:9092"},
 	}
 	source1, err := NewKafkaSource("source-1", config1)
 	require.NoError(t, err)
@@ -324,7 +324,7 @@ func TestKafkaSource_CanShareConsumerWith(t *testing.T) {
 	// Different configuration should not share consumer
 	config2 := map[string]any{
 		"topic":   "events",
-		"brokers": "localhost:9092",
+		"brokers": []string{"localhost:9092"},
 	}
 	source3, err := NewKafkaSource("source-3", config2)
 	require.NoError(t, err)
@@ -334,7 +334,7 @@ func TestKafkaSource_CanShareConsumerWith(t *testing.T) {
 func TestKafkaSource_JSONMarshaling(t *testing.T) {
 	config := map[string]any{
 		"topic":   "orders",
-		"brokers": "localhost:9092",
+		"brokers": []string{"localhost:9092"},
 		"json_schema": map[string]any{
 			"type": "object",
 		},
@@ -359,8 +359,20 @@ func TestKafkaSource_JSONMarshaling(t *testing.T) {
 	assert.Equal(t, source.ConnectionDetailsID, unmarshaledSource.ConnectionDetailsID)
 	assert.Equal(t, source.ConnectionDetails, unmarshaledSource.ConnectionDetails)
 	assert.Equal(t, source.JSONSchema, unmarshaledSource.JSONSchema)
-	assert.Equal(t, source.Configuration, unmarshaledSource.Configuration)
 	assert.Equal(t, source.Active, unmarshaledSource.Active)
+
+	// Verify configuration - JSON unmarshaling converts []string to []interface{}
+	assert.Equal(t, source.Configuration["topic"], unmarshaledSource.Configuration["topic"])
+	assert.Equal(t, source.Configuration["json_schema"], unmarshaledSource.Configuration["json_schema"])
+
+	// Check brokers array content
+	originalBrokers := source.Configuration["brokers"].([]string)
+	unmarshaledBrokers := unmarshaledSource.Configuration["brokers"].([]interface{})
+	assert.Len(t, unmarshaledBrokers, len(originalBrokers))
+
+	for i, broker := range originalBrokers {
+		assert.Equal(t, broker, unmarshaledBrokers[i].(string))
+	}
 
 	// Timestamps should be equal (within a reasonable margin due to JSON precision)
 	assert.True(t, source.CreatedAt.Unix() == unmarshaledSource.CreatedAt.Unix())
@@ -370,19 +382,19 @@ func TestKafkaSource_JSONMarshaling(t *testing.T) {
 func TestGenerateConnectionDetailsID(t *testing.T) {
 	details1 := ConnectionDetails{
 		Topic:         "orders",
-		Brokers:       "localhost:9092",
+		Brokers:       []string{"localhost:9092"},
 		ConsumerGroup: "operion-orders",
 	}
 
 	details2 := ConnectionDetails{
 		Topic:         "orders",
-		Brokers:       "localhost:9092",
+		Brokers:       []string{"localhost:9092"},
 		ConsumerGroup: "operion-orders",
 	}
 
 	details3 := ConnectionDetails{
 		Topic:         "events",
-		Brokers:       "localhost:9092",
+		Brokers:       []string{"localhost:9092"},
 		ConsumerGroup: "operion-orders",
 	}
 
@@ -423,9 +435,9 @@ func TestStructToJSON(t *testing.T) {
 			name: "simple struct",
 			input: ConnectionDetails{
 				Topic:   "orders",
-				Brokers: "localhost:9092",
+				Brokers: []string{"localhost:9092"},
 			},
-			expected: `{"topic":"orders","brokers":"localhost:9092","consumer_group":""}`,
+			expected: `{"topic":"orders","brokers":["localhost:9092"],"consumer_group":""}`,
 		},
 		{
 			name: "map with nested values",
@@ -455,7 +467,7 @@ func TestStructToJSON(t *testing.T) {
 
 func TestJSONToStruct(t *testing.T) {
 	t.Run("unmarshal to struct", func(t *testing.T) {
-		jsonStr := `{"topic":"orders","brokers":"localhost:9092","consumer_group":"test-group"}`
+		jsonStr := `{"topic":"orders","brokers":["localhost:9092"],"consumer_group":"test-group"}`
 
 		var connDetails ConnectionDetails
 
@@ -463,7 +475,7 @@ func TestJSONToStruct(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "orders", connDetails.Topic)
-		assert.Equal(t, "localhost:9092", connDetails.Brokers)
+		assert.Equal(t, []string{"localhost:9092"}, connDetails.Brokers)
 		assert.Equal(t, "test-group", connDetails.ConsumerGroup)
 	})
 

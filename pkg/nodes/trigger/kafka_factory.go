@@ -16,7 +16,7 @@ func NewKafkaTriggerNodeFactory() protocol.NodeFactory {
 }
 
 // Create creates a new KafkaTriggerNode instance.
-func (f *KafkaTriggerNodeFactory) Create(ctx context.Context, id string, config map[string]any) (models.Node, error) {
+func (f *KafkaTriggerNodeFactory) Create(ctx context.Context, id string, config map[string]any) (protocol.Node, error) {
 	return NewKafkaTriggerNode(id, config)
 }
 

@@ -54,9 +54,10 @@ func (f *KafkaProviderFactory) Schema() map[string]any {
 						"description": "Named connection template",
 						"properties": map[string]any{
 							"brokers": map[string]any{
-								"type":        "string",
-								"description": "Comma-separated list of Kafka broker addresses",
-								"examples":    []string{"kafka1:9092,kafka2:9092", "localhost:9092"},
+								"type":        "array",
+								"items":       map[string]any{"type": "string"},
+								"description": "Array of Kafka broker addresses",
+								"examples":    [][]string{{"kafka1:9092", "kafka2:9092"}, {"localhost:9092"}},
 							},
 							"security": map[string]any{
 								"type":        "object",
@@ -92,7 +93,7 @@ func (f *KafkaProviderFactory) Schema() map[string]any {
 				"examples": []map[string]any{
 					{
 						"production": map[string]any{
-							"brokers": "kafka1.prod.com:9092,kafka2.prod.com:9092",
+							"brokers": []string{"kafka1.prod.com:9092", "kafka2.prod.com:9092"},
 							"security": map[string]any{
 								"protocol":       "SASL_SSL",
 								"sasl_mechanism": "SCRAM-SHA-256",
@@ -101,7 +102,7 @@ func (f *KafkaProviderFactory) Schema() map[string]any {
 							},
 						},
 						"development": map[string]any{
-							"brokers": "localhost:9092",
+							"brokers": []string{"localhost:9092"},
 						},
 					},
 				},
@@ -196,14 +197,14 @@ func (f *KafkaProviderFactory) Schema() map[string]any {
 			{
 				"connection_templates": map[string]any{
 					"local": map[string]any{
-						"brokers": "localhost:9092",
+						"brokers": []string{"localhost:9092"},
 					},
 				},
 			},
 			{
 				"connection_templates": map[string]any{
 					"production": map[string]any{
-						"brokers": "kafka1:9092,kafka2:9092,kafka3:9092",
+						"brokers": []string{"kafka1:9092", "kafka2:9092", "kafka3:9092"},
 						"security": map[string]any{
 							"protocol":       "SASL_SSL",
 							"sasl_mechanism": "SCRAM-SHA-256",

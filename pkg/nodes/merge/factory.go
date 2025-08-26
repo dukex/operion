@@ -4,7 +4,6 @@ package merge
 import (
 	"context"
 
-	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/protocol"
 )
 
@@ -12,7 +11,7 @@ import (
 type MergeNodeFactory struct{}
 
 // Create creates a new MergeNode instance.
-func (f *MergeNodeFactory) Create(ctx context.Context, id string, config map[string]any) (models.Node, error) {
+func (f *MergeNodeFactory) Create(ctx context.Context, id string, config map[string]any) (protocol.Node, error) {
 	return NewMergeNode(id, config)
 }
 

@@ -16,7 +16,7 @@ func NewWebhookTriggerNodeFactory() protocol.NodeFactory {
 }
 
 // Create creates a new WebhookTriggerNode instance.
-func (f *WebhookTriggerNodeFactory) Create(ctx context.Context, id string, config map[string]any) (models.Node, error) {
+func (f *WebhookTriggerNodeFactory) Create(ctx context.Context, id string, config map[string]any) (protocol.Node, error) {
 	return NewWebhookTriggerNode(id, config)
 }
 

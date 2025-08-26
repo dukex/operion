@@ -4,7 +4,6 @@ package httprequest
 import (
 	"context"
 
-	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/protocol"
 )
 
@@ -17,7 +16,7 @@ func NewHTTPRequestNodeFactory() protocol.NodeFactory {
 }
 
 // Create creates a new HTTPRequestNode instance.
-func (f *HTTPRequestNodeFactory) Create(ctx context.Context, id string, config map[string]any) (models.Node, error) {
+func (f *HTTPRequestNodeFactory) Create(ctx context.Context, id string, config map[string]any) (protocol.Node, error) {
 	return NewHTTPRequestNode(id, config)
 }
 

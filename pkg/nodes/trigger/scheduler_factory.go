@@ -16,7 +16,7 @@ func NewSchedulerTriggerNodeFactory() protocol.NodeFactory {
 }
 
 // Create creates a new SchedulerTriggerNode instance.
-func (f *SchedulerTriggerNodeFactory) Create(ctx context.Context, id string, config map[string]any) (models.Node, error) {
+func (f *SchedulerTriggerNodeFactory) Create(ctx context.Context, id string, config map[string]any) (protocol.Node, error) {
 	return NewSchedulerTriggerNode(id, config)
 }
 

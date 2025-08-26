@@ -7,10 +7,31 @@ import (
 	"github.com/dukex/operion/pkg/models"
 )
 
+// Node represents an executable unit in a workflow graph.
+type Node interface {
+	// ID returns the unique identifier of this node instance.
+	ID() string
+
+	// Type returns the node type identifier (e.g., "log", "httprequest", "merge").
+	Type() string
+
+	// Execute processes inputs and returns outputs for this node.
+	Execute(ctx models.ExecutionContext, inputs map[string]models.NodeResult) (map[string]models.NodeResult, error)
+
+	// GetInputPorts returns the input ports available on this node.
+	GetInputPorts() []models.InputPort
+
+	// GetOutputPorts returns the output ports available on this node.
+	GetOutputPorts() []models.OutputPort
+
+	// Validate checks if the provided configuration is valid for this node.
+	Validate(config map[string]any) error
+}
+
 // NodeFactory creates node instances and provides metadata about the node type.
 type NodeFactory interface {
 	// Create creates a new node instance with the given configuration
-	Create(ctx context.Context, id string, config map[string]any) (models.Node, error)
+	Create(ctx context.Context, id string, config map[string]any) (Node, error)
 
 	// ID returns the unique identifier for this node type
 	ID() string
@@ -23,4 +44,23 @@ type NodeFactory interface {
 
 	// Schema returns the JSON schema for configuring this node
 	Schema() map[string]any
+}
+
+// GetDefaultInputRequirements derives requirements from a node's GetInputPorts() method.
+// This provides a fallback for nodes that don't implement NodeInputRequirements interface.
+func GetDefaultInputRequirements(node Node) models.InputRequirements {
+	inputPorts := node.GetInputPorts()
+	if len(inputPorts) == 0 {
+		// No input ports - likely a trigger node, but use generic default
+		return models.DefaultInputRequirements()
+	}
+
+	// For action nodes, typically require the "main" input port
+	// This covers most common cases like log, transform, httprequest, etc.
+	return models.InputRequirements{
+		RequiredPorts: []string{"main"},
+		OptionalPorts: []string{},
+		WaitMode:      models.WaitModeAll,
+		Timeout:       nil,
+	}
 }

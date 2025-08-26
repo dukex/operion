@@ -81,7 +81,7 @@ func (f *mockNodeFactory) Description() string {
 	return "This is a mock node for testing purposes."
 }
 
-func (f *mockNodeFactory) Create(_ context.Context, nodeID string, config map[string]any) (models.Node, error) {
+func (f *mockNodeFactory) Create(_ context.Context, nodeID string, config map[string]any) (protocol.Node, error) {
 	return &mockNode{
 		id:     nodeID,
 		config: config,

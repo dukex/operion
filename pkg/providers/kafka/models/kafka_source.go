@@ -21,8 +21,8 @@ type ConnectionDetails struct {
 	// ConsumerGroup is the Kafka consumer group ID
 	ConsumerGroup string `json:"consumer_group"`
 
-	// Brokers is the comma-separated list of Kafka broker addresses
-	Brokers string `json:"brokers" validate:"required"`
+	// Brokers is the list of Kafka broker addresses
+	Brokers []string `json:"brokers" validate:"required"`
 
 	// Additional Kafka client configuration
 	Config map[string]any `json:"config,omitempty"`
@@ -111,12 +111,25 @@ func extractConnectionDetails(config map[string]any) (ConnectionDetails, error) 
 		return details, errors.New("topic is required in connection details")
 	}
 
-	// Extract brokers
+	// Extract brokers - accept both []string and []any formats
 	if brokersVal, exists := config["brokers"]; exists {
-		if brokers, ok := brokersVal.(string); ok && brokers != "" {
-			details.Brokers = brokers
+		if brokersList, ok := brokersVal.([]string); ok && len(brokersList) > 0 {
+			// Direct []string format
+			details.Brokers = brokersList
+		} else if brokersList, ok := brokersVal.([]any); ok && len(brokersList) > 0 {
+			// Array format from JSON unmarshaling - convert to []string
+			var brokerStrings []string
+			for i, broker := range brokersList {
+				if brokerStr, ok := broker.(string); ok && brokerStr != "" {
+					brokerStrings = append(brokerStrings, brokerStr)
+				} else {
+					return details, fmt.Errorf("broker at index %d must be a non-empty string", i)
+				}
+			}
+
+			details.Brokers = brokerStrings
 		} else {
-			return details, errors.New("brokers must be a non-empty string")
+			return details, errors.New("brokers must be a non-empty array of strings")
 		}
 	} else {
 		return details, errors.New("brokers is required in connection details")
@@ -156,7 +169,7 @@ func generateConnectionDetailsID(details ConnectionDetails, schema map[string]an
 	var parts []string
 
 	parts = append(parts, details.Topic)
-	parts = append(parts, details.Brokers)
+	parts = append(parts, strings.Join(details.Brokers, ","))
 	parts = append(parts, details.ConsumerGroup)
 
 	// Include schema in the hash if present
@@ -195,7 +208,7 @@ func (ks *KafkaSource) Validate() error {
 		return errors.New("topic is required")
 	}
 
-	if ks.ConnectionDetails.Brokers == "" {
+	if len(ks.ConnectionDetails.Brokers) == 0 {
 		return errors.New("brokers is required")
 	}
 

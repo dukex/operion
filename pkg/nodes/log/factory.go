@@ -4,7 +4,6 @@ package log
 import (
 	"context"
 
-	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/protocol"
 )
 
@@ -12,7 +11,7 @@ import (
 type LogNodeFactory struct{}
 
 // Create creates a new LogNode instance.
-func (f *LogNodeFactory) Create(ctx context.Context, id string, config map[string]any) (models.Node, error) {
+func (f *LogNodeFactory) Create(ctx context.Context, id string, config map[string]any) (protocol.Node, error) {
 	return NewLogNode(id, config)
 }
 

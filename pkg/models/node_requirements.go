@@ -4,28 +4,9 @@ package models
 import "time"
 
 // NodeInputRequirements interface allows nodes to declare their input coordination needs.
-// This is optional - nodes that don't implement this use GetDefaultInputRequirements().
+// This is optional - nodes that don't implement this use protocol.GetDefaultInputRequirements().
 type NodeInputRequirements interface {
 	GetInputRequirements() InputRequirements
-}
-
-// GetDefaultInputRequirements derives requirements from a node's GetInputPorts() method.
-// This provides a fallback for nodes that don't implement NodeInputRequirements interface.
-func GetDefaultInputRequirements(node Node) InputRequirements {
-	inputPorts := node.GetInputPorts()
-	if len(inputPorts) == 0 {
-		// No input ports - likely a trigger node, but use generic default
-		return DefaultInputRequirements()
-	}
-
-	// For action nodes, typically require the "main" input port
-	// This covers most common cases like log, transform, httprequest, etc.
-	return InputRequirements{
-		RequiredPorts: []string{"main"},
-		OptionalPorts: []string{},
-		WaitMode:      WaitModeAll,
-		Timeout:       nil,
-	}
 }
 
 // InputRequirements defines how a node should wait for and coordinate inputs.

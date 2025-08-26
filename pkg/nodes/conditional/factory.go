@@ -4,7 +4,6 @@ package conditional
 import (
 	"context"
 
-	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/protocol"
 )
 
@@ -12,7 +11,7 @@ import (
 type ConditionalNodeFactory struct{}
 
 // Create creates a new ConditionalNode instance.
-func (f *ConditionalNodeFactory) Create(ctx context.Context, id string, config map[string]any) (models.Node, error) {
+func (f *ConditionalNodeFactory) Create(ctx context.Context, id string, config map[string]any) (protocol.Node, error) {
 	return NewConditionalNode(id, config)
 }
 
