@@ -113,8 +113,8 @@ func (r *Registry) GetProviders() map[string]protocol.ProviderFactory {
 	return sourceProviders
 }
 
-// GetAvailableNodes returns all available node types.
-func (r *Registry) GetAvailableNodes() []protocol.NodeFactory {
+// AvailableNodes returns all available node types.
+func (r *Registry) AvailableNodes() []protocol.NodeFactory {
 	nodes := make([]protocol.NodeFactory, 0, len(r.nodeFactories))
 	for _, node := range r.nodeFactories {
 		nodes = append(nodes, node)

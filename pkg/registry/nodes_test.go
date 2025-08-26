@@ -27,7 +27,7 @@ func TestRegisterDefaultNodes(t *testing.T) {
 		"trigger:kafka",
 	}
 
-	availableNodes := registry.GetAvailableNodes()
+	availableNodes := registry.AvailableNodes()
 	if len(availableNodes) != len(expectedNodes) {
 		t.Errorf("Expected %d nodes, got %d", len(expectedNodes), len(availableNodes))
 	}

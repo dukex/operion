@@ -264,7 +264,7 @@ func TestRegistry_CreateProvider_NotRegistered(t *testing.T) {
 	assert.Contains(t, err.Error(), "not registered")
 }
 
-func TestRegistry_GetAvailableNodes(t *testing.T) {
+func TestRegistry_AvailableNodes(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	registry := NewRegistry(logger)
 
@@ -276,7 +276,7 @@ func TestRegistry_GetAvailableNodes(t *testing.T) {
 	registry.RegisterNode(nodeFactory2)
 
 	// Get available nodes
-	nodes := registry.GetAvailableNodes()
+	nodes := registry.AvailableNodes()
 	assert.Len(t, nodes, 2)
 
 	// Check that both factories are present
