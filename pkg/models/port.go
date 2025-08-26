@@ -13,7 +13,6 @@ type Port struct {
 // InputPort extends Port with input-specific properties.
 type InputPort struct {
 	Port
-	// Note: Required information is now available through GetInputRequirements()
 }
 
 // OutputPort extends Port with output-specific properties.
@@ -30,13 +29,13 @@ const (
 	PortDirectionOutput PortDirection = "output"
 )
 
-// GetPortDirection returns the direction of the port based on its type.
-func (p InputPort) GetDirection() PortDirection {
+// Direction returns the direction of the port based on its type.
+func (p InputPort) Direction() PortDirection {
 	return PortDirectionInput
 }
 
-// GetPortDirection returns the direction of the port based on its type.
-func (p OutputPort) GetDirection() PortDirection {
+// Direction returns the direction of the port based on its type.
+func (p OutputPort) Direction() PortDirection {
 	return PortDirectionOutput
 }
 
