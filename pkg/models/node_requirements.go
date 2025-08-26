@@ -32,7 +32,7 @@ const (
 // DefaultInputRequirements returns the standard requirements for single-input nodes.
 func DefaultInputRequirements() InputRequirements {
 	return InputRequirements{
-		RequiredPorts: []string{"input"},
+		RequiredPorts: []string{"main"},
 		OptionalPorts: []string{},
 		WaitMode:      WaitModeAny,
 		Timeout:       nil,

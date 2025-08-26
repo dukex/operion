@@ -45,22 +45,3 @@ type NodeFactory interface {
 	// Schema returns the JSON schema for configuring this node
 	Schema() map[string]any
 }
-
-// GetDefaultInputRequirements derives requirements from a node's GetInputPorts() method.
-// This provides a fallback for nodes that don't implement NodeInputRequirements interface.
-func GetDefaultInputRequirements(node Node) models.InputRequirements {
-	inputPorts := node.GetInputPorts()
-	if len(inputPorts) == 0 {
-		// No input ports - likely a trigger node, but use generic default
-		return models.DefaultInputRequirements()
-	}
-
-	// For action nodes, typically require the "main" input port
-	// This covers most common cases like log, transform, httprequest, etc.
-	return models.InputRequirements{
-		RequiredPorts: []string{"main"},
-		OptionalPorts: []string{},
-		WaitMode:      models.WaitModeAll,
-		Timeout:       nil,
-	}
-}
