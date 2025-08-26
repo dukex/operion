@@ -92,7 +92,6 @@ func migrations() map[int]string {
 				node_execution_id VARCHAR(255) PRIMARY KEY,
 				node_id VARCHAR(255) NOT NULL,
 				execution_id VARCHAR(255) NOT NULL REFERENCES execution_contexts(id) ON DELETE CASCADE,
-				workflow_id UUID NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
 				received_inputs JSONB DEFAULT '{}',
 				requirements JSONB NOT NULL,
 				created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
@@ -101,7 +100,6 @@ func migrations() map[int]string {
 
 			CREATE INDEX idx_input_coordination_node_execution ON input_coordination_states(node_id, execution_id);
 			CREATE INDEX idx_input_coordination_execution ON input_coordination_states(execution_id);
-			CREATE INDEX idx_input_coordination_workflow ON input_coordination_states(workflow_id);
 			CREATE INDEX idx_input_coordination_created_at ON input_coordination_states(created_at);
 		`,
 	}

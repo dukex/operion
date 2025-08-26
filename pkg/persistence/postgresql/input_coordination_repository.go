@@ -38,10 +38,10 @@ func (icr *InputCoordinationRepository) SaveInputState(ctx context.Context, stat
 
 	query := `
 		INSERT INTO input_coordination_states (
-			node_id, execution_id, node_execution_id, workflow_id, 
+			node_id, execution_id, node_execution_id, 
 			received_inputs, requirements, created_at, last_updated_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		ON CONFLICT (node_execution_id) DO UPDATE SET
 			received_inputs = EXCLUDED.received_inputs,
 			requirements = EXCLUDED.requirements,
@@ -52,7 +52,6 @@ func (icr *InputCoordinationRepository) SaveInputState(ctx context.Context, stat
 		state.NodeID,
 		state.ExecutionID,
 		state.NodeExecutionID,
-		state.WorkflowID,
 		receivedInputsJSON,
 		requirementsJSON,
 		state.CreatedAt,
@@ -68,7 +67,7 @@ func (icr *InputCoordinationRepository) SaveInputState(ctx context.Context, stat
 // LoadInputState retrieves input state by node execution ID.
 func (icr *InputCoordinationRepository) LoadInputState(ctx context.Context, nodeExecutionID string) (*models.NodeInputState, error) {
 	query := `
-		SELECT node_id, execution_id, node_execution_id, workflow_id, 
+		SELECT node_id, execution_id, node_execution_id, 
 			   received_inputs, requirements, created_at, last_updated_at
 		FROM input_coordination_states
 		WHERE node_execution_id = $1
@@ -91,7 +90,7 @@ func (icr *InputCoordinationRepository) LoadInputState(ctx context.Context, node
 // FindPendingNodeExecution finds the first pending execution for a node in a workflow execution.
 func (icr *InputCoordinationRepository) FindPendingNodeExecution(ctx context.Context, nodeID, executionID string) (*models.NodeInputState, error) {
 	query := `
-		SELECT node_id, execution_id, node_execution_id, workflow_id, 
+		SELECT node_id, execution_id, node_execution_id, 
 			   received_inputs, requirements, created_at, last_updated_at
 		FROM input_coordination_states
 		WHERE node_id = $1 AND execution_id = $2
@@ -170,7 +169,6 @@ func (icr *InputCoordinationRepository) scanInputState(scanner interface {
 		&state.NodeID,
 		&state.ExecutionID,
 		&state.NodeExecutionID,
-		&state.WorkflowID,
 		&receivedInputsJSON,
 		&requirementsJSON,
 		&state.CreatedAt,

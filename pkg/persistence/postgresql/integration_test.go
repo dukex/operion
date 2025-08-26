@@ -259,7 +259,6 @@ func testExecutionContextOperations(t *testing.T, p *postgresql.Persistence, ctx
 		NodeID:          "api_call",
 		ExecutionID:     execCtx.ID,
 		NodeExecutionID: uuid.New().String(),
-		WorkflowID:      workflow.ID,
 		ReceivedInputs: map[string]models.NodeResult{
 			"validated_input": {
 				NodeID: "validate_data",

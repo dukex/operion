@@ -56,7 +56,6 @@ func (ic *InputCoordinator) AddInput(
 			NodeID:          nodeID,
 			ExecutionID:     executionID,
 			NodeExecutionID: nodeExecutionID,
-			WorkflowID:      executionID, // Use execution ID for now, this could be refined later
 			ReceivedInputs:  make(map[string]models.NodeResult),
 			Requirements:    requirements,
 			CreatedAt:       time.Now().UTC(),

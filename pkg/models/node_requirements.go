@@ -45,7 +45,6 @@ type NodeInputState struct {
 	NodeID          string                `json:"node_id"`           // The workflow node ID
 	ExecutionID     string                `json:"execution_id"`      // Workflow execution ID
 	NodeExecutionID string                `json:"node_execution_id"` // Individual node execution ID (for loops)
-	WorkflowID      string                `json:"workflow_id"`       // Published workflow ID
 	ReceivedInputs  map[string]NodeResult `json:"received_inputs"`   // Inputs collected so far
 	Requirements    InputRequirements     `json:"requirements"`      // Node's input requirements
 	CreatedAt       time.Time             `json:"created_at"`        // When input collection started

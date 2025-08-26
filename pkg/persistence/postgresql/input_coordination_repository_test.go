@@ -17,7 +17,6 @@ func createTestNodeInputState(t *testing.T, workflowID, nodeID, executionID stri
 		NodeID:          nodeID,
 		ExecutionID:     executionID,
 		NodeExecutionID: uuid.New().String(),
-		WorkflowID:      workflowID,
 		ReceivedInputs: map[string]models.NodeResult{
 			"input1": {
 				NodeID:    "input1",
@@ -73,7 +72,6 @@ func TestInputCoordinationRepository_SaveAndLoadInputState(t *testing.T) {
 	assert.Equal(t, inputState.NodeID, retrieved.NodeID)
 	assert.Equal(t, inputState.ExecutionID, retrieved.ExecutionID)
 	assert.Equal(t, inputState.NodeExecutionID, retrieved.NodeExecutionID)
-	assert.Equal(t, inputState.WorkflowID, retrieved.WorkflowID)
 
 	// Verify ReceivedInputs
 	assert.Len(t, retrieved.ReceivedInputs, 2)
@@ -310,7 +308,6 @@ func TestInputCoordinationRepository_ComplexRequirements(t *testing.T) {
 		NodeID:          "complex_node",
 		ExecutionID:     execCtx.ID,
 		NodeExecutionID: uuid.New().String(),
-		WorkflowID:      workflow.ID,
 		ReceivedInputs: map[string]models.NodeResult{
 			"api_response": {
 				NodeID: "api_response",
@@ -416,7 +413,6 @@ func TestInputCoordinationRepository_ErrorCases(t *testing.T) {
 		NodeID:          "test_node",
 		ExecutionID:     "non-existent-execution",
 		NodeExecutionID: uuid.New().String(),
-		WorkflowID:      uuid.New().String(),
 		ReceivedInputs:  make(map[string]models.NodeResult),
 		Requirements: models.InputRequirements{
 			RequiredPorts: []string{"input"},
