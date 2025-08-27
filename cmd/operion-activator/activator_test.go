@@ -96,6 +96,14 @@ func TestActivator_HandleSourceEvent_ValidEvent(t *testing.T) {
 	// Mock finding matching triggers
 	mockPersistence.GetMockNodeRepository().On("FindTriggerNodesBySourceEventAndProvider", mock.Anything, "source-123", "ScheduleDue", "scheduler", models.WorkflowStatusPublished).Return(triggerMatches, nil)
 
+	// Mock workflow loading for variables
+	testWorkflow := &models.Workflow{
+		ID:        "workflow-123",
+		Name:      "Test Workflow",
+		Variables: map[string]any{"timeout": 30, "api_base": "https://api.example.com"},
+	}
+	mockPersistence.GetMockWorkflowRepository().On("GetByID", mock.Anything, "workflow-123").Return(testWorkflow, nil)
+
 	// Mock saving execution context
 	mockPersistence.GetMockExecutionContextRepository().On("SaveExecutionContext", mock.Anything, mock.AnythingOfType("*models.ExecutionContext")).Return(nil)
 
@@ -229,6 +237,21 @@ func TestActivator_HandleSourceEvent_MultipleMatchingTriggers(t *testing.T) {
 	}
 	mockPersistence.GetMockNodeRepository().On("FindTriggerNodesBySourceEventAndProvider", mock.Anything, "source-123", "ScheduleDue", "scheduler", models.WorkflowStatusPublished).Return(triggerMatches, nil)
 
+	// Mock workflow loading for variables for both workflows
+	testWorkflow123 := &models.Workflow{
+		ID:        "workflow-123",
+		Name:      "Test Workflow 123",
+		Variables: map[string]any{"timeout": 30, "api_base": "https://api.example.com"},
+	}
+	testWorkflow456 := &models.Workflow{
+		ID:        "workflow-456",
+		Name:      "Test Workflow 456",
+		Variables: map[string]any{"timeout": 60, "api_base": "https://api2.example.com"},
+	}
+
+	mockPersistence.GetMockWorkflowRepository().On("GetByID", mock.Anything, "workflow-123").Return(testWorkflow123, nil)
+	mockPersistence.GetMockWorkflowRepository().On("GetByID", mock.Anything, "workflow-456").Return(testWorkflow456, nil)
+
 	// Mock saving execution contexts for both workflows
 	mockPersistence.GetMockExecutionContextRepository().On("SaveExecutionContext", mock.Anything, mock.AnythingOfType("*models.ExecutionContext")).Return(nil).Twice()
 
@@ -279,6 +302,14 @@ func TestActivator_HandleSourceEvent_PublishFailure(t *testing.T) {
 		},
 	}
 	mockPersistence.GetMockNodeRepository().On("FindTriggerNodesBySourceEventAndProvider", mock.Anything, "source-123", "ScheduleDue", "scheduler", models.WorkflowStatusPublished).Return(triggerMatches, nil)
+
+	// Mock workflow loading for variables
+	testWorkflow := &models.Workflow{
+		ID:        "workflow-123",
+		Name:      "Test Workflow",
+		Variables: map[string]any{"timeout": 30, "api_base": "https://api.example.com"},
+	}
+	mockPersistence.GetMockWorkflowRepository().On("GetByID", mock.Anything, "workflow-123").Return(testWorkflow, nil)
 
 	// Mock saving execution context
 	mockPersistence.GetMockExecutionContextRepository().On("SaveExecutionContext", mock.Anything, mock.AnythingOfType("*models.ExecutionContext")).Return(nil)
@@ -393,6 +424,14 @@ func TestActivator_PublishWorkflowTriggered_Success(t *testing.T) {
 
 	sourceData := map[string]any{"schedule_id": "sched-123", "timestamp": "2023-01-01T00:00:00Z"}
 
+	// Mock workflow loading for variables
+	testWorkflow := &models.Workflow{
+		ID:        "workflow-123",
+		Name:      "Test Workflow",
+		Variables: map[string]any{"timeout": 30, "api_base": "https://api.example.com"},
+	}
+	mockPersistence.GetMockWorkflowRepository().On("GetByID", mock.Anything, "workflow-123").Return(testWorkflow, nil)
+
 	// Mock saving execution context
 	mockPersistence.GetMockExecutionContextRepository().On("SaveExecutionContext", mock.Anything, mock.AnythingOfType("*models.ExecutionContext")).Return(nil)
 
@@ -423,6 +462,14 @@ func TestActivator_PublishWorkflowTriggered_EventBusFailure(t *testing.T) {
 
 	sourceData := map[string]any{"schedule_id": "sched-123"}
 
+	// Mock workflow loading for variables
+	testWorkflow := &models.Workflow{
+		ID:        "workflow-123",
+		Name:      "Test Workflow",
+		Variables: map[string]any{"timeout": 30, "api_base": "https://api.example.com"},
+	}
+	mockPersistence.GetMockWorkflowRepository().On("GetByID", mock.Anything, "workflow-123").Return(testWorkflow, nil)
+
 	// Mock saving execution context
 	mockPersistence.GetMockExecutionContextRepository().On("SaveExecutionContext", mock.Anything, mock.AnythingOfType("*models.ExecutionContext")).Return(nil)
 
@@ -450,6 +497,14 @@ func TestActivator_PublishWorkflowTriggered_ValidEventStructure(t *testing.T) {
 		"timestamp":   "2023-01-01T00:00:00Z",
 		"metadata":    map[string]any{"cron": "0 * * * *"},
 	}
+
+	// Mock workflow loading for variables
+	testWorkflow := &models.Workflow{
+		ID:        "workflow-456",
+		Name:      "Test Workflow 456",
+		Variables: map[string]any{"timeout": 60, "api_base": "https://api2.example.com"},
+	}
+	mockPersistence.GetMockWorkflowRepository().On("GetByID", mock.Anything, "workflow-456").Return(testWorkflow, nil)
 
 	// Mock saving execution context
 	mockPersistence.GetMockExecutionContextRepository().On("SaveExecutionContext", mock.Anything, mock.AnythingOfType("*models.ExecutionContext")).Return(nil)
@@ -626,6 +681,15 @@ func TestActivator_EventHandlingFlow_Integration(t *testing.T) {
 	triggerMatches := createTestTriggerNodeMatches("workflow-integration", "trigger-integration", "source-integration")
 
 	mockPersistence.GetMockNodeRepository().On("FindTriggerNodesBySourceEventAndProvider", mock.Anything, "source-integration", "ScheduleDue", "scheduler", models.WorkflowStatusPublished).Return(triggerMatches, nil)
+
+	// Mock workflow loading for variables
+	testWorkflow := &models.Workflow{
+		ID:        "workflow-integration",
+		Name:      "Test Workflow Integration",
+		Variables: map[string]any{"timeout": 45, "api_base": "https://integration.example.com"},
+	}
+	mockPersistence.GetMockWorkflowRepository().On("GetByID", mock.Anything, "workflow-integration").Return(testWorkflow, nil)
+
 	mockPersistence.GetMockExecutionContextRepository().On("SaveExecutionContext", mock.Anything, mock.AnythingOfType("*models.ExecutionContext")).Return(nil)
 	mockEventBus.On("GenerateID").Return("event-integration")
 	mockEventBus.On("Publish", mock.Anything, "trigger-integration:event-integration", mock.AnythingOfType("events.NodeActivation")).Return(nil)

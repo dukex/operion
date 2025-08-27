@@ -51,14 +51,14 @@
       "type": "httprequest",
       "category": "action",
       "config": {
-        "url": "{{ $order := index .node_results \"validate-order-data\" }}{{.variables.order_api_base}}/{{ $order.order_id }}/process",
+        "url": "{{.variables.order_api_base}}/{{ (index .node_results \"validate-order-data::success\").data.result.order_id }}/process",
         "method": "POST",
         "timeout": "{{.variables.timeout}}",
         "headers": {
           "Authorization": "Bearer {{.env.ORDER_API_TOKEN}}",
           "Content-Type": "application/json"
         },
-        "body": "{{ $order := index .node_results \"validate-order-data\" }}{\n  \"order_id\": \"{{ $order.order_id }}\",\n  \"customer_id\": \"{{ $order.customer_id }}\",\n  \"amount\": {{ $order.total_amount }},\n  \"kafka_metadata\": {\n    \"topic\": \"{{.trigger_data.topic}}\",\n    \"partition\": {{.trigger_data.partition}},\n    \"offset\": {{.trigger_data.offset}},\n    \"message_key\": \"{{.trigger_data.message_key}}\"\n  }\n}"
+        "body": "{{- with (index .node_results \"validate-order-data::success\").data.result -}}{\n  \"order_id\": \"{{ .order_id }}\",\n  \"customer_id\": \"{{ .customer_id }}\",\n  \"amount\": {{ .total_amount }},\n  \"kafka_metadata\": {\n    \"topic\": \"{{$.trigger_data.topic}}\",\n    \"partition\": {{$.trigger_data.partition}},\n    \"offset\": {{$.trigger_data.offset}},\n    \"message_key\": \"{{$.trigger_data.key}}\"\n  }\n}{{- end -}}"
       },
       "position_x": 500,
       "position_y": 100,
@@ -76,7 +76,7 @@
         "headers": {
           "Content-Type": "application/json"
         },
-        "body": "{{ $order := index .node_results \"validate-order-data\" }}{{ $process := index .node_results \"process-valid-order\" }}{\n  \"event\": \"order_processed\",\n  \"order_id\": \"{{ $order.order_id }}\",\n  \"customer_id\": \"{{ $order.customer_id }}\",\n  \"processed_at\": \"{{ $order.timestamp }}\",\n  \"processing_status\": {{ $process.status_code }},\n  \"kafka_source\": {\n    \"topic\": \"{{.trigger_data.topic}}\",\n    \"partition\": {{.trigger_data.partition}},\n    \"offset\": {{.trigger_data.offset}}\n  }\n}"
+        "body": "{\n  \"event\": \"order_processed\",\n  \"order_id\": \"{{ (index .node_results \"validate-order-data::success\").data.result.order_id }}\",\n  \"customer_id\": \"{{ (index .node_results \"validate-order-data::success\").data.result.customer_id }}\",\n  \"processed_at\": \"{{ (index .node_results \"validate-order-data::success\").data.result.timestamp }}\",\n  \"processing_status\": {{ (index .node_results \"process-valid-order::success\").data.status_code }},\n  \"kafka_source\": {\n    \"topic\": \"{{.trigger_data.topic}}\",\n    \"partition\": {{.trigger_data.partition}},\n    \"offset\": {{.trigger_data.offset}}\n  }\n}"
       },
       "position_x": 700,
       "position_y": 100,
@@ -102,7 +102,7 @@
       "category": "action",
       "config": {
         "level": "info",
-        "message": "{{ $order := index .node_results \"validate-order-data\" }}{{ $process := index .node_results \"process-valid-order\" }}Order processing completed - Order ID: {{ $order.order_id }}, Valid: {{ $order.is_valid }}, API Status: {{ $process.status_code }}"
+        "message": "Order processing completed - Order ID: {{ (index .node_results \"validate-order-data::success\").data.result.order_id }}, Valid: {{ (index .node_results \"validate-order-data::success\").data.result.is_valid }}, API Status: {{ (index .node_results \"process-valid-order::success\").data.status_code }}"
       },
       "position_x": 900,
       "position_y": 100,

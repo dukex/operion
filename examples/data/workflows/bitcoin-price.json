@@ -44,7 +44,7 @@
       "type": "transform",
       "category": "action",
       "config": {
-        "expression": "{{ $data := index .node_results \"c90f6195-d6fb-4519-803d-cf32f5f86c48\" }}{{ $json := $data.json }}{{ if $json.close }}{{ $json.close }}{{ else }}{{ $json.open }}{{ end }}"
+        "expression": "{{ $data := index .node_results \"c90f6195-d6fb-4519-803d-cf32f5f86c48::success\" }}{{ $json := $data.json }}{{ if $json.close }}{{ $json.close }}{{ else }}{{ $json.open }}{{ end }}"
       },
       "position_x": 300,
       "position_y": 100,
@@ -61,7 +61,7 @@
         "headers": {
           "Content-Type": "application/json"
         },
-        "body": "{{ $transform := index .node_results \"8de00551-e4de-48bf-aeff-21d394c86a9e\" }}{\"price\": {{ $transform.result }}}",
+        "body": "{{ $transform := index .node_results \"8de00551-e4de-48bf-aeff-21d394c86a9e::success\" }}{\"price\": {{ $transform.result }}}",
         "retries": {
           "attempts": 3,
           "delay": 5000

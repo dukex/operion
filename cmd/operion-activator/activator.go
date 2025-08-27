@@ -207,6 +207,29 @@ func (a *Activator) publishNodeActivation(ctx context.Context, workflowID, trigg
 	executionID := a.eventBus.GenerateID()
 	logger.InfoContext(ctx, "Generated execution ID", "execution_id", executionID)
 
+	// Load workflow to get variables
+	workflow, err := a.persistence.WorkflowRepository().GetByID(ctx, workflowID)
+	if err != nil {
+		logger.ErrorContext(ctx, "Failed to load workflow", "error", err)
+
+		return fmt.Errorf("failed to load workflow %s: %w", workflowID, err)
+	}
+
+	if workflow == nil {
+		err := fmt.Errorf("workflow not found: %s", workflowID)
+		logger.ErrorContext(ctx, "Workflow not found", "error", err)
+
+		return err
+	}
+
+	// Copy variables from workflow, handle nil case
+	var workflowVariables map[string]any
+	if workflow.Variables != nil {
+		workflowVariables = workflow.Variables
+	} else {
+		workflowVariables = make(map[string]any)
+	}
+
 	// Create execution context for this workflow execution
 	executionCtx := &models.ExecutionContext{
 		ID:          executionID,
@@ -214,7 +237,7 @@ func (a *Activator) publishNodeActivation(ctx context.Context, workflowID, trigg
 		Status:      models.ExecutionStatusRunning,
 		NodeResults: make(map[string]models.NodeResult),
 		TriggerData: sourceData,
-		Variables:   make(map[string]any), // TODO: Load from workflow
+		Variables:   workflowVariables,
 		Metadata:    make(map[string]any),
 		CreatedAt:   time.Now(),
 	}
@@ -222,7 +245,7 @@ func (a *Activator) publishNodeActivation(ctx context.Context, workflowID, trigg
 	// Save execution context before publishing the event
 	logger.InfoContext(ctx, "Saving execution context", "execution_id", executionID)
 
-	err := a.persistence.ExecutionContextRepository().SaveExecutionContext(ctx, executionCtx)
+	err = a.persistence.ExecutionContextRepository().SaveExecutionContext(ctx, executionCtx)
 	if err != nil {
 		logger.Error("Failed to save execution context", "error", err, "execution_id", executionID)
 

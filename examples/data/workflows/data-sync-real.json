@@ -65,7 +65,7 @@
       "id": "process-countries",
       "name": "Process Countries Data",
       "config": {
-        "expression": "{{ $data := index .node_results \"fetch-all-countries\" }}{{ $countries := $data.json }}{\n  \"total_countries\": {{ len $countries }},\n  \"total_population\": {{ $total := 0 }}{{ range $countries }}{{ if .population }}{{ $total = add $total .population }}{{ end }}{{ end }}{{ $total }},\n  \"largest_countries\": [{{ range $i, $country := slice (sortBy $countries \"area\" \"desc\") 0 5 }}{{ if ne $i 0 }},{{ end }}{\"name\": \"{{ .name.common }}\", \"area\": {{ .area }}, \"population\": {{ .population }}, \"region\": \"{{ .region }}\"}{{ end }}],\n  \"regions\": [{{ $regions := dict }}{{ range $countries }}{{ if not (hasKey $regions .region) }}{{ $regions = set $regions .region true }}{{ end }}{{ end }}{{ $first := true }}{{ range $key, $val := $regions }}{{ if not $first }},{{ end }}\"{{ $key }}\"{{ $first = false }}{{ end }}],\n  \"timestamp\": \"{{now}}\"\n}"
+        "expression": "{{ $data := index .node_results \"fetch-all-countries::success\" }}{{ $countries := $data.json }}{\n  \"total_countries\": {{ len $countries }},\n  \"total_population\": {{ $total := 0 }}{{ range $countries }}{{ if .population }}{{ $total = add $total .population }}{{ end }}{{ end }}{{ $total }},\n  \"largest_countries\": [{{ range $i, $country := slice (sortBy $countries \"area\" \"desc\") 0 5 }}{{ if ne $i 0 }},{{ end }}{\"name\": \"{{ .name.common }}\", \"area\": {{ .area }}, \"population\": {{ .population }}, \"region\": \"{{ .region }}\"}{{ end }}],\n  \"regions\": [{{ $regions := dict }}{{ range $countries }}{{ if not (hasKey $regions .region) }}{{ $regions = set $regions .region true }}{{ end }}{{ end }}{{ $first := true }}{{ range $key, $val := $regions }}{{ if not $first }},{{ end }}\"{{ $key }}\"{{ $first = false }}{{ end }}],\n  \"timestamp\": \"{{now}}\"\n}"
       },
       "position_x": 100,
       "position_y": 400,
@@ -77,7 +77,7 @@
       "id": "process-europe",
       "name": "Process Europe Data",
       "config": {
-        "expression": "{{ $data := index .node_results \"fetch-region-data\" }}{{ $countries := $data.json }}{\n  \"europe_countries\": {{ len $countries }},\n  \"europe_population\": {{ $total := 0 }}{{ range $countries }}{{ if .population }}{{ $total = add $total .population }}{{ end }}{{ end }}{{ $total }},\n  \"largest_eu_countries\": [{{ range $i, $country := slice (sortBy $countries \"population\" \"desc\") 0 3 }}{{ if ne $i 0 }},{{ end }}{\"name\": \"{{ .name.common }}\", \"capital\": \"{{ if .capital }}{{ index .capital 0 }}{{ else }}N/A{{ end }}\", \"population\": {{ .population }}}{{ end }}],\n  \"timestamp\": \"{{now}}\"\n}"
+        "expression": "{{ $data := index .node_results \"fetch-region-data::success\" }}{{ $countries := $data.json }}{\n  \"europe_countries\": {{ len $countries }},\n  \"europe_population\": {{ $total := 0 }}{{ range $countries }}{{ if .population }}{{ $total = add $total .population }}{{ end }}{{ end }}{{ $total }},\n  \"largest_eu_countries\": [{{ range $i, $country := slice (sortBy $countries \"population\" \"desc\") 0 3 }}{{ if ne $i 0 }},{{ end }}{\"name\": \"{{ .name.common }}\", \"capital\": \"{{ if .capital }}{{ index .capital 0 }}{{ else }}N/A{{ end }}\", \"population\": {{ .population }}}{{ end }}],\n  \"timestamp\": \"{{now}}\"\n}"
       },
       "position_x": 300,
       "position_y": 400,
@@ -89,7 +89,7 @@
       "id": "validate-data",
       "name": "Validate Data Consistency",
       "config": {
-        "expression": "{{ $countries := index .node_results \"process-countries\" }}{{ $europe := index .node_results \"process-europe\" }}{\n  \"validation\": {\n    \"total_countries_valid\": {{ gt $countries.total_countries 0 }},\n    \"population_valid\": {{ gt $countries.total_population 0 }},\n    \"europe_subset_valid\": {{ le $europe.europe_countries $countries.total_countries }},\n    \"regions_count\": {{ len $countries.regions }},\n    \"has_europe\": {{ contains $countries.regions \"Europe\" }}\n  },\n  \"data_quality_score\": {{ $score := 0 }}{{ if gt $countries.total_countries 190 }}{{ $score = add $score 1 }}{{ end }}{{ if gt $countries.total_population 7000000000 }}{{ $score = add $score 1 }}{{ end }}{{ if gt $europe.europe_countries 40 }}{{ $score = add $score 1 }}{{ end }}{{ if ge (len $countries.regions) 5 }}{{ $score = add $score 1 }}{{ end }}{{ $score }},\n  \"sync_status\": \"{{ if and (gt $countries.total_countries 190) (gt $countries.total_population 7000000000) (gt $europe.europe_countries 40) }}SUCCESS{{ else }}WARNING{{ end }}\",\n  \"timestamp\": \"{{now}}\"\n}"
+        "expression": "{{ $countries := index .node_results \"process-countries::success\" }}{{ $europe := index .node_results \"process-europe::success\" }}{\n  \"validation\": {\n    \"total_countries_valid\": {{ gt $countries.total_countries 0 }},\n    \"population_valid\": {{ gt $countries.total_population 0 }},\n    \"europe_subset_valid\": {{ le $europe.europe_countries $countries.total_countries }},\n    \"regions_count\": {{ len $countries.regions }},\n    \"has_europe\": {{ contains $countries.regions \"Europe\" }}\n  },\n  \"data_quality_score\": {{ $score := 0 }}{{ if gt $countries.total_countries 190 }}{{ $score = add $score 1 }}{{ end }}{{ if gt $countries.total_population 7000000000 }}{{ $score = add $score 1 }}{{ end }}{{ if gt $europe.europe_countries 40 }}{{ $score = add $score 1 }}{{ end }}{{ if ge (len $countries.regions) 5 }}{{ $score = add $score 1 }}{{ end }}{{ $score }},\n  \"sync_status\": \"{{ if and (gt $countries.total_countries 190) (gt $countries.total_population 7000000000) (gt $europe.europe_countries 40) }}SUCCESS{{ else }}WARNING{{ end }}\",\n  \"timestamp\": \"{{now}}\"\n}"
       },
       "position_x": 500,
       "position_y": 400,
@@ -101,7 +101,7 @@
       "id": "create-sync-report",
       "name": "Create Sync Report",
       "config": {
-        "expression": "{{ $countries := index .node_results \"process-countries\" }}{{ $europe := index .node_results \"process-europe\" }}{{ $validation := index .node_results \"validate-data\" }}{\n  \"sync_summary\": {\n    \"timestamp\": \"{{now}}\",\n    \"status\": \"{{ $validation.sync_status }}\",\n    \"data_quality_score\": \"{{ $validation.data_quality_score }}/4\",\n    \"statistics\": {\n      \"total_countries\": {{ $countries.total_countries }},\n      \"world_population\": {{ $countries.total_population }},\n      \"europe_countries\": {{ $europe.europe_countries }},\n      \"europe_population\": {{ $europe.europe_population }},\n      \"regions_found\": {{ len $countries.regions }}\n    }\n  },\n  \"data_samples\": {\n    \"largest_countries\": {{ $countries.largest_countries | toJson }},\n    \"largest_eu_countries\": {{ $europe.largest_eu_countries | toJson }}\n  },\n  \"validation\": {{ $validation.validation | toJson }}\n}"
+        "expression": "{{ $countries := index .node_results \"process-countries::success\" }}{{ $europe := index .node_results \"process-europe::success\" }}{{ $validation := index .node_results \"validate-data::success\" }}{\n  \"sync_summary\": {\n    \"timestamp\": \"{{now}}\",\n    \"status\": \"{{ $validation.sync_status }}\",\n    \"data_quality_score\": \"{{ $validation.data_quality_score }}/4\",\n    \"statistics\": {\n      \"total_countries\": {{ $countries.total_countries }},\n      \"world_population\": {{ $countries.total_population }},\n      \"europe_countries\": {{ $europe.europe_countries }},\n      \"europe_population\": {{ $europe.europe_population }},\n      \"regions_found\": {{ len $countries.regions }}\n    }\n  },\n  \"data_samples\": {\n    \"largest_countries\": {{ $countries.largest_countries | toJson }},\n    \"largest_eu_countries\": {{ $europe.largest_eu_countries | toJson }}\n  },\n  \"validation\": {{ $validation.validation | toJson }}\n}"
       },
       "position_x": 700,
       "position_y": 400,
@@ -113,7 +113,7 @@
       "id": "log-sync-stats",
       "name": "Log Sync Statistics",
       "config": {
-        "message": "{{ $report := index .node_results \"create-sync-report\" }}Data Sync - Status: {{ $report.sync_summary.status }}, Countries: {{ $report.sync_summary.statistics.total_countries }}, Quality Score: {{ $report.sync_summary.data_quality_score }}"
+        "message": "{{ $report := index .node_results \"create-sync-report::success\" }}Data Sync - Status: {{ $report.sync_summary.status }}, Countries: {{ $report.sync_summary.statistics.total_countries }}, Quality Score: {{ $report.sync_summary.data_quality_score }}"
       },
       "position_x": 900,
       "position_y": 400,
@@ -130,7 +130,7 @@
         "headers": {
           "Content-Type": "application/json"
         },
-        "body": "{{ $report := index .node_results \"create-sync-report\" }}{{ $validation := index .node_results \"validate-data\" }}{\n  \"service\": \"data-sync\",\n  \"timestamp\": \"{{ $report.sync_summary.timestamp }}\",\n  \"sync_status\": \"{{ $report.sync_summary.status }}\",\n  \"quality_metrics\": {\n    \"data_quality_score\": \"{{ $report.sync_summary.data_quality_score }}\",\n    \"total_records\": {{ $report.sync_summary.statistics.total_countries }},\n    \"validation_passed\": {{ $validation.validation | toJson }}\n  },\n  \"statistics\": {{ $report.sync_summary.statistics | toJson }},\n  \"sample_data\": {{ $report.data_samples | toJson }}\n}",
+        "body": "{{ $report := index .node_results \"create-sync-report::success\" }}{{ $validation := index .node_results \"validate-data::success\" }}{\n  \"service\": \"data-sync\",\n  \"timestamp\": \"{{ $report.sync_summary.timestamp }}\",\n  \"sync_status\": \"{{ $report.sync_summary.status }}\",\n  \"quality_metrics\": {\n    \"data_quality_score\": \"{{ $report.sync_summary.data_quality_score }}\",\n    \"total_records\": {{ $report.sync_summary.statistics.total_countries }},\n    \"validation_passed\": {{ $validation.validation | toJson }}\n  },\n  \"statistics\": {{ $report.sync_summary.statistics | toJson }},\n  \"sample_data\": {{ $report.data_samples | toJson }}\n}",
         "timeout": 10
       },
       "position_x": 1100,
@@ -143,7 +143,7 @@
       "id": "log-success",
       "name": "Log Success",
       "config": {
-        "message": "{{ $report := index .node_results \"create-sync-report\" }}Data synchronization completed successfully. Status: {{ $report.sync_summary.status }}"
+        "message": "{{ $report := index .node_results \"create-sync-report::success\" }}Data synchronization completed successfully. Status: {{ $report.sync_summary.status }}"
       },
       "position_x": 1300,
       "position_y": 350,
