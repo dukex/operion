@@ -14,7 +14,7 @@ import (
 
 func TestSchedulerMigrations(t *testing.T) {
 	migrations := schedulerMigrations()
-	
+
 	// Test that migration version 3 exists
 	migration, exists := migrations[3]
 	assert.True(t, exists, "Migration version 3 should exist")
@@ -25,7 +25,7 @@ func TestSchedulerMigrations(t *testing.T) {
 func TestNewPostgresPersistence_InvalidURL(t *testing.T) {
 	ctx := context.Background()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	
+
 	// Test with completely invalid URL
 	persistence, err := NewPostgresPersistence(ctx, logger, "not-a-valid-url")
 	assert.Error(t, err)
@@ -39,7 +39,7 @@ func TestScanScheduleRows_EmptyRows(t *testing.T) {
 	p := &PostgresPersistence{
 		logger: logger,
 	}
-	
+
 	// This would normally require actual database rows, but we can test the error handling
 	// when rows.Err() returns an error by mocking or using nil rows
 	// For now, we're testing the structure exists
@@ -49,21 +49,21 @@ func TestScanScheduleRows_EmptyRows(t *testing.T) {
 func TestScheduleMigrationContent(t *testing.T) {
 	migrations := schedulerMigrations()
 	migration := migrations[3]
-	
+
 	// Verify all required indexes are present
 	requiredIndexes := []string{
 		"idx_scheduler_schedules_source_id",
-		"idx_scheduler_schedules_next_due_at", 
+		"idx_scheduler_schedules_next_due_at",
 		"idx_scheduler_schedules_active",
 		"idx_scheduler_schedules_created_at",
 		"idx_scheduler_schedules_updated_at",
 		"idx_scheduler_schedules_active_due",
 	}
-	
+
 	for _, index := range requiredIndexes {
 		assert.Contains(t, migration, index, "Migration should contain index: %s", index)
 	}
-	
+
 	// Verify table structure
 	requiredColumns := []string{
 		"id VARCHAR(255) PRIMARY KEY",
@@ -74,22 +74,22 @@ func TestScheduleMigrationContent(t *testing.T) {
 		"updated_at TIMESTAMP WITH TIME ZONE NOT NULL",
 		"active BOOLEAN NOT NULL DEFAULT true",
 	}
-	
+
 	for _, column := range requiredColumns {
 		assert.Contains(t, migration, column, "Migration should contain column definition: %s", column)
 	}
-	
+
 	// Verify partial index for performance
 	assert.Contains(t, migration, "WHERE active = true", "Should have partial index for active schedules")
 }
 
 func TestPostgresPersistence_MethodSignatures(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	
+
 	// Test that PostgresPersistence implements the interface properly
 	// by checking method signatures exist
 	var persistence interface{} = &PostgresPersistence{logger: logger}
-	
+
 	// This will compile-time check that PostgresPersistence implements SchedulerPersistence
 	_, ok := persistence.(interface {
 		SaveSchedule(schedule *models.Schedule) error
@@ -102,17 +102,17 @@ func TestPostgresPersistence_MethodSignatures(t *testing.T) {
 		HealthCheck() error
 		Close() error
 	})
-	
+
 	assert.True(t, ok, "PostgresPersistence should implement all required methods")
 }
 
 func TestPostgresPersistence_LoggerSetup(t *testing.T) {
 	ctx := context.Background()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	
+
 	// Test with invalid connection to ensure logger is set up correctly
 	persistence, err := NewPostgresPersistence(ctx, logger, "postgres://invalid:invalid@nonexistent:5432/nonexistent")
-	
+
 	// Should fail to connect, but if it gets past connection, logger should be set
 	assert.Error(t, err)
 	assert.Nil(t, persistence)
@@ -124,7 +124,7 @@ func TestPostgresPersistence_Close(t *testing.T) {
 		logger: logger,
 		db:     nil, // nil db should not panic
 	}
-	
+
 	// Should handle nil database gracefully
 	err := p.Close()
 	assert.NoError(t, err, "Close should handle nil database without error")
