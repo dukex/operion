@@ -422,9 +422,9 @@ func TestWorkflow_ComplexNodeGraph_JSONSerialization(t *testing.T) {
 
 func TestExecutionContext_NodeBased_Validation_ValidContext(t *testing.T) {
 	context := &ExecutionContext{
-		ID:                  "exec-123",
-		PublishedWorkflowID: "wf-published-456",
-		Status:              ExecutionStatusRunning,
+		ID:         "exec-123",
+		WorkflowID: "wf-published-456",
+		Status:     ExecutionStatusRunning,
 		NodeResults: map[string]NodeResult{
 			"node-1": {
 				NodeID:    "node-1",
@@ -443,13 +443,13 @@ func TestExecutionContext_NodeBased_Validation_ValidContext(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestExecutionContext_Validation_MissingPublishedWorkflowID(t *testing.T) {
+func TestExecutionContext_Validation_MissingWorkflowID(t *testing.T) {
 	context := &ExecutionContext{
-		ID:                  "exec-123",
-		PublishedWorkflowID: "", // Missing required field
-		Status:              ExecutionStatusRunning,
-		NodeResults:         map[string]NodeResult{},
-		CreatedAt:           time.Now().UTC(),
+		ID:          "exec-123",
+		WorkflowID:  "", // Missing required field
+		Status:      ExecutionStatusRunning,
+		NodeResults: map[string]NodeResult{},
+		CreatedAt:   time.Now().UTC(),
 	}
 
 	validate := validator.New()
@@ -467,14 +467,14 @@ func TestExecutionContext_Validation_MissingPublishedWorkflowID(t *testing.T) {
 	found := false
 
 	for _, fieldErr := range validationErrors {
-		if fieldErr.Field() == "PublishedWorkflowID" && fieldErr.Tag() == requiredTag {
+		if fieldErr.Field() == "WorkflowID" && fieldErr.Tag() == requiredTag {
 			found = true
 
 			break
 		}
 	}
 
-	assert.True(t, found, "Should have validation error for required PublishedWorkflowID field")
+	assert.True(t, found, "Should have validation error for required WorkflowID field")
 }
 
 func TestExecutionContext_StatusConstants(t *testing.T) {
@@ -493,11 +493,11 @@ func TestExecutionContext_StatusConstants(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			context := &ExecutionContext{
-				ID:                  "exec-123",
-				PublishedWorkflowID: "wf-published-456",
-				Status:              tc.status,
-				NodeResults:         map[string]NodeResult{},
-				CreatedAt:           time.Now().UTC(),
+				ID:          "exec-123",
+				WorkflowID:  "wf-published-456",
+				Status:      tc.status,
+				NodeResults: map[string]NodeResult{},
+				CreatedAt:   time.Now().UTC(),
 			}
 
 			validate := validator.New()
@@ -523,9 +523,9 @@ func TestExecutionContext_CompleteLifecycle_JSONSerialization(t *testing.T) {
 	endTime := time.Now().UTC()
 
 	original := &ExecutionContext{
-		ID:                  "exec-complex-789",
-		PublishedWorkflowID: "wf-published-456",
-		Status:              ExecutionStatusCompleted,
+		ID:         "exec-complex-789",
+		WorkflowID: "wf-published-456",
+		Status:     ExecutionStatusCompleted,
 		NodeResults: map[string]NodeResult{
 			"fetch-data": {
 				NodeID:    "fetch-data",
@@ -577,7 +577,7 @@ func TestExecutionContext_CompleteLifecycle_JSONSerialization(t *testing.T) {
 	jsonData, err := json.Marshal(original)
 	require.NoError(t, err)
 	assert.Contains(t, string(jsonData), `"id":"exec-complex-789"`)
-	assert.Contains(t, string(jsonData), `"published_workflow_id":"wf-published-456"`)
+	assert.Contains(t, string(jsonData), `"workflow_id":"wf-published-456"`)
 	assert.Contains(t, string(jsonData), `"status":"completed"`)
 
 	// Deserialize from JSON
@@ -588,7 +588,7 @@ func TestExecutionContext_CompleteLifecycle_JSONSerialization(t *testing.T) {
 
 	// Verify basic fields
 	assert.Equal(t, original.ID, deserialized.ID)
-	assert.Equal(t, original.PublishedWorkflowID, deserialized.PublishedWorkflowID)
+	assert.Equal(t, original.WorkflowID, deserialized.WorkflowID)
 	assert.Equal(t, original.Status, deserialized.Status)
 	assert.Equal(t, original.ErrorMessage, deserialized.ErrorMessage)
 

@@ -18,9 +18,9 @@ func TestExecutionContextRepository_SaveAndGetExecutionContext(t *testing.T) {
 
 	// Create test execution context
 	execCtx := &models.ExecutionContext{
-		ID:                  "test-execution-123",
-		PublishedWorkflowID: "workflow-456",
-		Status:              models.ExecutionStatusRunning,
+		ID:         "test-execution-123",
+		WorkflowID: "workflow-456",
+		Status:     models.ExecutionStatusRunning,
 		NodeResults: map[string]models.NodeResult{
 			"node1::success": {
 				NodeID: "node1",
@@ -57,7 +57,7 @@ func TestExecutionContextRepository_SaveAndGetExecutionContext(t *testing.T) {
 
 	// Verify all fields
 	assert.Equal(t, "test-execution-123", retrieved.ID)
-	assert.Equal(t, "workflow-456", retrieved.PublishedWorkflowID)
+	assert.Equal(t, "workflow-456", retrieved.WorkflowID)
 	assert.Equal(t, models.ExecutionStatusRunning, retrieved.Status)
 	assert.Equal(t, "processed", retrieved.NodeResults["node1::success"].Data["message"])
 	assert.Equal(t, "webhook", retrieved.TriggerData["event_type"])
@@ -75,14 +75,14 @@ func TestExecutionContextRepository_UpdateExecutionContext(t *testing.T) {
 
 	// Create and save initial execution context
 	execCtx := &models.ExecutionContext{
-		ID:                  "test-execution-update",
-		PublishedWorkflowID: "workflow-789",
-		Status:              models.ExecutionStatusRunning,
-		NodeResults:         make(map[string]models.NodeResult),
-		TriggerData:         map[string]any{"source": "test"},
-		Variables:           map[string]any{"counter": 1},
-		Metadata:            make(map[string]any),
-		CreatedAt:           time.Now(),
+		ID:          "test-execution-update",
+		WorkflowID:  "workflow-789",
+		Status:      models.ExecutionStatusRunning,
+		NodeResults: make(map[string]models.NodeResult),
+		TriggerData: map[string]any{"source": "test"},
+		Variables:   map[string]any{"counter": 1},
+		Metadata:    make(map[string]any),
+		CreatedAt:   time.Now(),
 	}
 
 	execRepo := persistence.ExecutionContextRepository()
@@ -121,36 +121,36 @@ func TestExecutionContextRepository_GetExecutionsByWorkflow(t *testing.T) {
 
 	// Create multiple execution contexts for different workflows
 	execCtx1 := &models.ExecutionContext{
-		ID:                  "exec-1",
-		PublishedWorkflowID: "workflow-target",
-		Status:              models.ExecutionStatusRunning,
-		NodeResults:         make(map[string]models.NodeResult),
-		TriggerData:         make(map[string]any),
-		Variables:           make(map[string]any),
-		Metadata:            make(map[string]any),
-		CreatedAt:           time.Now(),
+		ID:          "exec-1",
+		WorkflowID:  "workflow-target",
+		Status:      models.ExecutionStatusRunning,
+		NodeResults: make(map[string]models.NodeResult),
+		TriggerData: make(map[string]any),
+		Variables:   make(map[string]any),
+		Metadata:    make(map[string]any),
+		CreatedAt:   time.Now(),
 	}
 
 	execCtx2 := &models.ExecutionContext{
-		ID:                  "exec-2",
-		PublishedWorkflowID: "workflow-target", // Same workflow
-		Status:              models.ExecutionStatusCompleted,
-		NodeResults:         make(map[string]models.NodeResult),
-		TriggerData:         make(map[string]any),
-		Variables:           make(map[string]any),
-		Metadata:            make(map[string]any),
-		CreatedAt:           time.Now(),
+		ID:          "exec-2",
+		WorkflowID:  "workflow-target", // Same workflow
+		Status:      models.ExecutionStatusCompleted,
+		NodeResults: make(map[string]models.NodeResult),
+		TriggerData: make(map[string]any),
+		Variables:   make(map[string]any),
+		Metadata:    make(map[string]any),
+		CreatedAt:   time.Now(),
 	}
 
 	execCtx3 := &models.ExecutionContext{
-		ID:                  "exec-3",
-		PublishedWorkflowID: "workflow-different", // Different workflow
-		Status:              models.ExecutionStatusRunning,
-		NodeResults:         make(map[string]models.NodeResult),
-		TriggerData:         make(map[string]any),
-		Variables:           make(map[string]any),
-		Metadata:            make(map[string]any),
-		CreatedAt:           time.Now(),
+		ID:          "exec-3",
+		WorkflowID:  "workflow-different", // Different workflow
+		Status:      models.ExecutionStatusRunning,
+		NodeResults: make(map[string]models.NodeResult),
+		TriggerData: make(map[string]any),
+		Variables:   make(map[string]any),
+		Metadata:    make(map[string]any),
+		CreatedAt:   time.Now(),
 	}
 
 	execRepo := persistence.ExecutionContextRepository()
@@ -188,36 +188,36 @@ func TestExecutionContextRepository_GetExecutionsByStatus(t *testing.T) {
 
 	// Create execution contexts with different statuses
 	execCtx1 := &models.ExecutionContext{
-		ID:                  "exec-running-1",
-		PublishedWorkflowID: "workflow-1",
-		Status:              models.ExecutionStatusRunning,
-		NodeResults:         make(map[string]models.NodeResult),
-		TriggerData:         make(map[string]any),
-		Variables:           make(map[string]any),
-		Metadata:            make(map[string]any),
-		CreatedAt:           time.Now(),
+		ID:          "exec-running-1",
+		WorkflowID:  "workflow-1",
+		Status:      models.ExecutionStatusRunning,
+		NodeResults: make(map[string]models.NodeResult),
+		TriggerData: make(map[string]any),
+		Variables:   make(map[string]any),
+		Metadata:    make(map[string]any),
+		CreatedAt:   time.Now(),
 	}
 
 	execCtx2 := &models.ExecutionContext{
-		ID:                  "exec-running-2",
-		PublishedWorkflowID: "workflow-2",
-		Status:              models.ExecutionStatusRunning, // Same status
-		NodeResults:         make(map[string]models.NodeResult),
-		TriggerData:         make(map[string]any),
-		Variables:           make(map[string]any),
-		Metadata:            make(map[string]any),
-		CreatedAt:           time.Now(),
+		ID:          "exec-running-2",
+		WorkflowID:  "workflow-2",
+		Status:      models.ExecutionStatusRunning, // Same status
+		NodeResults: make(map[string]models.NodeResult),
+		TriggerData: make(map[string]any),
+		Variables:   make(map[string]any),
+		Metadata:    make(map[string]any),
+		CreatedAt:   time.Now(),
 	}
 
 	execCtx3 := &models.ExecutionContext{
-		ID:                  "exec-completed",
-		PublishedWorkflowID: "workflow-3",
-		Status:              models.ExecutionStatusCompleted, // Different status
-		NodeResults:         make(map[string]models.NodeResult),
-		TriggerData:         make(map[string]any),
-		Variables:           make(map[string]any),
-		Metadata:            make(map[string]any),
-		CreatedAt:           time.Now(),
+		ID:          "exec-completed",
+		WorkflowID:  "workflow-3",
+		Status:      models.ExecutionStatusCompleted, // Different status
+		NodeResults: make(map[string]models.NodeResult),
+		TriggerData: make(map[string]any),
+		Variables:   make(map[string]any),
+		Metadata:    make(map[string]any),
+		CreatedAt:   time.Now(),
 	}
 
 	execRepo := persistence.ExecutionContextRepository()
@@ -282,14 +282,14 @@ func TestExecutionContextRepository_UpdateExecutionContext_NotFound(t *testing.T
 
 	// Create execution context that hasn't been saved
 	execCtx := &models.ExecutionContext{
-		ID:                  "non-existent-execution",
-		PublishedWorkflowID: "workflow-1",
-		Status:              models.ExecutionStatusRunning,
-		NodeResults:         make(map[string]models.NodeResult),
-		TriggerData:         make(map[string]any),
-		Variables:           make(map[string]any),
-		Metadata:            make(map[string]any),
-		CreatedAt:           time.Now(),
+		ID:          "non-existent-execution",
+		WorkflowID:  "workflow-1",
+		Status:      models.ExecutionStatusRunning,
+		NodeResults: make(map[string]models.NodeResult),
+		TriggerData: make(map[string]any),
+		Variables:   make(map[string]any),
+		Metadata:    make(map[string]any),
+		CreatedAt:   time.Now(),
 	}
 
 	// Test UpdateExecutionContext on non-existent execution
@@ -328,14 +328,14 @@ func TestExecutionContextRepository_DataIsolation(t *testing.T) {
 
 	// Create execution context in first persistence
 	execCtx := &models.ExecutionContext{
-		ID:                  "isolated-execution",
-		PublishedWorkflowID: "workflow-1",
-		Status:              models.ExecutionStatusRunning,
-		NodeResults:         make(map[string]models.NodeResult),
-		TriggerData:         make(map[string]any),
-		Variables:           make(map[string]any),
-		Metadata:            make(map[string]any),
-		CreatedAt:           time.Now(),
+		ID:          "isolated-execution",
+		WorkflowID:  "workflow-1",
+		Status:      models.ExecutionStatusRunning,
+		NodeResults: make(map[string]models.NodeResult),
+		TriggerData: make(map[string]any),
+		Variables:   make(map[string]any),
+		Metadata:    make(map[string]any),
+		CreatedAt:   time.Now(),
 	}
 
 	execRepo1 := persistence1.ExecutionContextRepository()

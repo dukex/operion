@@ -14,9 +14,9 @@ func createTestExecutionContext(t *testing.T, workflowID string) *models.Executi
 	t.Helper()
 
 	return &models.ExecutionContext{
-		ID:                  uuid.New().String(),
-		PublishedWorkflowID: workflowID,
-		Status:              models.ExecutionStatusRunning,
+		ID:         uuid.New().String(),
+		WorkflowID: workflowID,
+		Status:     models.ExecutionStatusRunning,
 		NodeResults: map[string]models.NodeResult{
 			"node1": {
 				NodeID:    "node1",
@@ -75,7 +75,7 @@ func TestExecutionContextRepository_SaveAndGetExecutionContext(t *testing.T) {
 	require.NotNil(t, retrieved)
 
 	assert.Equal(t, execCtx.ID, retrieved.ID)
-	assert.Equal(t, execCtx.PublishedWorkflowID, retrieved.PublishedWorkflowID)
+	assert.Equal(t, execCtx.WorkflowID, retrieved.WorkflowID)
 	assert.Equal(t, execCtx.Status, retrieved.Status)
 	assert.Equal(t, execCtx.ErrorMessage, retrieved.ErrorMessage)
 
@@ -289,9 +289,9 @@ func TestExecutionContextRepository_ComplexDataTypes(t *testing.T) {
 
 	// Create execution context with complex nested data
 	execCtx := &models.ExecutionContext{
-		ID:                  uuid.New().String(),
-		PublishedWorkflowID: workflow.ID,
-		Status:              models.ExecutionStatusRunning,
+		ID:         uuid.New().String(),
+		WorkflowID: workflow.ID,
+		Status:     models.ExecutionStatusRunning,
 		NodeResults: map[string]models.NodeResult{
 			"api_call": {
 				NodeID: "api_call",
@@ -428,9 +428,9 @@ func TestExecutionContextRepository_ErrorCases(t *testing.T) {
 
 	// Test updating non-existent execution context
 	nonExistentCtx := &models.ExecutionContext{
-		ID:                  "non-existent-id",
-		PublishedWorkflowID: uuid.New().String(),
-		Status:              models.ExecutionStatusRunning,
+		ID:         "non-existent-id",
+		WorkflowID: uuid.New().String(),
+		Status:     models.ExecutionStatusRunning,
 	}
 
 	err = execRepo.UpdateExecutionContext(ctx, nonExistentCtx)
@@ -439,14 +439,14 @@ func TestExecutionContextRepository_ErrorCases(t *testing.T) {
 
 	// Test saving execution context with non-existent workflow
 	invalidExecCtx := &models.ExecutionContext{
-		ID:                  uuid.New().String(),
-		PublishedWorkflowID: uuid.New().String(), // Use valid UUID format
-		Status:              models.ExecutionStatusRunning,
-		NodeResults:         make(map[string]models.NodeResult),
-		Variables:           make(map[string]any),
-		TriggerData:         make(map[string]any),
-		Metadata:            make(map[string]any),
-		CreatedAt:           time.Now().UTC(),
+		ID:          uuid.New().String(),
+		WorkflowID:  uuid.New().String(), // Use valid UUID format
+		Status:      models.ExecutionStatusRunning,
+		NodeResults: make(map[string]models.NodeResult),
+		Variables:   make(map[string]any),
+		TriggerData: make(map[string]any),
+		Metadata:    make(map[string]any),
+		CreatedAt:   time.Now().UTC(),
 	}
 
 	err = execRepo.SaveExecutionContext(ctx, invalidExecCtx)

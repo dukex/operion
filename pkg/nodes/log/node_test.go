@@ -20,11 +20,11 @@ func TestLogNode_Execute_Info(t *testing.T) {
 
 	// Create execution context
 	ctx := models.ExecutionContext{
-		ID:                  "test-exec",
-		PublishedWorkflowID: "test-workflow",
-		NodeResults:         make(map[string]models.NodeResult),
-		Variables:           map[string]any{"user_name": "john_doe"},
-		Metadata:            make(map[string]any),
+		ID:          "test-exec",
+		WorkflowID:  "test-workflow",
+		NodeResults: make(map[string]models.NodeResult),
+		Variables:   map[string]any{"user_name": "john_doe"},
+		Metadata:    make(map[string]any),
 	}
 
 	// Execute node
@@ -76,11 +76,11 @@ func TestLogNode_Execute_Error_Level(t *testing.T) {
 
 	// Create execution context
 	ctx := models.ExecutionContext{
-		ID:                  "test-exec",
-		PublishedWorkflowID: "test-workflow",
-		NodeResults:         make(map[string]models.NodeResult),
-		Variables:           make(map[string]any),
-		Metadata:            make(map[string]any),
+		ID:          "test-exec",
+		WorkflowID:  "test-workflow",
+		NodeResults: make(map[string]models.NodeResult),
+		Variables:   make(map[string]any),
+		Metadata:    make(map[string]any),
 	}
 
 	// Execute node
@@ -116,11 +116,11 @@ func TestLogNode_Execute_DefaultLevel(t *testing.T) {
 
 	// Execute and verify default level is "info"
 	ctx := models.ExecutionContext{
-		ID:                  "test-exec",
-		PublishedWorkflowID: "test-workflow",
-		NodeResults:         make(map[string]models.NodeResult),
-		Variables:           make(map[string]any),
-		Metadata:            make(map[string]any),
+		ID:          "test-exec",
+		WorkflowID:  "test-workflow",
+		NodeResults: make(map[string]models.NodeResult),
+		Variables:   make(map[string]any),
+		Metadata:    make(map[string]any),
 	}
 
 	results, err := node.Execute(ctx, make(map[string]models.NodeResult))
@@ -150,11 +150,11 @@ func TestLogNode_Execute_TemplateError(t *testing.T) {
 
 	// Create execution context
 	ctx := models.ExecutionContext{
-		ID:                  "test-exec",
-		PublishedWorkflowID: "test-workflow",
-		NodeResults:         make(map[string]models.NodeResult),
-		Variables:           make(map[string]any),
-		Metadata:            make(map[string]any),
+		ID:          "test-exec",
+		WorkflowID:  "test-workflow",
+		NodeResults: make(map[string]models.NodeResult),
+		Variables:   make(map[string]any),
+		Metadata:    make(map[string]any),
 	}
 
 	// Execute node

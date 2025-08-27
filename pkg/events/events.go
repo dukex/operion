@@ -90,13 +90,13 @@ func (w WorkflowFailed) GetType() EventType {
 type NodeActivation struct {
 	BaseEvent
 
-	ExecutionID         string `json:"execution_id"`
-	NodeID              string `json:"node_id"`
-	PublishedWorkflowID string `json:"published_workflow_id"`
-	InputPort           string `json:"input_port"`
-	InputData           any    `json:"input_data"`
-	SourceNode          string `json:"source_node"`
-	SourcePort          string `json:"source_port"`
+	ExecutionID string `json:"execution_id"`
+	NodeID      string `json:"node_id"`
+	WorkflowID  string `json:"workflow_id"`
+	InputPort   string `json:"input_port"`
+	InputData   any    `json:"input_data"`
+	SourceNode  string `json:"source_node"`
+	SourcePort  string `json:"source_port"`
 }
 
 func (n NodeActivation) GetType() EventType {
@@ -107,14 +107,14 @@ func (n NodeActivation) GetType() EventType {
 type NodeCompletion struct {
 	BaseEvent
 
-	ExecutionID         string            `json:"execution_id"`
-	NodeID              string            `json:"node_id"`
-	PublishedWorkflowID string            `json:"published_workflow_id"`
-	Status              models.NodeStatus `json:"status"`
-	OutputData          map[string]any    `json:"output_data"`
-	ErrorMessage        string            `json:"error_message,omitempty"`
-	DurationMs          int64             `json:"duration_ms"`
-	CompletedAt         time.Time         `json:"completed_at"`
+	ExecutionID  string            `json:"execution_id"`
+	NodeID       string            `json:"node_id"`
+	WorkflowID   string            `json:"workflow_id"`
+	Status       models.NodeStatus `json:"status"`
+	OutputData   map[string]any    `json:"output_data"`
+	ErrorMessage string            `json:"error_message,omitempty"`
+	DurationMs   int64             `json:"duration_ms"`
+	CompletedAt  time.Time         `json:"completed_at"`
 }
 
 func (n NodeCompletion) GetType() EventType {

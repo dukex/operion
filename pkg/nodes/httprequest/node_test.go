@@ -30,11 +30,11 @@ func TestHTTPRequestNode_Execute_Success(t *testing.T) {
 
 	// Create execution context
 	ctx := models.ExecutionContext{
-		ID:                  "test-exec",
-		PublishedWorkflowID: "test-workflow",
-		NodeResults:         make(map[string]models.NodeResult),
-		Variables:           make(map[string]any),
-		Metadata:            make(map[string]any),
+		ID:          "test-exec",
+		WorkflowID:  "test-workflow",
+		NodeResults: make(map[string]models.NodeResult),
+		Variables:   make(map[string]any),
+		Metadata:    make(map[string]any),
 	}
 
 	// Execute node
@@ -91,11 +91,11 @@ func TestHTTPRequestNode_Execute_Error(t *testing.T) {
 
 	// Create execution context
 	ctx := models.ExecutionContext{
-		ID:                  "test-exec",
-		PublishedWorkflowID: "test-workflow",
-		NodeResults:         make(map[string]models.NodeResult),
-		Variables:           make(map[string]any),
-		Metadata:            make(map[string]any),
+		ID:          "test-exec",
+		WorkflowID:  "test-workflow",
+		NodeResults: make(map[string]models.NodeResult),
+		Variables:   make(map[string]any),
+		Metadata:    make(map[string]any),
 	}
 
 	// Execute node
@@ -151,11 +151,11 @@ func TestHTTPRequestNode_Execute_WithTemplating(t *testing.T) {
 
 	// Create execution context with variables
 	ctx := models.ExecutionContext{
-		ID:                  "test-exec",
-		PublishedWorkflowID: "test-workflow",
-		NodeResults:         make(map[string]models.NodeResult),
-		Variables:           map[string]any{"user_id": "123"},
-		Metadata:            make(map[string]any),
+		ID:          "test-exec",
+		WorkflowID:  "test-workflow",
+		NodeResults: make(map[string]models.NodeResult),
+		Variables:   map[string]any{"user_id": "123"},
+		Metadata:    make(map[string]any),
 	}
 
 	// Execute node
@@ -196,11 +196,11 @@ func TestHTTPRequestNode_Execute_WithRetries(t *testing.T) {
 
 	// Create execution context
 	ctx := models.ExecutionContext{
-		ID:                  "test-exec",
-		PublishedWorkflowID: "test-workflow",
-		NodeResults:         make(map[string]models.NodeResult),
-		Variables:           make(map[string]any),
-		Metadata:            make(map[string]any),
+		ID:          "test-exec",
+		WorkflowID:  "test-workflow",
+		NodeResults: make(map[string]models.NodeResult),
+		Variables:   make(map[string]any),
+		Metadata:    make(map[string]any),
 	}
 
 	// Execute node - should return error result after retries

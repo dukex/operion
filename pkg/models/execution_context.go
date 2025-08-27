@@ -16,14 +16,14 @@ const (
 
 // ExecutionContext represents the state of a node-based workflow execution.
 type ExecutionContext struct {
-	ID                  string                `json:"id"`
-	PublishedWorkflowID string                `json:"published_workflow_id"   validate:"required"`
-	Status              ExecutionStatus       `json:"status"`
-	NodeResults         map[string]NodeResult `json:"node_results"`
-	TriggerData         map[string]any        `json:"trigger_data,omitempty"`
-	Variables           map[string]any        `json:"variables,omitempty"`
-	Metadata            map[string]any        `json:"metadata,omitempty"`
-	ErrorMessage        string                `json:"error_message,omitempty"`
-	CreatedAt           time.Time             `json:"created_at"`
-	CompletedAt         *time.Time            `json:"completed_at,omitempty"`
+	ID           string                `json:"id"`
+	WorkflowID   string                `json:"workflow_id"             validate:"required"`
+	Status       ExecutionStatus       `json:"status"`
+	NodeResults  map[string]NodeResult `json:"node_results"`
+	TriggerData  map[string]any        `json:"trigger_data,omitempty"`
+	Variables    map[string]any        `json:"variables,omitempty"`
+	Metadata     map[string]any        `json:"metadata,omitempty"`
+	ErrorMessage string                `json:"error_message,omitempty"`
+	CreatedAt    time.Time             `json:"created_at"`
+	CompletedAt  *time.Time            `json:"completed_at,omitempty"`
 }

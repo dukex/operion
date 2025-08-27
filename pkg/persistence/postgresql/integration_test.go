@@ -160,12 +160,12 @@ func testWorkflowOperations(t *testing.T, p *postgresql.Persistence, ctx context
 	nodeRepo := p.NodeRepository()
 
 	// Get all nodes through NodeRepository
-	nodes, err := nodeRepo.GetNodesFromPublishedWorkflow(ctx, workflow.ID)
+	nodes, err := nodeRepo.GetNodesByWorkflow(ctx, workflow.ID)
 	require.NoError(t, err)
 	assert.Len(t, nodes, 5)
 
 	// Get specific trigger node
-	triggerNode, err := nodeRepo.GetNodeFromPublishedWorkflow(ctx, workflow.ID, "webhook_trigger")
+	triggerNode, err := nodeRepo.GetNodeByWorkflow(ctx, workflow.ID, "webhook_trigger")
 	require.NoError(t, err)
 	require.NotNil(t, triggerNode)
 	assert.Equal(t, models.CategoryTypeTrigger, triggerNode.Category)
@@ -175,12 +175,12 @@ func testWorkflowOperations(t *testing.T, p *postgresql.Persistence, ctx context
 	connRepo := p.ConnectionRepository()
 
 	// Get all connections
-	connections, err := connRepo.GetAllConnectionsFromPublishedWorkflow(ctx, workflow.ID)
+	connections, err := connRepo.GetConnectionsByWorkflow(ctx, workflow.ID)
 	require.NoError(t, err)
 	assert.Len(t, connections, 5)
 
 	// Get connections by source node
-	triggerConnections, err := connRepo.GetConnectionsFromPublishedWorkflow(ctx, workflow.ID, "webhook_trigger")
+	triggerConnections, err := connRepo.GetConnectionsBySourceNode(ctx, workflow.ID, "webhook_trigger")
 	require.NoError(t, err)
 	assert.Len(t, triggerConnections, 1)
 	assert.Equal(t, "validate_data:input", triggerConnections[0].TargetPort)
@@ -206,9 +206,9 @@ func testExecutionContextOperations(t *testing.T, p *postgresql.Persistence, ctx
 	execRepo := p.ExecutionContextRepository()
 
 	execCtx := &models.ExecutionContext{
-		ID:                  uuid.New().String(),
-		PublishedWorkflowID: workflow.ID,
-		Status:              models.ExecutionStatusRunning,
+		ID:         uuid.New().String(),
+		WorkflowID: workflow.ID,
+		Status:     models.ExecutionStatusRunning,
 		NodeResults: map[string]models.NodeResult{
 			"webhook_trigger": {
 				NodeID: "webhook_trigger",
@@ -361,11 +361,11 @@ func testWorkflowModifications(t *testing.T, p *postgresql.Persistence, ctx cont
 	require.NoError(t, err)
 
 	// Verify the modifications
-	updatedNodes, err := nodeRepo.GetNodesFromPublishedWorkflow(ctx, workflow.ID)
+	updatedNodes, err := nodeRepo.GetNodesByWorkflow(ctx, workflow.ID)
 	require.NoError(t, err)
 	assert.Len(t, updatedNodes, 6) // Original 5 + 1 new
 
-	updatedConnections, err := connRepo.GetAllConnectionsFromPublishedWorkflow(ctx, workflow.ID)
+	updatedConnections, err := connRepo.GetConnectionsByWorkflow(ctx, workflow.ID)
 	require.NoError(t, err)
 	assert.Len(t, updatedConnections, 6) // Original 5 + 1 new
 }
@@ -444,9 +444,9 @@ func TestRepositoryIntegration_MultipleWorkflowsExecution(t *testing.T) {
 	execContexts := make([]*models.ExecutionContext, 3)
 	for i, workflow := range workflows {
 		execContexts[i] = &models.ExecutionContext{
-			ID:                  uuid.New().String(),
-			PublishedWorkflowID: workflow.ID,
-			Status:              []models.ExecutionStatus{models.ExecutionStatusRunning, models.ExecutionStatusCompleted, models.ExecutionStatusFailed}[i],
+			ID:         uuid.New().String(),
+			WorkflowID: workflow.ID,
+			Status:     []models.ExecutionStatus{models.ExecutionStatusRunning, models.ExecutionStatusCompleted, models.ExecutionStatusFailed}[i],
 			NodeResults: map[string]models.NodeResult{
 				fmt.Sprintf("trigger_%d", i+1): {
 					NodeID:    fmt.Sprintf("trigger_%d", i+1),
@@ -504,7 +504,7 @@ func TestRepositoryIntegration_MultipleWorkflowsExecution(t *testing.T) {
 	totalNodes := 0
 
 	for _, workflow := range workflows {
-		nodes, err := p.NodeRepository().GetNodesFromPublishedWorkflow(ctx, workflow.ID)
+		nodes, err := p.NodeRepository().GetNodesByWorkflow(ctx, workflow.ID)
 		require.NoError(t, err)
 
 		totalNodes += len(nodes)
@@ -515,7 +515,7 @@ func TestRepositoryIntegration_MultipleWorkflowsExecution(t *testing.T) {
 	totalConnections := 0
 
 	for _, workflow := range workflows {
-		connections, err := p.ConnectionRepository().GetAllConnectionsFromPublishedWorkflow(ctx, workflow.ID)
+		connections, err := p.ConnectionRepository().GetConnectionsByWorkflow(ctx, workflow.ID)
 		require.NoError(t, err)
 
 		totalConnections += len(connections)

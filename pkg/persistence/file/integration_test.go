@@ -114,12 +114,12 @@ func testNodeRepositoryOperations(t *testing.T, persistence *Persistence, workfl
 	nodeRepo := persistence.NodeRepository()
 
 	// Get all nodes
-	allNodes, err := nodeRepo.GetNodesFromPublishedWorkflow(ctx, workflow.ID)
+	allNodes, err := nodeRepo.GetNodesByWorkflow(ctx, workflow.ID)
 	require.NoError(t, err)
 	assert.Len(t, allNodes, 4)
 
 	// Get specific trigger node
-	triggerNode, err := nodeRepo.GetNodeFromPublishedWorkflow(ctx, workflow.ID, "kafka-trigger")
+	triggerNode, err := nodeRepo.GetNodeByWorkflow(ctx, workflow.ID, "kafka-trigger")
 	require.NoError(t, err)
 	assert.Equal(t, "kafka-trigger", triggerNode.ID)
 	assert.Equal(t, models.CategoryTypeTrigger, triggerNode.Category)
@@ -143,12 +143,12 @@ func testConnectionRepositoryOperations(t *testing.T, persistence *Persistence, 
 	connRepo := persistence.ConnectionRepository()
 
 	// Get all connections
-	allConnections, err := connRepo.GetAllConnectionsFromPublishedWorkflow(ctx, workflow.ID)
+	allConnections, err := connRepo.GetConnectionsByWorkflow(ctx, workflow.ID)
 	require.NoError(t, err)
 	assert.Len(t, allConnections, 3)
 
 	// Get connections from trigger node
-	triggerConnections, err := connRepo.GetConnectionsFromPublishedWorkflow(ctx, workflow.ID, "kafka-trigger")
+	triggerConnections, err := connRepo.GetConnectionsBySourceNode(ctx, workflow.ID, "kafka-trigger")
 	require.NoError(t, err)
 	assert.Len(t, triggerConnections, 1)
 	assert.Equal(t, "kafka-trigger:success", triggerConnections[0].SourcePort)
@@ -164,9 +164,9 @@ func testConnectionRepositoryOperations(t *testing.T, persistence *Persistence, 
 // createTestExecutionContext creates test execution context.
 func createTestExecutionContext(workflowID string) *models.ExecutionContext {
 	return &models.ExecutionContext{
-		ID:                  "exec-integration-test",
-		PublishedWorkflowID: workflowID,
-		Status:              models.ExecutionStatusRunning,
+		ID:         "exec-integration-test",
+		WorkflowID: workflowID,
+		Status:     models.ExecutionStatusRunning,
 		NodeResults: map[string]models.NodeResult{
 			"kafka-trigger::success": {
 				NodeID: "kafka-trigger",
@@ -228,7 +228,7 @@ func testExecutionContextOperations(t *testing.T, persistence *Persistence, work
 	retrievedCtx, err := execRepo.GetExecutionContext(ctx, executionCtx.ID)
 	require.NoError(t, err)
 	assert.Equal(t, executionCtx.ID, retrievedCtx.ID)
-	assert.Equal(t, executionCtx.PublishedWorkflowID, retrievedCtx.PublishedWorkflowID)
+	assert.Equal(t, executionCtx.WorkflowID, retrievedCtx.WorkflowID)
 	assert.Equal(t, executionCtx.Status, retrievedCtx.Status)
 
 	// Update execution status
@@ -401,11 +401,11 @@ func TestNodeBasedWorkflowExecution_ErrorScenarios(t *testing.T) {
 	nodeRepo := persistence.NodeRepository()
 
 	// Try to get nodes from non-existent workflow
-	_, err := nodeRepo.GetNodesFromPublishedWorkflow(ctx, "non-existent-workflow")
+	_, err := nodeRepo.GetNodesByWorkflow(ctx, "non-existent-workflow")
 	assert.Error(t, err)
 
 	// Try to get specific node from non-existent workflow
-	_, err = nodeRepo.GetNodeFromPublishedWorkflow(ctx, "non-existent-workflow", "some-node")
+	_, err = nodeRepo.GetNodeByWorkflow(ctx, "non-existent-workflow", "some-node")
 	assert.Error(t, err)
 
 	// Test empty repository operations

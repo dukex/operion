@@ -19,11 +19,11 @@ func TestConditionalNode_Execute_True(t *testing.T) {
 
 	// Create execution context that should evaluate to true
 	ctx := models.ExecutionContext{
-		ID:                  "test-exec",
-		PublishedWorkflowID: "test-workflow",
-		NodeResults:         make(map[string]models.NodeResult),
-		Variables:           map[string]any{"status": "active"},
-		Metadata:            make(map[string]any),
+		ID:          "test-exec",
+		WorkflowID:  "test-workflow",
+		NodeResults: make(map[string]models.NodeResult),
+		Variables:   map[string]any{"status": "active"},
+		Metadata:    make(map[string]any),
 	}
 
 	// Execute node
@@ -61,11 +61,11 @@ func TestConditionalNode_Execute_False(t *testing.T) {
 
 	// Create execution context
 	ctx := models.ExecutionContext{
-		ID:                  "test-exec",
-		PublishedWorkflowID: "test-workflow",
-		NodeResults:         make(map[string]models.NodeResult),
-		Variables:           make(map[string]any),
-		Metadata:            make(map[string]any),
+		ID:          "test-exec",
+		WorkflowID:  "test-workflow",
+		NodeResults: make(map[string]models.NodeResult),
+		Variables:   make(map[string]any),
+		Metadata:    make(map[string]any),
 	}
 
 	// Execute node
@@ -134,11 +134,11 @@ func TestConditionalNode_Execute_NumberEvaluation(t *testing.T) {
 			}
 
 			ctx := models.ExecutionContext{
-				ID:                  "test-exec",
-				PublishedWorkflowID: "test-workflow",
-				NodeResults:         make(map[string]models.NodeResult),
-				Variables:           tt.variables,
-				Metadata:            make(map[string]any),
+				ID:          "test-exec",
+				WorkflowID:  "test-workflow",
+				NodeResults: make(map[string]models.NodeResult),
+				Variables:   tt.variables,
+				Metadata:    make(map[string]any),
 			}
 
 			results, err := node.Execute(ctx, make(map[string]models.NodeResult))

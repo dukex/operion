@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestConnectionRepository_GetConnectionsFromPublishedWorkflow(t *testing.T) {
+func TestConnectionRepository_GetConnectionsBySourceNode(t *testing.T) {
 	// Setup
 	tempDir := t.TempDir()
 	persistence := NewPersistence(tempDir)
@@ -47,9 +47,9 @@ func TestConnectionRepository_GetConnectionsFromPublishedWorkflow(t *testing.T) 
 	err := persistence.WorkflowRepository().Save(ctx, workflow)
 	require.NoError(t, err)
 
-	// Test GetConnectionsFromPublishedWorkflow for node1
+	// Test GetConnectionsBySourceNode for node1
 	connRepo := persistence.ConnectionRepository()
-	connections, err := connRepo.GetConnectionsFromPublishedWorkflow(ctx, workflow.ID, "node1")
+	connections, err := connRepo.GetConnectionsBySourceNode(ctx, workflow.ID, "node1")
 
 	// Verify - should get 2 connections from node1
 	require.NoError(t, err)
@@ -119,7 +119,7 @@ func TestConnectionRepository_GetConnectionsByTargetNode(t *testing.T) {
 	assert.Contains(t, targetPortNames, "target1:secondary")
 }
 
-func TestConnectionRepository_GetAllConnectionsFromPublishedWorkflow(t *testing.T) {
+func TestConnectionRepository_GetConnectionsByWorkflow(t *testing.T) {
 	// Setup
 	tempDir := t.TempDir()
 	persistence := NewPersistence(tempDir)
@@ -151,9 +151,9 @@ func TestConnectionRepository_GetAllConnectionsFromPublishedWorkflow(t *testing.
 	err := persistence.WorkflowRepository().Save(ctx, workflow)
 	require.NoError(t, err)
 
-	// Test GetAllConnectionsFromPublishedWorkflow
+	// Test GetConnectionsByWorkflow
 	connRepo := persistence.ConnectionRepository()
-	connections, err := connRepo.GetAllConnectionsFromPublishedWorkflow(ctx, workflow.ID)
+	connections, err := connRepo.GetConnectionsByWorkflow(ctx, workflow.ID)
 
 	// Verify
 	require.NoError(t, err)
@@ -202,7 +202,7 @@ func TestConnectionRepository_SaveConnection_NewConnection(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify connection was added
-	connections, err := connRepo.GetAllConnectionsFromPublishedWorkflow(ctx, workflow.ID)
+	connections, err := connRepo.GetConnectionsByWorkflow(ctx, workflow.ID)
 	require.NoError(t, err)
 	assert.Len(t, connections, 1)
 	assert.Equal(t, "new-connection", connections[0].ID)
@@ -247,7 +247,7 @@ func TestConnectionRepository_SaveConnection_UpdateExisting(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify connection was updated
-	connections, err := connRepo.GetAllConnectionsFromPublishedWorkflow(ctx, workflow.ID)
+	connections, err := connRepo.GetConnectionsByWorkflow(ctx, workflow.ID)
 	require.NoError(t, err)
 	assert.Len(t, connections, 1)
 	assert.Equal(t, "existing-connection", connections[0].ID)
@@ -290,7 +290,7 @@ func TestConnectionRepository_DeleteConnection(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify connection was deleted
-	connections, err := connRepo.GetAllConnectionsFromPublishedWorkflow(ctx, workflow.ID)
+	connections, err := connRepo.GetConnectionsByWorkflow(ctx, workflow.ID)
 	require.NoError(t, err)
 	assert.Len(t, connections, 1)
 	assert.Equal(t, "connection-to-keep", connections[0].ID)
@@ -322,7 +322,7 @@ func TestConnectionRepository_DeleteConnection_NotFound(t *testing.T) {
 	assert.Contains(t, err.Error(), "connection not found")
 }
 
-func TestConnectionRepository_GetConnectionsByWorkflow(t *testing.T) {
+func TestConnectionRepository_GetAllConnections(t *testing.T) {
 	// Setup
 	tempDir := t.TempDir()
 	persistence := NewPersistence(tempDir)
@@ -360,7 +360,7 @@ func TestConnectionRepository_WorkflowNotFound(t *testing.T) {
 	connRepo := persistence.ConnectionRepository()
 
 	// Test operations on non-existent workflow
-	_, err := connRepo.GetConnectionsFromPublishedWorkflow(ctx, "non-existent-workflow", "some-node")
+	_, err := connRepo.GetConnectionsBySourceNode(ctx, "non-existent-workflow", "some-node")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "workflow not found")
 
@@ -368,7 +368,7 @@ func TestConnectionRepository_WorkflowNotFound(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "workflow not found")
 
-	_, err = connRepo.GetAllConnectionsFromPublishedWorkflow(ctx, "non-existent-workflow")
+	_, err = connRepo.GetConnectionsByWorkflow(ctx, "non-existent-workflow")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "workflow not found")
 

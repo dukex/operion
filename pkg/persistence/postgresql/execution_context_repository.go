@@ -47,12 +47,12 @@ func (ecr *ExecutionContextRepository) SaveExecutionContext(ctx context.Context,
 
 	query := `
 		INSERT INTO execution_contexts (
-			id, published_workflow_id, status, node_results, variables, 
+			id, workflow_id, status, node_results, variables, 
 			trigger_data, metadata, error_message, created_at, completed_at
 		)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		ON CONFLICT (id) DO UPDATE SET
-			published_workflow_id = EXCLUDED.published_workflow_id,
+			workflow_id = EXCLUDED.workflow_id,
 			status = EXCLUDED.status,
 			node_results = EXCLUDED.node_results,
 			variables = EXCLUDED.variables,
@@ -64,7 +64,7 @@ func (ecr *ExecutionContextRepository) SaveExecutionContext(ctx context.Context,
 
 	_, err = ecr.db.ExecContext(ctx, query,
 		execCtx.ID,
-		execCtx.PublishedWorkflowID,
+		execCtx.WorkflowID,
 		execCtx.Status,
 		nodeResultsJSON,
 		variablesJSON,
@@ -84,7 +84,7 @@ func (ecr *ExecutionContextRepository) SaveExecutionContext(ctx context.Context,
 // GetExecutionContext retrieves an execution context by its ID from the database.
 func (ecr *ExecutionContextRepository) GetExecutionContext(ctx context.Context, executionID string) (*models.ExecutionContext, error) {
 	query := `
-		SELECT id, published_workflow_id, status, node_results, variables, 
+		SELECT id, workflow_id, status, node_results, variables, 
 			   trigger_data, metadata, error_message, created_at, completed_at
 		FROM execution_contexts
 		WHERE id = $1
@@ -117,16 +117,16 @@ func (ecr *ExecutionContextRepository) UpdateExecutionContext(ctx context.Contex
 }
 
 // GetExecutionsByWorkflow retrieves all execution contexts for a specific workflow.
-func (ecr *ExecutionContextRepository) GetExecutionsByWorkflow(ctx context.Context, publishedWorkflowID string) ([]*models.ExecutionContext, error) {
+func (ecr *ExecutionContextRepository) GetExecutionsByWorkflow(ctx context.Context, workflowID string) ([]*models.ExecutionContext, error) {
 	query := `
-		SELECT id, published_workflow_id, status, node_results, variables, 
+		SELECT id, workflow_id, status, node_results, variables, 
 			   trigger_data, metadata, error_message, created_at, completed_at
 		FROM execution_contexts
-		WHERE published_workflow_id = $1
+		WHERE workflow_id = $1
 		ORDER BY created_at DESC
 	`
 
-	rows, err := ecr.db.QueryContext(ctx, query, publishedWorkflowID)
+	rows, err := ecr.db.QueryContext(ctx, query, workflowID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query execution contexts: %w", err)
 	}
@@ -158,7 +158,7 @@ func (ecr *ExecutionContextRepository) GetExecutionsByWorkflow(ctx context.Conte
 // GetExecutionsByStatus retrieves all execution contexts with a specific status.
 func (ecr *ExecutionContextRepository) GetExecutionsByStatus(ctx context.Context, status models.ExecutionStatus) ([]*models.ExecutionContext, error) {
 	query := `
-		SELECT id, published_workflow_id, status, node_results, variables, 
+		SELECT id, workflow_id, status, node_results, variables, 
 			   trigger_data, metadata, error_message, created_at, completed_at
 		FROM execution_contexts
 		WHERE status = $1
@@ -205,7 +205,7 @@ func (ecr *ExecutionContextRepository) scanExecutionContext(scanner interface {
 
 	err := scanner.Scan(
 		&execCtx.ID,
-		&execCtx.PublishedWorkflowID,
+		&execCtx.WorkflowID,
 		&execCtx.Status,
 		&nodeResultsJSON,
 		&variablesJSON,

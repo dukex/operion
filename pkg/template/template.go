@@ -28,8 +28,8 @@ func RenderWithContext(input string, executionCtx *models.ExecutionContext) (any
 		"metadata":     executionCtx.Metadata,
 		"env":          getEnvVars(),
 		"execution": map[string]any{
-			"id":                    executionCtx.ID,
-			"published_workflow_id": executionCtx.PublishedWorkflowID,
+			"id":          executionCtx.ID,
+			"workflow_id": executionCtx.WorkflowID,
 		},
 	}
 

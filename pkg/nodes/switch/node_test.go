@@ -98,9 +98,9 @@ func TestSwitchNode_Execute_MatchingCase(t *testing.T) {
 
 	// Create execution context that matches "active" case
 	ctx := models.ExecutionContext{
-		ID:                  "test-exec",
-		PublishedWorkflowID: "test-workflow",
-		NodeResults:         make(map[string]models.NodeResult),
+		ID:          "test-exec",
+		WorkflowID:  "test-workflow",
+		NodeResults: make(map[string]models.NodeResult),
 		Variables: map[string]any{
 			"status": "active",
 		},
@@ -161,9 +161,9 @@ func TestSwitchNode_Execute_NoMatch(t *testing.T) {
 
 	// Create execution context that doesn't match any case
 	ctx := models.ExecutionContext{
-		ID:                  "test-exec",
-		PublishedWorkflowID: "test-workflow",
-		NodeResults:         make(map[string]models.NodeResult),
+		ID:          "test-exec",
+		WorkflowID:  "test-workflow",
+		NodeResults: make(map[string]models.NodeResult),
 		Variables: map[string]any{
 			"status": "unknown",
 		},
@@ -209,11 +209,11 @@ func TestSwitchNode_Execute_TemplateError(t *testing.T) {
 
 	// Create execution context without the required variable
 	ctx := models.ExecutionContext{
-		ID:                  "test-exec",
-		PublishedWorkflowID: "test-workflow",
-		NodeResults:         make(map[string]models.NodeResult),
-		Variables:           make(map[string]any),
-		Metadata:            make(map[string]any),
+		ID:          "test-exec",
+		WorkflowID:  "test-workflow",
+		NodeResults: make(map[string]models.NodeResult),
+		Variables:   make(map[string]any),
+		Metadata:    make(map[string]any),
 	}
 
 	// Execute node

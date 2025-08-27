@@ -22,8 +22,8 @@ func NewNodeRepository(db *sql.DB, logger *slog.Logger) *NodeRepository {
 	return &NodeRepository{db: db, logger: logger}
 }
 
-// GetNodesFromPublishedWorkflow retrieves all nodes from a published workflow.
-func (nr *NodeRepository) GetNodesFromPublishedWorkflow(ctx context.Context, publishedWorkflowID string) ([]*models.WorkflowNode, error) {
+// GetNodesByWorkflow retrieves all nodes from a workflow.
+func (nr *NodeRepository) GetNodesByWorkflow(ctx context.Context, workflowID string) ([]*models.WorkflowNode, error) {
 	query := `
 		SELECT id, type, category, name, config, enabled, position_x, position_y, source_id, provider_id, event_type
 		FROM workflow_nodes
@@ -31,7 +31,7 @@ func (nr *NodeRepository) GetNodesFromPublishedWorkflow(ctx context.Context, pub
 		ORDER BY created_at
 	`
 
-	rows, err := nr.db.QueryContext(ctx, query, publishedWorkflowID)
+	rows, err := nr.db.QueryContext(ctx, query, workflowID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query workflow nodes: %w", err)
 	}
@@ -60,20 +60,20 @@ func (nr *NodeRepository) GetNodesFromPublishedWorkflow(ctx context.Context, pub
 	return nodes, nil
 }
 
-// GetNodeFromPublishedWorkflow retrieves a specific node from a published workflow.
-func (nr *NodeRepository) GetNodeFromPublishedWorkflow(ctx context.Context, publishedWorkflowID, nodeID string) (*models.WorkflowNode, error) {
+// GetNodeByWorkflow retrieves a specific node from a workflow.
+func (nr *NodeRepository) GetNodeByWorkflow(ctx context.Context, workflowID, nodeID string) (*models.WorkflowNode, error) {
 	query := `
 		SELECT id, type, category, name, config, enabled, position_x, position_y, source_id, provider_id, event_type
 		FROM workflow_nodes
 		WHERE workflow_id = $1 AND id = $2
 	`
 
-	row := nr.db.QueryRowContext(ctx, query, publishedWorkflowID, nodeID)
+	row := nr.db.QueryRowContext(ctx, query, workflowID, nodeID)
 
 	node, err := nr.scanNode(row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("node not found: %s in workflow %s", nodeID, publishedWorkflowID)
+			return nil, fmt.Errorf("node not found: %s in workflow %s", nodeID, workflowID)
 		}
 
 		return nil, fmt.Errorf("failed to scan node: %w", err)
@@ -130,7 +130,7 @@ func (nr *NodeRepository) SaveNode(ctx context.Context, workflowID string, node 
 // UpdateNode updates an existing node in the database.
 func (nr *NodeRepository) UpdateNode(ctx context.Context, workflowID string, node *models.WorkflowNode) error {
 	// Check if node exists first
-	_, err := nr.GetNodeFromPublishedWorkflow(ctx, workflowID, node.ID)
+	_, err := nr.GetNodeByWorkflow(ctx, workflowID, node.ID)
 	if err != nil {
 		return err
 	}
@@ -158,11 +158,6 @@ func (nr *NodeRepository) DeleteNode(ctx context.Context, workflowID, nodeID str
 	}
 
 	return nil
-}
-
-// GetNodesByWorkflow retrieves all nodes for a specific workflow.
-func (nr *NodeRepository) GetNodesByWorkflow(ctx context.Context, workflowID string) ([]*models.WorkflowNode, error) {
-	return nr.GetNodesFromPublishedWorkflow(ctx, workflowID)
 }
 
 // FindTriggerNodesBySourceEventAndProvider finds trigger nodes matching the specified criteria.

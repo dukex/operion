@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNodeRepository_GetNodesFromPublishedWorkflow(t *testing.T) {
+func TestNodeRepository_GetNodesByWorkflow(t *testing.T) {
 	// Setup
 	tempDir := t.TempDir()
 	persistence := NewPersistence(tempDir)
@@ -44,9 +44,9 @@ func TestNodeRepository_GetNodesFromPublishedWorkflow(t *testing.T) {
 	err := persistence.WorkflowRepository().Save(ctx, workflow)
 	require.NoError(t, err)
 
-	// Test GetNodesFromPublishedWorkflow
+	// Test GetNodesByWorkflow
 	nodeRepo := persistence.NodeRepository()
-	nodes, err := nodeRepo.GetNodesFromPublishedWorkflow(ctx, workflow.ID)
+	nodes, err := nodeRepo.GetNodesByWorkflow(ctx, workflow.ID)
 
 	// Verify
 	require.NoError(t, err)
@@ -57,7 +57,7 @@ func TestNodeRepository_GetNodesFromPublishedWorkflow(t *testing.T) {
 	assert.Equal(t, "Second Node", nodes[1].Name)
 }
 
-func TestNodeRepository_GetNodeFromPublishedWorkflow(t *testing.T) {
+func TestNodeRepository_GetNodeByWorkflow(t *testing.T) {
 	// Setup
 	tempDir := t.TempDir()
 	persistence := NewPersistence(tempDir)
@@ -94,9 +94,9 @@ func TestNodeRepository_GetNodeFromPublishedWorkflow(t *testing.T) {
 	err := persistence.WorkflowRepository().Save(ctx, workflow)
 	require.NoError(t, err)
 
-	// Test GetNodeFromPublishedWorkflow
+	// Test GetNodeByWorkflow
 	nodeRepo := persistence.NodeRepository()
-	node, err := nodeRepo.GetNodeFromPublishedWorkflow(ctx, workflow.ID, "target-node")
+	node, err := nodeRepo.GetNodeByWorkflow(ctx, workflow.ID, "target-node")
 
 	// Verify
 	require.NoError(t, err)
@@ -107,7 +107,7 @@ func TestNodeRepository_GetNodeFromPublishedWorkflow(t *testing.T) {
 	assert.Equal(t, "https://api.example.com", node.Config["url"])
 }
 
-func TestNodeRepository_GetNodeFromPublishedWorkflow_NotFound(t *testing.T) {
+func TestNodeRepository_GetNodeByWorkflow_NotFound(t *testing.T) {
 	// Setup
 	tempDir := t.TempDir()
 	persistence := NewPersistence(tempDir)
@@ -124,9 +124,9 @@ func TestNodeRepository_GetNodeFromPublishedWorkflow_NotFound(t *testing.T) {
 	err := persistence.WorkflowRepository().Save(ctx, workflow)
 	require.NoError(t, err)
 
-	// Test GetNodeFromPublishedWorkflow with non-existent node
+	// Test GetNodeByWorkflow with non-existent node
 	nodeRepo := persistence.NodeRepository()
-	node, err := nodeRepo.GetNodeFromPublishedWorkflow(ctx, workflow.ID, "non-existent-node")
+	node, err := nodeRepo.GetNodeByWorkflow(ctx, workflow.ID, "non-existent-node")
 
 	// Verify
 	assert.Error(t, err)
@@ -167,7 +167,7 @@ func TestNodeRepository_SaveNode_NewNode(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify node was added
-	nodes, err := nodeRepo.GetNodesFromPublishedWorkflow(ctx, workflow.ID)
+	nodes, err := nodeRepo.GetNodesByWorkflow(ctx, workflow.ID)
 	require.NoError(t, err)
 	assert.Len(t, nodes, 1)
 	assert.Equal(t, "new-node", nodes[0].ID)
@@ -216,7 +216,7 @@ func TestNodeRepository_SaveNode_UpdateExisting(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify node was updated
-	node, err := nodeRepo.GetNodeFromPublishedWorkflow(ctx, workflow.ID, "existing-node")
+	node, err := nodeRepo.GetNodeByWorkflow(ctx, workflow.ID, "existing-node")
 	require.NoError(t, err)
 	assert.Equal(t, "Updated Name", node.Name)
 	assert.Equal(t, "updated", node.Config["message"])
@@ -263,13 +263,13 @@ func TestNodeRepository_DeleteNode(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify node was deleted
-	nodes, err := nodeRepo.GetNodesFromPublishedWorkflow(ctx, workflow.ID)
+	nodes, err := nodeRepo.GetNodesByWorkflow(ctx, workflow.ID)
 	require.NoError(t, err)
 	assert.Len(t, nodes, 1)
 	assert.Equal(t, "node-to-keep", nodes[0].ID)
 
 	// Verify deleted node is not found
-	_, err = nodeRepo.GetNodeFromPublishedWorkflow(ctx, workflow.ID, "node-to-delete")
+	_, err = nodeRepo.GetNodeByWorkflow(ctx, workflow.ID, "node-to-delete")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "node not found")
 }
@@ -410,11 +410,11 @@ func TestNodeRepository_WorkflowNotFound(t *testing.T) {
 	nodeRepo := persistence.NodeRepository()
 
 	// Test operations on non-existent workflow
-	_, err := nodeRepo.GetNodesFromPublishedWorkflow(ctx, "non-existent-workflow")
+	_, err := nodeRepo.GetNodesByWorkflow(ctx, "non-existent-workflow")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "workflow not found")
 
-	_, err = nodeRepo.GetNodeFromPublishedWorkflow(ctx, "non-existent-workflow", "some-node")
+	_, err = nodeRepo.GetNodeByWorkflow(ctx, "non-existent-workflow", "some-node")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "workflow not found")
 

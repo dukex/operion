@@ -209,14 +209,14 @@ func (a *Activator) publishNodeActivation(ctx context.Context, workflowID, trigg
 
 	// Create execution context for this workflow execution
 	executionCtx := &models.ExecutionContext{
-		ID:                  executionID,
-		PublishedWorkflowID: workflowID,
-		Status:              models.ExecutionStatusRunning,
-		NodeResults:         make(map[string]models.NodeResult),
-		TriggerData:         sourceData,
-		Variables:           make(map[string]any), // TODO: Load from workflow
-		Metadata:            make(map[string]any),
-		CreatedAt:           time.Now(),
+		ID:          executionID,
+		WorkflowID:  workflowID,
+		Status:      models.ExecutionStatusRunning,
+		NodeResults: make(map[string]models.NodeResult),
+		TriggerData: sourceData,
+		Variables:   make(map[string]any), // TODO: Load from workflow
+		Metadata:    make(map[string]any),
+		CreatedAt:   time.Now(),
 	}
 
 	// Save execution context before publishing the event
@@ -232,14 +232,14 @@ func (a *Activator) publishNodeActivation(ctx context.Context, workflowID, trigg
 	logger.Info("Successfully saved execution context", "execution_id", executionID)
 
 	event := events.NodeActivation{
-		BaseEvent:           events.NewBaseEvent(events.NodeActivationEvent, workflowID),
-		ExecutionID:         executionID,
-		NodeID:              triggerNodeID,
-		PublishedWorkflowID: workflowID,
-		InputPort:           "external",
-		InputData:           sourceData,
-		SourceNode:          "", // External source
-		SourcePort:          "", // External source
+		BaseEvent:   events.NewBaseEvent(events.NodeActivationEvent, workflowID),
+		ExecutionID: executionID,
+		NodeID:      triggerNodeID,
+		WorkflowID:  workflowID,
+		InputPort:   "external",
+		InputData:   sourceData,
+		SourceNode:  "", // External source
+		SourcePort:  "", // External source
 	}
 	event.ID = a.eventBus.GenerateID()
 

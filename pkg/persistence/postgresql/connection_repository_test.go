@@ -98,8 +98,8 @@ func TestConnectionRepository_SaveAndGetConnection(t *testing.T) {
 	err = connRepo.SaveConnection(ctx, workflow.ID, newConnection)
 	require.NoError(t, err)
 
-	// Test GetAllConnectionsFromPublishedWorkflow
-	connections, err := connRepo.GetAllConnectionsFromPublishedWorkflow(ctx, workflow.ID)
+	// Test GetConnectionsByWorkflow
+	connections, err := connRepo.GetConnectionsByWorkflow(ctx, workflow.ID)
 	require.NoError(t, err)
 
 	assert.Len(t, connections, 4) // 3 original + 1 new
@@ -121,7 +121,7 @@ func TestConnectionRepository_SaveAndGetConnection(t *testing.T) {
 	assert.Equal(t, newConnection.TargetPort, foundConnection.TargetPort)
 }
 
-func TestConnectionRepository_GetConnectionsFromPublishedWorkflow(t *testing.T) {
+func TestConnectionRepository_GetConnectionsBySourceNode(t *testing.T) {
 	p, ctx, _ := setupTestDB(t)
 
 	workflow := createTestWorkflowWithConnections(t)
@@ -132,8 +132,8 @@ func TestConnectionRepository_GetConnectionsFromPublishedWorkflow(t *testing.T) 
 
 	connRepo := p.ConnectionRepository()
 
-	// Test GetConnectionsFromPublishedWorkflow - filter by source node
-	connections, err := connRepo.GetConnectionsFromPublishedWorkflow(ctx, workflow.ID, "transform1")
+	// Test GetConnectionsBySourceNode - filter by source node
+	connections, err := connRepo.GetConnectionsBySourceNode(ctx, workflow.ID, "transform1")
 	require.NoError(t, err)
 
 	assert.Len(t, connections, 2) // transform1 has 2 outgoing connections
@@ -148,7 +148,7 @@ func TestConnectionRepository_GetConnectionsFromPublishedWorkflow(t *testing.T) 
 	assert.Equal(t, "error_handler:input", portMap["transform1:error"])
 
 	// Test with source node that has only one connection
-	connections, err = connRepo.GetConnectionsFromPublishedWorkflow(ctx, workflow.ID, "trigger1")
+	connections, err = connRepo.GetConnectionsBySourceNode(ctx, workflow.ID, "trigger1")
 	require.NoError(t, err)
 
 	assert.Len(t, connections, 1)
@@ -156,7 +156,7 @@ func TestConnectionRepository_GetConnectionsFromPublishedWorkflow(t *testing.T) 
 	assert.Equal(t, "transform1:input", connections[0].TargetPort)
 
 	// Test with source node that has no connections
-	connections, err = connRepo.GetConnectionsFromPublishedWorkflow(ctx, workflow.ID, "log1")
+	connections, err = connRepo.GetConnectionsBySourceNode(ctx, workflow.ID, "log1")
 	require.NoError(t, err)
 
 	assert.Len(t, connections, 0)
@@ -217,7 +217,7 @@ func TestConnectionRepository_UpdateConnection(t *testing.T) {
 	connRepo := p.ConnectionRepository()
 
 	// Get existing connection
-	connections, err := connRepo.GetAllConnectionsFromPublishedWorkflow(ctx, workflow.ID)
+	connections, err := connRepo.GetConnectionsByWorkflow(ctx, workflow.ID)
 	require.NoError(t, err)
 
 	var targetConnection *models.Connection
@@ -239,7 +239,7 @@ func TestConnectionRepository_UpdateConnection(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify update
-	updated, err := connRepo.GetAllConnectionsFromPublishedWorkflow(ctx, workflow.ID)
+	updated, err := connRepo.GetConnectionsByWorkflow(ctx, workflow.ID)
 	require.NoError(t, err)
 
 	var updatedConnection *models.Connection
@@ -270,7 +270,7 @@ func TestConnectionRepository_DeleteConnection(t *testing.T) {
 	connRepo := p.ConnectionRepository()
 
 	// Verify connection exists
-	connections, err := connRepo.GetAllConnectionsFromPublishedWorkflow(ctx, workflow.ID)
+	connections, err := connRepo.GetConnectionsByWorkflow(ctx, workflow.ID)
 	require.NoError(t, err)
 
 	initialCount := len(connections)
@@ -280,7 +280,7 @@ func TestConnectionRepository_DeleteConnection(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify connection is deleted
-	connections, err = connRepo.GetAllConnectionsFromPublishedWorkflow(ctx, workflow.ID)
+	connections, err = connRepo.GetConnectionsByWorkflow(ctx, workflow.ID)
 	require.NoError(t, err)
 
 	assert.Len(t, connections, initialCount-1)
@@ -346,7 +346,7 @@ func TestConnectionRepository_PortParsing(t *testing.T) {
 	require.NoError(t, err)
 
 	// Retrieve and verify
-	connections, err := connRepo.GetAllConnectionsFromPublishedWorkflow(ctx, workflow.ID)
+	connections, err := connRepo.GetConnectionsByWorkflow(ctx, workflow.ID)
 	require.NoError(t, err)
 
 	var foundConnection *models.Connection
@@ -371,7 +371,7 @@ func TestConnectionRepository_ErrorCases(t *testing.T) {
 	nonExistentWorkflowID := uuid.New().String()
 
 	// Test getting connections from non-existent workflow
-	connections, err := connRepo.GetAllConnectionsFromPublishedWorkflow(ctx, nonExistentWorkflowID)
+	connections, err := connRepo.GetConnectionsByWorkflow(ctx, nonExistentWorkflowID)
 	require.NoError(t, err) // Should not error, just return empty slice
 	assert.Len(t, connections, 0)
 

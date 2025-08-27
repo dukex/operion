@@ -167,11 +167,11 @@ type MockNodeRepository struct {
 	mock.Mock
 }
 
-func (nr *MockNodeRepository) GetNodesFromPublishedWorkflow(ctx context.Context, publishedWorkflowID string) ([]*models.WorkflowNode, error) {
+func (nr *MockNodeRepository) GetNodesByWorkflow(ctx context.Context, workflowID string) ([]*models.WorkflowNode, error) {
 	return nil, errors.New("mock node repository not implemented during transition")
 }
 
-func (nr *MockNodeRepository) GetNodeFromPublishedWorkflow(ctx context.Context, publishedWorkflowID, nodeID string) (*models.WorkflowNode, error) {
+func (nr *MockNodeRepository) GetNodeByWorkflow(ctx context.Context, workflowID, nodeID string) (*models.WorkflowNode, error) {
 	return nil, errors.New("mock node repository not implemented during transition")
 }
 
@@ -187,10 +187,6 @@ func (nr *MockNodeRepository) DeleteNode(ctx context.Context, workflowID, nodeID
 	return errors.New("mock node repository not implemented during transition")
 }
 
-func (nr *MockNodeRepository) GetNodesByWorkflow(ctx context.Context, workflowID string) ([]*models.WorkflowNode, error) {
-	return nil, errors.New("mock node repository not implemented during transition")
-}
-
 func (nr *MockNodeRepository) FindTriggerNodesBySourceEventAndProvider(ctx context.Context, sourceID, eventType, providerID string, status models.WorkflowStatus) ([]*models.TriggerNodeMatch, error) {
 	args := nr.Called(ctx, sourceID, eventType, providerID, status)
 	if args.Get(0) == nil {
@@ -202,15 +198,11 @@ func (nr *MockNodeRepository) FindTriggerNodesBySourceEventAndProvider(ctx conte
 
 type MockConnectionRepository struct{}
 
-func (cr *MockConnectionRepository) GetConnectionsFromPublishedWorkflow(ctx context.Context, publishedWorkflowID, sourceNodeID string) ([]*models.Connection, error) {
+func (cr *MockConnectionRepository) GetConnectionsBySourceNode(ctx context.Context, workflowID, sourceNodeID string) ([]*models.Connection, error) {
 	return nil, errors.New("mock connection repository not implemented during transition")
 }
 
-func (cr *MockConnectionRepository) GetConnectionsByTargetNode(ctx context.Context, publishedWorkflowID, targetNodeID string) ([]*models.Connection, error) {
-	return nil, errors.New("mock connection repository not implemented during transition")
-}
-
-func (cr *MockConnectionRepository) GetAllConnectionsFromPublishedWorkflow(ctx context.Context, publishedWorkflowID string) ([]*models.Connection, error) {
+func (cr *MockConnectionRepository) GetConnectionsByTargetNode(ctx context.Context, workflowID, targetNodeID string) ([]*models.Connection, error) {
 	return nil, errors.New("mock connection repository not implemented during transition")
 }
 
@@ -255,8 +247,8 @@ func (ecr *MockExecutionContextRepository) UpdateExecutionContext(ctx context.Co
 	return args.Error(0)
 }
 
-func (ecr *MockExecutionContextRepository) GetExecutionsByWorkflow(ctx context.Context, publishedWorkflowID string) ([]*models.ExecutionContext, error) {
-	args := ecr.Called(ctx, publishedWorkflowID)
+func (ecr *MockExecutionContextRepository) GetExecutionsByWorkflow(ctx context.Context, workflowID string) ([]*models.ExecutionContext, error) {
+	args := ecr.Called(ctx, workflowID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

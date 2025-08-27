@@ -100,10 +100,10 @@ func TestWorkerManager_HandleNodeActivation_ExecutionNotFound(t *testing.T) {
 
 	// Create a mock node activation event with non-existent execution
 	mockEvent := &events.NodeActivation{
-		BaseEvent:           events.NewBaseEvent(events.NodeActivationEvent, "published-workflow-123"),
-		PublishedWorkflowID: "published-workflow-123",
-		ExecutionID:         "non-existent-execution",
-		NodeID:              "node1",
+		BaseEvent:   events.NewBaseEvent(events.NodeActivationEvent, "published-workflow-123"),
+		WorkflowID:  "published-workflow-123",
+		ExecutionID: "non-existent-execution",
+		NodeID:      "node1",
 	}
 
 	// Handle the event
@@ -152,13 +152,13 @@ func TestWorkerManager_BasicWorkflowExecution(t *testing.T) {
 
 	// Create execution context and save to persistence
 	executionCtx := &models.ExecutionContext{
-		ID:                  "exec-123",
-		PublishedWorkflowID: workflow.ID,
-		NodeResults:         make(map[string]models.NodeResult),
-		TriggerData:         map[string]any{"source": "basic_test"},
-		Variables:           workflow.Variables,
-		Metadata:            map[string]any{},
-		Status:              models.ExecutionStatusRunning,
+		ID:          "exec-123",
+		WorkflowID:  workflow.ID,
+		NodeResults: make(map[string]models.NodeResult),
+		TriggerData: map[string]any{"source": "basic_test"},
+		Variables:   workflow.Variables,
+		Metadata:    map[string]any{},
+		Status:      models.ExecutionStatusRunning,
 	}
 
 	// Save execution context to persistence for the test
@@ -174,14 +174,14 @@ func TestWorkerManager_BasicWorkflowExecution(t *testing.T) {
 
 	// Create a mock node activation event
 	mockEvent := &events.NodeActivation{
-		BaseEvent:           events.NewBaseEvent(events.NodeActivationEvent, workflow.ID),
-		PublishedWorkflowID: workflow.ID,
-		ExecutionID:         executionCtx.ID,
-		NodeID:              "node1",
-		InputPort:           "input",
-		InputData:           map[string]any{},
-		SourceNode:          "",
-		SourcePort:          "",
+		BaseEvent:   events.NewBaseEvent(events.NodeActivationEvent, workflow.ID),
+		WorkflowID:  workflow.ID,
+		ExecutionID: executionCtx.ID,
+		NodeID:      "node1",
+		InputPort:   "input",
+		InputData:   map[string]any{},
+		SourceNode:  "",
+		SourcePort:  "",
 	}
 
 	// Execute node activation event

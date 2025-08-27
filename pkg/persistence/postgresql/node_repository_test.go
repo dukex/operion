@@ -74,8 +74,8 @@ func TestNodeRepository_SaveAndGetNode(t *testing.T) {
 	err = nodeRepo.SaveNode(ctx, workflow.ID, newNode)
 	require.NoError(t, err)
 
-	// Test GetNodeFromPublishedWorkflow
-	retrieved, err := nodeRepo.GetNodeFromPublishedWorkflow(ctx, workflow.ID, "new_node")
+	// Test GetNodeByWorkflow
+	retrieved, err := nodeRepo.GetNodeByWorkflow(ctx, workflow.ID, "new_node")
 	require.NoError(t, err)
 	require.NotNil(t, retrieved)
 
@@ -102,7 +102,7 @@ func TestNodeRepository_UpdateNode(t *testing.T) {
 	nodeRepo := p.NodeRepository()
 
 	// Get existing node
-	node, err := nodeRepo.GetNodeFromPublishedWorkflow(ctx, workflow.ID, "action1")
+	node, err := nodeRepo.GetNodeByWorkflow(ctx, workflow.ID, "action1")
 	require.NoError(t, err)
 	require.NotNil(t, node)
 
@@ -117,7 +117,7 @@ func TestNodeRepository_UpdateNode(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify update
-	updated, err := nodeRepo.GetNodeFromPublishedWorkflow(ctx, workflow.ID, "action1")
+	updated, err := nodeRepo.GetNodeByWorkflow(ctx, workflow.ID, "action1")
 	require.NoError(t, err)
 	require.NotNil(t, updated)
 
@@ -140,7 +140,7 @@ func TestNodeRepository_DeleteNode(t *testing.T) {
 	nodeRepo := p.NodeRepository()
 
 	// Verify node exists
-	node, err := nodeRepo.GetNodeFromPublishedWorkflow(ctx, workflow.ID, "action1")
+	node, err := nodeRepo.GetNodeByWorkflow(ctx, workflow.ID, "action1")
 	require.NoError(t, err)
 	require.NotNil(t, node)
 
@@ -149,7 +149,7 @@ func TestNodeRepository_DeleteNode(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify node is deleted
-	deleted, err := nodeRepo.GetNodeFromPublishedWorkflow(ctx, workflow.ID, "action1")
+	deleted, err := nodeRepo.GetNodeByWorkflow(ctx, workflow.ID, "action1")
 	require.Error(t, err)
 	assert.Nil(t, deleted)
 	assert.Contains(t, err.Error(), "node not found")
@@ -160,7 +160,7 @@ func TestNodeRepository_DeleteNode(t *testing.T) {
 	assert.Contains(t, err.Error(), "node not found")
 }
 
-func TestNodeRepository_GetNodesFromPublishedWorkflow(t *testing.T) {
+func TestNodeRepository_GetNodesByWorkflow(t *testing.T) {
 	p, ctx, _ := setupTestDB(t)
 
 	workflow := createTestWorkflowForNodes(t)
@@ -172,7 +172,7 @@ func TestNodeRepository_GetNodesFromPublishedWorkflow(t *testing.T) {
 	nodeRepo := p.NodeRepository()
 
 	// Get all nodes
-	nodes, err := nodeRepo.GetNodesFromPublishedWorkflow(ctx, workflow.ID)
+	nodes, err := nodeRepo.GetNodesByWorkflow(ctx, workflow.ID)
 	require.NoError(t, err)
 
 	assert.Len(t, nodes, 2)
@@ -195,24 +195,6 @@ func TestNodeRepository_GetNodesFromPublishedWorkflow(t *testing.T) {
 	assert.Equal(t, models.CategoryTypeAction, action.Category)
 	assert.Equal(t, "log", action.Type)
 	assert.Equal(t, "Hello World", action.Config["message"])
-}
-
-func TestNodeRepository_GetNodesByWorkflow(t *testing.T) {
-	p, ctx, _ := setupTestDB(t)
-
-	workflow := createTestWorkflowForNodes(t)
-
-	// Save workflow first
-	err := p.WorkflowRepository().Save(ctx, workflow)
-	require.NoError(t, err)
-
-	nodeRepo := p.NodeRepository()
-
-	// Get nodes using GetNodesByWorkflow (alias method)
-	nodes, err := nodeRepo.GetNodesByWorkflow(ctx, workflow.ID)
-	require.NoError(t, err)
-
-	assert.Len(t, nodes, 2)
 }
 
 func TestNodeRepository_FindTriggerNodesBySourceEventAndProvider(t *testing.T) {
@@ -333,13 +315,13 @@ func TestNodeRepository_ErrorCases(t *testing.T) {
 	nonExistentWorkflowID := uuid.New().String()
 
 	// Test getting node from non-existent workflow
-	node, err := nodeRepo.GetNodeFromPublishedWorkflow(ctx, nonExistentWorkflowID, "some_node")
+	node, err := nodeRepo.GetNodeByWorkflow(ctx, nonExistentWorkflowID, "some_node")
 	require.Error(t, err)
 	assert.Nil(t, node)
 	assert.Contains(t, err.Error(), "node not found")
 
 	// Test getting nodes from non-existent workflow
-	nodes, err := nodeRepo.GetNodesFromPublishedWorkflow(ctx, nonExistentWorkflowID)
+	nodes, err := nodeRepo.GetNodesByWorkflow(ctx, nonExistentWorkflowID)
 	require.NoError(t, err) // Should not error, just return empty slice
 	assert.Len(t, nodes, 0)
 

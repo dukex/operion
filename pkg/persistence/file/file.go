@@ -74,27 +74,27 @@ type nodeRepository struct {
 	persistence *Persistence
 }
 
-func (nr *nodeRepository) GetNodesFromPublishedWorkflow(ctx context.Context, publishedWorkflowID string) ([]*models.WorkflowNode, error) {
-	workflow, err := nr.persistence.workflowRepo.GetByID(ctx, publishedWorkflowID)
+func (nr *nodeRepository) GetNodesByWorkflow(ctx context.Context, workflowID string) ([]*models.WorkflowNode, error) {
+	workflow, err := nr.persistence.workflowRepo.GetByID(ctx, workflowID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get workflow %s: %w", publishedWorkflowID, err)
+		return nil, fmt.Errorf("failed to get workflow %s: %w", workflowID, err)
 	}
 
 	if workflow == nil {
-		return nil, fmt.Errorf("workflow not found: %s", publishedWorkflowID)
+		return nil, fmt.Errorf("workflow not found: %s", workflowID)
 	}
 
 	return workflow.Nodes, nil
 }
 
-func (nr *nodeRepository) GetNodeFromPublishedWorkflow(ctx context.Context, publishedWorkflowID, nodeID string) (*models.WorkflowNode, error) {
-	workflow, err := nr.persistence.workflowRepo.GetByID(ctx, publishedWorkflowID)
+func (nr *nodeRepository) GetNodeByWorkflow(ctx context.Context, workflowID, nodeID string) (*models.WorkflowNode, error) {
+	workflow, err := nr.persistence.workflowRepo.GetByID(ctx, workflowID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get workflow %s: %w", publishedWorkflowID, err)
+		return nil, fmt.Errorf("failed to get workflow %s: %w", workflowID, err)
 	}
 
 	if workflow == nil {
-		return nil, fmt.Errorf("workflow not found: %s", publishedWorkflowID)
+		return nil, fmt.Errorf("workflow not found: %s", workflowID)
 	}
 
 	// Find the specific node
@@ -104,7 +104,7 @@ func (nr *nodeRepository) GetNodeFromPublishedWorkflow(ctx context.Context, publ
 		}
 	}
 
-	return nil, fmt.Errorf("node not found: %s in workflow %s", nodeID, publishedWorkflowID)
+	return nil, fmt.Errorf("node not found: %s in workflow %s", nodeID, workflowID)
 }
 
 func (nr *nodeRepository) SaveNode(ctx context.Context, workflowID string, node *models.WorkflowNode) error {
@@ -159,10 +159,6 @@ func (nr *nodeRepository) DeleteNode(ctx context.Context, workflowID, nodeID str
 	return fmt.Errorf("node not found: %s in workflow %s", nodeID, workflowID)
 }
 
-func (nr *nodeRepository) GetNodesByWorkflow(ctx context.Context, workflowID string) ([]*models.WorkflowNode, error) {
-	return nr.GetNodesFromPublishedWorkflow(ctx, workflowID)
-}
-
 func (nr *nodeRepository) FindTriggerNodesBySourceEventAndProvider(ctx context.Context, sourceID, eventType, providerID string, status models.WorkflowStatus) ([]*models.TriggerNodeMatch, error) {
 	// Get all workflows
 	workflows, err := nr.persistence.workflowRepo.GetAll(ctx)
@@ -202,14 +198,14 @@ type connectionRepository struct {
 	persistence *Persistence
 }
 
-func (cr *connectionRepository) GetConnectionsFromPublishedWorkflow(ctx context.Context, publishedWorkflowID, sourceNodeID string) ([]*models.Connection, error) {
-	workflow, err := cr.persistence.workflowRepo.GetByID(ctx, publishedWorkflowID)
+func (cr *connectionRepository) GetConnectionsBySourceNode(ctx context.Context, workflowID, sourceNodeID string) ([]*models.Connection, error) {
+	workflow, err := cr.persistence.workflowRepo.GetByID(ctx, workflowID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get workflow %s: %w", publishedWorkflowID, err)
+		return nil, fmt.Errorf("failed to get workflow %s: %w", workflowID, err)
 	}
 
 	if workflow == nil {
-		return nil, fmt.Errorf("workflow not found: %s", publishedWorkflowID)
+		return nil, fmt.Errorf("workflow not found: %s", workflowID)
 	}
 
 	var connections []*models.Connection
@@ -224,14 +220,14 @@ func (cr *connectionRepository) GetConnectionsFromPublishedWorkflow(ctx context.
 	return connections, nil
 }
 
-func (cr *connectionRepository) GetConnectionsByTargetNode(ctx context.Context, publishedWorkflowID, targetNodeID string) ([]*models.Connection, error) {
-	workflow, err := cr.persistence.workflowRepo.GetByID(ctx, publishedWorkflowID)
+func (cr *connectionRepository) GetConnectionsByTargetNode(ctx context.Context, workflowID, targetNodeID string) ([]*models.Connection, error) {
+	workflow, err := cr.persistence.workflowRepo.GetByID(ctx, workflowID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get workflow %s: %w", publishedWorkflowID, err)
+		return nil, fmt.Errorf("failed to get workflow %s: %w", workflowID, err)
 	}
 
 	if workflow == nil {
-		return nil, fmt.Errorf("workflow not found: %s", publishedWorkflowID)
+		return nil, fmt.Errorf("workflow not found: %s", workflowID)
 	}
 
 	var connections []*models.Connection
@@ -244,19 +240,6 @@ func (cr *connectionRepository) GetConnectionsByTargetNode(ctx context.Context, 
 	}
 
 	return connections, nil
-}
-
-func (cr *connectionRepository) GetAllConnectionsFromPublishedWorkflow(ctx context.Context, publishedWorkflowID string) ([]*models.Connection, error) {
-	workflow, err := cr.persistence.workflowRepo.GetByID(ctx, publishedWorkflowID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get workflow %s: %w", publishedWorkflowID, err)
-	}
-
-	if workflow == nil {
-		return nil, fmt.Errorf("workflow not found: %s", publishedWorkflowID)
-	}
-
-	return workflow.Connections, nil
 }
 
 func (cr *connectionRepository) SaveConnection(ctx context.Context, workflowID string, connection *models.Connection) error {
@@ -312,5 +295,14 @@ func (cr *connectionRepository) DeleteConnection(ctx context.Context, workflowID
 }
 
 func (cr *connectionRepository) GetConnectionsByWorkflow(ctx context.Context, workflowID string) ([]*models.Connection, error) {
-	return cr.GetAllConnectionsFromPublishedWorkflow(ctx, workflowID)
+	workflow, err := cr.persistence.workflowRepo.GetByID(ctx, workflowID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get workflow %s: %w", workflowID, err)
+	}
+
+	if workflow == nil {
+		return nil, fmt.Errorf("workflow not found: %s", workflowID)
+	}
+
+	return workflow.Connections, nil
 }

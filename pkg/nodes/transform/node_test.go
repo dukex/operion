@@ -88,9 +88,9 @@ func TestTransformNode_Execute_Success(t *testing.T) {
 
 	// Create execution context
 	ctx := models.ExecutionContext{
-		ID:                  "test-exec",
-		PublishedWorkflowID: "test-workflow",
-		NodeResults:         make(map[string]models.NodeResult),
+		ID:          "test-exec",
+		WorkflowID:  "test-workflow",
+		NodeResults: make(map[string]models.NodeResult),
 		Variables: map[string]any{
 			"name": "John Doe",
 			"age":  30,
@@ -137,11 +137,11 @@ func TestTransformNode_Execute_TemplateError(t *testing.T) {
 
 	// Create execution context without the required variable
 	ctx := models.ExecutionContext{
-		ID:                  "test-exec",
-		PublishedWorkflowID: "test-workflow",
-		NodeResults:         make(map[string]models.NodeResult),
-		Variables:           make(map[string]any),
-		Metadata:            make(map[string]any),
+		ID:          "test-exec",
+		WorkflowID:  "test-workflow",
+		NodeResults: make(map[string]models.NodeResult),
+		Variables:   make(map[string]any),
+		Metadata:    make(map[string]any),
 	}
 
 	// Execute node

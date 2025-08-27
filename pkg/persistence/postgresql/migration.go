@@ -72,7 +72,7 @@ func migrations() map[int]string {
 			-- Create execution_contexts table
 			CREATE TABLE execution_contexts (
 				id VARCHAR(255) PRIMARY KEY,
-				published_workflow_id UUID NOT NULL REFERENCES workflows(id),
+				workflow_id UUID NOT NULL REFERENCES workflows(id),
 				status VARCHAR(50) NOT NULL,
 				node_results JSONB DEFAULT '{}',
 				trigger_data JSONB DEFAULT '{}',
@@ -83,7 +83,7 @@ func migrations() map[int]string {
 				completed_at TIMESTAMP WITH TIME ZONE
 			);
 
-			CREATE INDEX idx_execution_contexts_workflow_id ON execution_contexts(published_workflow_id);
+			CREATE INDEX idx_execution_contexts_workflow_id ON execution_contexts(workflow_id);
 			CREATE INDEX idx_execution_contexts_status ON execution_contexts(status);
 			CREATE INDEX idx_execution_contexts_created_at ON execution_contexts(created_at);
 

@@ -121,7 +121,7 @@ func (ecr *ExecutionContextRepository) UpdateExecutionContext(ctx context.Contex
 }
 
 // GetExecutionsByWorkflow retrieves all execution contexts for a specific workflow.
-func (ecr *ExecutionContextRepository) GetExecutionsByWorkflow(ctx context.Context, publishedWorkflowID string) ([]*models.ExecutionContext, error) {
+func (ecr *ExecutionContextRepository) GetExecutionsByWorkflow(ctx context.Context, workflowID string) ([]*models.ExecutionContext, error) {
 	execContextsDir := filepath.Join(ecr.root, "execution_contexts")
 
 	// Check if directory exists
@@ -146,7 +146,7 @@ func (ecr *ExecutionContextRepository) GetExecutionsByWorkflow(ctx context.Conte
 				continue
 			}
 
-			if execCtx.PublishedWorkflowID == publishedWorkflowID {
+			if execCtx.WorkflowID == workflowID {
 				executions = append(executions, execCtx)
 			}
 		}

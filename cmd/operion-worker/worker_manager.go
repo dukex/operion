@@ -80,7 +80,7 @@ func (w *WorkerManager) handleNodeActivation(ctx context.Context, event any) err
 	}
 
 	logger := w.logger.With(
-		"published_workflow_id", nodeActivationEvent.PublishedWorkflowID,
+		"workflow_id", nodeActivationEvent.WorkflowID,
 		"execution_id", nodeActivationEvent.ExecutionID,
 		"node_id", nodeActivationEvent.NodeID,
 	)
@@ -88,7 +88,7 @@ func (w *WorkerManager) handleNodeActivation(ctx context.Context, event any) err
 	logger.InfoContext(ctx, "Processing node activation event")
 
 	// 1. Get node definition from NodeRepository
-	node, err := w.persistence.NodeRepository().GetNodeFromPublishedWorkflow(ctx, nodeActivationEvent.PublishedWorkflowID, nodeActivationEvent.NodeID)
+	node, err := w.persistence.NodeRepository().GetNodeByWorkflow(ctx, nodeActivationEvent.WorkflowID, nodeActivationEvent.NodeID)
 	if err != nil {
 		logger.ErrorContext(ctx, "Failed to get node definition", "error", err)
 
@@ -218,7 +218,7 @@ func (w *WorkerManager) handleNodeActivation(ctx context.Context, event any) err
 	}
 
 	// 10. Activate next nodes
-	err = w.activateNextNodes(ctx, nodeActivationEvent.PublishedWorkflowID, nodeActivationEvent.ExecutionID, nodeActivationEvent.NodeID, outputs)
+	err = w.activateNextNodes(ctx, nodeActivationEvent.WorkflowID, nodeActivationEvent.ExecutionID, nodeActivationEvent.NodeID, outputs)
 	if err != nil {
 		logger.ErrorContext(ctx, "Failed to activate next nodes", "error", err)
 
@@ -254,7 +254,7 @@ func (w *WorkerManager) executeNodeWithInputs(
 // activateNextNodes queries connections and activates connected nodes - implements direct worker-to-worker coordination.
 func (w *WorkerManager) activateNextNodes(ctx context.Context, publishedWorkflowID, executionID, sourceNodeID string, outputs map[string]models.NodeResult) error {
 	// Get all connections from this node
-	connections, err := w.persistence.ConnectionRepository().GetConnectionsFromPublishedWorkflow(ctx, publishedWorkflowID, sourceNodeID)
+	connections, err := w.persistence.ConnectionRepository().GetConnectionsBySourceNode(ctx, publishedWorkflowID, sourceNodeID)
 	if err != nil {
 		return fmt.Errorf("failed to get connections for node %s: %w", sourceNodeID, err)
 	}
@@ -288,13 +288,13 @@ func (w *WorkerManager) activateNextNodes(ctx context.Context, publishedWorkflow
 					ID:        fmt.Sprintf("node-activation-%d", time.Now().UnixNano()),
 					Timestamp: time.Now(),
 				},
-				ExecutionID:         executionID,
-				NodeID:              targetNodeID,
-				PublishedWorkflowID: publishedWorkflowID,
-				InputPort:           targetPortName,
-				InputData:           output.Data,
-				SourceNode:          sourceNodeID,
-				SourcePort:          sourcePortName,
+				ExecutionID: executionID,
+				NodeID:      targetNodeID,
+				WorkflowID:  publishedWorkflowID,
+				InputPort:   targetPortName,
+				InputData:   output.Data,
+				SourceNode:  sourceNodeID,
+				SourcePort:  sourcePortName,
 			}
 
 			// Publish activation event - this implements direct worker-to-worker coordination via Kafka
@@ -337,13 +337,13 @@ func (w *WorkerManager) publishNodeCompletionEvent(ctx context.Context, nodeActi
 			ID:        fmt.Sprintf("node-completion-%d", time.Now().UnixNano()),
 			Timestamp: time.Now(),
 		},
-		PublishedWorkflowID: nodeActivation.PublishedWorkflowID,
-		ExecutionID:         nodeActivation.ExecutionID,
-		NodeID:              nodeActivation.NodeID,
-		Status:              status,
-		OutputData:          convertNodeResultsToOutputData(outputs),
-		ErrorMessage:        errorMsg,
-		CompletedAt:         time.Now(),
+		WorkflowID:   nodeActivation.WorkflowID,
+		ExecutionID:  nodeActivation.ExecutionID,
+		NodeID:       nodeActivation.NodeID,
+		Status:       status,
+		OutputData:   convertNodeResultsToOutputData(outputs),
+		ErrorMessage: errorMsg,
+		CompletedAt:  time.Now(),
 	}
 
 	eventKey := completionEvent.NodeID + ":" + completionEvent.ExecutionID

@@ -18,11 +18,11 @@ func TestNodeActivation_GetType(t *testing.T) {
 
 func TestNodeActivation_JSONSerialization(t *testing.T) {
 	original := &NodeActivation{
-		BaseEvent:           NewBaseEvent(NodeActivationEvent, "wf-123"),
-		ExecutionID:         "exec-456",
-		NodeID:              "http-request-node-1",
-		PublishedWorkflowID: "wf-published-789",
-		InputPort:           "default",
+		BaseEvent:   NewBaseEvent(NodeActivationEvent, "wf-123"),
+		ExecutionID: "exec-456",
+		NodeID:      "http-request-node-1",
+		WorkflowID:  "wf-published-789",
+		InputPort:   "default",
 		InputData: map[string]any{
 			"url":    "https://api.example.com/users",
 			"method": "GET",
@@ -41,7 +41,7 @@ func TestNodeActivation_JSONSerialization(t *testing.T) {
 	assert.Contains(t, string(jsonData), `"type":"node.activation"`)
 	assert.Contains(t, string(jsonData), `"execution_id":"exec-456"`)
 	assert.Contains(t, string(jsonData), `"node_id":"http-request-node-1"`)
-	assert.Contains(t, string(jsonData), `"published_workflow_id":"wf-published-789"`)
+	assert.Contains(t, string(jsonData), `"workflow_id":"wf-published-789"`)
 
 	// Deserialize from JSON
 	var deserialized NodeActivation
@@ -53,7 +53,7 @@ func TestNodeActivation_JSONSerialization(t *testing.T) {
 	assert.Equal(t, original.Type, deserialized.Type)
 	assert.Equal(t, original.ExecutionID, deserialized.ExecutionID)
 	assert.Equal(t, original.NodeID, deserialized.NodeID)
-	assert.Equal(t, original.PublishedWorkflowID, deserialized.PublishedWorkflowID)
+	assert.Equal(t, original.WorkflowID, deserialized.WorkflowID)
 	assert.Equal(t, original.InputPort, deserialized.InputPort)
 	assert.Equal(t, original.SourceNode, deserialized.SourceNode)
 	assert.Equal(t, original.SourcePort, deserialized.SourcePort)

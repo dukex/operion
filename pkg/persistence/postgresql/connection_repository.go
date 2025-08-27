@@ -21,8 +21,8 @@ func NewConnectionRepository(db *sql.DB, logger *slog.Logger) *ConnectionReposit
 	return &ConnectionRepository{db: db, logger: logger}
 }
 
-// GetConnectionsFromPublishedWorkflow retrieves connections from a published workflow filtered by source node ID.
-func (cr *ConnectionRepository) GetConnectionsFromPublishedWorkflow(ctx context.Context, publishedWorkflowID, sourceNodeID string) ([]*models.Connection, error) {
+// GetConnectionsBySourceNode retrieves connections from a workflow filtered by source node ID.
+func (cr *ConnectionRepository) GetConnectionsBySourceNode(ctx context.Context, workflowID, sourceNodeID string) ([]*models.Connection, error) {
 	query := `
 		SELECT id, source_node_id, source_port, target_node_id, target_port
 		FROM workflow_connections
@@ -30,7 +30,7 @@ func (cr *ConnectionRepository) GetConnectionsFromPublishedWorkflow(ctx context.
 		ORDER BY created_at
 	`
 
-	rows, err := cr.db.QueryContext(ctx, query, publishedWorkflowID, sourceNodeID)
+	rows, err := cr.db.QueryContext(ctx, query, workflowID, sourceNodeID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query workflow connections: %w", err)
 	}
@@ -59,8 +59,8 @@ func (cr *ConnectionRepository) GetConnectionsFromPublishedWorkflow(ctx context.
 	return connections, nil
 }
 
-// GetConnectionsByTargetNode retrieves connections from a published workflow filtered by target node ID.
-func (cr *ConnectionRepository) GetConnectionsByTargetNode(ctx context.Context, publishedWorkflowID, targetNodeID string) ([]*models.Connection, error) {
+// GetConnectionsByTargetNode retrieves connections from a workflow filtered by target node ID.
+func (cr *ConnectionRepository) GetConnectionsByTargetNode(ctx context.Context, workflowID, targetNodeID string) ([]*models.Connection, error) {
 	query := `
 		SELECT id, source_node_id, source_port, target_node_id, target_port
 		FROM workflow_connections
@@ -68,45 +68,7 @@ func (cr *ConnectionRepository) GetConnectionsByTargetNode(ctx context.Context, 
 		ORDER BY created_at
 	`
 
-	rows, err := cr.db.QueryContext(ctx, query, publishedWorkflowID, targetNodeID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query workflow connections: %w", err)
-	}
-
-	defer func() {
-		if closeErr := rows.Close(); closeErr != nil {
-			cr.logger.ErrorContext(ctx, "failed to close rows", "error", closeErr)
-		}
-	}()
-
-	var connections []*models.Connection
-
-	for rows.Next() {
-		connection, err := cr.scanConnection(rows)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan connection: %w", err)
-		}
-
-		connections = append(connections, connection)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating connections: %w", err)
-	}
-
-	return connections, nil
-}
-
-// GetAllConnectionsFromPublishedWorkflow retrieves all connections from a published workflow.
-func (cr *ConnectionRepository) GetAllConnectionsFromPublishedWorkflow(ctx context.Context, publishedWorkflowID string) ([]*models.Connection, error) {
-	query := `
-		SELECT id, source_node_id, source_port, target_node_id, target_port
-		FROM workflow_connections
-		WHERE workflow_id = $1
-		ORDER BY created_at
-	`
-
-	rows, err := cr.db.QueryContext(ctx, query, publishedWorkflowID)
+	rows, err := cr.db.QueryContext(ctx, query, workflowID, targetNodeID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query workflow connections: %w", err)
 	}
@@ -209,7 +171,40 @@ func (cr *ConnectionRepository) DeleteConnection(ctx context.Context, workflowID
 
 // GetConnectionsByWorkflow retrieves all connections for a specific workflow.
 func (cr *ConnectionRepository) GetConnectionsByWorkflow(ctx context.Context, workflowID string) ([]*models.Connection, error) {
-	return cr.GetAllConnectionsFromPublishedWorkflow(ctx, workflowID)
+	query := `
+		SELECT id, source_node_id, source_port, target_node_id, target_port
+		FROM workflow_connections
+		WHERE workflow_id = $1
+		ORDER BY created_at
+	`
+
+	rows, err := cr.db.QueryContext(ctx, query, workflowID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query workflow connections: %w", err)
+	}
+
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil {
+			cr.logger.ErrorContext(ctx, "failed to close rows", "error", closeErr)
+		}
+	}()
+
+	var connections []*models.Connection
+
+	for rows.Next() {
+		connection, err := cr.scanConnection(rows)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan connection: %w", err)
+		}
+
+		connections = append(connections, connection)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating connections: %w", err)
+	}
+
+	return connections, nil
 }
 
 // getConnectionByID retrieves a specific connection by its ID from a workflow.
