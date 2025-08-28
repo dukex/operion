@@ -2,14 +2,17 @@
   "id": "queue-task-processor",
   "name": "Redis Queue Task Processor",
   "description": "Processes tasks from a Redis queue and performs HTTP requests",
-  "workflow_triggers": [
+  "variables": {
+    "api_base_url": "https://jsonplaceholder.typicode.com",
+    "timeout": 30
+  },
+  "nodes": [
     {
       "id": "redis-queue-trigger",
       "name": "Redis Queue Trigger",
-      "description": "Trigger when a task is received from Redis queue",
-      "provider_id": "queue",
-      "event_type": "message_received",
-      "configuration": {
+      "type": "trigger:queue",
+      "category": "trigger",
+      "config": {
         "provider": "redis",
         "connection": {
           "addr": "localhost:6379",
@@ -18,60 +21,89 @@
         },
         "queue": "task_queue",
         "consumer_group": "operion_workers"
-      }
-    }
-  ],
-  "variables": {
-    "api_base_url": "https://jsonplaceholder.typicode.com",
-    "timeout": 30
-  },
-  "steps": [
+      },
+      "enabled": true,
+      "provider_id": "queue",
+      "event_type": "message_received",
+      "position_x": 50,
+      "position_y": 100
+    },
     {
       "id": "log-incoming-task",
       "name": "Log Incoming Task",
-      "action_id": "log",
-      "uid": "logincomingtask",
-      "configuration": {
-        "message": "Processing task from queue: {{ trigger.message }}",
+      "config": {
+        "message": "Processing task from queue: {{.trigger_data.message}}",
         "level": "info"
       },
-      "enabled": true
+      "position_x": 100,
+      "position_y": 100,
+      "enabled": true,
+      "type": "log",
+      "category": "action"
     },
     {
       "id": "process-task-data",
       "name": "Process Task Data",
-      "action_id": "transform",
-      "uid": "processtaskdata",
-      "configuration": {
-        "template": "{\"task_id\": trigger.task_id, \"processed_at\": trigger.timestamp, \"url\": vars.api_base_url & \"/posts/\" & trigger.post_id}"
+      "config": {
+        "expression": "{\"task_id\": \"{{.trigger_data.task_id}}\", \"processed_at\": \"{{.trigger_data.timestamp}}\", \"url\": \"{{.variables.api_base_url}}/posts/{{.trigger_data.post_id}}\"}"
       },
-      "enabled": true
+      "position_x": 300,
+      "position_y": 100,
+      "enabled": true,
+      "type": "transform",
+      "category": "action"
     },
     {
       "id": "fetch-data",
       "name": "Fetch Data",
-      "action_id": "http_request",
-      "uid": "fetchdata",
-      "configuration": {
-        "url": "{{ steps.processtaskdata.url }}",
+      "config": {
+        "url": "{{ $task := index .node_results \"process-task-data\" }}{{ $task.url }}",
         "method": "GET",
-        "timeout": "{{ vars.timeout }}s",
+        "timeout": "{{.variables.timeout}}",
         "headers": {
           "Content-Type": "application/json"
         }
       },
-      "enabled": true
+      "position_x": 500,
+      "position_y": 100,
+      "enabled": true,
+      "type": "httprequest",
+      "category": "action"
     },
     {
       "id": "log-result",
       "name": "Log Result",
-      "action_id": "log",
-      "uid": "logresult",
-      "configuration": {
-        "message": "Task {{ steps.processtaskdata.task_id }} completed. Status: {{ steps.fetchdata.status_code }}",
+      "config": {
+        "message": "{{ $task := index .node_results \"process-task-data\" }}{{ $fetch := index .node_results \"fetch-data\" }}Task {{ $task.task_id }} completed. Status: {{ $fetch.status_code }}",
         "level": "info"
       },
-      "enabled": true
+      "position_x": 700,
+      "position_y": 100,
+      "enabled": true,
+      "type": "log",
+      "category": "action"
+    }
+  ],
+  "connections": [
+    {
+      "id": "trigger-redis-queue-trigger-to-log-incoming-task",
+      "source_port": "redis-queue-trigger:success",
+      "target_port": "log-incoming-task:main"
+    },
+    {
+      "id": "log-to-process",
+      "source_port": "log-incoming-task:success",
+      "target_port": "process-task-data:main"
+    },
+    {
+      "id": "process-to-fetch",
+      "source_port": "process-task-data:success",
+      "target_port": "fetch-data:main"
+    },
+    {
+      "id": "fetch-to-log",
+      "source_port": "fetch-data:success",
+      "target_port": "log-result:main"
     }
   ]
 }

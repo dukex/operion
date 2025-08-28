@@ -25,18 +25,20 @@ func TestRepository_Create(t *testing.T) {
 	workflow := &models.Workflow{
 		Name:        "Test Workflow",
 		Description: "Test workflow description",
-		Steps: []*models.WorkflowStep{
+		Status:      models.WorkflowStatusDraft,
+		Nodes: []*models.WorkflowNode{
 			{
 				ID:       "step-1",
 				Name:     "Test Step",
-				ActionID: "log",
-				UID:      "test_step",
-				Configuration: map[string]any{
+				Type:     "log",
+				Category: models.CategoryTypeAction,
+				Config: map[string]any{
 					"message": "test",
 				},
 				Enabled: true,
 			},
 		},
+		Connections: []*models.Connection{},
 	}
 
 	// Create workflow
@@ -52,10 +54,10 @@ func TestRepository_Create(t *testing.T) {
 	assert.False(t, created.UpdatedAt.IsZero())
 
 	// Verify status was set
-	assert.Equal(t, models.WorkflowStatusInactive, created.Status)
+	assert.Equal(t, models.WorkflowStatusDraft, created.Status)
 
 	// Clean up
-	err = persistence.DeleteWorkflow(t.Context(), created.ID)
+	err = persistence.WorkflowRepository().Delete(t.Context(), created.ID)
 	assert.NoError(t, err)
 }
 
@@ -69,7 +71,7 @@ func TestRepository_FetchByID(t *testing.T) {
 		ID:          "fetch-test-workflow",
 		Name:        "Fetch Test Workflow",
 		Description: "Test workflow for fetching",
-		Status:      models.WorkflowStatusActive,
+		Status:      models.WorkflowStatusPublished,
 	}
 
 	// Save workflow
@@ -112,12 +114,12 @@ func TestRepository_FetchAll(t *testing.T) {
 		{
 
 			Name:   "First Workflow",
-			Status: models.WorkflowStatusActive,
+			Status: models.WorkflowStatusPublished,
 		},
 		{
 
 			Name:   "Second Workflow",
-			Status: models.WorkflowStatusInactive,
+			Status: models.WorkflowStatusDraft,
 		},
 	}
 
@@ -156,7 +158,7 @@ func TestRepository_Update(t *testing.T) {
 	originalWorkflow := &models.Workflow{
 		Name:        "Original Workflow",
 		Description: "Original description",
-		Status:      models.WorkflowStatusInactive,
+		Status:      models.WorkflowStatusDraft,
 	}
 
 	workflowCreated, err := repo.Create(t.Context(), originalWorkflow)
@@ -166,7 +168,7 @@ func TestRepository_Update(t *testing.T) {
 	updatedWorkflow := &models.Workflow{
 		Name:        "Updated Workflow",
 		Description: "Updated description",
-		Status:      models.WorkflowStatusActive,
+		Status:      models.WorkflowStatusPublished,
 	}
 
 	result, err := repo.Update(t.Context(), workflowCreated.ID, updatedWorkflow)
@@ -177,7 +179,7 @@ func TestRepository_Update(t *testing.T) {
 	assert.Equal(t, workflowCreated.ID, result.ID)
 	assert.Equal(t, "Updated Workflow", result.Name)
 	assert.Equal(t, "Updated description", result.Description)
-	assert.Equal(t, models.WorkflowStatusActive, result.Status)
+	assert.Equal(t, models.WorkflowStatusPublished, result.Status)
 
 	assert.WithinDuration(t, originalWorkflow.CreatedAt, result.CreatedAt, 0)
 	assert.True(t,

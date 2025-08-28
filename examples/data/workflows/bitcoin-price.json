@@ -2,88 +2,127 @@
   "id": "bitcoin-price",
   "name": "Bitcoin Price",
   "description": "This is a sample workflow to demonstrate the structure and content of a JSON file for workflows.",
-  "workflow_triggers": [
+  "nodes": [
     {
       "id": "3c18ab9e-a291-4e1a-b8fd-e3a02299d8ce",
       "name": "Scheduled Trigger",
-      "description": "Trigger to fetch Bitcoin price every minute",
+      "type": "trigger:scheduler",
+      "category": "trigger",
+      "config": {
+        "cron_expression": "*/1 * * * *",
+        "timezone": "UTC"
+      },
+      "source_id": "scheduler-bitcoin-price",
       "provider_id": "scheduler",
       "event_type": "schedule_due",
-      "configuration": {
-        "cron": "*/1 * * * *"
-      }
-    }
-  ],
-  "steps": [
+      "position_x": 50,
+      "position_y": 100,
+      "enabled": true
+    },
     {
       "id": "c90f6195-d6fb-4519-803d-cf32f5f86c48",
-      "name": "Fetch Bitcoin Data",
-      "action_id": "http_request",
-      "configuration": {
-        "headers": {
-          "Content": "application/json"
-        },
+      "type": "httprequest",
+      "category": "action",
+      "config": {
+        "url": "https://api.coinpaprika.com/v1/coins/btc-bitcoin/ohlcv/today",
         "method": "GET",
-        "protocol": "https",
-        "host": "api.coinpaprika.com",
-        "path": "/v1/coins/btc-bitcoin/ohlcv/today",
-        "retry": {
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "retries": {
           "attempts": 3,
-          "delay": 5
+          "delay": 5000
         }
       },
-      "uid": "bitcoindata",
-      "on_success": "8de00551-e4de-48bf-aeff-21d394c86a9e",
-      "on_failure": "temp_l7oaen33g",
+      "position_x": 100,
+      "position_y": 100,
+      "name": "Fetch Bitcoin Data",
       "enabled": true
     },
     {
       "id": "8de00551-e4de-48bf-aeff-21d394c86a9e",
-      "action_id": "transform",
-      "configuration": {
-        "expression": "{  \"price\": $.close ? $.close : $.open}",
-        "input": "steps.bitcoindata.body"
+      "type": "transform",
+      "category": "action",
+      "config": {
+        "expression": "{{ $data := index .node_results \"c90f6195-d6fb-4519-803d-cf32f5f86c48::success\" }}{{ $json := $data.json }}{{ if $json.close }}{{ $json.close }}{{ else }}{{ $json.open }}{{ end }}"
       },
-      "uid": "processbitcoindata",
+      "position_x": 300,
+      "position_y": 100,
       "name": "Extract Bitcoin Price",
-      "on_success": "8866978c-806e-468e-a1f6-d03fa418b238",
-      "on_failure": "temp_l7oaen33g",
       "enabled": true
     },
     {
       "id": "8866978c-806e-468e-a1f6-d03fa418b238",
-      "action_id": "http_request",
-      "configuration": {
-        "body": "{\n  \"price\": steps.processbitcoindata.price\n}",
-        "headers": {
-          "Content": "application/json"
-        },
+      "type": "httprequest",
+      "category": "action",
+      "config": {
+        "url": "https://test-operion.free.beeceptor.com/bitcoin",
         "method": "POST",
-        "protocol": "https",
-        "host": "test-operion.free.beeceptor.com",
-        "path": "/bitcoin",
-        "retry": {
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{{ $transform := index .node_results \"8de00551-e4de-48bf-aeff-21d394c86a9e::success\" }}{\"price\": {{ $transform.result }}}",
+        "retries": {
           "attempts": 3,
-          "delay": 5
+          "delay": 5000
         }
       },
-      "uid": "save",
+      "position_x": 500,
+      "position_y": 100,
       "name": "Save Bitcoin Price",
       "enabled": true
     },
     {
       "id": "temp_l7oaen33g",
-      "action_id": "log",
-      "configuration": {},
-      "uid": "logerror",
+      "type": "log",
+      "category": "action",
+      "config": {
+        "message": "Workflow step failed",
+        "level": "error"
+      },
+      "position_x": 300,
+      "position_y": 300,
       "name": "Log Error",
       "enabled": true
     }
   ],
+  "connections": [
+    {
+      "id": "trigger-to-fetch",
+      "source_port": "3c18ab9e-a291-4e1a-b8fd-e3a02299d8ce:success",
+      "target_port": "c90f6195-d6fb-4519-803d-cf32f5f86c48:main"
+    },
+    {
+      "id": "fetch-to-extract",
+      "source_port": "c90f6195-d6fb-4519-803d-cf32f5f86c48:success",
+      "target_port": "8de00551-e4de-48bf-aeff-21d394c86a9e:main"
+    },
+    {
+      "id": "extract-to-save",
+      "source_port": "8de00551-e4de-48bf-aeff-21d394c86a9e:success",
+      "target_port": "8866978c-806e-468e-a1f6-d03fa418b238:main"
+    },
+    {
+      "id": "fetch-error",
+      "source_port": "c90f6195-d6fb-4519-803d-cf32f5f86c48:error",
+      "target_port": "temp_l7oaen33g:main"
+    },
+    {
+      "id": "save-error",
+      "source_port": "8866978c-806e-468e-a1f6-d03fa418b238:error",
+      "target_port": "temp_l7oaen33g:main"
+    }
+  ],
   "variables": {},
-  "status": "active",
+  "status": "published",
+  "workflow_group_id": "bitcoin-price",
+  "published_at": "2023-10-01T00:00:00Z",
   "metadata": {
-    "tags": ["sample", "bitcoin", "api"]
+    "tags": [
+      "sample",
+      "bitcoin",
+      "api"
+    ]
   },
   "owner": "",
   "created_at": "2023-10-01T00:00:00Z",

@@ -3,14 +3,9 @@ package file
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io/fs"
 	"os"
-	"path"
-	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/persistence"
@@ -18,13 +13,19 @@ import (
 
 // Persistence implements the persistence.Persistence interface using the file system.
 type Persistence struct {
-	root string
+	root                 string
+	workflowRepo         *WorkflowRepository
+	executionContextRepo *ExecutionContextRepository
 }
 
 // NewPersistence creates a new instance of Persistence with the specified root directory.
 func NewPersistence(root string) persistence.Persistence {
+	cleanRoot := strings.Replace(root, "file://", "", 1)
+
 	return &Persistence{
-		root: strings.Replace(root, "file://", "", 1),
+		root:                 cleanRoot,
+		workflowRepo:         NewWorkflowRepository(cleanRoot),
+		executionContextRepo: NewExecutionContextRepository(cleanRoot),
 	}
 }
 
@@ -42,124 +43,266 @@ func (fp *Persistence) HealthCheck(_ context.Context) error {
 	return nil
 }
 
-// Workflows retrieves all workflows from the file system.
-func (fp *Persistence) Workflows(ctx context.Context) ([]*models.Workflow, error) {
-	root := os.DirFS(fp.root + "/workflows")
+// WorkflowRepository returns the workflow repository implementation for file persistence.
+func (fp *Persistence) WorkflowRepository() persistence.WorkflowRepository {
+	return fp.workflowRepo
+}
 
-	jsonFiles, err := fs.Glob(root, "*.json")
+// Node-based repository interface implementations (not implemented for file persistence)
+// These return not implemented errors as file persistence doesn't support the node-based architecture
+
+func (fp *Persistence) NodeRepository() persistence.NodeRepository {
+	return &nodeRepository{persistence: fp}
+}
+
+func (fp *Persistence) ConnectionRepository() persistence.ConnectionRepository {
+	return &connectionRepository{persistence: fp}
+}
+
+func (fp *Persistence) ExecutionContextRepository() persistence.ExecutionContextRepository {
+	return fp.executionContextRepo
+}
+
+func (fp *Persistence) InputCoordinationRepository() persistence.InputCoordinationRepository {
+	return NewFileInputCoordinationRepository(fp.root)
+}
+
+// Node repository implementation for file persistence
+// This works by reading workflow files and extracting node information
+
+type nodeRepository struct {
+	persistence *Persistence
+}
+
+func (nr *nodeRepository) GetNodesByWorkflow(ctx context.Context, workflowID string) ([]*models.WorkflowNode, error) {
+	workflow, err := nr.persistence.workflowRepo.GetByID(ctx, workflowID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list workflow files: %w", err)
+		return nil, fmt.Errorf("failed to get workflow %s: %w", workflowID, err)
 	}
 
-	if len(jsonFiles) == 0 {
-		return make([]*models.Workflow, 0), nil
+	if workflow == nil {
+		return nil, fmt.Errorf("workflow not found: %s", workflowID)
 	}
 
-	workflows := make([]*models.Workflow, 0, len(jsonFiles))
+	return workflow.Nodes, nil
+}
 
-	for _, file := range jsonFiles {
-		workflow, err := fp.WorkflowByID(ctx, file[:len(file)-5])
-		if err != nil {
-			return nil, err
+func (nr *nodeRepository) GetNodeByWorkflow(ctx context.Context, workflowID, nodeID string) (*models.WorkflowNode, error) {
+	workflow, err := nr.persistence.workflowRepo.GetByID(ctx, workflowID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get workflow %s: %w", workflowID, err)
+	}
+
+	if workflow == nil {
+		return nil, fmt.Errorf("workflow not found: %s", workflowID)
+	}
+
+	// Find the specific node
+	for _, node := range workflow.Nodes {
+		if node.ID == nodeID {
+			return node, nil
 		}
-
-		workflows = append(workflows, workflow)
 	}
 
-	return workflows, nil
+	return nil, fmt.Errorf("node not found: %s in workflow %s", nodeID, workflowID)
 }
 
-// WorkflowByID retrieves a workflow by its ID from the file system.
-func (fp *Persistence) WorkflowByID(_ context.Context, workflowID string) (*models.Workflow, error) {
-	filePath := filepath.Clean(path.Join(fp.root, "workflows", workflowID+".json"))
-
-	body, err := os.ReadFile(filePath)
+func (nr *nodeRepository) SaveNode(ctx context.Context, workflowID string, node *models.WorkflowNode) error {
+	workflow, err := nr.persistence.workflowRepo.GetByID(ctx, workflowID)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
+		return fmt.Errorf("failed to get workflow %s: %w", workflowID, err)
+	}
+
+	if workflow == nil {
+		return fmt.Errorf("workflow not found: %s", workflowID)
+	}
+
+	// Check if node already exists
+	for i, existingNode := range workflow.Nodes {
+		if existingNode.ID == node.ID {
+			// Update existing node
+			workflow.Nodes[i] = node
+
+			return nr.persistence.workflowRepo.Save(ctx, workflow)
 		}
-
-		return nil, fmt.Errorf("failed to fetch workflow %s: %w", workflowID, err)
 	}
 
-	var workflow models.Workflow
+	// Add new node
+	workflow.Nodes = append(workflow.Nodes, node)
 
-	err = json.Unmarshal(body, &workflow)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal workflow %s: %w", workflowID, err)
-	}
-
-	return &workflow, nil
+	return nr.persistence.workflowRepo.Save(ctx, workflow)
 }
 
-// SaveWorkflow saves a workflow to the file system.
-func (fp *Persistence) SaveWorkflow(_ context.Context, workflow *models.Workflow) error {
-	err := os.MkdirAll(fp.root+"/workflows", 0750)
-	if err != nil {
-		return fmt.Errorf("failed to create workflows directory: %w", err)
-	}
-
-	now := time.Now().UTC()
-	if workflow.CreatedAt.IsZero() {
-		workflow.CreatedAt = now
-	}
-
-	workflow.UpdatedAt = now
-
-	data, err := json.MarshalIndent(workflow, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal workflow %s: %w", workflow.ID, err)
-	}
-
-	filePath := path.Join(fp.root+"/workflows", workflow.ID+".json")
-
-	return os.WriteFile(filePath, data, 0600)
+func (nr *nodeRepository) UpdateNode(ctx context.Context, workflowID string, node *models.WorkflowNode) error {
+	return nr.SaveNode(ctx, workflowID, node)
 }
 
-// DeleteWorkflow removes a workflow by its ID.
-func (fp *Persistence) DeleteWorkflow(_ context.Context, id string) error {
-	filePath := path.Join(fp.root+"/workflows", id+".json")
-
-	err := os.Remove(filePath)
-
-	if err != nil && os.IsNotExist(err) {
-		return nil
-	}
-
+func (nr *nodeRepository) DeleteNode(ctx context.Context, workflowID, nodeID string) error {
+	workflow, err := nr.persistence.workflowRepo.GetByID(ctx, workflowID)
 	if err != nil {
-		return fmt.Errorf("failed to delete workflow %s: %w", id, err)
+		return fmt.Errorf("failed to get workflow %s: %w", workflowID, err)
 	}
 
-	return nil
+	if workflow == nil {
+		return fmt.Errorf("workflow not found: %s", workflowID)
+	}
+
+	// Find and remove the node
+	for i, node := range workflow.Nodes {
+		if node.ID == nodeID {
+			workflow.Nodes = append(workflow.Nodes[:i], workflow.Nodes[i+1:]...)
+
+			return nr.persistence.workflowRepo.Save(ctx, workflow)
+		}
+	}
+
+	return fmt.Errorf("node not found: %s in workflow %s", nodeID, workflowID)
 }
 
-// WorkflowTriggersBySourceEventAndProvider returns workflow triggers that match source ID, event type, provider ID, and workflow status.
-func (fp *Persistence) WorkflowTriggersBySourceEventAndProvider(ctx context.Context, sourceID, eventType, providerID string, status models.WorkflowStatus) ([]*models.TriggerMatch, error) {
-	workflows, err := fp.Workflows(ctx)
+func (nr *nodeRepository) FindTriggerNodesBySourceEventAndProvider(ctx context.Context, sourceID, eventType, providerID string, status models.WorkflowStatus) ([]*models.TriggerNodeMatch, error) {
+	// Get all workflows
+	workflows, err := nr.persistence.workflowRepo.GetAll(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get workflows: %w", err)
 	}
 
-	var matchingTriggers []*models.TriggerMatch
+	var matches []*models.TriggerNodeMatch
 
-	for _, wf := range workflows {
-		// Only process workflows with the specified status
-		if wf.Status != status {
+	for _, workflow := range workflows {
+		// Skip workflows that don't match the status filter
+		if status != "" && workflow.Status != status {
 			continue
 		}
 
-		for _, trigger := range wf.WorkflowTriggers {
-			// Check if this trigger matches all criteria: source ID, event type, and provider ID
-			if trigger.SourceID == sourceID &&
-				trigger.EventType == eventType &&
-				trigger.ProviderID == providerID {
-				matchingTriggers = append(matchingTriggers, &models.TriggerMatch{
-					WorkflowID: wf.ID,
-					Trigger:    trigger,
-				})
+		// Check each node for trigger nodes that match
+		for _, node := range workflow.Nodes {
+			// Check if this is a trigger node matching our criteria
+			if node.Category == models.CategoryTypeTrigger &&
+				node.SourceID != nil && *node.SourceID == sourceID &&
+				node.EventType != nil && *node.EventType == eventType &&
+				node.ProviderID != nil && *node.ProviderID == providerID &&
+				node.Enabled {
+				match := &models.TriggerNodeMatch{
+					WorkflowID:  workflow.ID,
+					TriggerNode: node,
+				}
+				matches = append(matches, match)
 			}
 		}
 	}
 
-	return matchingTriggers, nil
+	return matches, nil
+}
+
+type connectionRepository struct {
+	persistence *Persistence
+}
+
+func (cr *connectionRepository) GetConnectionsBySourceNode(ctx context.Context, workflowID, sourceNodeID string) ([]*models.Connection, error) {
+	workflow, err := cr.persistence.workflowRepo.GetByID(ctx, workflowID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get workflow %s: %w", workflowID, err)
+	}
+
+	if workflow == nil {
+		return nil, fmt.Errorf("workflow not found: %s", workflowID)
+	}
+
+	var connections []*models.Connection
+	for _, conn := range workflow.Connections {
+		// Parse source port to get node ID
+		nodeID, _, ok := models.ParsePortID(conn.SourcePort)
+		if ok && nodeID == sourceNodeID {
+			connections = append(connections, conn)
+		}
+	}
+
+	return connections, nil
+}
+
+func (cr *connectionRepository) GetConnectionsByTargetNode(ctx context.Context, workflowID, targetNodeID string) ([]*models.Connection, error) {
+	workflow, err := cr.persistence.workflowRepo.GetByID(ctx, workflowID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get workflow %s: %w", workflowID, err)
+	}
+
+	if workflow == nil {
+		return nil, fmt.Errorf("workflow not found: %s", workflowID)
+	}
+
+	var connections []*models.Connection
+	for _, conn := range workflow.Connections {
+		// Parse target port to get node ID
+		nodeID, _, ok := models.ParsePortID(conn.TargetPort)
+		if ok && nodeID == targetNodeID {
+			connections = append(connections, conn)
+		}
+	}
+
+	return connections, nil
+}
+
+func (cr *connectionRepository) SaveConnection(ctx context.Context, workflowID string, connection *models.Connection) error {
+	workflow, err := cr.persistence.workflowRepo.GetByID(ctx, workflowID)
+	if err != nil {
+		return fmt.Errorf("failed to get workflow %s: %w", workflowID, err)
+	}
+
+	if workflow == nil {
+		return fmt.Errorf("workflow not found: %s", workflowID)
+	}
+
+	// Check if connection already exists
+	for i, existingConn := range workflow.Connections {
+		if existingConn.ID == connection.ID {
+			// Update existing connection
+			workflow.Connections[i] = connection
+
+			return cr.persistence.workflowRepo.Save(ctx, workflow)
+		}
+	}
+
+	// Add new connection
+	workflow.Connections = append(workflow.Connections, connection)
+
+	return cr.persistence.workflowRepo.Save(ctx, workflow)
+}
+
+func (cr *connectionRepository) UpdateConnection(ctx context.Context, workflowID string, connection *models.Connection) error {
+	return cr.SaveConnection(ctx, workflowID, connection)
+}
+
+func (cr *connectionRepository) DeleteConnection(ctx context.Context, workflowID, connectionID string) error {
+	workflow, err := cr.persistence.workflowRepo.GetByID(ctx, workflowID)
+	if err != nil {
+		return fmt.Errorf("failed to get workflow %s: %w", workflowID, err)
+	}
+
+	if workflow == nil {
+		return fmt.Errorf("workflow not found: %s", workflowID)
+	}
+
+	// Find and remove the connection
+	for i, conn := range workflow.Connections {
+		if conn.ID == connectionID {
+			workflow.Connections = append(workflow.Connections[:i], workflow.Connections[i+1:]...)
+
+			return cr.persistence.workflowRepo.Save(ctx, workflow)
+		}
+	}
+
+	return fmt.Errorf("connection not found: %s in workflow %s", connectionID, workflowID)
+}
+
+func (cr *connectionRepository) GetConnectionsByWorkflow(ctx context.Context, workflowID string) ([]*models.Connection, error) {
+	workflow, err := cr.persistence.workflowRepo.GetByID(ctx, workflowID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get workflow %s: %w", workflowID, err)
+	}
+
+	if workflow == nil {
+		return nil, fmt.Errorf("workflow not found: %s", workflowID)
+	}
+
+	return workflow.Connections, nil
 }

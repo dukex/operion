@@ -17,7 +17,7 @@ import (
 
 // Helper function to create a basic activator with mocks for testing.
 func createTestActivator() (*Activator, *mocks.MockPersistence, *mocks.MockEventBus, *mocks.MockSourceEventBus) {
-	mockPersistence := &mocks.MockPersistence{}
+	mockPersistence := mocks.NewMockPersistence()
 	mockEventBus := &mocks.MockEventBus{}
 	mockSourceEventBus := &mocks.MockSourceEventBus{}
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -38,20 +38,26 @@ func createTestSourceEvent() *events.SourceEvent {
 }
 
 // Helper function to create standard trigger matches for testing.
-func createTestTriggerMatches(workflowID, triggerID, sourceID string) []*models.TriggerMatch {
-	return []*models.TriggerMatch{
+func createTestTriggerNodeMatches(workflowID, triggerID, sourceID string) []*models.TriggerNodeMatch {
+	return []*models.TriggerNodeMatch{
 		{
 			WorkflowID: workflowID,
-			Trigger: &models.WorkflowTrigger{
-				ID:       triggerID,
-				SourceID: sourceID,
+			TriggerNode: &models.WorkflowNode{
+				ID:         triggerID,
+				Type:       "trigger:scheduler",
+				Category:   models.CategoryTypeTrigger,
+				Name:       "Test Trigger",
+				SourceID:   &sourceID,
+				ProviderID: &[]string{"scheduler"}[0],
+				EventType:  &[]string{"schedule_due"}[0],
+				Enabled:    true,
 			},
 		},
 	}
 }
 
 func TestNewActivator_Success(t *testing.T) {
-	mockPersistence := &mocks.MockPersistence{}
+	mockPersistence := mocks.NewMockPersistence()
 	mockEventBus := &mocks.MockEventBus{}
 	mockSourceEventBus := &mocks.MockSourceEventBus{}
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -68,7 +74,7 @@ func TestNewActivator_Success(t *testing.T) {
 }
 
 func TestNewActivator_WithValidParameters(t *testing.T) {
-	mockPersistence := &mocks.MockPersistence{}
+	mockPersistence := mocks.NewMockPersistence()
 	mockEventBus := &mocks.MockEventBus{}
 	mockSourceEventBus := &mocks.MockSourceEventBus{}
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -85,19 +91,31 @@ func TestNewActivator_WithValidParameters(t *testing.T) {
 func TestActivator_HandleSourceEvent_ValidEvent(t *testing.T) {
 	activator, mockPersistence, mockEventBus, _ := createTestActivator()
 	sourceEvent := createTestSourceEvent()
-	triggerMatches := createTestTriggerMatches("workflow-123", "trigger-123", "source-123")
+	triggerMatches := createTestTriggerNodeMatches("workflow-123", "trigger-123", "source-123")
 
 	// Mock finding matching triggers
-	mockPersistence.On("WorkflowTriggersBySourceEventAndProvider", mock.Anything, "source-123", "ScheduleDue", "scheduler", models.WorkflowStatusActive).Return(triggerMatches, nil)
+	mockPersistence.GetMockNodeRepository().On("FindTriggerNodesBySourceEventAndProvider", mock.Anything, "source-123", "ScheduleDue", "scheduler", models.WorkflowStatusPublished).Return(triggerMatches, nil)
+
+	// Mock workflow loading for variables
+	testWorkflow := &models.Workflow{
+		ID:        "workflow-123",
+		Name:      "Test Workflow",
+		Variables: map[string]any{"timeout": 30, "api_base": "https://api.example.com"},
+	}
+	mockPersistence.GetMockWorkflowRepository().On("GetByID", mock.Anything, "workflow-123").Return(testWorkflow, nil)
+
+	// Mock saving execution context
+	mockPersistence.GetMockExecutionContextRepository().On("SaveExecutionContext", mock.Anything, mock.AnythingOfType("*models.ExecutionContext")).Return(nil)
 
 	// Mock event publishing
 	mockEventBus.On("GenerateID").Return("event-123")
-	mockEventBus.On("Publish", mock.Anything, "workflow-123", mock.AnythingOfType("events.WorkflowTriggered")).Return(nil)
+	mockEventBus.On("Publish", mock.Anything, "trigger-123:event-123", mock.AnythingOfType("events.NodeActivation")).Return(nil)
 
 	err := activator.handleSourceEvent(context.Background(), sourceEvent)
 
 	assert.NoError(t, err)
-	mockPersistence.AssertExpectations(t)
+	mockPersistence.GetMockWorkflowRepository().AssertExpectations(t)
+	mockPersistence.GetMockExecutionContextRepository().AssertExpectations(t)
 	mockEventBus.AssertExpectations(t)
 }
 
@@ -117,12 +135,12 @@ func TestActivator_HandleSourceEvent_InvalidEvent(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "source_id is required")
 	// Should not call persistence or eventbus due to validation failure
-	mockPersistence.AssertNotCalled(t, "WorkflowTriggersBySourceEventAndProvider")
+	mockPersistence.GetMockNodeRepository().AssertNotCalled(t, "FindTriggerNodesBySourceEventAndProvider")
 	mockEventBus.AssertNotCalled(t, "Publish")
 }
 
 func TestActivator_HandleSourceEvent_NoMatchingTriggers(t *testing.T) {
-	mockPersistence := &mocks.MockPersistence{}
+	mockPersistence := mocks.NewMockPersistence()
 	mockEventBus := &mocks.MockEventBus{}
 	mockSourceEventBus := &mocks.MockSourceEventBus{}
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -137,18 +155,18 @@ func TestActivator_HandleSourceEvent_NoMatchingTriggers(t *testing.T) {
 	}
 
 	// Mock no matching triggers found
-	mockPersistence.On("WorkflowTriggersBySourceEventAndProvider", mock.Anything, "source-123", "ScheduleDue", "scheduler", models.WorkflowStatusActive).Return([]*models.TriggerMatch{}, nil)
+	mockPersistence.GetMockNodeRepository().On("FindTriggerNodesBySourceEventAndProvider", mock.Anything, "source-123", "ScheduleDue", "scheduler", models.WorkflowStatusPublished).Return([]*models.TriggerNodeMatch{}, nil)
 
 	err := activator.handleSourceEvent(context.Background(), sourceEvent)
 
 	assert.NoError(t, err)
-	mockPersistence.AssertExpectations(t)
+	mockPersistence.GetMockWorkflowRepository().AssertExpectations(t)
 	// Should not publish any events when no triggers match
 	mockEventBus.AssertNotCalled(t, "Publish")
 }
 
 func TestActivator_HandleSourceEvent_DatabaseError(t *testing.T) {
-	mockPersistence := &mocks.MockPersistence{}
+	mockPersistence := mocks.NewMockPersistence()
 	mockEventBus := &mocks.MockEventBus{}
 	mockSourceEventBus := &mocks.MockSourceEventBus{}
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -163,18 +181,18 @@ func TestActivator_HandleSourceEvent_DatabaseError(t *testing.T) {
 	}
 
 	// Mock database error
-	mockPersistence.On("WorkflowTriggersBySourceEventAndProvider", mock.Anything, "source-123", "ScheduleDue", "scheduler", models.WorkflowStatusActive).Return(nil, assert.AnError)
+	mockPersistence.GetMockNodeRepository().On("FindTriggerNodesBySourceEventAndProvider", mock.Anything, "source-123", "ScheduleDue", "scheduler", models.WorkflowStatusPublished).Return(nil, assert.AnError)
 
 	err := activator.handleSourceEvent(context.Background(), sourceEvent)
 
 	assert.Error(t, err)
 	assert.Equal(t, assert.AnError, err)
-	mockPersistence.AssertExpectations(t)
+	mockPersistence.GetMockWorkflowRepository().AssertExpectations(t)
 	mockEventBus.AssertNotCalled(t, "Publish")
 }
 
 func TestActivator_HandleSourceEvent_MultipleMatchingTriggers(t *testing.T) {
-	mockPersistence := &mocks.MockPersistence{}
+	mockPersistence := mocks.NewMockPersistence()
 	mockEventBus := &mocks.MockEventBus{}
 	mockSourceEventBus := &mocks.MockSourceEventBus{}
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -189,38 +207,72 @@ func TestActivator_HandleSourceEvent_MultipleMatchingTriggers(t *testing.T) {
 	}
 
 	// Mock multiple matching triggers
-	triggerMatches := []*models.TriggerMatch{
+	triggerMatches := []*models.TriggerNodeMatch{
 		{
 			WorkflowID: "workflow-123",
-			Trigger: &models.WorkflowTrigger{
-				ID:       "trigger-123",
-				SourceID: "source-123",
+			TriggerNode: &models.WorkflowNode{
+				ID:         "trigger-123",
+				Type:       "trigger:scheduler",
+				Category:   models.CategoryTypeTrigger,
+				Name:       "Test Trigger 123",
+				SourceID:   &[]string{"source-123"}[0],
+				ProviderID: &[]string{"scheduler"}[0],
+				EventType:  &[]string{"schedule_due"}[0],
+				Enabled:    true,
 			},
 		},
 		{
 			WorkflowID: "workflow-456",
-			Trigger: &models.WorkflowTrigger{
-				ID:       "trigger-456",
-				SourceID: "source-123",
+			TriggerNode: &models.WorkflowNode{
+				ID:         "trigger-456",
+				Type:       "trigger:scheduler",
+				Category:   models.CategoryTypeTrigger,
+				Name:       "Test Trigger 456",
+				SourceID:   &[]string{"source-123"}[0],
+				ProviderID: &[]string{"scheduler"}[0],
+				EventType:  &[]string{"schedule_due"}[0],
+				Enabled:    true,
 			},
 		},
 	}
-	mockPersistence.On("WorkflowTriggersBySourceEventAndProvider", mock.Anything, "source-123", "ScheduleDue", "scheduler", models.WorkflowStatusActive).Return(triggerMatches, nil)
+	mockPersistence.GetMockNodeRepository().On("FindTriggerNodesBySourceEventAndProvider", mock.Anything, "source-123", "ScheduleDue", "scheduler", models.WorkflowStatusPublished).Return(triggerMatches, nil)
 
-	// Mock event publishing for both workflows
-	mockEventBus.On("GenerateID").Return("event-123").Times(2)
-	mockEventBus.On("Publish", mock.Anything, "workflow-123", mock.AnythingOfType("events.WorkflowTriggered")).Return(nil)
-	mockEventBus.On("Publish", mock.Anything, "workflow-456", mock.AnythingOfType("events.WorkflowTriggered")).Return(nil)
+	// Mock workflow loading for variables for both workflows
+	testWorkflow123 := &models.Workflow{
+		ID:        "workflow-123",
+		Name:      "Test Workflow 123",
+		Variables: map[string]any{"timeout": 30, "api_base": "https://api.example.com"},
+	}
+	testWorkflow456 := &models.Workflow{
+		ID:        "workflow-456",
+		Name:      "Test Workflow 456",
+		Variables: map[string]any{"timeout": 60, "api_base": "https://api2.example.com"},
+	}
+
+	mockPersistence.GetMockWorkflowRepository().On("GetByID", mock.Anything, "workflow-123").Return(testWorkflow123, nil)
+	mockPersistence.GetMockWorkflowRepository().On("GetByID", mock.Anything, "workflow-456").Return(testWorkflow456, nil)
+
+	// Mock saving execution contexts for both workflows
+	mockPersistence.GetMockExecutionContextRepository().On("SaveExecutionContext", mock.Anything, mock.AnythingOfType("*models.ExecutionContext")).Return(nil).Twice()
+
+	// Mock event publishing for both workflows - each publishNodeActivation call needs 2 GenerateID calls
+	mockEventBus.On("GenerateID").Return("event-123").Once() // execution ID for first workflow
+	mockEventBus.On("GenerateID").Return("event-456").Once() // event ID for first workflow
+	mockEventBus.On("GenerateID").Return("event-789").Once() // execution ID for second workflow
+	mockEventBus.On("GenerateID").Return("event-abc").Once() // event ID for second workflow
+	mockEventBus.On("Publish", mock.Anything, "trigger-123:event-123", mock.AnythingOfType("events.NodeActivation")).Return(nil)
+	mockEventBus.On("Publish", mock.Anything, "trigger-456:event-789", mock.AnythingOfType("events.NodeActivation")).Return(nil)
 
 	err := activator.handleSourceEvent(context.Background(), sourceEvent)
 
 	assert.NoError(t, err)
-	mockPersistence.AssertExpectations(t)
+	mockPersistence.GetMockNodeRepository().AssertExpectations(t)
+	mockPersistence.GetMockExecutionContextRepository().AssertExpectations(t)
 	mockEventBus.AssertExpectations(t)
 }
 
 func TestActivator_HandleSourceEvent_PublishFailure(t *testing.T) {
-	mockPersistence := &mocks.MockPersistence{}
+	mockPersistence := mocks.NewMockPersistence()
 	mockEventBus := &mocks.MockEventBus{}
 	mockSourceEventBus := &mocks.MockSourceEventBus{}
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -234,31 +286,49 @@ func TestActivator_HandleSourceEvent_PublishFailure(t *testing.T) {
 		EventData:  map[string]any{"schedule_id": "sched-123"},
 	}
 
-	triggerMatches := []*models.TriggerMatch{
+	triggerMatches := []*models.TriggerNodeMatch{
 		{
 			WorkflowID: "workflow-123",
-			Trigger: &models.WorkflowTrigger{
-				ID:       "trigger-123",
-				SourceID: "source-123",
+			TriggerNode: &models.WorkflowNode{
+				ID:         "trigger-123",
+				Type:       "trigger:scheduler",
+				Category:   models.CategoryTypeTrigger,
+				Name:       "Test Trigger 123",
+				SourceID:   &[]string{"source-123"}[0],
+				ProviderID: &[]string{"scheduler"}[0],
+				EventType:  &[]string{"schedule_due"}[0],
+				Enabled:    true,
 			},
 		},
 	}
-	mockPersistence.On("WorkflowTriggersBySourceEventAndProvider", mock.Anything, "source-123", "ScheduleDue", "scheduler", models.WorkflowStatusActive).Return(triggerMatches, nil)
+	mockPersistence.GetMockNodeRepository().On("FindTriggerNodesBySourceEventAndProvider", mock.Anything, "source-123", "ScheduleDue", "scheduler", models.WorkflowStatusPublished).Return(triggerMatches, nil)
+
+	// Mock workflow loading for variables
+	testWorkflow := &models.Workflow{
+		ID:        "workflow-123",
+		Name:      "Test Workflow",
+		Variables: map[string]any{"timeout": 30, "api_base": "https://api.example.com"},
+	}
+	mockPersistence.GetMockWorkflowRepository().On("GetByID", mock.Anything, "workflow-123").Return(testWorkflow, nil)
+
+	// Mock saving execution context
+	mockPersistence.GetMockExecutionContextRepository().On("SaveExecutionContext", mock.Anything, mock.AnythingOfType("*models.ExecutionContext")).Return(nil)
 
 	// Mock event publishing failure
 	mockEventBus.On("GenerateID").Return("event-123")
-	mockEventBus.On("Publish", mock.Anything, "workflow-123", mock.AnythingOfType("events.WorkflowTriggered")).Return(assert.AnError)
+	mockEventBus.On("Publish", mock.Anything, "trigger-123:event-123", mock.AnythingOfType("events.NodeActivation")).Return(assert.AnError)
 
 	err := activator.handleSourceEvent(context.Background(), sourceEvent)
 
 	// Should not return error even if publishing fails (logged but continues)
 	assert.NoError(t, err)
-	mockPersistence.AssertExpectations(t)
+	mockPersistence.GetMockWorkflowRepository().AssertExpectations(t)
+	mockPersistence.GetMockExecutionContextRepository().AssertExpectations(t)
 	mockEventBus.AssertExpectations(t)
 }
 
 func TestActivator_FindTriggersForSourceEvent_Success(t *testing.T) {
-	mockPersistence := &mocks.MockPersistence{}
+	mockPersistence := mocks.NewMockPersistence()
 	mockEventBus := &mocks.MockEventBus{}
 	mockSourceEventBus := &mocks.MockSourceEventBus{}
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -272,26 +342,32 @@ func TestActivator_FindTriggersForSourceEvent_Success(t *testing.T) {
 		EventData:  map[string]any{"schedule_id": "sched-123"},
 	}
 
-	expectedTriggers := []*models.TriggerMatch{
+	expectedTriggers := []*models.TriggerNodeMatch{
 		{
 			WorkflowID: "workflow-123",
-			Trigger: &models.WorkflowTrigger{
-				ID:       "trigger-123",
-				SourceID: "source-123",
+			TriggerNode: &models.WorkflowNode{
+				ID:         "trigger-123",
+				Type:       "trigger:scheduler",
+				Category:   models.CategoryTypeTrigger,
+				Name:       "Test Trigger 123",
+				SourceID:   &[]string{"source-123"}[0],
+				ProviderID: &[]string{"scheduler"}[0],
+				EventType:  &[]string{"schedule_due"}[0],
+				Enabled:    true,
 			},
 		},
 	}
-	mockPersistence.On("WorkflowTriggersBySourceEventAndProvider", mock.Anything, "source-123", "ScheduleDue", "scheduler", models.WorkflowStatusActive).Return(expectedTriggers, nil)
+	mockPersistence.GetMockNodeRepository().On("FindTriggerNodesBySourceEventAndProvider", mock.Anything, "source-123", "ScheduleDue", "scheduler", models.WorkflowStatusPublished).Return(expectedTriggers, nil)
 
-	triggers, err := activator.findTriggersForSourceEvent(context.Background(), sourceEvent)
+	triggers, err := activator.findTriggerNodesForSourceEvent(context.Background(), sourceEvent)
 
 	assert.NoError(t, err)
 	assert.Equal(t, expectedTriggers, triggers)
-	mockPersistence.AssertExpectations(t)
+	mockPersistence.GetMockWorkflowRepository().AssertExpectations(t)
 }
 
 func TestActivator_FindTriggersForSourceEvent_DatabaseError(t *testing.T) {
-	mockPersistence := &mocks.MockPersistence{}
+	mockPersistence := mocks.NewMockPersistence()
 	mockEventBus := &mocks.MockEventBus{}
 	mockSourceEventBus := &mocks.MockSourceEventBus{}
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -305,17 +381,17 @@ func TestActivator_FindTriggersForSourceEvent_DatabaseError(t *testing.T) {
 		EventData:  map[string]any{"schedule_id": "sched-123"},
 	}
 
-	mockPersistence.On("WorkflowTriggersBySourceEventAndProvider", mock.Anything, "source-123", "ScheduleDue", "scheduler", models.WorkflowStatusActive).Return(nil, assert.AnError)
+	mockPersistence.GetMockNodeRepository().On("FindTriggerNodesBySourceEventAndProvider", mock.Anything, "source-123", "ScheduleDue", "scheduler", models.WorkflowStatusPublished).Return(nil, assert.AnError)
 
-	triggers, err := activator.findTriggersForSourceEvent(context.Background(), sourceEvent)
+	triggers, err := activator.findTriggerNodesForSourceEvent(context.Background(), sourceEvent)
 
 	assert.Error(t, err)
 	assert.Nil(t, triggers)
-	mockPersistence.AssertExpectations(t)
+	mockPersistence.GetMockWorkflowRepository().AssertExpectations(t)
 }
 
 func TestActivator_FindTriggersForSourceEvent_EmptyResults(t *testing.T) {
-	mockPersistence := &mocks.MockPersistence{}
+	mockPersistence := mocks.NewMockPersistence()
 	mockEventBus := &mocks.MockEventBus{}
 	mockSourceEventBus := &mocks.MockSourceEventBus{}
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -329,17 +405,17 @@ func TestActivator_FindTriggersForSourceEvent_EmptyResults(t *testing.T) {
 		EventData:  map[string]any{"schedule_id": "sched-123"},
 	}
 
-	mockPersistence.On("WorkflowTriggersBySourceEventAndProvider", mock.Anything, "source-123", "ScheduleDue", "scheduler", models.WorkflowStatusActive).Return([]*models.TriggerMatch{}, nil)
+	mockPersistence.GetMockNodeRepository().On("FindTriggerNodesBySourceEventAndProvider", mock.Anything, "source-123", "ScheduleDue", "scheduler", models.WorkflowStatusPublished).Return([]*models.TriggerNodeMatch{}, nil)
 
-	triggers, err := activator.findTriggersForSourceEvent(context.Background(), sourceEvent)
+	triggers, err := activator.findTriggerNodesForSourceEvent(context.Background(), sourceEvent)
 
 	assert.NoError(t, err)
 	assert.Empty(t, triggers)
-	mockPersistence.AssertExpectations(t)
+	mockPersistence.GetMockWorkflowRepository().AssertExpectations(t)
 }
 
 func TestActivator_PublishWorkflowTriggered_Success(t *testing.T) {
-	mockPersistence := &mocks.MockPersistence{}
+	mockPersistence := mocks.NewMockPersistence()
 	mockEventBus := &mocks.MockEventBus{}
 	mockSourceEventBus := &mocks.MockSourceEventBus{}
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -348,22 +424,36 @@ func TestActivator_PublishWorkflowTriggered_Success(t *testing.T) {
 
 	sourceData := map[string]any{"schedule_id": "sched-123", "timestamp": "2023-01-01T00:00:00Z"}
 
+	// Mock workflow loading for variables
+	testWorkflow := &models.Workflow{
+		ID:        "workflow-123",
+		Name:      "Test Workflow",
+		Variables: map[string]any{"timeout": 30, "api_base": "https://api.example.com"},
+	}
+	mockPersistence.GetMockWorkflowRepository().On("GetByID", mock.Anything, "workflow-123").Return(testWorkflow, nil)
+
+	// Mock saving execution context
+	mockPersistence.GetMockExecutionContextRepository().On("SaveExecutionContext", mock.Anything, mock.AnythingOfType("*models.ExecutionContext")).Return(nil)
+
 	mockEventBus.On("GenerateID").Return("event-123")
-	mockEventBus.On("Publish", mock.Anything, "workflow-123", mock.MatchedBy(func(event events.WorkflowTriggered) bool {
-		return event.BaseEvent.Type == events.WorkflowTriggeredEvent &&
+	mockEventBus.On("Publish", mock.Anything, "trigger-123:event-123", mock.MatchedBy(func(event events.NodeActivation) bool {
+		inputDataMap, ok := event.InputData.(map[string]any)
+
+		return event.BaseEvent.Type == events.NodeActivationEvent &&
 			event.BaseEvent.WorkflowID == "workflow-123" &&
-			event.TriggerID == "trigger-123" &&
-			event.TriggerData["schedule_id"] == "sched-123"
+			event.NodeID == "trigger-123" &&
+			ok && inputDataMap["schedule_id"] == "sched-123"
 	})).Return(nil)
 
-	err := activator.publishWorkflowTriggered(context.Background(), "workflow-123", "trigger-123", sourceData)
+	err := activator.publishNodeActivation(context.Background(), "workflow-123", "trigger-123", sourceData)
 
 	assert.NoError(t, err)
+	mockPersistence.GetMockExecutionContextRepository().AssertExpectations(t)
 	mockEventBus.AssertExpectations(t)
 }
 
 func TestActivator_PublishWorkflowTriggered_EventBusFailure(t *testing.T) {
-	mockPersistence := &mocks.MockPersistence{}
+	mockPersistence := mocks.NewMockPersistence()
 	mockEventBus := &mocks.MockEventBus{}
 	mockSourceEventBus := &mocks.MockSourceEventBus{}
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -372,18 +462,30 @@ func TestActivator_PublishWorkflowTriggered_EventBusFailure(t *testing.T) {
 
 	sourceData := map[string]any{"schedule_id": "sched-123"}
 
-	mockEventBus.On("GenerateID").Return("event-123")
-	mockEventBus.On("Publish", mock.Anything, "workflow-123", mock.AnythingOfType("events.WorkflowTriggered")).Return(assert.AnError)
+	// Mock workflow loading for variables
+	testWorkflow := &models.Workflow{
+		ID:        "workflow-123",
+		Name:      "Test Workflow",
+		Variables: map[string]any{"timeout": 30, "api_base": "https://api.example.com"},
+	}
+	mockPersistence.GetMockWorkflowRepository().On("GetByID", mock.Anything, "workflow-123").Return(testWorkflow, nil)
 
-	err := activator.publishWorkflowTriggered(context.Background(), "workflow-123", "trigger-123", sourceData)
+	// Mock saving execution context
+	mockPersistence.GetMockExecutionContextRepository().On("SaveExecutionContext", mock.Anything, mock.AnythingOfType("*models.ExecutionContext")).Return(nil)
+
+	mockEventBus.On("GenerateID").Return("event-123")
+	mockEventBus.On("Publish", mock.Anything, "trigger-123:event-123", mock.AnythingOfType("events.NodeActivation")).Return(assert.AnError)
+
+	err := activator.publishNodeActivation(context.Background(), "workflow-123", "trigger-123", sourceData)
 
 	assert.Error(t, err)
 	assert.Equal(t, assert.AnError, err)
+	mockPersistence.GetMockExecutionContextRepository().AssertExpectations(t)
 	mockEventBus.AssertExpectations(t)
 }
 
 func TestActivator_PublishWorkflowTriggered_ValidEventStructure(t *testing.T) {
-	mockPersistence := &mocks.MockPersistence{}
+	mockPersistence := mocks.NewMockPersistence()
 	mockEventBus := &mocks.MockEventBus{}
 	mockSourceEventBus := &mocks.MockSourceEventBus{}
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -396,33 +498,45 @@ func TestActivator_PublishWorkflowTriggered_ValidEventStructure(t *testing.T) {
 		"metadata":    map[string]any{"cron": "0 * * * *"},
 	}
 
+	// Mock workflow loading for variables
+	testWorkflow := &models.Workflow{
+		ID:        "workflow-456",
+		Name:      "Test Workflow 456",
+		Variables: map[string]any{"timeout": 60, "api_base": "https://api2.example.com"},
+	}
+	mockPersistence.GetMockWorkflowRepository().On("GetByID", mock.Anything, "workflow-456").Return(testWorkflow, nil)
+
+	// Mock saving execution context
+	mockPersistence.GetMockExecutionContextRepository().On("SaveExecutionContext", mock.Anything, mock.AnythingOfType("*models.ExecutionContext")).Return(nil)
+
 	mockEventBus.On("GenerateID").Return("event-456")
 
 	// Capture the actual event to validate its structure
-	var capturedEvent events.WorkflowTriggered
+	var capturedEvent events.NodeActivation
 
-	mockEventBus.On("Publish", mock.Anything, "workflow-456", mock.AnythingOfType("events.WorkflowTriggered")).
+	mockEventBus.On("Publish", mock.Anything, "trigger-456:event-456", mock.AnythingOfType("events.NodeActivation")).
 		Run(func(args mock.Arguments) {
-			capturedEvent = args.Get(2).(events.WorkflowTriggered)
+			capturedEvent = args.Get(2).(events.NodeActivation)
 		}).Return(nil)
 
-	err := activator.publishWorkflowTriggered(context.Background(), "workflow-456", "trigger-456", sourceData)
+	err := activator.publishNodeActivation(context.Background(), "workflow-456", "trigger-456", sourceData)
 
 	assert.NoError(t, err)
 
 	// Validate event structure
 	assert.Equal(t, "event-456", capturedEvent.ID)
-	assert.Equal(t, events.WorkflowTriggeredEvent, capturedEvent.Type)
+	assert.Equal(t, events.NodeActivationEvent, capturedEvent.Type)
 	assert.Equal(t, "workflow-456", capturedEvent.WorkflowID)
-	assert.Equal(t, "trigger-456", capturedEvent.TriggerID)
-	assert.Equal(t, sourceData, capturedEvent.TriggerData)
+	assert.Equal(t, "trigger-456", capturedEvent.NodeID)
+	assert.Equal(t, sourceData, capturedEvent.InputData)
 	assert.NotZero(t, capturedEvent.Timestamp)
 
+	mockPersistence.GetMockExecutionContextRepository().AssertExpectations(t)
 	mockEventBus.AssertExpectations(t)
 }
 
 func TestActivator_ProcessSourceEvents_Success(t *testing.T) {
-	mockPersistence := &mocks.MockPersistence{}
+	mockPersistence := mocks.NewMockPersistence()
 	mockEventBus := &mocks.MockEventBus{}
 	mockSourceEventBus := &mocks.MockSourceEventBus{}
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -443,7 +557,7 @@ func TestActivator_ProcessSourceEvents_Success(t *testing.T) {
 }
 
 func TestActivator_ProcessSourceEvents_HandlerRegistrationFailure(t *testing.T) {
-	mockPersistence := &mocks.MockPersistence{}
+	mockPersistence := mocks.NewMockPersistence()
 	mockEventBus := &mocks.MockEventBus{}
 	mockSourceEventBus := &mocks.MockSourceEventBus{}
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -462,7 +576,7 @@ func TestActivator_ProcessSourceEvents_HandlerRegistrationFailure(t *testing.T) 
 }
 
 func TestActivator_ProcessSourceEvents_SubscriptionFailure(t *testing.T) {
-	mockPersistence := &mocks.MockPersistence{}
+	mockPersistence := mocks.NewMockPersistence()
 	mockEventBus := &mocks.MockEventBus{}
 	mockSourceEventBus := &mocks.MockSourceEventBus{}
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -480,7 +594,7 @@ func TestActivator_ProcessSourceEvents_SubscriptionFailure(t *testing.T) {
 }
 
 func TestActivator_Restart_IncrementCount(t *testing.T) {
-	mockPersistence := &mocks.MockPersistence{}
+	mockPersistence := mocks.NewMockPersistence()
 	mockEventBus := &mocks.MockEventBus{}
 	mockSourceEventBus := &mocks.MockSourceEventBus{}
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -498,7 +612,7 @@ func TestActivator_Restart_IncrementCount(t *testing.T) {
 }
 
 func TestActivator_Stop_GracefulShutdown(t *testing.T) {
-	mockPersistence := &mocks.MockPersistence{}
+	mockPersistence := mocks.NewMockPersistence()
 	mockEventBus := &mocks.MockEventBus{}
 	mockSourceEventBus := &mocks.MockSourceEventBus{}
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -520,7 +634,7 @@ func TestActivator_Stop_GracefulShutdown(t *testing.T) {
 }
 
 func TestActivator_Stop_WithNilCancel(t *testing.T) {
-	mockPersistence := &mocks.MockPersistence{}
+	mockPersistence := mocks.NewMockPersistence()
 	mockEventBus := &mocks.MockEventBus{}
 	mockSourceEventBus := &mocks.MockSourceEventBus{}
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -534,7 +648,7 @@ func TestActivator_Stop_WithNilCancel(t *testing.T) {
 }
 
 func TestActivator_HandleSignals_Setup(t *testing.T) {
-	mockPersistence := &mocks.MockPersistence{}
+	mockPersistence := mocks.NewMockPersistence()
 	mockEventBus := &mocks.MockEventBus{}
 	mockSourceEventBus := &mocks.MockSourceEventBus{}
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -564,16 +678,27 @@ func TestActivator_EventHandlingFlow_Integration(t *testing.T) {
 		EventData:  map[string]any{"schedule_id": "sched-integration"},
 	}
 
-	triggerMatches := createTestTriggerMatches("workflow-integration", "trigger-integration", "source-integration")
+	triggerMatches := createTestTriggerNodeMatches("workflow-integration", "trigger-integration", "source-integration")
 
-	mockPersistence.On("WorkflowTriggersBySourceEventAndProvider", mock.Anything, "source-integration", "ScheduleDue", "scheduler", models.WorkflowStatusActive).Return(triggerMatches, nil)
+	mockPersistence.GetMockNodeRepository().On("FindTriggerNodesBySourceEventAndProvider", mock.Anything, "source-integration", "ScheduleDue", "scheduler", models.WorkflowStatusPublished).Return(triggerMatches, nil)
+
+	// Mock workflow loading for variables
+	testWorkflow := &models.Workflow{
+		ID:        "workflow-integration",
+		Name:      "Test Workflow Integration",
+		Variables: map[string]any{"timeout": 45, "api_base": "https://integration.example.com"},
+	}
+	mockPersistence.GetMockWorkflowRepository().On("GetByID", mock.Anything, "workflow-integration").Return(testWorkflow, nil)
+
+	mockPersistence.GetMockExecutionContextRepository().On("SaveExecutionContext", mock.Anything, mock.AnythingOfType("*models.ExecutionContext")).Return(nil)
 	mockEventBus.On("GenerateID").Return("event-integration")
-	mockEventBus.On("Publish", mock.Anything, "workflow-integration", mock.AnythingOfType("events.WorkflowTriggered")).Return(nil)
+	mockEventBus.On("Publish", mock.Anything, "trigger-integration:event-integration", mock.AnythingOfType("events.NodeActivation")).Return(nil)
 
 	// Test the complete flow
 	err := activator.handleSourceEvent(context.Background(), sourceEvent)
 
 	assert.NoError(t, err)
-	mockPersistence.AssertExpectations(t)
+	mockPersistence.GetMockWorkflowRepository().AssertExpectations(t)
+	mockPersistence.GetMockExecutionContextRepository().AssertExpectations(t)
 	mockEventBus.AssertExpectations(t)
 }

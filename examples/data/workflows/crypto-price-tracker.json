@@ -2,139 +2,208 @@
   "id": "crypto-price-tracker",
   "name": "Cryptocurrency Price Tracker",
   "description": "Track multiple cryptocurrency prices and detect significant price movements using CoinGecko API",
-  "status": "active",
-  "workflow_triggers": [
+  "status": "published",
+  "workflow_group_id": "crypto-price-tracker",
+  "published_at": "2023-10-01T00:00:00Z",
+  "nodes": [
     {
       "id": "crypto-schedule",
       "name": "Crypto Price Schedule Trigger",
-      "description": "Trigger to fetch crypto prices every 5 minutes",
-      "provider_id": "scheduler",
-      "event_type": "schedule_due",
-      "configuration": {
+      "type": "trigger:scheduler",
+      "category": "trigger",
+      "config": {
         "cron": "*/5 * * * *",
         "timezone": "UTC"
-      }
-    }
-  ],
-  "steps": [
+      },
+      "enabled": true,
+      "provider_id": "scheduler",
+      "event_type": "schedule_due",
+      "position_x": 50,
+      "position_y": 100
+    },
     {
       "id": "fetch-crypto-prices",
       "name": "Fetch Crypto Prices",
-      "action_id": "http_request",
-      "uid": "cryptodata",
-      "configuration": {
-        "protocol": "https",
-        "host": "api.coingecko.com",
-        "path": "/api/v3/simple/price?ids=vars.crypto_ids&vs_currencies=usd&include_24hr_change=true&include_market_cap=true",
+      "config": {
+        "url": "https://api.coingecko.com/api/v3/simple/price?ids={{.variables.crypto_ids}}&vs_currencies=usd&include_24hr_change=true&include_market_cap=true",
         "method": "GET",
         "timeout": 15,
         "headers": {
           "Accept": "application/json",
           "User-Agent": "Operion-CryptoTracker/1.0"
         },
-        "retry": {
+        "retries": {
           "attempts": 3,
-          "delay": 2
+          "delay": 2000
         }
       },
-  
-      "on_success": "process-bitcoin",
-      "on_failure": "log-fetch-error",
-      "enabled": true
+      "position_x": 100,
+      "position_y": 100,
+      "enabled": true,
+      "type": "httprequest",
+      "category": "action"
     },
     {
       "id": "process-bitcoin",
       "name": "Process Bitcoin Data",
-      "action_id": "transform",
-      "uid": "bitcoinanalysis",
-      "configuration": {
-        "expression": "{\n  \"coin\": \"bitcoin\",\n  \"price\": steps.cryptodata.body.bitcoin.usd,\n  \"market_cap\": steps.cryptodata.body.bitcoin.usd_market_cap,\n  \"change_24h\": steps.cryptodata.body.bitcoin.usd_24h_change,\n  \"timestamp\": $now(),\n  \"significant_change\": $abs(steps.cryptodata.body.bitcoin.usd_24h_change) > vars.change_threshold,\n  \"direction\": steps.cryptodata.body.bitcoin.usd_24h_change > 0 ? \"UP\" : \"DOWN\"\n}"
+      "config": {
+        "expression": "{{ $crypto := index .node_results \"fetch-crypto-prices::success\" }}{{ $btc := $crypto.json.bitcoin }}{ \"coin\": \"bitcoin\", \"price\": {{ $btc.usd }}, \"market_cap\": {{ $btc.usd_market_cap }}, \"change_24h\": {{ $btc.usd_24h_change }}, \"timestamp\": \"{{now}}\", \"significant_change\": {{ if gt (abs $btc.usd_24h_change) .variables.change_threshold }}true{{ else }}false{{ end }}, \"direction\": \"{{ if gt $btc.usd_24h_change 0 }}UP{{ else }}DOWN{{ end }}\" }"
       },
-      "on_success": "process-ethereum",
-      "enabled": true
+      "position_x": 300,
+      "position_y": 50,
+      "enabled": true,
+      "type": "transform",
+      "category": "action"
     },
     {
       "id": "process-ethereum",
       "name": "Process Ethereum Data",
-      "action_id": "transform",
-      "uid": "ethereumanalysis",
-      "configuration": {
-        "expression": "{\n  \"coin\": \"ethereum\",\n  \"price\": steps.cryptodata.body.ethereum.usd,\n  \"market_cap\": steps.cryptodata.body.ethereum.usd_market_cap,\n  \"change_24h\": steps.cryptodata.body.ethereum.usd_24h_change,\n  \"timestamp\": $now(),\n  \"significant_change\": $abs(steps.cryptodata.body.ethereum.usd_24h_change) > vars.change_threshold,\n  \"direction\": steps.cryptodata.body.ethereum.usd_24h_change > 0 ? \"UP\" : \"DOWN\"\n}"
+      "config": {
+        "expression": "{{ $crypto := index .node_results \"fetch-crypto-prices::success\" }}{{ $eth := $crypto.json.ethereum }}{ \"coin\": \"ethereum\", \"price\": {{ $eth.usd }}, \"market_cap\": {{ $eth.usd_market_cap }}, \"change_24h\": {{ $eth.usd_24h_change }}, \"timestamp\": \"{{now}}\", \"significant_change\": {{ if gt (abs $eth.usd_24h_change) .variables.change_threshold }}true{{ else }}false{{ end }}, \"direction\": \"{{ if gt $eth.usd_24h_change 0 }}UP{{ else }}DOWN{{ end }}\" }"
       },
-      "on_success": "create-summary",
-      "enabled": true
+      "position_x": 300,
+      "position_y": 150,
+      "enabled": true,
+      "type": "transform",
+      "category": "action"
     },
     {
       "id": "create-summary",
       "name": "Create Price Summary",
-      "action_id": "transform",
-      "uid": "pricesummary",
-      "configuration": {
-        "expression": "{\n  \"timestamp\": $now(),\n  \"coins\": [\n    steps.bitcoinanalysis,\n    steps.ethereumanalysis\n  ],\n  \"alerts\": [\n    steps.bitcoinanalysis.significant_change ? \"Bitcoin \" & steps.bitcoinanalysis.direction & \" \" & $string($abs(steps.bitcoinanalysis.change_24h)) & \"%\" : null,\n    steps.ethereumanalysis.significant_change ? \"Ethereum \" & steps.ethereumanalysis.direction & \" \" & $string($abs(steps.ethereumanalysis.change_24h)) & \"%\" : null\n  ][$exists($)],\n  \"total_market_cap\": steps.bitcoinanalysis.market_cap + steps.ethereumanalysis.market_cap\n}"
+      "config": {
+        "expression": "{{ $btc := index .node_results \"process-bitcoin::success\" }}{{ $eth := index .node_results \"process-ethereum::success\" }}{ \"timestamp\": \"{{now}}\", \"coins\": [ {{ $btc.result }}, {{ $eth.result }} ], \"total_market_cap\": {{ add $btc.result.market_cap $eth.result.market_cap }} }"
       },
-      "on_success": "log-prices",
-      "enabled": true
+      "position_x": 500,
+      "position_y": 100,
+      "enabled": true,
+      "type": "transform",
+      "category": "action"
     },
     {
       "id": "log-prices",
       "name": "Log Current Prices",
-      "action_id": "log",
-      "uid": "pricelog",
-      "configuration": {
-        "message": "\"Crypto Prices - BTC: $\" & $string(steps.bitcoinanalysis.price) & \" (\" & $string($round(steps.bitcoinanalysis.change_24h, 2)) & \"%), ETH: $\" & $string(steps.ethereumanalysis.price) & \" (\" & $string($round(steps.ethereumanalysis.change_24h, 2)) & \"%)\""
+      "config": {
+        "message": "{{ $btc := index .node_results \"process-bitcoin::success\" }}{{ $eth := index .node_results \"process-ethereum::success\" }}Crypto Prices - BTC: ${{ $btc.result.price }} ({{ $btc.result.change_24h }}%), ETH: ${{ $eth.result.price }} ({{ $eth.result.change_24h }}%)",
+        "level": "info"
       },
-      "on_success": "send-price-report",
-      "enabled": true
+      "position_x": 700,
+      "position_y": 50,
+      "enabled": true,
+      "type": "log",
+      "category": "action"
     },
     {
       "id": "send-price-report",
       "name": "Send Price Report",
-      "action_id": "http_request",
-      "uid": "reportresponse",
-      "configuration": {
-        "protocol": "https",
-        "host": "httpbin.org",
-        "path": "/post",
+      "config": {
+        "url": "https://httpbin.org/post",
         "method": "POST",
         "headers": {
           "Content-Type": "application/json"
         },
-        "body": "{\n  \"service\": \"crypto-tracker\",\n  \"timestamp\": steps.pricesummary.timestamp,\n  \"data\": {\n    \"bitcoin\": {\n      \"price\": steps.bitcoinanalysis.price,\n      \"change_24h\": steps.bitcoinanalysis.change_24h,\n      \"market_cap\": steps.bitcoinanalysis.market_cap,\n      \"alert\": steps.bitcoinanalysis.significant_change\n    },\n    \"ethereum\": {\n      \"price\": steps.ethereumanalysis.price,\n      \"change_24h\": steps.ethereumanalysis.change_24h,\n      \"market_cap\": steps.ethereumanalysis.market_cap,\n      \"alert\": steps.ethereumanalysis.significant_change\n    }\n  },\n  \"alerts\": steps.pricesummary.alerts,\n  \"total_market_cap\": steps.pricesummary.total_market_cap\n}",
-        "timeout": 10
+        "body": "{{ $btc := index .node_results \"process-bitcoin::success\" }}{{ $eth := index .node_results \"process-ethereum::success\" }}{{ $summary := index .node_results \"create-summary::success\" }}{ \"service\": \"crypto-tracker\", \"timestamp\": \"{{ $summary.result.timestamp }}\", \"data\": { \"bitcoin\": { \"price\": {{ $btc.result.price }}, \"change_24h\": {{ $btc.result.change_24h }}, \"market_cap\": {{ $btc.result.market_cap }}, \"alert\": {{ $btc.result.significant_change }} }, \"ethereum\": { \"price\": {{ $eth.result.price }}, \"change_24h\": {{ $eth.result.change_24h }}, \"market_cap\": {{ $eth.result.market_cap }}, \"alert\": {{ $eth.result.significant_change }} } }, \"total_market_cap\": {{ $summary.result.total_market_cap }} }",
+        "timeout": 10,
+        "retries": {
+          "attempts": 1,
+          "delay": 0
+        }
       },
-      "on_success": "log-success",
-      "on_failure": "log-webhook-error",
-      "enabled": true
+      "position_x": 700,
+      "position_y": 150,
+      "enabled": true,
+      "type": "httprequest",
+      "category": "action"
     },
     {
       "id": "log-success",
       "name": "Log Success",
-      "action_id": "log",
-      "uid": "successlog",
-      "configuration": {
-        "message": "\"Crypto tracking completed successfully. Alerts: \" & $string($count(steps.pricesummary.alerts))"
+      "config": {
+        "message": "{{ $summary := index .node_results \"create-summary::success\" }}Crypto tracking completed successfully for {{ len $summary.result.coins }} coins",
+        "level": "info"
       },
-      "enabled": true
+      "position_x": 900,
+      "position_y": 100,
+      "enabled": true,
+      "type": "log",
+      "category": "action"
     },
     {
       "id": "log-fetch-error",
       "name": "Log Fetch Error",
-      "action_id": "log",
-      "uid": "fetcherrorlog",
-      "configuration": {
-        "message": "\"Failed to fetch cryptocurrency prices from CoinGecko API\""
+      "config": {
+        "message": "Failed to fetch cryptocurrency prices from CoinGecko API",
+        "level": "error"
       },
-      "enabled": true
+      "position_x": 300,
+      "position_y": 250,
+      "enabled": true,
+      "type": "log",
+      "category": "action"
     },
     {
       "id": "log-webhook-error",
       "name": "Log Webhook Error",
-      "action_id": "log",
-      "uid": "webhookerrorlog",
-      "configuration": {
-        "message": "\"Failed to send crypto price report\""
+      "config": {
+        "message": "Failed to send crypto price report",
+        "level": "error"
       },
-      "enabled": true
+      "position_x": 700,
+      "position_y": 250,
+      "enabled": true,
+      "type": "log",
+      "category": "action"
+    }
+  ],
+  "connections": [
+    {
+      "id": "trigger-crypto-schedule-to-fetch-crypto-prices",
+      "source_port": "crypto-schedule:success",
+      "target_port": "fetch-crypto-prices:main"
+    },
+    {
+      "id": "fetch-to-bitcoin",
+      "source_port": "fetch-crypto-prices:success",
+      "target_port": "process-bitcoin:main"
+    },
+    {
+      "id": "fetch-to-ethereum",
+      "source_port": "fetch-crypto-prices:success",
+      "target_port": "process-ethereum:main"
+    },
+    {
+      "id": "bitcoin-to-summary",
+      "source_port": "process-bitcoin:success",
+      "target_port": "create-summary:main"
+    },
+    {
+      "id": "ethereum-to-summary",
+      "source_port": "process-ethereum:success",
+      "target_port": "create-summary:main"
+    },
+    {
+      "id": "summary-to-log",
+      "source_port": "create-summary:success",
+      "target_port": "log-prices:main"
+    },
+    {
+      "id": "log-to-webhook",
+      "source_port": "log-prices:success",
+      "target_port": "send-price-report:main"
+    },
+    {
+      "id": "webhook-to-success",
+      "source_port": "send-price-report:success",
+      "target_port": "log-success:main"
+    },
+    {
+      "id": "fetch-error",
+      "source_port": "fetch-crypto-prices:error",
+      "target_port": "log-fetch-error:main"
+    },
+    {
+      "id": "webhook-error",
+      "source_port": "send-price-report:error",
+      "target_port": "log-webhook-error:main"
     }
   ],
   "variables": {
@@ -144,7 +213,13 @@
   "metadata": {
     "version": "1.0",
     "author": "Operion",
-    "tags": ["cryptocurrency", "bitcoin", "ethereum", "coingecko", "real-api"],
+    "tags": [
+      "cryptocurrency",
+      "bitcoin",
+      "ethereum",
+      "coingecko",
+      "real-api"
+    ],
     "description": "Real cryptocurrency price tracking using CoinGecko's free API. No API key required.",
     "api_requirements": {
       "coingecko": "Free API - no key required. Rate limit: 10-30 requests/minute"

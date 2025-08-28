@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -152,22 +153,24 @@ func (a *Activator) handleSourceEvent(ctx context.Context, sourceEvent *events.S
 		return err
 	}
 
-	// Find triggers that match this source event
-	matchingTriggers, err := a.findTriggersForSourceEvent(ctx, sourceEvent)
+	// Find trigger nodes that match this source event
+	matchingTriggerNodes, err := a.findTriggerNodesForSourceEvent(ctx, sourceEvent)
 	if err != nil {
-		logger.Error("Failed to find matching triggers", "error", err)
+		logger.Error("Failed to find matching trigger nodes", "error", err)
 
 		return err
 	}
 
-	logger.Info("Found matching triggers", "count", len(matchingTriggers))
+	logger.Info("Found matching trigger nodes", "count", len(matchingTriggerNodes))
 
-	// Publish WorkflowTriggered event for each matching trigger
-	for _, matchInfo := range matchingTriggers {
-		if err := a.publishWorkflowTriggered(ctx, matchInfo.WorkflowID, matchInfo.Trigger.ID, sourceEvent.EventData); err != nil {
-			logger.Error("Failed to publish WorkflowTriggered event",
+	// Publish NodeActivation event for each matching trigger node
+	for _, matchInfo := range matchingTriggerNodes {
+		logger.Info("Will process trigger " + matchInfo.TriggerNode.ID)
+
+		if err := a.publishNodeActivation(ctx, matchInfo.WorkflowID, matchInfo.TriggerNode.ID, sourceEvent.EventData); err != nil {
+			logger.Error("Failed to publish NodeActivation event",
 				"workflow_id", matchInfo.WorkflowID,
-				"trigger_id", matchInfo.Trigger.ID,
+				"trigger_node_id", matchInfo.TriggerNode.ID,
 				"error", err)
 		}
 	}
@@ -175,46 +178,101 @@ func (a *Activator) handleSourceEvent(ctx context.Context, sourceEvent *events.S
 	return nil
 }
 
-// findTriggersForSourceEvent queries the database for triggers that match a source event.
-func (a *Activator) findTriggersForSourceEvent(ctx context.Context, sourceEvent *events.SourceEvent) ([]*models.TriggerMatch, error) {
-	// Use the comprehensive persistence method to find triggers by source ID, event type, and provider ID
-	// This enables database implementations to use proper queries and indexes for exact matching
-	matchingTriggers, err := a.persistence.WorkflowTriggersBySourceEventAndProvider(
+// findTriggerNodesForSourceEvent queries the database for trigger nodes that match a source event.
+func (a *Activator) findTriggerNodesForSourceEvent(ctx context.Context, sourceEvent *events.SourceEvent) ([]*models.TriggerNodeMatch, error) {
+	// Use the node repository to find trigger nodes by source ID, event type, and provider ID
+	matchingTriggerNodes, err := a.persistence.NodeRepository().FindTriggerNodesBySourceEventAndProvider(
 		ctx,
 		sourceEvent.SourceID,
 		sourceEvent.EventType,
 		sourceEvent.ProviderID,
-		models.WorkflowStatusActive,
+		models.WorkflowStatusPublished,
 	)
 	if err != nil {
-		a.logger.Error("Failed to fetch matching triggers", "error", err)
+		a.logger.Error("Failed to fetch matching trigger nodes", "error", err)
 
 		return nil, err
 	}
 
 	// No additional filtering needed - the persistence layer already filtered by all criteria
-	return matchingTriggers, nil
+	return matchingTriggerNodes, nil
 }
 
-// publishWorkflowTriggered publishes a WorkflowTriggered event for a specific trigger.
-func (a *Activator) publishWorkflowTriggered(ctx context.Context, workflowID, triggerID string, sourceData map[string]any) error {
-	logger := a.logger.With("workflow_id", workflowID, "trigger_id", triggerID)
-	logger.Info("Publishing WorkflowTriggered event")
+// publishNodeActivation publishes a NodeActivation event for a specific trigger node.
+func (a *Activator) publishNodeActivation(ctx context.Context, workflowID, triggerNodeID string, sourceData map[string]any) error {
+	logger := a.logger.With("workflow_id", workflowID, "trigger_node_id", triggerNodeID)
+	logger.InfoContext(ctx, "Publishing NodeActivation event")
 
-	event := events.WorkflowTriggered{
-		BaseEvent:   events.NewBaseEvent(events.WorkflowTriggeredEvent, workflowID),
-		TriggerID:   triggerID,
-		TriggerData: sourceData,
+	// Generate execution ID for this workflow execution
+	executionID := a.eventBus.GenerateID()
+	logger.InfoContext(ctx, "Generated execution ID", "execution_id", executionID)
+
+	// Load workflow to get variables
+	workflow, err := a.persistence.WorkflowRepository().GetByID(ctx, workflowID)
+	if err != nil {
+		logger.ErrorContext(ctx, "Failed to load workflow", "error", err)
+
+		return fmt.Errorf("failed to load workflow %s: %w", workflowID, err)
 	}
-	event.ID = a.eventBus.GenerateID()
 
-	if err := a.eventBus.Publish(ctx, workflowID, event); err != nil {
-		logger.Error("Failed to publish WorkflowTriggered event", "error", err)
+	if workflow == nil {
+		err := fmt.Errorf("workflow not found: %s", workflowID)
+		logger.ErrorContext(ctx, "Workflow not found", "error", err)
 
 		return err
 	}
 
-	logger.With("event_id", event.ID).Info("Successfully published WorkflowTriggered event")
+	// Copy variables from workflow, handle nil case
+	var workflowVariables map[string]any
+	if workflow.Variables != nil {
+		workflowVariables = workflow.Variables
+	} else {
+		workflowVariables = make(map[string]any)
+	}
+
+	// Create execution context for this workflow execution
+	executionCtx := &models.ExecutionContext{
+		ID:          executionID,
+		WorkflowID:  workflowID,
+		Status:      models.ExecutionStatusRunning,
+		NodeResults: make(map[string]models.NodeResult),
+		TriggerData: sourceData,
+		Variables:   workflowVariables,
+		Metadata:    make(map[string]any),
+		CreatedAt:   time.Now(),
+	}
+
+	// Save execution context before publishing the event
+	logger.InfoContext(ctx, "Saving execution context", "execution_id", executionID)
+
+	err = a.persistence.ExecutionContextRepository().SaveExecutionContext(ctx, executionCtx)
+	if err != nil {
+		logger.Error("Failed to save execution context", "error", err, "execution_id", executionID)
+
+		return fmt.Errorf("failed to save execution context: %w", err)
+	}
+
+	logger.Info("Successfully saved execution context", "execution_id", executionID)
+
+	event := events.NodeActivation{
+		BaseEvent:   events.NewBaseEvent(events.NodeActivationEvent, workflowID),
+		ExecutionID: executionID,
+		NodeID:      triggerNodeID,
+		WorkflowID:  workflowID,
+		InputPort:   "external",
+		InputData:   sourceData,
+		SourceNode:  "", // External source
+		SourcePort:  "", // External source
+	}
+	event.ID = a.eventBus.GenerateID()
+
+	if err := a.eventBus.Publish(ctx, triggerNodeID+":"+executionID, event); err != nil {
+		logger.Error("Failed to publish NodeActivation event", "error", err)
+
+		return err
+	}
+
+	logger.With("event_id", event.ID, "execution_id", executionID).Info("Successfully published NodeActivation event")
 
 	return nil
 }

@@ -8,10 +8,6 @@ import (
 	"log/slog"
 )
 
-const (
-	currentSchemaVersion = 1
-)
-
 // MigrationManager handles database schema migrations.
 type MigrationManager struct {
 	db         *sql.DB
@@ -28,6 +24,18 @@ func NewMigrationManager(logger *slog.Logger, db *sql.DB, migrations map[int]str
 	}
 }
 
+// getTargetSchemaVersion returns the highest version number from the migrations map.
+func (m *MigrationManager) getTargetSchemaVersion() int {
+	maxVersion := 0
+	for version := range m.migrations {
+		if version > maxVersion {
+			maxVersion = version
+		}
+	}
+
+	return maxVersion
+}
+
 // RunMigrations handles database schema creation and updates.
 func (m *MigrationManager) RunMigrations(ctx context.Context) error {
 	m.logger.InfoContext(ctx, "Starting database migrations")
@@ -42,16 +50,18 @@ func (m *MigrationManager) RunMigrations(ctx context.Context) error {
 		return fmt.Errorf("failed to get current schema version: %w", err)
 	}
 
+	targetVersion := m.getTargetSchemaVersion()
+
 	m.logger.InfoContext(ctx, "Current schema version", "version", currentVersion)
 
-	if currentVersion < currentSchemaVersion {
+	if currentVersion < targetVersion {
 		err := m.applyMigrations(ctx, currentVersion)
 		if err != nil {
 			return fmt.Errorf("failed to apply migrations: %w", err)
 		}
 	}
 
-	m.logger.InfoContext(ctx, "Database migrations completed", "version", currentSchemaVersion)
+	m.logger.InfoContext(ctx, "Database migrations completed", "version", targetVersion)
 
 	return nil
 }

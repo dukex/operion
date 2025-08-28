@@ -36,24 +36,37 @@ func createTestLogger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 }
 
-func createTestWorkflow(id string, triggers []*models.WorkflowTrigger) *models.Workflow {
+func createTestWorkflow(id string, triggerNodes []*models.WorkflowNode) *models.Workflow {
 	return &models.Workflow{
-		ID:               id,
-		Name:             "Test Workflow " + id,
-		Status:           models.WorkflowStatusActive,
-		WorkflowTriggers: triggers,
-		Steps:            []*models.WorkflowStep{},
-		Variables:        map[string]any{},
-		Metadata:         map[string]any{},
+		ID:          id,
+		Name:        "Test Workflow " + id,
+		Status:      models.WorkflowStatusPublished,
+		Nodes:       triggerNodes,
+		Connections: []*models.Connection{},
+		Variables:   map[string]any{},
+		Metadata:    map[string]any{},
 	}
 }
 
-func createKafkaTrigger(id, sourceID string, config map[string]any) *models.WorkflowTrigger {
-	return &models.WorkflowTrigger{
-		ID:            id,
-		ProviderID:    kafkaProviderType,
-		SourceID:      sourceID,
-		Configuration: config,
+func createKafkaTriggerNode(id, sourceID string, config map[string]any) *models.WorkflowNode {
+	var sourceIDPtr *string
+	if sourceID != "" {
+		sourceIDPtr = &sourceID
+	}
+
+	providerID := kafkaProviderType
+	eventType := "kafka_message"
+
+	return &models.WorkflowNode{
+		ID:         id,
+		Type:       "trigger:kafka",
+		Category:   models.CategoryTypeTrigger,
+		Name:       "Kafka Trigger " + id,
+		Config:     config,
+		SourceID:   sourceIDPtr,
+		ProviderID: &providerID,
+		EventType:  &eventType,
+		Enabled:    true,
 	}
 }
 
@@ -138,8 +151,17 @@ func TestKafkaProvider_Configure(t *testing.T) {
 		{
 			name: "workflow without kafka triggers",
 			workflows: []*models.Workflow{
-				createTestWorkflow("workflow-1", []*models.WorkflowTrigger{
-					{ID: "trigger-1", ProviderID: "webhook", SourceID: "source-123", EventType: "WebhookReceived"},
+				createTestWorkflow("workflow-1", []*models.WorkflowNode{
+					{
+						ID:         "trigger-1",
+						Type:       "trigger:webhook",
+						Category:   models.CategoryTypeTrigger,
+						Name:       "Webhook Trigger",
+						ProviderID: &[]string{"webhook"}[0],
+						SourceID:   &[]string{"source-123"}[0],
+						EventType:  &[]string{"WebhookReceived"}[0],
+						Enabled:    true,
+					},
 				}),
 			},
 			expected: 0,
@@ -147,10 +169,10 @@ func TestKafkaProvider_Configure(t *testing.T) {
 		{
 			name: "single kafka trigger",
 			workflows: []*models.Workflow{
-				createTestWorkflow("workflow-1", []*models.WorkflowTrigger{
-					createKafkaTrigger("trigger-1", "source-123", map[string]any{
+				createTestWorkflow("workflow-1", []*models.WorkflowNode{
+					createKafkaTriggerNode("trigger-1", "source-123", map[string]any{
 						"topic":   "orders",
-						"brokers": "localhost:9092",
+						"brokers": []string{"localhost:9092"},
 					}),
 				}),
 			},
@@ -159,14 +181,14 @@ func TestKafkaProvider_Configure(t *testing.T) {
 		{
 			name: "multiple kafka triggers different sources",
 			workflows: []*models.Workflow{
-				createTestWorkflow("workflow-1", []*models.WorkflowTrigger{
-					createKafkaTrigger("trigger-1", "source-123", map[string]any{
+				createTestWorkflow("workflow-1", []*models.WorkflowNode{
+					createKafkaTriggerNode("trigger-1", "source-123", map[string]any{
 						"topic":   "orders",
-						"brokers": "localhost:9092",
+						"brokers": []string{"localhost:9092"},
 					}),
-					createKafkaTrigger("trigger-2", "source-456", map[string]any{
+					createKafkaTriggerNode("trigger-2", "source-456", map[string]any{
 						"topic":   "events",
-						"brokers": "localhost:9092",
+						"brokers": []string{"localhost:9092"},
 					}),
 				}),
 			},
@@ -175,14 +197,14 @@ func TestKafkaProvider_Configure(t *testing.T) {
 		{
 			name: "multiple kafka triggers same source",
 			workflows: []*models.Workflow{
-				createTestWorkflow("workflow-1", []*models.WorkflowTrigger{
-					createKafkaTrigger("trigger-1", "source-123", map[string]any{
+				createTestWorkflow("workflow-1", []*models.WorkflowNode{
+					createKafkaTriggerNode("trigger-1", "source-123", map[string]any{
 						"topic":   "orders",
-						"brokers": "localhost:9092",
+						"brokers": []string{"localhost:9092"},
 					}),
-					createKafkaTrigger("trigger-2", "source-123", map[string]any{
+					createKafkaTriggerNode("trigger-2", "source-123", map[string]any{
 						"topic":   "orders",
-						"brokers": "localhost:9092",
+						"brokers": []string{"localhost:9092"},
 					}),
 				}),
 			},
@@ -193,13 +215,16 @@ func TestKafkaProvider_Configure(t *testing.T) {
 			workflows: []*models.Workflow{
 				{
 					ID:     "workflow-1",
-					Status: models.WorkflowStatusInactive,
-					WorkflowTriggers: []*models.WorkflowTrigger{
-						createKafkaTrigger("trigger-1", "source-123", map[string]any{
+					Status: models.WorkflowStatusDraft,
+					Nodes: []*models.WorkflowNode{
+						createKafkaTriggerNode("trigger-1", "source-123", map[string]any{
 							"topic":   "orders",
-							"brokers": "localhost:9092",
+							"brokers": []string{"localhost:9092"},
 						}),
 					},
+					Connections: []*models.Connection{},
+					Variables:   map[string]any{},
+					Metadata:    map[string]any{},
 				},
 			},
 			expected: 0,
@@ -207,16 +232,11 @@ func TestKafkaProvider_Configure(t *testing.T) {
 		{
 			name: "kafka trigger without source_id generates UUID",
 			workflows: []*models.Workflow{
-				createTestWorkflow("workflow-1", []*models.WorkflowTrigger{
-					{
-						ID:         "trigger-1",
-						ProviderID: kafkaProviderType,
-						SourceID:   "", // No source ID
-						Configuration: map[string]any{
-							"topic":   "orders",
-							"brokers": "localhost:9092",
-						},
-					},
+				createTestWorkflow("workflow-1", []*models.WorkflowNode{
+					createKafkaTriggerNode("trigger-1", "", map[string]any{
+						"topic":   "orders",
+						"brokers": []string{"localhost:9092"},
+					}),
 				}),
 			},
 			expected: 1, // Now generates UUID and creates source
@@ -224,10 +244,10 @@ func TestKafkaProvider_Configure(t *testing.T) {
 		{
 			name: "kafka trigger with JSON schema configuration",
 			workflows: []*models.Workflow{
-				createTestWorkflow("workflow-1", []*models.WorkflowTrigger{
-					createKafkaTrigger("trigger-1", "source-schema", map[string]any{
+				createTestWorkflow("workflow-1", []*models.WorkflowNode{
+					createKafkaTriggerNode("trigger-1", "source-schema", map[string]any{
 						"topic":   "orders",
-						"brokers": "localhost:9092",
+						"brokers": []string{"localhost:9092"},
 						"json_schema": map[string]any{
 							"type": "object",
 							"properties": map[string]any{
@@ -268,19 +288,25 @@ func TestKafkaProvider_Configure(t *testing.T) {
 
 			// Verify source properties for kafka triggers
 			for _, workflow := range tt.workflows {
-				if workflow.Status != models.WorkflowStatusActive {
+				if workflow.Status != models.WorkflowStatusPublished {
 					continue
 				}
 
-				for _, trigger := range workflow.WorkflowTriggers {
-					if trigger.ProviderID == kafkaProviderType && trigger.SourceID != "" {
+				// Filter trigger nodes from all nodes
+				for _, node := range workflow.Nodes {
+					if node.Category != models.CategoryTypeTrigger {
+						continue
+					}
+
+					trigger := node // rename for compatibility
+					if trigger.ProviderID != nil && *trigger.ProviderID == kafkaProviderType && trigger.SourceID != nil && *trigger.SourceID != "" {
 						found := false
 
 						for _, source := range sources {
-							if source.ID == trigger.SourceID {
+							if source.ID == *trigger.SourceID {
 								found = true
 
-								assert.Equal(t, trigger.Configuration, source.Configuration)
+								assert.Equal(t, trigger.Config, source.Configuration)
 								assert.True(t, source.Active)
 
 								break
@@ -315,20 +341,20 @@ func TestKafkaProvider_UpdateConsumerManagers(t *testing.T) {
 
 	// Create test workflows with sources that should share consumers
 	workflows := []*models.Workflow{
-		createTestWorkflow("workflow-1", []*models.WorkflowTrigger{
-			createKafkaTrigger("trigger-1", "source-1", map[string]any{
+		createTestWorkflow("workflow-1", []*models.WorkflowNode{
+			createKafkaTriggerNode("trigger-1", "source-1", map[string]any{
 				"topic":   "orders",
-				"brokers": "localhost:9092",
+				"brokers": []string{"localhost:9092"},
 			}),
-			createKafkaTrigger("trigger-2", "source-2", map[string]any{
+			createKafkaTriggerNode("trigger-2", "source-2", map[string]any{
 				"topic":   "orders",
-				"brokers": "localhost:9092",
+				"brokers": []string{"localhost:9092"},
 			}),
 		}),
-		createTestWorkflow("workflow-2", []*models.WorkflowTrigger{
-			createKafkaTrigger("trigger-3", "source-3", map[string]any{
+		createTestWorkflow("workflow-2", []*models.WorkflowNode{
+			createKafkaTriggerNode("trigger-3", "source-3", map[string]any{
 				"topic":   "events",
-				"brokers": "localhost:9092",
+				"brokers": []string{"localhost:9092"},
 			}),
 		}),
 	}
@@ -489,7 +515,7 @@ func TestKafkaConsumerGroupHandler_ProcessMessage(t *testing.T) {
 	// Create test source without JSON schema
 	source, err := kafkaModels.NewKafkaSource("test-source", map[string]any{
 		"topic":   "orders",
-		"brokers": "localhost:9092",
+		"brokers": []string{"localhost:9092"},
 	})
 	require.NoError(t, err)
 
@@ -559,7 +585,7 @@ func TestKafkaConsumerGroupHandler_ProcessMessageWithSchema(t *testing.T) {
 	// Create test source with JSON schema
 	source, err := kafkaModels.NewKafkaSource("test-source-schema", map[string]any{
 		"topic":   "orders",
-		"brokers": "localhost:9092",
+		"brokers": []string{"localhost:9092"},
 		"json_schema": map[string]any{
 			"type": "object",
 			"properties": map[string]any{

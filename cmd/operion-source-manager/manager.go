@@ -12,6 +12,7 @@ import (
 
 	"github.com/dukex/operion/pkg/eventbus"
 	"github.com/dukex/operion/pkg/events"
+	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/persistence"
 	"github.com/dukex/operion/pkg/protocol"
 	"github.com/dukex/operion/pkg/registry"
@@ -286,7 +287,7 @@ func (spm *ProviderManager) updateTriggersWithSourceIDs(ctx context.Context, tri
 	spm.logger.Info("Updating triggers with source IDs", "mapping_count", len(triggerToSourceMap))
 
 	// Get all workflows to find and update triggers
-	workflows, err := spm.persistence.Workflows(ctx)
+	workflows, err := spm.persistence.WorkflowRepository().GetAll(ctx)
 	if err != nil {
 		return err
 	}
@@ -294,26 +295,12 @@ func (spm *ProviderManager) updateTriggersWithSourceIDs(ctx context.Context, tri
 	updated := 0
 
 	for _, workflow := range workflows {
-		workflowUpdated := false
-
-		for _, trigger := range workflow.WorkflowTriggers {
-			if sourceID, exists := triggerToSourceMap[trigger.ID]; exists {
-				if trigger.SourceID != sourceID {
-					trigger.SourceID = sourceID
-					workflowUpdated = true
-					updated++
-
-					spm.logger.Info("Updated trigger with source ID",
-						"workflow_id", workflow.ID,
-						"trigger_id", trigger.ID,
-						"source_id", sourceID)
-				}
-			}
-		}
+		workflowUpdated, nodeUpdates := spm.updateWorkflowTriggerNodes(workflow, triggerToSourceMap)
+		updated += nodeUpdates
 
 		// Save workflow if any triggers were updated
 		if workflowUpdated {
-			if err := spm.persistence.SaveWorkflow(ctx, workflow); err != nil {
+			if err := spm.persistence.WorkflowRepository().Save(ctx, workflow); err != nil {
 				spm.logger.Error("Failed to save workflow with updated triggers",
 					"workflow_id", workflow.ID,
 					"error", err)
@@ -326,6 +313,44 @@ func (spm *ProviderManager) updateTriggersWithSourceIDs(ctx context.Context, tri
 	spm.logger.Info("Completed updating triggers with source IDs", "updated_count", updated)
 
 	return nil
+}
+
+// updateWorkflowTriggerNodes updates trigger nodes in a workflow with source IDs and returns
+// whether the workflow was updated and the count of nodes updated.
+func (spm *ProviderManager) updateWorkflowTriggerNodes(workflow *models.Workflow, triggerToSourceMap map[string]string) (bool, int) {
+	workflowUpdated := false
+	updated := 0
+
+	for _, node := range workflow.Nodes {
+		if !node.IsTriggerNode() {
+			continue
+		}
+
+		sourceID, exists := triggerToSourceMap[node.ID]
+		if !exists {
+			continue
+		}
+
+		currentSourceID := ""
+		if node.SourceID != nil {
+			currentSourceID = *node.SourceID
+		}
+
+		if currentSourceID == sourceID {
+			continue
+		}
+
+		node.SourceID = &sourceID
+		workflowUpdated = true
+		updated++
+
+		spm.logger.Info("Updated trigger node with source ID",
+			"workflow_id", workflow.ID,
+			"trigger_node_id", node.ID,
+			"source_id", sourceID)
+	}
+
+	return workflowUpdated, updated
 }
 
 func (spm *ProviderManager) executeProviderLifecycle(ctx context.Context, lifecycle protocol.ProviderLifecycle, providerID, instanceKey string) error {
@@ -344,7 +369,7 @@ func (spm *ProviderManager) executeProviderLifecycle(ctx context.Context, lifecy
 	}
 
 	// Step 2: Configure with current workflows
-	workflows, err := spm.persistence.Workflows(ctx)
+	workflows, err := spm.persistence.WorkflowRepository().GetAll(ctx)
 	if err != nil {
 		spm.logger.Error("Failed to get workflows for configuration",
 			"provider_id", providerID,

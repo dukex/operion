@@ -2,63 +2,75 @@
   "id": "test-scheduler-2min",
   "name": "Test Scheduler 2 Minute Interval",
   "description": "Test workflow for scheduler with 2-minute intervals to verify multi-schedule orchestrator",
-  "workflow_triggers": [
+  "nodes": [
     {
       "id": "scheduler-trigger-2min",
       "name": "2 Minute Schedule Trigger",
-      "description": "Trigger every 2 minutes to test multi-schedule orchestrator",
+      "type": "trigger:scheduler",
+      "category": "trigger",
+      "config": {
+        "cron_expression": "*/2 * * * *",
+        "timezone": "UTC"
+      },
+      "enabled": true,
       "source_id": "test-scheduler-2min",
       "provider_id": "scheduler",
       "event_type": "schedule_due",
-      "configuration": {
-        "cron_expression": "*/2 * * * *"
-      }
-    }
-  ],
-  "steps": [
+      "position_x": 50,
+      "position_y": 100
+    },
     {
       "id": "log-2min-trigger",
-      "action_id": "log",
-      "configuration": {
+      "name": "Log 2-Minute Trigger",
+      "config": {
         "message": "2-minute scheduler triggered at {{.trigger_data.published_at}} with cron: {{.trigger_data.cron_expression}}"
       },
-      "uid": "trigger2minlog",
-      "name": "Log 2-Minute Trigger",
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
-      "on_success": "process-2min-data",
-      "enabled": true
+      "position_x": 100,
+      "position_y": 100,
+      "enabled": true,
+      "type": "log",
+      "category": "action"
     },
     {
       "id": "process-2min-data",
-      "action_id": "transform",
-      "configuration": {
+      "name": "Process 2-Minute Schedule Data",
+      "config": {
         "expression": "{\n  \"execution_time\": \"{{now}}\",\n  \"cron_expression\": \"{{.trigger_data.cron_expression}}\",\n  \"interval\": \"2-minutes\",\n  \"due_time\": \"{{.trigger_data.due_at}}\",\n  \"published_time\": \"{{.trigger_data.published_at}}\",\n  \"execution_count\": 1,\n  \"status\": \"success\"\n}"
       },
-      "uid": "schedule2minprocessed",
-      "name": "Process 2-Minute Schedule Data",
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
-      },
-      "on_success": "log-2min-processed",
-      "enabled": true
+      "position_x": 300,
+      "position_y": 100,
+      "enabled": true,
+      "type": "transform",
+      "category": "action"
     },
     {
       "id": "log-2min-processed",
-      "action_id": "log",
-      "configuration": {
-        "message": "2-minute schedule execution #{{.step_results.schedule2minprocessed.execution_count}} completed. Next execution in ~2 minutes."
-      },
-      "uid": "processed2minlog",
       "name": "Log 2-Minute Processed Data",
-      "conditional": {
-        "language": "simple",
-        "expression": "true"
+      "config": {
+        "message": "{{ $data := index .node_results \"process-2min-data\" }}2-minute schedule execution #{{ $data.execution_count }} completed. Next execution in ~2 minutes."
       },
-      "enabled": true
+      "position_x": 500,
+      "position_y": 100,
+      "enabled": true,
+      "type": "log",
+      "category": "action"
+    }
+  ],
+  "connections": [
+    {
+      "id": "trigger-scheduler-trigger-2min-to-log-2min-trigger",
+      "source_port": "scheduler-trigger-2min:success",
+      "target_port": "log-2min-trigger:main"
+    },
+    {
+      "id": "trigger-to-process",
+      "source_port": "log-2min-trigger:success",
+      "target_port": "process-2min-data:main"
+    },
+    {
+      "id": "process-to-log",
+      "source_port": "process-2min-data:success",
+      "target_port": "log-2min-processed:main"
     }
   ],
   "variables": {
@@ -66,7 +78,9 @@
     "test_mode": true,
     "interval": "2-minutes"
   },
-  "status": "active",
+  "status": "published",
+  "workflow_group_id": "test-scheduler-2min",
+  "published_at": "2023-10-01T00:00:00Z",
   "metadata": {
     "author": "Operion Test",
     "description": "Test workflow for multi-schedule orchestrator functionality",

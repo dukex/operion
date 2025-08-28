@@ -48,28 +48,6 @@ func NewSourceEvent(sourceID, providerID, eventType string, eventData map[string
 	}
 }
 
-// MatchesTrigger checks if this source event should trigger a specific workflow trigger.
-// This is used by the activator to determine if a WorkflowTrigger should be activated.
-//
-// Matching rules:
-// 1. SourceID must match exactly
-// 2. If eventTypeFilter is specified and non-empty, EventType must match
-// 3. If eventTypeFilter is empty, all event types for the source will match.
-func (se *SourceEvent) MatchesTrigger(sourceID, eventTypeFilter string) bool {
-	// Source ID must match exactly
-	if se.SourceID != sourceID {
-		return false
-	}
-
-	// If event type filter is specified, it must match
-	// Empty eventTypeFilter means "match all event types for this source"
-	if eventTypeFilter != "" && se.EventType != eventTypeFilter {
-		return false
-	}
-
-	return true
-}
-
 // GetEventDataString safely extracts a string value from the event data.
 // Returns the string value and true if the key exists and is a string, otherwise empty string and false.
 func (se *SourceEvent) GetEventDataString(key string) (string, bool) {

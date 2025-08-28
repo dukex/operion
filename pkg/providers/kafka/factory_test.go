@@ -67,7 +67,7 @@ func TestKafkaProviderFactory_Create(t *testing.T) {
 			config: map[string]any{
 				"connection_templates": map[string]any{
 					"local": map[string]any{
-						"brokers": "localhost:9092",
+						"brokers": []string{"localhost:9092"},
 					},
 				},
 			},
@@ -138,7 +138,7 @@ func TestKafkaProviderFactory_Schema(t *testing.T) {
 	// Verify brokers property
 	brokers, ok := templateProps["brokers"].(map[string]any)
 	require.True(t, ok)
-	assert.Equal(t, "string", brokers["type"])
+	assert.Equal(t, "array", brokers["type"])
 	assert.NotEmpty(t, brokers["description"])
 
 	// Verify security property
@@ -244,7 +244,7 @@ func TestKafkaProviderFactory_SchemaExamples(t *testing.T) {
 
 	local, ok := connectionTemplates["local"].(map[string]any)
 	require.True(t, ok)
-	assert.Equal(t, "localhost:9092", local["brokers"])
+	assert.Equal(t, []string{"localhost:9092"}, local["brokers"])
 
 	// Test second example (complex) if it exists
 	if len(examples) > 1 {

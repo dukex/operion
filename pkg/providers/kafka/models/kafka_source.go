@@ -21,8 +21,8 @@ type ConnectionDetails struct {
 	// ConsumerGroup is the Kafka consumer group ID
 	ConsumerGroup string `json:"consumer_group"`
 
-	// Brokers is the comma-separated list of Kafka broker addresses
-	Brokers string `json:"brokers" validate:"required"`
+	// Brokers is the list of Kafka broker addresses
+	Brokers []string `json:"brokers" validate:"required"`
 
 	// Additional Kafka client configuration
 	Config map[string]any `json:"config,omitempty"`
@@ -111,16 +111,18 @@ func extractConnectionDetails(config map[string]any) (ConnectionDetails, error) 
 		return details, errors.New("topic is required in connection details")
 	}
 
-	// Extract brokers
-	if brokersVal, exists := config["brokers"]; exists {
-		if brokers, ok := brokersVal.(string); ok && brokers != "" {
-			details.Brokers = brokers
-		} else {
-			return details, errors.New("brokers must be a non-empty string")
-		}
-	} else {
+	// Extract brokers - accept both []string and []any formats
+	brokersVal, exists := config["brokers"]
+	if !exists {
 		return details, errors.New("brokers is required in connection details")
 	}
+
+	brokers, err := parseBrokers(brokersVal)
+	if err != nil {
+		return details, err
+	}
+
+	details.Brokers = brokers
 
 	// Extract optional consumer group
 	if consumerGroupVal, exists := config["consumer_group"]; exists {
@@ -150,13 +152,38 @@ func extractJSONSchema(config map[string]any) map[string]any {
 	return nil
 }
 
+// parseBrokers parses and validates broker configuration from various input formats.
+func parseBrokers(brokersVal any) ([]string, error) {
+	if brokersList, ok := brokersVal.([]string); ok && len(brokersList) > 0 {
+		// Direct []string format
+		return brokersList, nil
+	}
+
+	if brokersList, ok := brokersVal.([]any); ok && len(brokersList) > 0 {
+		// Array format from JSON unmarshaling - convert to []string
+		var brokerStrings []string
+		for i, broker := range brokersList {
+			brokerStr, ok := broker.(string)
+			if !ok || brokerStr == "" {
+				return nil, fmt.Errorf("broker at index %d must be a non-empty string", i)
+			}
+
+			brokerStrings = append(brokerStrings, brokerStr)
+		}
+
+		return brokerStrings, nil
+	}
+
+	return nil, errors.New("brokers must be a non-empty array of strings")
+}
+
 // generateConnectionDetailsID generates a deterministic ID based on connection details and schema.
 func generateConnectionDetailsID(details ConnectionDetails, schema map[string]any) string {
 	// Create a deterministic string representation
 	var parts []string
 
 	parts = append(parts, details.Topic)
-	parts = append(parts, details.Brokers)
+	parts = append(parts, strings.Join(details.Brokers, ","))
 	parts = append(parts, details.ConsumerGroup)
 
 	// Include schema in the hash if present
@@ -195,7 +222,7 @@ func (ks *KafkaSource) Validate() error {
 		return errors.New("topic is required")
 	}
 
-	if ks.ConnectionDetails.Brokers == "" {
+	if len(ks.ConnectionDetails.Brokers) == 0 {
 		return errors.New("brokers is required")
 	}
 

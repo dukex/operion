@@ -98,18 +98,19 @@ func TestAPI_GetWorkflows_WithData(t *testing.T) {
 		ID:     "test-workflow-1",
 		Name:   "Test Workflow 1",
 		Status: "active",
-		Steps: []*models.WorkflowStep{
+		Nodes: []*models.WorkflowNode{
 			{
-				ID:       "step1",
-				Name:     "Log Step",
-				ActionID: "log",
-				UID:      "log_step",
-				Configuration: map[string]any{
+				ID:       "node1",
+				Name:     "Log Node",
+				Type:     "log",
+				Category: models.CategoryTypeAction,
+				Config: map[string]any{
 					"message": "Test message",
 				},
 				Enabled: true,
 			},
 		},
+		Connections: []*models.Connection{},
 		Variables: map[string]any{
 			"test_var": "test_value",
 		},
@@ -119,19 +120,20 @@ func TestAPI_GetWorkflows_WithData(t *testing.T) {
 		ID:     "test-workflow-2",
 		Name:   "Test Workflow 2",
 		Status: "inactive",
-		Steps: []*models.WorkflowStep{
+		Nodes: []*models.WorkflowNode{
 			{
-				ID:       "step1",
-				Name:     "Transform Step",
-				ActionID: "transform",
-				UID:      "transform_step",
-				Configuration: map[string]any{
+				ID:       "node1",
+				Name:     "Transform Node",
+				Type:     "transform",
+				Category: models.CategoryTypeAction,
+				Config: map[string]any{
 					"expression": "{ \"result\": \"transformed\" }",
 				},
 				Enabled: true,
 			},
 		},
-		Variables: map[string]any{},
+		Connections: []*models.Connection{},
+		Variables:   map[string]any{},
 	}
 
 	// Save workflows
@@ -174,13 +176,13 @@ func TestAPI_GetWorkflow_Success(t *testing.T) {
 		ID:     "test-workflow-specific",
 		Name:   "Specific Test Workflow",
 		Status: "active",
-		Steps: []*models.WorkflowStep{
+		Nodes: []*models.WorkflowNode{
 			{
-				ID:       "step1",
-				Name:     "HTTP Request Step",
-				ActionID: "http_request",
-				UID:      "http_step",
-				Configuration: map[string]any{
+				ID:       "node1",
+				Name:     "HTTP Request Node",
+				Type:     "http_request",
+				Category: models.CategoryTypeAction,
+				Config: map[string]any{
 					"protocol": "https",
 					"host":     "api.example.com",
 					"path":     "/data",
@@ -189,6 +191,7 @@ func TestAPI_GetWorkflow_Success(t *testing.T) {
 				Enabled: true,
 			},
 		},
+		Connections: []*models.Connection{},
 		Variables: map[string]any{
 			"api_key": "test-key",
 		},
@@ -218,8 +221,8 @@ func TestAPI_GetWorkflow_Success(t *testing.T) {
 	assert.Equal(t, workflowCreated.ID, returnedWorkflow.ID)
 	assert.Equal(t, "Specific Test Workflow", returnedWorkflow.Name)
 	assert.Equal(t, models.WorkflowStatus("active"), returnedWorkflow.Status)
-	assert.Len(t, returnedWorkflow.Steps, 1)
-	assert.Equal(t, "http_request", returnedWorkflow.Steps[0].ActionID)
+	assert.Len(t, returnedWorkflow.Nodes, 1)
+	assert.Equal(t, "http_request", returnedWorkflow.Nodes[0].Type)
 	assert.Equal(t, "test-key", returnedWorkflow.Variables["api_key"])
 }
 
@@ -299,64 +302,95 @@ func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
 		Name:        "Integration Test Workflow",
 		Description: "A comprehensive workflow for integration testing",
 		Status:      "active",
-		Steps: []*models.WorkflowStep{
+		Nodes: []*models.WorkflowNode{
 			{
-				ID:       "step1",
-				Name:     "Log Initial Message",
-				ActionID: "log",
-				UID:      "initial_log",
-				Configuration: map[string]any{
-					"message": "Starting integration test workflow",
+				ID:       "trigger1",
+				Name:     "Integration Test Trigger",
+				Type:     "trigger:scheduler",
+				Category: models.CategoryTypeTrigger,
+				Config: map[string]any{
+					"schedule": "0 0 * * *",
 				},
-				OnSuccess: stringPtr("step2"),
-				Enabled:   true,
+				SourceID:   &[]string{uuid.New().String()}[0],
+				ProviderID: &[]string{"scheduler"}[0],
+				EventType:  &[]string{"schedule_due"}[0],
+				Enabled:    true,
 			},
 			{
-				ID:       "step2",
+				ID:       "node1",
+				Name:     "Log Initial Message",
+				Type:     "log",
+				Category: models.CategoryTypeAction,
+				Config: map[string]any{
+					"message": "Starting integration test workflow",
+				},
+				Enabled: true,
+			},
+			{
+				ID:       "node2",
 				Name:     "HTTP API Call",
-				ActionID: "http_request",
-				UID:      "api_call",
-				Configuration: map[string]any{
+				Type:     "http_request",
+				Category: models.CategoryTypeAction,
+				Config: map[string]any{
 					"protocol": "https",
 					"host":     "httpbin.org",
 					"path":     "/json",
 					"method":   "GET",
 					"timeout":  30,
 				},
-				OnSuccess: stringPtr("step3"),
-				OnFailure: stringPtr("step4"),
-				Enabled:   true,
+				Enabled: true,
 			},
 			{
-				ID:       "step3",
+				ID:       "node3",
 				Name:     "Transform Response",
-				ActionID: "transform",
-				UID:      "transform_response",
-				Configuration: map[string]any{
-					"expression": "{ \"processed\": true, \"original\": \"{{.step_results.api_call.body}}\" }",
+				Type:     "transform",
+				Category: models.CategoryTypeAction,
+				Config: map[string]any{
+					"expression": "{ \"processed\": true, \"original\": \"{{.node_results.api_call.body}}\" }",
 				},
-				OnSuccess: stringPtr("step5"),
-				Enabled:   true,
+				Enabled: true,
 			},
 			{
-				ID:       "step4",
+				ID:       "node4",
 				Name:     "Log Error",
-				ActionID: "log",
-				UID:      "error_log",
-				Configuration: map[string]any{
+				Type:     "log",
+				Category: models.CategoryTypeAction,
+				Config: map[string]any{
 					"message": "API call failed",
 				},
 				Enabled: true,
 			},
 			{
-				ID:       "step5",
+				ID:       "node5",
 				Name:     "Final Log",
-				ActionID: "log",
-				UID:      "final_log",
-				Configuration: map[string]any{
+				Type:     "log",
+				Category: models.CategoryTypeAction,
+				Config: map[string]any{
 					"message": "Integration test completed successfully",
 				},
 				Enabled: true,
+			},
+		},
+		Connections: []*models.Connection{
+			{
+				ID:         "conn1",
+				SourcePort: "node1:output",
+				TargetPort: "node2:input",
+			},
+			{
+				ID:         "conn2",
+				SourcePort: "node2:success",
+				TargetPort: "node3:input",
+			},
+			{
+				ID:         "conn3",
+				SourcePort: "node2:error",
+				TargetPort: "node4:input",
+			},
+			{
+				ID:         "conn4",
+				SourcePort: "node3:output",
+				TargetPort: "node5:input",
 			},
 		},
 		Variables: map[string]any{
@@ -365,18 +399,6 @@ func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
 			"config": map[string]any{
 				"retry_attempts": 3,
 				"timeout":        30,
-			},
-		},
-		WorkflowTriggers: []*models.WorkflowTrigger{
-			{
-				ID:         "integration-test-trigger",
-				Name:       "Integration Test Trigger",
-				SourceID:   uuid.New().String(),
-				EventType:  "schedule_due",
-				ProviderID: "scheduler",
-				Configuration: map[string]any{
-					"schedule": "0 0 * * *",
-				},
 			},
 		},
 	}
@@ -425,18 +447,28 @@ func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
 	assert.Equal(t, "Integration Test Workflow", fetchedWorkflow.Name)
 	assert.Equal(t, "A comprehensive workflow for integration testing", fetchedWorkflow.Description)
 	assert.Equal(t, models.WorkflowStatus("active"), fetchedWorkflow.Status)
-	assert.Len(t, fetchedWorkflow.Steps, 5)
-	assert.Len(t, fetchedWorkflow.WorkflowTriggers, 1)
+	assert.Len(t, fetchedWorkflow.Nodes, 6) // Now includes trigger node
+	assert.Len(t, fetchedWorkflow.Connections, 4)
 
-	// Verify step configurations
-	logStep := fetchedWorkflow.Steps[0]
-	assert.Equal(t, "log", logStep.ActionID)
-	assert.Equal(t, "Starting integration test workflow", logStep.Configuration["message"])
+	// Verify trigger node (first node)
+	triggerNode := fetchedWorkflow.Nodes[0]
+	assert.Equal(t, "trigger:scheduler", triggerNode.Type)
+	assert.Equal(t, models.CategoryTypeTrigger, triggerNode.Category)
+	assert.Equal(t, "scheduler", *triggerNode.ProviderID)
+	assert.Equal(t, "schedule_due", *triggerNode.EventType)
+	assert.Equal(t, "0 0 * * *", triggerNode.Config["schedule"])
 
-	httpStep := fetchedWorkflow.Steps[1]
-	assert.Equal(t, "http_request", httpStep.ActionID)
-	assert.Equal(t, "https", httpStep.Configuration["protocol"])
-	assert.Equal(t, "httpbin.org", httpStep.Configuration["host"])
+	// Verify action nodes
+	logNode := fetchedWorkflow.Nodes[1]
+	assert.Equal(t, "log", logNode.Type)
+	assert.Equal(t, models.CategoryTypeAction, logNode.Category)
+	assert.Equal(t, "Starting integration test workflow", logNode.Config["message"])
+
+	httpNode := fetchedWorkflow.Nodes[2]
+	assert.Equal(t, "http_request", httpNode.Type)
+	assert.Equal(t, models.CategoryTypeAction, httpNode.Category)
+	assert.Equal(t, "https", httpNode.Config["protocol"])
+	assert.Equal(t, "httpbin.org", httpNode.Config["host"])
 
 	// Verify variables
 	assert.Equal(t, "test", fetchedWorkflow.Variables["environment"])
@@ -445,14 +477,6 @@ func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
 	config, ok := fetchedWorkflow.Variables["config"].(map[string]any)
 	require.True(t, ok)
 	assert.InDelta(t, float64(3), config["retry_attempts"], 0.001)
-
-	// Verify triggers
-	trigger := fetchedWorkflow.WorkflowTriggers[0]
-	assert.Equal(t, "scheduler", trigger.ProviderID)
-	assert.Equal(t, "0 0 * * *", trigger.Configuration["schedule"])
 }
 
 // Helper function to create string pointers.
-func stringPtr(s string) *string {
-	return &s
-}

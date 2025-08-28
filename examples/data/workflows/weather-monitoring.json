@@ -2,127 +2,186 @@
   "id": "weather-monitoring",
   "name": "Weather Monitoring System",
   "description": "Monitor weather conditions and alert when temperature exceeds thresholds using OpenWeatherMap API",
-  "status": "active",
-  "workflow_triggers": [
+  "status": "published",
+  "workflow_group_id": "weather-monitoring",
+  "published_at": "2023-10-01T00:00:00Z",
+  "nodes": [
     {
       "id": "weather-schedule",
       "name": "Weather Schedule Trigger",
-      "description": "Trigger to check weather conditions every 3 hours",
-      "provider_id": "scheduler",
-      "event_type": "schedule_due",
-      "configuration": {
+      "type": "trigger:scheduler",
+      "category": "trigger",
+      "config": {
         "cron": "0 */3 * * *",
         "timezone": "UTC"
-      }
-    }
-  ],
-  "steps": [
+      },
+      "enabled": true,
+      "provider_id": "scheduler",
+      "event_type": "schedule_due",
+      "position_x": 50,
+      "position_y": 100
+    },
     {
       "id": "fetch-weather",
       "name": "Fetch Current Weather",
-      "action_id": "http_request",
-      "uid": "weatherdata",
-      "configuration": {
-        "protocol": "https",
-        "host": "api.openweathermap.org",
-        "path": "/data/2.5/weather?q=vars.city&appid=env.OPENWEATHER_API_KEY&units=metric",
+      "config": {
+        "url": "https://api.openweathermap.org/data/2.5/weather?q={{.variables.city}}&appid={{.env.OPENWEATHER_API_KEY}}&units=metric",
         "method": "GET",
         "timeout": 10,
         "headers": {
           "Accept": "application/json",
           "User-Agent": "Operion-WeatherMonitor/1.0"
         },
-        "retry": {
+        "retries": {
           "attempts": 3,
-          "delay": 2
+          "delay": 2000
         }
       },
-      "on_success": "process-weather",
-      "on_failure": "log-fetch-error",
-      "enabled": true
+      "position_x": 100,
+      "position_y": 100,
+      "enabled": true,
+      "type": "httprequest",
+      "category": "action"
     },
     {
       "id": "process-weather",
       "name": "Process Weather Data",
-      "action_id": "transform",
-      "uid": "weatherprocessed",
-      "configuration": {
-        "expression": "{\n  \"city\": steps.weatherdata.body.name,\n  \"country\": steps.weatherdata.body.sys.country,\n  \"temperature\": steps.weatherdata.body.main.temp,\n  \"feels_like\": steps.weatherdata.body.main.feels_like,\n  \"humidity\": steps.weatherdata.body.main.humidity,\n  \"pressure\": steps.weatherdata.body.main.pressure,\n  \"weather\": steps.weatherdata.body.weather[0].description,\n  \"wind_speed\": steps.weatherdata.body.wind.speed,\n  \"timestamp\": $now(),\n  \"alert_needed\": steps.weatherdata.body.main.temp > vars.temperature_threshold\n}"
+      "config": {
+        "expression": "{{ $weather := index .node_results \"fetch-weather\" }}{{ $data := $weather.json }}{ \"city\": \"{{ $data.name }}\", \"country\": \"{{ $data.sys.country }}\", \"temperature\": {{ $data.main.temp }}, \"feels_like\": {{ $data.main.feels_like }}, \"humidity\": {{ $data.main.humidity }}, \"pressure\": {{ $data.main.pressure }}, \"weather\": \"{{ index $data.weather 0 \"description\" }}\", \"wind_speed\": {{ $data.wind.speed }}, \"timestamp\": \"{{now}}\", \"alert_needed\": {{ if gt $data.main.temp .variables.temperature_threshold }}true{{ else }}false{{ end }} }"
       },
-      "on_success": "check-alert",
-      "enabled": true
+      "position_x": 300,
+      "position_y": 100,
+      "enabled": true,
+      "type": "transform",
+      "category": "action"
     },
     {
       "id": "check-alert",
       "name": "Check Alert Condition",
-      "action_id": "transform",
-      "uid": "alertdecision",
-      "configuration": {
-        "expression": "steps.weatherprocessed.alert_needed ? \"ALERT\" : \"OK\""
+      "config": {
+        "expression": "{{ $processed := index .node_results \"process-weather\" }}{{ if $processed.result.alert_needed }}\"ALERT\"{{ else }}\"OK\"{{ end }}"
       },
-      "on_success": "log-weather-status",
-      "enabled": true
+      "position_x": 500,
+      "position_y": 100,
+      "enabled": true,
+      "type": "transform",
+      "category": "action"
     },
     {
       "id": "log-weather-status",
       "name": "Log Weather Status",
-      "action_id": "log",
-      "uid": "weatherlog",
-      "configuration": {
-        "message": "\"Weather in \" & steps.weatherprocessed.city & \": \" & $string(steps.weatherprocessed.temperature) & \"°C (\" & steps.weatherprocessed.weather & \") - Status: \" & steps.alertdecision"
+      "config": {
+        "message": "{{ $processed := index .node_results \"process-weather\" }}{{ $alert := index .node_results \"check-alert\" }}Weather in {{ $processed.result.city }}: {{ $processed.result.temperature }}°C ({{ $processed.result.weather }}) - Status: {{ $alert.result }}",
+        "level": "info"
       },
-      "on_success": "send-webhook",
-      "enabled": true
+      "position_x": 700,
+      "position_y": 50,
+      "enabled": true,
+      "type": "log",
+      "category": "action"
     },
     {
       "id": "send-webhook",
       "name": "Send Weather Report",
-      "action_id": "http_request",
-      "uid": "webhookresponse",
-      "configuration": {
-        "protocol": "https",
-        "host": "httpbin.org",
-        "path": "/post",
+      "config": {
+        "url": "https://httpbin.org/post",
         "method": "POST",
         "headers": {
           "Content-Type": "application/json"
         },
-        "body": "{\n  \"service\": \"weather-monitoring\",\n  \"timestamp\": steps.weatherprocessed.timestamp,\n  \"location\": {\n    \"city\": steps.weatherprocessed.city,\n    \"country\": steps.weatherprocessed.country\n  },\n  \"weather\": {\n    \"temperature\": steps.weatherprocessed.temperature,\n    \"feels_like\": steps.weatherprocessed.feels_like,\n    \"description\": steps.weatherprocessed.weather,\n    \"humidity\": steps.weatherprocessed.humidity,\n    \"wind_speed\": steps.weatherprocessed.wind_speed\n  },\n  \"alert_status\": steps.alertdecision,\n  \"threshold\": vars.temperature_threshold\n}",
-        "timeout": 10
+        "body": "{{ $processed := index .node_results \"process-weather\" }}{{ $alert := index .node_results \"check-alert\" }}{ \"service\": \"weather-monitoring\", \"timestamp\": \"{{ $processed.result.timestamp }}\", \"location\": { \"city\": \"{{ $processed.result.city }}\", \"country\": \"{{ $processed.result.country }}\" }, \"weather\": { \"temperature\": {{ $processed.result.temperature }}, \"feels_like\": {{ $processed.result.feels_like }}, \"description\": \"{{ $processed.result.weather }}\", \"humidity\": {{ $processed.result.humidity }}, \"wind_speed\": {{ $processed.result.wind_speed }} }, \"alert_status\": \"{{ $alert.result }}\", \"threshold\": {{ .variables.temperature_threshold }} }",
+        "timeout": 10,
+        "retries": {
+          "attempts": 1,
+          "delay": 0
+        }
       },
-      "on_success": "log-success",
-      "on_failure": "log-webhook-error",
-      "enabled": true
+      "position_x": 700,
+      "position_y": 150,
+      "enabled": true,
+      "type": "httprequest",
+      "category": "action"
     },
     {
       "id": "log-success",
       "name": "Log Success",
-      "action_id": "log",
-      "uid": "successlog",
-      "configuration": {
-        "message": "\"Weather monitoring completed successfully for \" & steps.weatherprocessed.city"
+      "config": {
+        "message": "{{ $processed := index .node_results \"process-weather\" }}Weather monitoring completed successfully for {{ $processed.result.city }}",
+        "level": "info"
       },
-      "enabled": true
+      "position_x": 900,
+      "position_y": 100,
+      "enabled": true,
+      "type": "log",
+      "category": "action"
     },
     {
       "id": "log-fetch-error",
       "name": "Log Fetch Error",
-      "action_id": "log",
-      "uid": "fetcherrorlog",
-      "configuration": {
-        "message": "\"Failed to fetch weather data for \" & vars.city"
+      "config": {
+        "message": "Failed to fetch weather data for {{.variables.city}}",
+        "level": "error"
       },
-      "enabled": true
+      "position_x": 300,
+      "position_y": 250,
+      "enabled": true,
+      "type": "log",
+      "category": "action"
     },
     {
       "id": "log-webhook-error",
       "name": "Log Webhook Error",
-      "action_id": "log",
-      "uid": "webhookerrorlog",
-      "configuration": {
-        "message": "\"Failed to send weather report webhook\""
+      "config": {
+        "message": "Failed to send weather report webhook",
+        "level": "error"
       },
-      "enabled": true
+      "position_x": 700,
+      "position_y": 250,
+      "enabled": true,
+      "type": "log",
+      "category": "action"
+    }
+  ],
+  "connections": [
+    {
+      "id": "trigger-weather-schedule-to-fetch-weather",
+      "source_port": "weather-schedule:success",
+      "target_port": "fetch-weather:main"
+    },
+    {
+      "id": "fetch-to-process",
+      "source_port": "fetch-weather:success",
+      "target_port": "process-weather:main"
+    },
+    {
+      "id": "process-to-alert",
+      "source_port": "process-weather:success",
+      "target_port": "check-alert:main"
+    },
+    {
+      "id": "alert-to-log",
+      "source_port": "check-alert:success",
+      "target_port": "log-weather-status:main"
+    },
+    {
+      "id": "log-to-webhook",
+      "source_port": "log-weather-status:success",
+      "target_port": "send-webhook:main"
+    },
+    {
+      "id": "webhook-to-success",
+      "source_port": "send-webhook:success",
+      "target_port": "log-success:main"
+    },
+    {
+      "id": "fetch-error",
+      "source_port": "fetch-weather:error",
+      "target_port": "log-fetch-error:main"
+    },
+    {
+      "id": "webhook-error",
+      "source_port": "send-webhook:error",
+      "target_port": "log-webhook-error:main"
     }
   ],
   "variables": {
@@ -132,7 +191,12 @@
   "metadata": {
     "version": "1.0",
     "author": "Operion",
-    "tags": ["weather", "monitoring", "openweathermap", "real-api"],
+    "tags": [
+      "weather",
+      "monitoring",
+      "openweathermap",
+      "real-api"
+    ],
     "description": "Real weather monitoring using OpenWeatherMap API. Requires OPENWEATHER_API_KEY environment variable.",
     "api_requirements": {
       "openweathermap": "Free API key from https://openweathermap.org/api"

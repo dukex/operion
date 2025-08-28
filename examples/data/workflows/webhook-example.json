@@ -2,55 +2,81 @@
   "id": "webhook-example",
   "name": "Webhook Example",
   "description": "Example workflow triggered by webhook",
-  "status": "active",
+  "status": "published",
+  "workflow_group_id": "webhook-example",
+  "published_at": "2023-10-01T00:00:00Z",
   "owner": "system",
   "created_at": "2024-01-01T00:00:00Z",
   "updated_at": "2024-01-01T00:00:00Z",
-  "workflow_triggers": [
+  "nodes": [
     {
       "id": "webhook-trigger-1",
       "name": "Webhook Trigger",
-      "description": "HTTP webhook trigger for example workflow",
-      "provider_id": "webhook",
-      "event_type": "webhook_received",
-      "configuration": {
+      "type": "trigger:webhook",
+      "category": "trigger",
+      "config": {
         "id": "example-webhook",
         "path": "/api/webhook/example"
-      }
-    }
-  ],
-  "steps": [
+      },
+      "source_id": "example-webhook",
+      "provider_id": "webhook",
+      "event_type": "webhook_request",
+      "position_x": 50,
+      "position_y": 100,
+      "enabled": true
+    },
     {
       "id": "log-webhook-data",
       "name": "Log Webhook Data",
-      "action_id": "log",
-      "uid": "logwebhookdata",
-      "configuration": {
-        "message": "Received webhook data: {{trigger.body}}"
+      "type": "log",
+      "category": "action",
+      "config": {
+        "message": "Received webhook data: {{.trigger_data.body}}"
       },
-      "enabled": true,
-      "on_success": "transform-data"
+      "position_x": 200,
+      "position_y": 100,
+      "enabled": true
     },
     {
       "id": "transform-data",
       "name": "Transform Data",
-      "action_id": "transform",
-      "uid": "transformdata",
-      "configuration": {
-        "expression": "{ \"processed\": true, \"timestamp\": trigger.timestamp, \"method\": trigger.method, \"headers\": trigger.headers }"
+      "type": "transform",
+      "category": "action",
+      "config": {
+        "expression": "{ \"processed\": true, \"timestamp\": \"{{.trigger_data.timestamp}}\", \"method\": \"{{.trigger_data.method}}\", \"headers\": {{.trigger_data.headers | toJson}} }"
       },
-      "enabled": true,
-      "on_success": "log-processed"
+      "position_x": 400,
+      "position_y": 100,
+      "enabled": true
     },
     {
       "id": "log-processed",
       "name": "Log Processed",
-      "action_id": "log",
-      "uid": "logprocessed",
-      "configuration": {
-        "message": "Processed webhook data: {{transformdata}}"
+      "type": "log",
+      "category": "action",
+      "config": {
+        "message": "{{ $data := index .node_results \"transform-data\" }}Processed webhook data: {{ $data | toJson }}"
       },
+      "position_x": 600,
+      "position_y": 100,
       "enabled": true
+    }
+  ],
+  "connections": [
+    {
+      "id": "trigger-to-log",
+      "source_port": "webhook-trigger-1:success",
+      "target_port": "log-webhook-data:main"
+    },
+    {
+      "id": "log-to-transform",
+      "source_port": "log-webhook-data:success",
+      "target_port": "transform-data:main"
+    },
+    {
+      "id": "transform-to-log",
+      "source_port": "transform-data:success",
+      "target_port": "log-processed:main"
     }
   ],
   "variables": {},
