@@ -5,7 +5,6 @@ package web_test
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -66,21 +65,19 @@ func setupTestDB(t *testing.T) (string, func()) {
 }
 
 func setupIntegrationApp(t *testing.T, dbURL string) (*fiber.App, *services.Workflow, *services.Publishing) {
-	// Connect to database
-	db, err := sql.Open("postgres", dbURL)
-	require.NoError(t, err)
-
 	// Create persistence layer with automatic migrations
-	persistence := postgresql.NewPersistence(db, slog.Default())
+	persistence, err := postgresql.NewPersistence(context.Background(), slog.Default(), dbURL)
+	require.NoError(t, err)
 
 	// Initialize services
 	workflowService := services.NewWorkflow(persistence)
 	publishingService := services.NewPublishing(persistence)
+	nodeService := services.NewNode(persistence)
 	validator := validator.New(validator.WithRequiredStructEnabled())
 	registryInstance := registry.NewRegistry(slog.Default())
 
 	// Create handlers
-	handlers := web.NewAPIHandlers(workflowService, publishingService, validator, registryInstance)
+	handlers := web.NewAPIHandlers(workflowService, publishingService, nodeService, validator, registryInstance)
 
 	// Setup Fiber app
 	app := fiber.New()
@@ -92,6 +89,11 @@ func setupIntegrationApp(t *testing.T, dbURL string) (*fiber.App, *services.Work
 	w.Delete("/:id", handlers.DeleteWorkflow)
 	w.Post("/:id/publish", handlers.PublishWorkflow)
 	w.Post("/groups/:groupId/create-draft", handlers.CreateDraftFromPublished)
+
+	// Node endpoints
+	w.Post("/:id/nodes", handlers.CreateWorkflowNode)
+	w.Patch("/:id/nodes/:nodeId", handlers.UpdateWorkflowNode)
+	w.Delete("/:id/nodes/:nodeId", handlers.DeleteWorkflowNode)
 
 	return app, workflowService, publishingService
 }
@@ -183,7 +185,7 @@ func TestWorkflowCRUD_Integration(t *testing.T) {
 			require.NoError(t, err)
 			defer resp.Body.Close()
 
-			assert.Equal(t, http.StatusOK, resp.StatusStatus)
+			assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 			var updatedWorkflow models.Workflow
 			err = json.NewDecoder(resp.Body).Decode(&updatedWorkflow)

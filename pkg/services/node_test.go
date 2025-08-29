@@ -1,0 +1,472 @@
+package services
+
+import (
+	"context"
+	"testing"
+
+	"github.com/dukex/operion/pkg/models"
+	"github.com/dukex/operion/pkg/persistence"
+	"github.com/dukex/operion/pkg/testutil"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+)
+
+const testWorkflowID = "workflow-123"
+
+// Mock interfaces for testing.
+type MockPersistence struct {
+	mock.Mock
+}
+
+func (m *MockPersistence) HealthCheck(ctx context.Context) error {
+	args := m.Called(ctx)
+
+	return args.Error(0)
+}
+
+func (m *MockPersistence) WorkflowRepository() persistence.WorkflowRepository {
+	args := m.Called()
+
+	return args.Get(0).(persistence.WorkflowRepository)
+}
+
+func (m *MockPersistence) NodeRepository() persistence.NodeRepository {
+	args := m.Called()
+
+	return args.Get(0).(persistence.NodeRepository)
+}
+
+func (m *MockPersistence) ConnectionRepository() persistence.ConnectionRepository {
+	args := m.Called()
+
+	return args.Get(0).(persistence.ConnectionRepository)
+}
+
+func (m *MockPersistence) ExecutionContextRepository() persistence.ExecutionContextRepository {
+	args := m.Called()
+
+	return args.Get(0).(persistence.ExecutionContextRepository)
+}
+
+func (m *MockPersistence) InputCoordinationRepository() persistence.InputCoordinationRepository {
+	args := m.Called()
+
+	return args.Get(0).(persistence.InputCoordinationRepository)
+}
+
+func (m *MockPersistence) Close(ctx context.Context) error {
+	args := m.Called(ctx)
+
+	return args.Error(0)
+}
+
+type MockWorkflowRepository struct {
+	mock.Mock
+}
+
+func (m *MockWorkflowRepository) ListWorkflows(ctx context.Context, opts persistence.ListWorkflowsOptions) (*persistence.WorkflowListResult, error) {
+	args := m.Called(ctx, opts)
+
+	return args.Get(0).(*persistence.WorkflowListResult), args.Error(1)
+}
+
+func (m *MockWorkflowRepository) Save(ctx context.Context, workflow *models.Workflow) error {
+	args := m.Called(ctx, workflow)
+
+	return args.Error(0)
+}
+
+func (m *MockWorkflowRepository) GetByID(ctx context.Context, id string) (*models.Workflow, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+
+	return args.Get(0).(*models.Workflow), args.Error(1)
+}
+
+func (m *MockWorkflowRepository) Delete(ctx context.Context, id string) error {
+	args := m.Called(ctx, id)
+
+	return args.Error(0)
+}
+
+func (m *MockWorkflowRepository) GetCurrentWorkflow(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
+	args := m.Called(ctx, workflowGroupID)
+
+	return args.Get(0).(*models.Workflow), args.Error(1)
+}
+
+func (m *MockWorkflowRepository) GetDraftWorkflow(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
+	args := m.Called(ctx, workflowGroupID)
+
+	return args.Get(0).(*models.Workflow), args.Error(1)
+}
+
+func (m *MockWorkflowRepository) GetPublishedWorkflow(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
+	args := m.Called(ctx, workflowGroupID)
+
+	return args.Get(0).(*models.Workflow), args.Error(1)
+}
+
+func (m *MockWorkflowRepository) PublishWorkflow(ctx context.Context, workflowID string) error {
+	args := m.Called(ctx, workflowID)
+
+	return args.Error(0)
+}
+
+func (m *MockWorkflowRepository) CreateDraftFromPublished(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
+	args := m.Called(ctx, workflowGroupID)
+
+	return args.Get(0).(*models.Workflow), args.Error(1)
+}
+
+type MockNodeRepository struct {
+	mock.Mock
+}
+
+func (m *MockNodeRepository) GetNodesByWorkflow(ctx context.Context, workflowID string) ([]*models.WorkflowNode, error) {
+	args := m.Called(ctx, workflowID)
+
+	return args.Get(0).([]*models.WorkflowNode), args.Error(1)
+}
+
+func (m *MockNodeRepository) GetNodeByWorkflow(ctx context.Context, workflowID, nodeID string) (*models.WorkflowNode, error) {
+	args := m.Called(ctx, workflowID, nodeID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+
+	return args.Get(0).(*models.WorkflowNode), args.Error(1)
+}
+
+func (m *MockNodeRepository) SaveNode(ctx context.Context, workflowID string, node *models.WorkflowNode) error {
+	args := m.Called(ctx, workflowID, node)
+
+	return args.Error(0)
+}
+
+func (m *MockNodeRepository) UpdateNode(ctx context.Context, workflowID string, node *models.WorkflowNode) error {
+	args := m.Called(ctx, workflowID, node)
+
+	return args.Error(0)
+}
+
+func (m *MockNodeRepository) DeleteNode(ctx context.Context, workflowID, nodeID string) error {
+	args := m.Called(ctx, workflowID, nodeID)
+
+	return args.Error(0)
+}
+
+func (m *MockNodeRepository) DeleteNodeWithConnections(ctx context.Context, workflowID, nodeID string) error {
+	args := m.Called(ctx, workflowID, nodeID)
+
+	return args.Error(0)
+}
+
+func (m *MockNodeRepository) FindTriggerNodesBySourceEventAndProvider(ctx context.Context, sourceID, eventType, providerID string, status models.WorkflowStatus) ([]*models.TriggerNodeMatch, error) {
+	args := m.Called(ctx, sourceID, eventType, providerID, status)
+
+	return args.Get(0).([]*models.TriggerNodeMatch), args.Error(1)
+}
+
+func TestNode_CreateNode(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		workflowID    string
+		request       *CreateNodeRequest
+		setupMocks    func(*MockPersistence, *MockWorkflowRepository, *MockNodeRepository)
+		expectedError string
+		validateNode  func(t *testing.T, node *models.WorkflowNode)
+	}{
+		{
+			name:       "successful creation",
+			workflowID: testWorkflowID,
+			request: &CreateNodeRequest{
+				Type:      "log",
+				Category:  "action",
+				Name:      "Test Node",
+				Config:    map[string]any{"message": "test"},
+				Enabled:   true,
+				PositionX: 100,
+				PositionY: 200,
+			},
+			setupMocks: func(mp *MockPersistence, mwr *MockWorkflowRepository, mnr *MockNodeRepository) {
+				workflow := testutil.CreateTestWorkflow()
+				workflow.ID = testWorkflowID
+
+				mp.On("WorkflowRepository").Return(mwr)
+				mp.On("NodeRepository").Return(mnr)
+				mwr.On("GetByID", mock.Anything, testWorkflowID).Return(workflow, nil)
+				mnr.On("SaveNode", mock.Anything, testWorkflowID, mock.AnythingOfType("*models.WorkflowNode")).Return(nil)
+			},
+			validateNode: func(t *testing.T, node *models.WorkflowNode) {
+				t.Helper()
+				assert.Equal(t, "log", node.Type)
+				assert.Equal(t, models.CategoryTypeAction, node.Category)
+				assert.Equal(t, "Test Node", node.Name)
+				assert.Equal(t, true, node.Enabled)
+				assert.Equal(t, 100, node.PositionX)
+				assert.Equal(t, 200, node.PositionY)
+				assert.Equal(t, "test", node.Config["message"])
+				assert.NotEmpty(t, node.ID)
+			},
+		},
+		{
+			name:       "workflow not found",
+			workflowID: "nonexistent",
+			request: &CreateNodeRequest{
+				Type:     "log",
+				Category: "action",
+				Name:     "Test",
+			},
+			setupMocks: func(mp *MockPersistence, mwr *MockWorkflowRepository, mnr *MockNodeRepository) {
+				mp.On("WorkflowRepository").Return(mwr)
+				mwr.On("GetByID", mock.Anything, "nonexistent").Return(nil, persistence.ErrWorkflowNotFound)
+			},
+			expectedError: "workflow not found",
+		},
+		{
+			name:       "cannot modify published workflow",
+			workflowID: "published-workflow",
+			request: &CreateNodeRequest{
+				Type:     "log",
+				Category: "action",
+				Name:     "Test",
+			},
+			setupMocks: func(mp *MockPersistence, mwr *MockWorkflowRepository, mnr *MockNodeRepository) {
+				workflow := testutil.CreateTestWorkflow()
+				workflow.ID = "published-workflow"
+				workflow.Status = models.WorkflowStatusPublished
+
+				mp.On("WorkflowRepository").Return(mwr)
+				mwr.On("GetByID", mock.Anything, "published-workflow").Return(workflow, nil)
+			},
+			expectedError: "cannot modify nodes in published workflow",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			mockPersistence := new(MockPersistence)
+			mockWorkflowRepo := new(MockWorkflowRepository)
+			mockNodeRepo := new(MockNodeRepository)
+
+			if tt.setupMocks != nil {
+				tt.setupMocks(mockPersistence, mockWorkflowRepo, mockNodeRepo)
+			}
+
+			nodeService := NewNode(mockPersistence)
+
+			node, err := nodeService.CreateNode(ctx, tt.workflowID, tt.request)
+
+			if tt.expectedError != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedError)
+				assert.Nil(t, node)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, node)
+
+				if tt.validateNode != nil {
+					tt.validateNode(t, node)
+				}
+			}
+
+			mockPersistence.AssertExpectations(t)
+			mockWorkflowRepo.AssertExpectations(t)
+			mockNodeRepo.AssertExpectations(t)
+		})
+	}
+}
+
+func TestNode_UpdateNode(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		workflowID    string
+		nodeID        string
+		request       *UpdateNodeRequest
+		setupMocks    func(*MockPersistence, *MockWorkflowRepository, *MockNodeRepository)
+		expectedError string
+		validateNode  func(t *testing.T, node *models.WorkflowNode)
+	}{
+		{
+			name:       "successful update",
+			workflowID: testWorkflowID,
+			nodeID:     "node-456",
+			request: &UpdateNodeRequest{
+				Name:      "Updated Node",
+				Config:    map[string]any{"message": "updated"},
+				PositionX: 150,
+				PositionY: 250,
+				Enabled:   false,
+			},
+			setupMocks: func(mp *MockPersistence, mwr *MockWorkflowRepository, mnr *MockNodeRepository) {
+				workflow := testutil.CreateTestWorkflow()
+				workflow.ID = testWorkflowID
+
+				existingNode := testutil.CreateTestNode(testutil.WithID("node-456"))
+
+				mp.On("WorkflowRepository").Return(mwr)
+				mp.On("NodeRepository").Return(mnr)
+				mwr.On("GetByID", mock.Anything, testWorkflowID).Return(workflow, nil)
+				mnr.On("GetNodeByWorkflow", mock.Anything, testWorkflowID, "node-456").Return(existingNode, nil)
+				mnr.On("UpdateNode", mock.Anything, testWorkflowID, mock.AnythingOfType("*models.WorkflowNode")).Return(nil)
+			},
+			validateNode: func(t *testing.T, node *models.WorkflowNode) {
+				t.Helper()
+				assert.Equal(t, "Updated Node", node.Name)
+				assert.Equal(t, 150, node.PositionX)
+				assert.Equal(t, 250, node.PositionY)
+				assert.Equal(t, false, node.Enabled)
+				assert.Equal(t, "updated", node.Config["message"])
+				// Type and Category should be preserved
+				assert.Equal(t, "log", node.Type)
+				assert.Equal(t, models.CategoryTypeAction, node.Category)
+			},
+		},
+		{
+			name:       "node not found",
+			workflowID: testWorkflowID,
+			nodeID:     "nonexistent",
+			request: &UpdateNodeRequest{
+				Name: "Test",
+			},
+			setupMocks: func(mp *MockPersistence, mwr *MockWorkflowRepository, mnr *MockNodeRepository) {
+				workflow := testutil.CreateTestWorkflow()
+				workflow.ID = testWorkflowID
+
+				mp.On("WorkflowRepository").Return(mwr)
+				mp.On("NodeRepository").Return(mnr)
+				mwr.On("GetByID", mock.Anything, testWorkflowID).Return(workflow, nil)
+				mnr.On("GetNodeByWorkflow", mock.Anything, testWorkflowID, "nonexistent").Return(nil, assert.AnError)
+			},
+			expectedError: "failed to get node",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			mockPersistence := new(MockPersistence)
+			mockWorkflowRepo := new(MockWorkflowRepository)
+			mockNodeRepo := new(MockNodeRepository)
+
+			if tt.setupMocks != nil {
+				tt.setupMocks(mockPersistence, mockWorkflowRepo, mockNodeRepo)
+			}
+
+			nodeService := NewNode(mockPersistence)
+
+			node, err := nodeService.UpdateNode(ctx, tt.workflowID, tt.nodeID, tt.request)
+
+			if tt.expectedError != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedError)
+				assert.Nil(t, node)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, node)
+
+				if tt.validateNode != nil {
+					tt.validateNode(t, node)
+				}
+			}
+
+			mockPersistence.AssertExpectations(t)
+			mockWorkflowRepo.AssertExpectations(t)
+			mockNodeRepo.AssertExpectations(t)
+		})
+	}
+}
+
+func TestNode_DeleteNode(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		workflowID    string
+		nodeID        string
+		setupMocks    func(*MockPersistence, *MockWorkflowRepository, *MockNodeRepository)
+		expectedError string
+	}{
+		{
+			name:       "successful deletion",
+			workflowID: testWorkflowID,
+			nodeID:     "node-456",
+			setupMocks: func(mp *MockPersistence, mwr *MockWorkflowRepository, mnr *MockNodeRepository) {
+				workflow := testutil.CreateTestWorkflow()
+				workflow.ID = testWorkflowID
+
+				mp.On("WorkflowRepository").Return(mwr)
+				mp.On("NodeRepository").Return(mnr)
+				mwr.On("GetByID", mock.Anything, testWorkflowID).Return(workflow, nil)
+				mnr.On("DeleteNodeWithConnections", mock.Anything, testWorkflowID, "node-456").Return(nil)
+			},
+		},
+		{
+			name:       "workflow not found",
+			workflowID: "nonexistent",
+			nodeID:     "node-456",
+			setupMocks: func(mp *MockPersistence, mwr *MockWorkflowRepository, mnr *MockNodeRepository) {
+				mp.On("WorkflowRepository").Return(mwr)
+				mwr.On("GetByID", mock.Anything, "nonexistent").Return(nil, persistence.ErrWorkflowNotFound)
+			},
+			expectedError: "workflow not found",
+		},
+		{
+			name:       "cannot delete from published workflow",
+			workflowID: "published-workflow",
+			nodeID:     "node-456",
+			setupMocks: func(mp *MockPersistence, mwr *MockWorkflowRepository, mnr *MockNodeRepository) {
+				workflow := testutil.CreateTestWorkflow()
+				workflow.ID = "published-workflow"
+				workflow.Status = models.WorkflowStatusPublished
+
+				mp.On("WorkflowRepository").Return(mwr)
+				mwr.On("GetByID", mock.Anything, "published-workflow").Return(workflow, nil)
+			},
+			expectedError: "cannot modify nodes in published workflow",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			mockPersistence := new(MockPersistence)
+			mockWorkflowRepo := new(MockWorkflowRepository)
+			mockNodeRepo := new(MockNodeRepository)
+
+			if tt.setupMocks != nil {
+				tt.setupMocks(mockPersistence, mockWorkflowRepo, mockNodeRepo)
+			}
+
+			nodeService := NewNode(mockPersistence)
+
+			err := nodeService.DeleteNode(ctx, tt.workflowID, tt.nodeID)
+
+			if tt.expectedError != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedError)
+			} else {
+				require.NoError(t, err)
+			}
+
+			mockPersistence.AssertExpectations(t)
+			mockWorkflowRepo.AssertExpectations(t)
+			mockNodeRepo.AssertExpectations(t)
+		})
+	}
+}

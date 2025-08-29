@@ -39,8 +39,9 @@ func NewAPI(
 func (a *API) App() *fiber.App {
 	workflowService := services.NewWorkflow(a.persistence)
 	publishingService := services.NewPublishing(a.persistence)
+	nodeService := services.NewNode(a.persistence)
 
-	handlers := web.NewAPIHandlers(workflowService, publishingService, a.validate, a.registry)
+	handlers := web.NewAPIHandlers(workflowService, publishingService, nodeService, a.validate, a.registry)
 
 	app := fiber.New()
 	app.Use(cors.New())
@@ -64,11 +65,10 @@ func (a *API) App() *fiber.App {
 	w.Post("/:id/publish", handlers.PublishWorkflow)                           // New
 	w.Post("/groups/:groupId/create-draft", handlers.CreateDraftFromPublished) // New
 
-	// Future endpoints for nodes/connections (not in this implementation):
-	// w.Post("/:id/nodes", handlers.CreateWorkflowNode)
-	// w.Get("/:id/nodes", handlers.GetWorkflowNodes)
-	// w.Patch("/:id/nodes/:nodeId", handlers.UpdateWorkflowNode)
-	// w.Delete("/:id/nodes/:nodeId", handlers.DeleteWorkflowNode)
+	// Node endpoints:
+	w.Post("/:id/nodes", handlers.CreateWorkflowNode)
+	w.Patch("/:id/nodes/:nodeId", handlers.UpdateWorkflowNode)
+	w.Delete("/:id/nodes/:nodeId", handlers.DeleteWorkflowNode)
 
 	app.Get("/health", handlers.HealthCheck)
 

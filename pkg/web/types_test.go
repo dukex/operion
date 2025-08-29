@@ -180,8 +180,3 @@ func TestUpdateWorkflowRequest_Validation(t *testing.T) {
 		})
 	}
 }
-
-// Helper function to get string pointer.
-func stringPtr(s string) *string {
-	return &s
-}
