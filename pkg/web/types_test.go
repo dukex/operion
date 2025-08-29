@@ -206,6 +206,7 @@ func TestTransformNodeResponse(t *testing.T) {
 				SourceID:   stringPtr("should-not-appear"),
 			},
 			validate: func(t *testing.T, response web.NodeResponse) {
+				t.Helper()
 				assert.Equal(t, "action-1", response.ID)
 				assert.Equal(t, "log", response.Type)
 				assert.Equal(t, "action", response.Category)
@@ -234,6 +235,7 @@ func TestTransformNodeResponse(t *testing.T) {
 				SourceID:   stringPtr("should-not-appear"),
 			},
 			validate: func(t *testing.T, response web.NodeResponse) {
+				t.Helper()
 				assert.Equal(t, "trigger-1", response.ID)
 				assert.Equal(t, "trigger:scheduler", response.Type)
 				assert.Equal(t, "trigger", response.Category)
@@ -263,6 +265,7 @@ func TestTransformNodeResponse(t *testing.T) {
 				EventType:  stringPtr("should-not-appear"),
 			},
 			validate: func(t *testing.T, response web.NodeResponse) {
+				t.Helper()
 				assert.Equal(t, "conditional-1", response.ID)
 				assert.Equal(t, "conditional", response.Type)
 				assert.Equal(t, "action", response.Category)
@@ -290,6 +293,7 @@ func TestTransformNodeResponse(t *testing.T) {
 				EventType:  nil,
 			},
 			validate: func(t *testing.T, response web.NodeResponse) {
+				t.Helper()
 				assert.Equal(t, "trigger-2", response.ID)
 				assert.Equal(t, "trigger:webhook", response.Type)
 				assert.Equal(t, "trigger", response.Category)

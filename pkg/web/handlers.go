@@ -461,5 +461,6 @@ func (h *APIHandlers) GetWorkflowNode(c fiber.Ctx) error {
 
 	// Transform response based on node type
 	response := TransformNodeResponse(node)
+
 	return c.JSON(response)
 }

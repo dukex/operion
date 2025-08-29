@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -28,6 +29,7 @@ import (
 )
 
 func setupTestDB(t *testing.T) (string, func()) {
+	t.Helper()
 	ctx := context.Background()
 
 	// Start PostgreSQL container
@@ -52,7 +54,7 @@ func setupTestDB(t *testing.T) (string, func()) {
 	port, err := container.MappedPort(ctx, "5432")
 	require.NoError(t, err)
 
-	dbURL := fmt.Sprintf("postgres://test_user:test_pass@%s:%s/test_operion?sslmode=disable", host, port.Port())
+	dbURL := fmt.Sprintf("postgres://test_user:test_pass@%s/test_operion?sslmode=disable", net.JoinHostPort(host, port.Port()))
 
 	// Wait for database to be ready
 	time.Sleep(2 * time.Second)
@@ -65,6 +67,7 @@ func setupTestDB(t *testing.T) (string, func()) {
 }
 
 func setupIntegrationApp(t *testing.T, dbURL string) (*fiber.App, *services.Workflow, *services.Publishing) {
+	t.Helper()
 	// Create persistence layer with automatic migrations
 	persistence, err := postgresql.NewPersistence(context.Background(), slog.Default(), dbURL)
 	require.NoError(t, err)
@@ -127,11 +130,13 @@ func TestWorkflowCRUD_Integration(t *testing.T) {
 
 		resp, err := app.Test(req)
 		require.NoError(t, err)
-		defer resp.Body.Close()
+
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
 		var createdWorkflow models.Workflow
+
 		err = json.NewDecoder(resp.Body).Decode(&createdWorkflow)
 		require.NoError(t, err)
 
@@ -155,11 +160,13 @@ func TestWorkflowCRUD_Integration(t *testing.T) {
 
 			resp, err := app.Test(req)
 			require.NoError(t, err)
-			defer resp.Body.Close()
+
+			defer func() { _ = resp.Body.Close() }()
 
 			assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 			var fetchedWorkflow models.Workflow
+
 			err = json.NewDecoder(resp.Body).Decode(&fetchedWorkflow)
 			require.NoError(t, err)
 
@@ -184,11 +191,13 @@ func TestWorkflowCRUD_Integration(t *testing.T) {
 
 			resp, err := app.Test(req)
 			require.NoError(t, err)
-			defer resp.Body.Close()
+
+			defer func() { _ = resp.Body.Close() }()
 
 			assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 			var updatedWorkflow models.Workflow
+
 			err = json.NewDecoder(resp.Body).Decode(&updatedWorkflow)
 			require.NoError(t, err)
 
@@ -210,11 +219,13 @@ func TestWorkflowCRUD_Integration(t *testing.T) {
 
 			resp, err := app.Test(req)
 			require.NoError(t, err)
-			defer resp.Body.Close()
+
+			defer func() { _ = resp.Body.Close() }()
 
 			assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 			var workflows []models.Workflow
+
 			err = json.NewDecoder(resp.Body).Decode(&workflows)
 			require.NoError(t, err)
 
@@ -246,11 +257,13 @@ func TestWorkflowCRUD_Integration(t *testing.T) {
 
 			resp, err = app.Test(req)
 			require.NoError(t, err)
-			defer resp.Body.Close()
+
+			defer func() { _ = resp.Body.Close() }()
 
 			assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 			var workflows []models.Workflow
+
 			err = json.NewDecoder(resp.Body).Decode(&workflows)
 			require.NoError(t, err)
 
@@ -265,7 +278,8 @@ func TestWorkflowCRUD_Integration(t *testing.T) {
 
 			resp, err := app.Test(req)
 			require.NoError(t, err)
-			defer resp.Body.Close()
+
+			defer func() { _ = resp.Body.Close() }()
 
 			assert.Equal(t, http.StatusNoContent, resp.StatusCode)
 
@@ -322,6 +336,7 @@ func TestWorkflowPublishing_Integration(t *testing.T) {
 
 	created, err := workflowService.Create(context.Background(), workflow)
 	require.NoError(t, err)
+
 	workflowID := created.ID
 	groupID := created.WorkflowGroupID
 
@@ -331,11 +346,13 @@ func TestWorkflowPublishing_Integration(t *testing.T) {
 
 		resp, err := app.Test(req)
 		require.NoError(t, err)
-		defer resp.Body.Close()
+
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 		var publishedWorkflow models.Workflow
+
 		err = json.NewDecoder(resp.Body).Decode(&publishedWorkflow)
 		require.NoError(t, err)
 
@@ -350,11 +367,13 @@ func TestWorkflowPublishing_Integration(t *testing.T) {
 
 		resp, err := app.Test(req)
 		require.NoError(t, err)
-		defer resp.Body.Close()
+
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
 		var draftWorkflow models.Workflow
+
 		err = json.NewDecoder(resp.Body).Decode(&draftWorkflow)
 		require.NoError(t, err)
 
@@ -434,7 +453,8 @@ func TestWorkflowValidation_Integration(t *testing.T) {
 
 			resp, err := app.Test(req)
 			require.NoError(t, err)
-			defer resp.Body.Close()
+
+			defer func() { _ = resp.Body.Close() }()
 
 			assert.Equal(t, tt.expectedStatus, resp.StatusCode)
 
@@ -452,7 +472,7 @@ func TestGetWorkflowNode_Integration(t *testing.T) {
 	dbURL, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	app, workflowService, _ := setupIntegrationApp(t, dbURL)
+	app, _, _ := setupIntegrationApp(t, dbURL)
 
 	// Create a test workflow first
 	createReq := web.CreateWorkflowRequest{
@@ -471,11 +491,13 @@ func TestGetWorkflowNode_Integration(t *testing.T) {
 
 	resp, err := app.Test(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+
+	defer func() { _ = resp.Body.Close() }()
 
 	require.Equal(t, http.StatusCreated, resp.StatusCode)
 
 	var workflow models.Workflow
+
 	err = json.NewDecoder(resp.Body).Decode(&workflow)
 	require.NoError(t, err)
 
@@ -491,6 +513,7 @@ func TestGetWorkflowNode_Integration(t *testing.T) {
 		{
 			name: "get action node successfully",
 			setupNode: func(t *testing.T) string {
+				t.Helper()
 				nodeReq := web.CreateNodeRequest{
 					Type:      "log",
 					Category:  "action",
@@ -509,7 +532,7 @@ func TestGetWorkflowNode_Integration(t *testing.T) {
 
 				nodeResp, err := app.Test(nodeCreateReq)
 				require.NoError(t, err)
-				defer nodeResp.Body.Close()
+				defer func() { _ = nodeResp.Body.Close() }()
 
 				require.Equal(t, http.StatusCreated, nodeResp.StatusCode)
 
@@ -576,14 +599,17 @@ func TestGetWorkflowNode_Integration(t *testing.T) {
 
 			resp, err := app.Test(req)
 			require.NoError(t, err)
-			defer resp.Body.Close()
+
+			defer func() { _ = resp.Body.Close() }()
 
 			assert.Equal(t, tt.expectedStatus, resp.StatusCode)
 
 			if tt.validateResult != nil {
 				var buf bytes.Buffer
+
 				_, err = buf.ReadFrom(resp.Body)
 				require.NoError(t, err)
+
 				bodyBytes := buf.Bytes()
 
 				tt.validateResult(t, bodyBytes)
@@ -592,7 +618,7 @@ func TestGetWorkflowNode_Integration(t *testing.T) {
 	}
 }
 
-// Helper function for integration tests
+// Helper function for integration tests.
 func stringPtr(s string) *string {
 	return &s
 }

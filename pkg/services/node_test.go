@@ -539,6 +539,7 @@ func TestNode_GetNode(t *testing.T) {
 				assert.Nil(t, node)
 			} else {
 				require.NoError(t, err)
+
 				if tt.expectNode {
 					require.NotNil(t, node)
 					assert.Equal(t, tt.nodeID, node.ID)

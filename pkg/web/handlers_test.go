@@ -886,6 +886,7 @@ func TestAPIHandlers_GetWorkflowNode(t *testing.T) {
 		{
 			name: "successful action node retrieval",
 			setupWorkflow: func(t *testing.T, workflowService *services.Workflow, nodeService *services.Node) (string, string) {
+				t.Helper()
 				workflow := &models.Workflow{
 					Name:        "Test Workflow",
 					Description: "Test Description",
@@ -916,6 +917,7 @@ func TestAPIHandlers_GetWorkflowNode(t *testing.T) {
 			},
 			expectedStatus: http.StatusOK,
 			validateResult: func(t *testing.T, body []byte) {
+				t.Helper()
 				var response web.NodeResponse
 				err := json.Unmarshal(body, &response)
 				require.NoError(t, err)
@@ -935,6 +937,7 @@ func TestAPIHandlers_GetWorkflowNode(t *testing.T) {
 		{
 			name: "successful trigger node retrieval",
 			setupWorkflow: func(t *testing.T, workflowService *services.Workflow, nodeService *services.Node) (string, string) {
+				t.Helper()
 				workflow := &models.Workflow{
 					Name:        "Test Workflow",
 					Description: "Test Description",
@@ -972,6 +975,7 @@ func TestAPIHandlers_GetWorkflowNode(t *testing.T) {
 			},
 			expectedStatus: http.StatusOK,
 			validateResult: func(t *testing.T, body []byte) {
+				t.Helper()
 				var response web.NodeResponse
 				err := json.Unmarshal(body, &response)
 				require.NoError(t, err)
@@ -990,11 +994,12 @@ func TestAPIHandlers_GetWorkflowNode(t *testing.T) {
 			},
 		},
 		{
-			name:           "workflow not found", 
+			name:           "workflow not found",
 			workflowID:     "nonexistent-workflow",
 			nodeID:         "some-node",
 			expectedStatus: http.StatusInternalServerError, // File persistence may return 500 for non-existent workflows
 			validateResult: func(t *testing.T, body []byte) {
+				t.Helper()
 				// Check if the body contains error information
 				if len(body) > 0 {
 					var response map[string]any
@@ -1008,6 +1013,7 @@ func TestAPIHandlers_GetWorkflowNode(t *testing.T) {
 		{
 			name: "node not found",
 			setupWorkflow: func(t *testing.T, workflowService *services.Workflow, nodeService *services.Node) (string, string) {
+				t.Helper()
 				workflow := &models.Workflow{
 					Name:        "Test Workflow",
 					Description: "Test Description",
@@ -1025,6 +1031,7 @@ func TestAPIHandlers_GetWorkflowNode(t *testing.T) {
 			},
 			expectedStatus: http.StatusNotFound,
 			validateResult: func(t *testing.T, body []byte) {
+				t.Helper()
 				// Check if the body contains error information
 				if len(body) > 0 {
 					var response map[string]any
