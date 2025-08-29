@@ -117,7 +117,7 @@ func (w *WebhookProvider) Initialize(ctx context.Context, deps protocol.Dependen
 		return errors.New("webhook provider requires WEBHOOK_PERSISTENCE_URL environment variable (e.g., file://./data/webhook)")
 	}
 
-	persistence, err := w.createPersistence(persistenceURL)
+	persistence, err := w.createPersistence(ctx, persistenceURL)
 	if err != nil {
 		return err
 	}
@@ -332,7 +332,7 @@ func (w *WebhookProvider) GetWebhookURL(sourceID string) string {
 }
 
 // createPersistence creates the appropriate persistence implementation based on URL scheme.
-func (w *WebhookProvider) createPersistence(persistenceURL string) (webhookPersistence.WebhookPersistence, error) {
+func (w *WebhookProvider) createPersistence(ctx context.Context, persistenceURL string) (webhookPersistence.WebhookPersistence, error) {
 	scheme := w.parsePersistenceScheme(persistenceURL)
 	w.logger.Info("Initializing webhook persistence", "scheme", scheme, "url", persistenceURL)
 
@@ -343,13 +343,12 @@ func (w *WebhookProvider) createPersistence(persistenceURL string) (webhookPersi
 
 		return webhookPersistence.NewFilePersistence(path)
 	case "postgres", "postgresql":
-		// Future: implement database persistence
-		return nil, errors.New("postgres persistence for webhook not yet implemented")
+		return webhookPersistence.NewPostgresPersistence(ctx, w.logger, persistenceURL)
 	case "mysql":
 		// Future: implement database persistence
 		return nil, errors.New("mysql persistence for webhook not yet implemented")
 	default:
-		return nil, errors.New("unsupported persistence scheme: " + scheme + " (supported: file://)")
+		return nil, errors.New("unsupported persistence scheme: " + scheme + " (supported: file, postgres, mysql)")
 	}
 }
 

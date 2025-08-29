@@ -26,10 +26,6 @@ test:
 	go test -p=1 ./pkg/persistence/postgresql
 	@echo "Running all other tests in parallel..."
 	go test $(shell go list ./... | grep -v "pkg/persistence/postgresql")
-	@echo "Running PostgreSQL persistence tests serially..."
-	go test -p=1 ./pkg/persistence/postgresql
-	@echo "Running all other tests in parallel..."
-	go test $(shell go list ./... | grep -v "pkg/persistence/postgresql")
 
 test-integration:
 	@echo "Running integration tests (requires Docker)..."
