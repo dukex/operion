@@ -200,7 +200,7 @@ func (s *SchedulerProvider) Initialize(ctx context.Context, deps protocol.Depend
 		return errors.New("scheduler provider requires SCHEDULER_PERSISTENCE_URL environment variable (e.g., file://./data/scheduler, postgres://...)")
 	}
 
-	persistence, err := s.createPersistence(persistenceURL)
+	persistence, err := s.createPersistence(ctx, persistenceURL)
 	if err != nil {
 		return err
 	}
@@ -324,7 +324,7 @@ func (s *SchedulerProvider) processScheduleTriggerNode(workflowID string, node *
 }
 
 // createPersistence creates the appropriate persistence implementation based on URL scheme.
-func (s *SchedulerProvider) createPersistence(persistenceURL string) (schedulerPersistence.SchedulerPersistence, error) {
+func (s *SchedulerProvider) createPersistence(ctx context.Context, persistenceURL string) (schedulerPersistence.SchedulerPersistence, error) {
 	scheme := s.parsePersistenceScheme(persistenceURL)
 
 	s.logger.Info("Initializing scheduler persistence", "scheme", scheme, "url", persistenceURL)
@@ -337,9 +337,7 @@ func (s *SchedulerProvider) createPersistence(persistenceURL string) (schedulerP
 		return schedulerPersistence.NewFilePersistence(path)
 
 	case "postgres", "postgresql":
-		// Future: implement database persistence
-		// return schedulerPersistence.NewPostgresPersistence(persistenceURL)
-		return nil, errors.New("postgres persistence for scheduler not yet implemented")
+		return schedulerPersistence.NewPostgresPersistence(ctx, s.logger, persistenceURL)
 
 	case "mysql":
 		// Future: implement database persistence

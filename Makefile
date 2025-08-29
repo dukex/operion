@@ -14,7 +14,7 @@ GOFLAGS ?= -ldflags="-s -w"
 	go build $(GOFLAGS) -o ./bin/operion-source-manager ./cmd/operion-source-manager
 
 
-.PHONY: build build-linux clean test test-coverage fmt lint docs mod-check
+.PHONY: build build-linux clean test test-integration test-all-with-integration test-coverage fmt lint docs mod-check
 
 build: ./bin/operion-worker ./bin/operion-api ./bin/operion-activator ./bin/operion-source-manager
 
@@ -26,6 +26,21 @@ test:
 	go test -p=1 ./pkg/persistence/postgresql
 	@echo "Running all other tests in parallel..."
 	go test $(shell go list ./... | grep -v "pkg/persistence/postgresql")
+	@echo "Running PostgreSQL persistence tests serially..."
+	go test -p=1 ./pkg/persistence/postgresql
+	@echo "Running all other tests in parallel..."
+	go test $(shell go list ./... | grep -v "pkg/persistence/postgresql")
+
+test-integration:
+	@echo "Running integration tests (requires Docker)..."
+	@echo "Testing Kafka provider integration..."
+	go test -tags=integration -v ./pkg/providers/kafka/persistence/
+	go test -tags=integration -v ./pkg/providers/kafka/
+	@echo "Testing Scheduler provider integration..."
+	go test -tags=integration -v ./pkg/providers/scheduler/persistence/
+	@echo "Integration tests completed"
+
+test-all-with-integration: test test-integration
 
 test-all: test
 
