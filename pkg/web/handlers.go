@@ -14,7 +14,6 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-
 type APIHandlers struct {
 	workflowService   *services.Workflow
 	publishingService *services.Publishing
@@ -229,6 +228,7 @@ func (h *APIHandlers) CreateDraftFromPublished(c fiber.Ctx) error {
 		if persistence.IsPublishedWorkflowNotFound(err) {
 			return notFound(c, "Published workflow not found")
 		}
+
 		return internalError(c, err)
 	}
 

@@ -1,6 +1,7 @@
 package web_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/dukex/operion/pkg/web"
@@ -87,7 +88,9 @@ func TestCreateWorkflowRequest_Validation(t *testing.T) {
 
 			if tt.wantErr {
 				require.Error(t, err)
-				if validationErrors, ok := err.(validator.ValidationErrors); ok {
+
+				var validationErrors validator.ValidationErrors
+				if errors.As(err, &validationErrors) {
 					// Check that expected fields have validation errors
 					errorFields := make(map[string]bool)
 					for _, fieldErr := range validationErrors {
@@ -156,7 +159,9 @@ func TestUpdateWorkflowRequest_Validation(t *testing.T) {
 
 			if tt.wantErr {
 				require.Error(t, err)
-				if validationErrors, ok := err.(validator.ValidationErrors); ok {
+
+				var validationErrors validator.ValidationErrors
+				if errors.As(err, &validationErrors) {
 					// Check that expected fields have validation errors
 					errorFields := make(map[string]bool)
 					for _, fieldErr := range validationErrors {

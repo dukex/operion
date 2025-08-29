@@ -57,18 +57,6 @@ func (r *testWorkflowRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (r *testWorkflowRepository) GetWorkflowVersions(ctx context.Context, workflowGroupID string) ([]*models.Workflow, error) {
-	var versions []*models.Workflow
-
-	for _, w := range r.workflows {
-		if w.WorkflowGroupID == workflowGroupID {
-			versions = append(versions, w)
-		}
-	}
-
-	return versions, nil
-}
-
 func (r *testWorkflowRepository) GetCurrentWorkflow(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
 	// Try published first, then draft
 	published, _ := r.GetPublishedWorkflow(ctx, workflowGroupID)

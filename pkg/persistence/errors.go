@@ -35,22 +35,23 @@ var (
 
 // WorkflowError wraps workflow-related errors with additional context.
 type WorkflowError struct {
-	Op          string // Operation being performed (e.g., "GetByID", "Save", "Delete")
-	WorkflowID  string // Workflow ID if applicable
-	GroupID     string // Workflow group ID if applicable
-	Err         error  // Underlying error
-	Message     string // Additional context message
+	Op         string // Operation being performed (e.g., "GetByID", "Save", "Delete")
+	WorkflowID string // Workflow ID if applicable
+	GroupID    string // Workflow group ID if applicable
+	Err        error  // Underlying error
+	Message    string // Additional context message
 }
 
 func (e *WorkflowError) Error() string {
 	target := e.WorkflowID
 	if e.GroupID != "" {
-		target = fmt.Sprintf("group %s", e.GroupID)
+		target = "group " + e.GroupID
 	}
-	
+
 	if e.Message != "" {
 		return fmt.Sprintf("%s operation failed for workflow %s: %s (%v)", e.Op, target, e.Message, e.Err)
 	}
+
 	return fmt.Sprintf("%s operation failed for workflow %s: %v", e.Op, target, e.Err)
 }
 

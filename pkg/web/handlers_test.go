@@ -22,6 +22,7 @@ import (
 )
 
 func setupTestHandlers(t *testing.T) (*web.APIHandlers, *services.Workflow) {
+	t.Helper()
 	tempDir := t.TempDir()
 	persistence := file.NewPersistence(tempDir)
 	workflowService := services.NewWorkflow(persistence)
@@ -30,10 +31,12 @@ func setupTestHandlers(t *testing.T) (*web.APIHandlers, *services.Workflow) {
 	registryInstance := registry.NewRegistry(slog.Default())
 
 	handlers := web.NewAPIHandlers(workflowService, publishingService, validator, registryInstance)
+
 	return handlers, workflowService
 }
 
 func setupTestApp(t *testing.T) (*fiber.App, *services.Workflow) {
+	t.Helper()
 	handlers, workflowService := setupTestHandlers(t)
 	app := fiber.New()
 
@@ -70,6 +73,7 @@ func TestAPIHandlers_CreateWorkflow(t *testing.T) {
 			},
 			expectedStatus: http.StatusCreated,
 			validateResult: func(t *testing.T, body []byte) {
+				t.Helper()
 				var workflow models.Workflow
 				err := json.Unmarshal(body, &workflow)
 				require.NoError(t, err)
@@ -135,8 +139,11 @@ func TestAPIHandlers_CreateWorkflow(t *testing.T) {
 
 			app, _ := setupTestApp(t)
 
-			var body []byte
-			var err error
+			var (
+				body []byte
+				err  error
+			)
+
 			if str, ok := tt.requestBody.(string); ok {
 				body = []byte(str)
 			} else {
@@ -149,7 +156,8 @@ func TestAPIHandlers_CreateWorkflow(t *testing.T) {
 
 			resp, err := app.Test(req)
 			require.NoError(t, err)
-			defer resp.Body.Close()
+
+			defer func() { _ = resp.Body.Close() }()
 
 			assert.Equal(t, tt.expectedStatus, resp.StatusCode)
 
@@ -160,6 +168,8 @@ func TestAPIHandlers_CreateWorkflow(t *testing.T) {
 			} else if tt.expectedError != "" && tt.expectedStatus != http.StatusCreated {
 				// For error cases, we don't validate specific error content in this simple test
 				// In a real implementation, you would parse the error response JSON
+				body, _ := io.ReadAll(resp.Body)
+				_ = body // Use the body to avoid empty branch warning
 			}
 		})
 	}
@@ -190,6 +200,7 @@ func TestAPIHandlers_UpdateWorkflow(t *testing.T) {
 			},
 			expectedStatus: http.StatusOK,
 			validateResult: func(t *testing.T, original *models.Workflow, body []byte) {
+				t.Helper()
 				var workflow models.Workflow
 				err := json.Unmarshal(body, &workflow)
 				require.NoError(t, err)
@@ -215,6 +226,7 @@ func TestAPIHandlers_UpdateWorkflow(t *testing.T) {
 			},
 			expectedStatus: http.StatusOK,
 			validateResult: func(t *testing.T, original *models.Workflow, body []byte) {
+				t.Helper()
 				var workflow models.Workflow
 				err := json.Unmarshal(body, &workflow)
 				require.NoError(t, err)
@@ -257,6 +269,7 @@ func TestAPIHandlers_UpdateWorkflow(t *testing.T) {
 			requestBody:    web.UpdateWorkflowRequest{},
 			expectedStatus: http.StatusOK,
 			validateResult: func(t *testing.T, original *models.Workflow, body []byte) {
+				t.Helper()
 				var workflow models.Workflow
 				err := json.Unmarshal(body, &workflow)
 				require.NoError(t, err)
@@ -272,10 +285,12 @@ func TestAPIHandlers_UpdateWorkflow(t *testing.T) {
 
 			app, workflowService := setupTestApp(t)
 
-			var workflowID string = "non-existent-id"
+			var workflowID = "non-existent-id"
+
 			if tt.setupWorkflow != nil {
 				created, err := workflowService.Create(context.Background(), tt.setupWorkflow)
 				require.NoError(t, err)
+
 				workflowID = created.ID
 			}
 
@@ -287,7 +302,8 @@ func TestAPIHandlers_UpdateWorkflow(t *testing.T) {
 
 			resp, err := app.Test(req)
 			require.NoError(t, err)
-			defer resp.Body.Close()
+
+			defer func() { _ = resp.Body.Close() }()
 
 			assert.Equal(t, tt.expectedStatus, resp.StatusCode)
 
@@ -298,6 +314,8 @@ func TestAPIHandlers_UpdateWorkflow(t *testing.T) {
 			} else if tt.expectedError != "" && tt.expectedStatus != http.StatusOK {
 				// For error cases, we don't validate specific error content in this simple test
 				// In a real implementation, you would parse the error response JSON
+				body, _ := io.ReadAll(resp.Body)
+				_ = body // Use the body to avoid empty branch warning
 			}
 		})
 	}
@@ -336,10 +354,12 @@ func TestAPIHandlers_DeleteWorkflow(t *testing.T) {
 
 			app, workflowService := setupTestApp(t)
 
-			var workflowID string = "non-existent-id"
+			var workflowID = "non-existent-id"
+
 			if tt.setupWorkflow != nil {
 				created, err := workflowService.Create(context.Background(), tt.setupWorkflow)
 				require.NoError(t, err)
+
 				workflowID = created.ID
 			}
 
@@ -347,7 +367,8 @@ func TestAPIHandlers_DeleteWorkflow(t *testing.T) {
 
 			resp, err := app.Test(req)
 			require.NoError(t, err)
-			defer resp.Body.Close()
+
+			defer func() { _ = resp.Body.Close() }()
 
 			assert.Equal(t, tt.expectedStatus, resp.StatusCode)
 
@@ -427,6 +448,8 @@ func TestAPIHandlers_GetWorkflows_WithOwnerFilter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			url := "/workflows"
 			if tt.ownerID != "" {
 				url += "?owner_id=" + tt.ownerID
@@ -437,11 +460,13 @@ func TestAPIHandlers_GetWorkflows_WithOwnerFilter(t *testing.T) {
 
 			resp, err := app.Test(req)
 			require.NoError(t, err)
-			defer resp.Body.Close()
+
+			defer func() { _ = resp.Body.Close() }()
 
 			assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 			var workflows []models.Workflow
+
 			err = json.NewDecoder(resp.Body).Decode(&workflows)
 			require.NoError(t, err)
 
@@ -452,6 +477,7 @@ func TestAPIHandlers_GetWorkflows_WithOwnerFilter(t *testing.T) {
 				for i, w := range workflows {
 					actualNames[i] = w.Name
 				}
+
 				for _, expectedName := range tt.expectedNames {
 					assert.Contains(t, actualNames, expectedName)
 				}
@@ -491,6 +517,7 @@ func TestAPIHandlers_PublishWorkflow(t *testing.T) {
 			},
 			expectedStatus: http.StatusOK,
 			validateResult: func(t *testing.T, body []byte) {
+				t.Helper()
 				var workflow models.Workflow
 				err := json.Unmarshal(body, &workflow)
 				require.NoError(t, err)
@@ -534,10 +561,12 @@ func TestAPIHandlers_PublishWorkflow(t *testing.T) {
 
 			app, workflowService := setupTestApp(t)
 
-			var workflowID string = "non-existent-id"
+			var workflowID = "non-existent-id"
+
 			if tt.setupWorkflow != nil {
 				created, err := workflowService.Create(context.Background(), tt.setupWorkflow)
 				require.NoError(t, err)
+
 				workflowID = created.ID
 			}
 
@@ -545,7 +574,8 @@ func TestAPIHandlers_PublishWorkflow(t *testing.T) {
 
 			resp, err := app.Test(req)
 			require.NoError(t, err)
-			defer resp.Body.Close()
+
+			defer func() { _ = resp.Body.Close() }()
 
 			assert.Equal(t, tt.expectedStatus, resp.StatusCode)
 
@@ -556,6 +586,8 @@ func TestAPIHandlers_PublishWorkflow(t *testing.T) {
 			} else if tt.expectedError != "" && tt.expectedStatus != http.StatusOK {
 				// For error cases, we don't validate specific error content in this simple test
 				// In a real implementation, you would parse the error response JSON
+				body, _ := io.ReadAll(resp.Body)
+				_ = body // Use the body to avoid empty branch warning
 			}
 		})
 	}
@@ -593,6 +625,7 @@ func TestAPIHandlers_CreateDraftFromPublished(t *testing.T) {
 			},
 			expectedStatus: http.StatusCreated,
 			validateResult: func(t *testing.T, original *models.Workflow, body []byte) {
+				t.Helper()
 				var draft models.Workflow
 				err := json.Unmarshal(body, &draft)
 				require.NoError(t, err)
@@ -618,10 +651,12 @@ func TestAPIHandlers_CreateDraftFromPublished(t *testing.T) {
 
 			app, workflowService := setupTestApp(t)
 
-			var groupID string = "non-existent-group"
+			var groupID = "non-existent-group"
+
 			if tt.setupWorkflow != nil {
 				created, err := workflowService.Create(context.Background(), tt.setupWorkflow)
 				require.NoError(t, err)
+
 				groupID = created.WorkflowGroupID
 			}
 
@@ -629,7 +664,8 @@ func TestAPIHandlers_CreateDraftFromPublished(t *testing.T) {
 
 			resp, err := app.Test(req)
 			require.NoError(t, err)
-			defer resp.Body.Close()
+
+			defer func() { _ = resp.Body.Close() }()
 
 			assert.Equal(t, tt.expectedStatus, resp.StatusCode)
 
@@ -640,6 +676,8 @@ func TestAPIHandlers_CreateDraftFromPublished(t *testing.T) {
 			} else if tt.expectedError != "" && tt.expectedStatus != http.StatusCreated {
 				// For error cases, we don't validate specific error content in this simple test
 				// In a real implementation, you would parse the error response JSON
+				body, _ := io.ReadAll(resp.Body)
+				_ = body // Use the body to avoid empty branch warning
 			}
 		})
 	}

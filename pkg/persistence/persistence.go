@@ -31,7 +31,6 @@ type WorkflowRepository interface {
 	Delete(ctx context.Context, id string) error
 
 	// Simplified versioning methods
-	GetWorkflowVersions(ctx context.Context, workflowGroupID string) ([]*models.Workflow, error)
 	GetCurrentWorkflow(ctx context.Context, workflowGroupID string) (*models.Workflow, error) // draft or published
 	GetDraftWorkflow(ctx context.Context, workflowGroupID string) (*models.Workflow, error)   // draft only
 	GetPublishedWorkflow(ctx context.Context, workflowGroupID string) (*models.Workflow, error)

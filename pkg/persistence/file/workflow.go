@@ -60,6 +60,7 @@ func (wr *WorkflowRepository) GetAllByOwner(ctx context.Context, ownerID string)
 	}
 
 	workflows := make([]*models.Workflow, 0)
+
 	for _, workflow := range allWorkflows {
 		if workflow.Owner == ownerID {
 			workflows = append(workflows, workflow)
@@ -269,22 +270,4 @@ func (wr *WorkflowRepository) CreateDraftFromPublished(ctx context.Context, work
 	}
 
 	return &draftWorkflow, nil
-}
-
-// GetWorkflowVersions returns all versions of a workflow by group ID.
-func (wr *WorkflowRepository) GetWorkflowVersions(ctx context.Context, workflowGroupID string) ([]*models.Workflow, error) {
-	workflows, err := wr.GetAll(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get all workflows: %w", err)
-	}
-
-	var versions []*models.Workflow
-
-	for _, workflow := range workflows {
-		if workflow.WorkflowGroupID == workflowGroupID {
-			versions = append(versions, workflow)
-		}
-	}
-
-	return versions, nil
 }
