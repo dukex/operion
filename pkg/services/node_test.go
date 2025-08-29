@@ -470,3 +470,83 @@ func TestNode_DeleteNode(t *testing.T) {
 		})
 	}
 }
+
+func TestNode_GetNode(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		workflowID string
+		nodeID     string
+		setupMocks func(*MockPersistence, *MockNodeRepository)
+		expectErr  bool
+		expectNode bool
+	}{
+		{
+			name:       "successful retrieval",
+			workflowID: testWorkflowID,
+			nodeID:     "node-123",
+			setupMocks: func(mp *MockPersistence, mnr *MockNodeRepository) {
+				node := testutil.CreateTestNode(testutil.WithID("node-123"))
+				mp.On("NodeRepository").Return(mnr)
+				mnr.On("GetNodeByWorkflow", mock.Anything, testWorkflowID, "node-123").Return(node, nil)
+			},
+			expectErr:  false,
+			expectNode: true,
+		},
+		{
+			name:       "node not found",
+			workflowID: testWorkflowID,
+			nodeID:     "nonexistent",
+			setupMocks: func(mp *MockPersistence, mnr *MockNodeRepository) {
+				mp.On("NodeRepository").Return(mnr)
+				mnr.On("GetNodeByWorkflow", mock.Anything, testWorkflowID, "nonexistent").Return(nil, assert.AnError)
+			},
+			expectErr:  true,
+			expectNode: false,
+		},
+		{
+			name:       "workflow not found via repository",
+			workflowID: "nonexistent-workflow",
+			nodeID:     "node-123",
+			setupMocks: func(mp *MockPersistence, mnr *MockNodeRepository) {
+				mp.On("NodeRepository").Return(mnr)
+				mnr.On("GetNodeByWorkflow", mock.Anything, "nonexistent-workflow", "node-123").Return(nil, persistence.ErrWorkflowNotFound)
+			},
+			expectErr:  true,
+			expectNode: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			mockPersistence := new(MockPersistence)
+			mockNodeRepo := new(MockNodeRepository)
+
+			if tt.setupMocks != nil {
+				tt.setupMocks(mockPersistence, mockNodeRepo)
+			}
+
+			nodeService := NewNode(mockPersistence)
+
+			node, err := nodeService.GetNode(ctx, tt.workflowID, tt.nodeID)
+
+			if tt.expectErr {
+				require.Error(t, err)
+				assert.Nil(t, node)
+			} else {
+				require.NoError(t, err)
+				if tt.expectNode {
+					require.NotNil(t, node)
+					assert.Equal(t, tt.nodeID, node.ID)
+				}
+			}
+
+			mockPersistence.AssertExpectations(t)
+			mockNodeRepo.AssertExpectations(t)
+		})
+	}
+}

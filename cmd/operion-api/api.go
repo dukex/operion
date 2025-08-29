@@ -57,16 +57,17 @@ func (a *API) App() *fiber.App {
 	})
 
 	w := app.Group("/workflows")
-	w.Get("/", handlers.GetWorkflows)                                          // Enhanced with filtering
-	w.Post("/", handlers.CreateWorkflow)                                       // New
-	w.Get("/:id", handlers.GetWorkflow)                                        // Existing
-	w.Patch("/:id", handlers.UpdateWorkflow)                                   // New
-	w.Delete("/:id", handlers.DeleteWorkflow)                                  // New
-	w.Post("/:id/publish", handlers.PublishWorkflow)                           // New
-	w.Post("/groups/:groupId/create-draft", handlers.CreateDraftFromPublished) // New
+	w.Get("/", handlers.GetWorkflows)
+	w.Post("/", handlers.CreateWorkflow)
+	w.Get("/:id", handlers.GetWorkflow)
+	w.Patch("/:id", handlers.UpdateWorkflow)
+	w.Delete("/:id", handlers.DeleteWorkflow)
+	w.Post("/:id/publish", handlers.PublishWorkflow)
+	w.Post("/groups/:groupId/create-draft", handlers.CreateDraftFromPublished)
 
 	// Node endpoints:
 	w.Post("/:id/nodes", handlers.CreateWorkflowNode)
+	w.Get("/:id/nodes/:nodeId", handlers.GetWorkflowNode)
 	w.Patch("/:id/nodes/:nodeId", handlers.UpdateWorkflowNode)
 	w.Delete("/:id/nodes/:nodeId", handlers.DeleteWorkflowNode)
 

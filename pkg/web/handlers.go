@@ -433,3 +433,33 @@ func (h *APIHandlers) DeleteWorkflowNode(c fiber.Ctx) error {
 
 	return c.SendStatus(fiber.StatusNoContent)
 }
+
+// GetWorkflowNode retrieves a specific node from a workflow.
+func (h *APIHandlers) GetWorkflowNode(c fiber.Ctx) error {
+	workflowID := c.Params("id")
+	if workflowID == "" {
+		return badRequest(c, "Workflow ID is required")
+	}
+
+	nodeID := c.Params("nodeId")
+	if nodeID == "" {
+		return badRequest(c, "Node ID is required")
+	}
+
+	node, err := h.nodeService.GetNode(c.Context(), workflowID, nodeID)
+	if err != nil {
+		if persistence.IsWorkflowNotFound(err) {
+			return notFound(c, "Workflow not found")
+		}
+
+		if strings.Contains(err.Error(), "node not found") {
+			return notFound(c, "Node not found")
+		}
+
+		return internalError(c, err)
+	}
+
+	// Transform response based on node type
+	response := TransformNodeResponse(node)
+	return c.JSON(response)
+}

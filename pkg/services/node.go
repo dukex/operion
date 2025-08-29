@@ -90,6 +90,11 @@ func (n *Node) CreateNode(ctx context.Context, workflowID string, req *CreateNod
 	return node, nil
 }
 
+// GetNode retrieves a specific node from the specified workflow.
+func (n *Node) GetNode(ctx context.Context, workflowID, nodeID string) (*models.WorkflowNode, error) {
+	return n.persistence.NodeRepository().GetNodeByWorkflow(ctx, workflowID, nodeID)
+}
+
 // UpdateNode updates an existing node in the specified workflow.
 func (n *Node) UpdateNode(ctx context.Context, workflowID, nodeID string, req *UpdateNodeRequest) (*models.WorkflowNode, error) {
 	// Validate workflow exists and is in draft status

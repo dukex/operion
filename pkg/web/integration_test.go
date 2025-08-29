@@ -92,6 +92,7 @@ func setupIntegrationApp(t *testing.T, dbURL string) (*fiber.App, *services.Work
 
 	// Node endpoints
 	w.Post("/:id/nodes", handlers.CreateWorkflowNode)
+	w.Get("/:id/nodes/:nodeId", handlers.GetWorkflowNode)
 	w.Patch("/:id/nodes/:nodeId", handlers.UpdateWorkflowNode)
 	w.Delete("/:id/nodes/:nodeId", handlers.DeleteWorkflowNode)
 
@@ -439,6 +440,154 @@ func TestWorkflowValidation_Integration(t *testing.T) {
 
 			// Note: In a real implementation, you would parse the error response
 			// and check for the specific validation error message
+		})
+	}
+}
+
+func TestGetWorkflowNode_Integration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	dbURL, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	app, workflowService, _ := setupIntegrationApp(t, dbURL)
+
+	// Create a test workflow first
+	createReq := web.CreateWorkflowRequest{
+		Name:        "Node Test Workflow",
+		Description: "A workflow for testing node retrieval",
+		Owner:       "node-test-user",
+		Variables:   map[string]any{},
+		Metadata:    map[string]any{},
+	}
+
+	body, err := json.Marshal(createReq)
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodPost, "/workflows", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := app.Test(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
+
+	var workflow models.Workflow
+	err = json.NewDecoder(resp.Body).Decode(&workflow)
+	require.NoError(t, err)
+
+	// Test cases for GetWorkflowNode
+	tests := []struct {
+		name           string
+		setupNode      func(t *testing.T) string // Returns nodeID
+		workflowID     string
+		nodeID         string
+		expectedStatus int
+		validateResult func(t *testing.T, body []byte)
+	}{
+		{
+			name: "get action node successfully",
+			setupNode: func(t *testing.T) string {
+				nodeReq := web.CreateNodeRequest{
+					Type:      "log",
+					Category:  "action",
+					Name:      "Integration Test Log",
+					Config:    map[string]any{"message": "integration test", "level": "debug"},
+					Enabled:   true,
+					PositionX: 150,
+					PositionY: 250,
+				}
+
+				nodeBody, err := json.Marshal(nodeReq)
+				require.NoError(t, err)
+
+				nodeCreateReq := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/workflows/%s/nodes", workflow.ID), bytes.NewBuffer(nodeBody))
+				nodeCreateReq.Header.Set("Content-Type", "application/json")
+
+				nodeResp, err := app.Test(nodeCreateReq)
+				require.NoError(t, err)
+				defer nodeResp.Body.Close()
+
+				require.Equal(t, http.StatusCreated, nodeResp.StatusCode)
+
+				var createdNode models.WorkflowNode
+				err = json.NewDecoder(nodeResp.Body).Decode(&createdNode)
+				require.NoError(t, err)
+
+				return createdNode.ID
+			},
+			workflowID:     workflow.ID,
+			expectedStatus: http.StatusOK,
+			validateResult: func(t *testing.T, body []byte) {
+				var response web.NodeResponse
+				err := json.Unmarshal(body, &response)
+				require.NoError(t, err)
+
+				assert.Equal(t, "log", response.Type)
+				assert.Equal(t, "action", response.Category)
+				assert.Equal(t, "Integration Test Log", response.Name)
+				assert.Equal(t, true, response.Enabled)
+				assert.Equal(t, 150, response.PositionX)
+				assert.Equal(t, 250, response.PositionY)
+				assert.Equal(t, "integration test", response.Config["message"])
+				assert.Equal(t, "debug", response.Config["level"])
+				// Action node should not include trigger fields
+				assert.Nil(t, response.ProviderID)
+				assert.Nil(t, response.EventType)
+			},
+		},
+		{
+			name:           "workflow not found",
+			workflowID:     "nonexistent-workflow-id",
+			nodeID:         "some-node-id",
+			expectedStatus: http.StatusNotFound,
+			validateResult: func(t *testing.T, body []byte) {
+				var response map[string]any
+				err := json.Unmarshal(body, &response)
+				require.NoError(t, err)
+				assert.Contains(t, response["error"], "not found")
+			},
+		},
+		{
+			name:           "node not found in existing workflow",
+			workflowID:     workflow.ID,
+			nodeID:         "nonexistent-node-id",
+			expectedStatus: http.StatusNotFound,
+			validateResult: func(t *testing.T, body []byte) {
+				var response map[string]any
+				err := json.Unmarshal(body, &response)
+				require.NoError(t, err)
+				assert.Contains(t, response["error"], "not found")
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			nodeID := tt.nodeID
+			if tt.setupNode != nil {
+				nodeID = tt.setupNode(t)
+			}
+
+			req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/workflows/%s/nodes/%s", tt.workflowID, nodeID), nil)
+
+			resp, err := app.Test(req)
+			require.NoError(t, err)
+			defer resp.Body.Close()
+
+			assert.Equal(t, tt.expectedStatus, resp.StatusCode)
+
+			if tt.validateResult != nil {
+				var buf bytes.Buffer
+				_, err = buf.ReadFrom(resp.Body)
+				require.NoError(t, err)
+				bodyBytes := buf.Bytes()
+
+				tt.validateResult(t, bodyBytes)
+			}
 		})
 	}
 }

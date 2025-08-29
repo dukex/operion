@@ -1,6 +1,8 @@
 // Package web provides HTTP request and response types for the workflow API.
 package web
 
+import "github.com/dukex/operion/pkg/models"
+
 // CreateWorkflowRequest represents the request body for creating a new workflow.
 type CreateWorkflowRequest struct {
 	Name        string         `json:"name"               validate:"required,min=3"`
@@ -38,4 +40,40 @@ type UpdateNodeRequest struct {
 	PositionY int            `json:"position_y"`
 	Name      string         `json:"name"       validate:"required,min=1"`
 	Enabled   bool           `json:"enabled"`
+}
+
+// NodeResponse represents the filtered response for a node.
+type NodeResponse struct {
+	ID         string         `json:"id"`
+	Type       string         `json:"type"`
+	Category   string         `json:"category"`
+	Name       string         `json:"name"`
+	Config     map[string]any `json:"config"`
+	Enabled    bool           `json:"enabled"`
+	PositionX  int            `json:"position_x"`
+	PositionY  int            `json:"position_y"`
+	ProviderID *string        `json:"provider_id,omitempty"`
+	EventType  *string        `json:"event_type,omitempty"`
+}
+
+// TransformNodeResponse transforms a WorkflowNode into a NodeResponse with appropriate filtering.
+func TransformNodeResponse(node *models.WorkflowNode) NodeResponse {
+	response := NodeResponse{
+		ID:        node.ID,
+		Type:      node.Type,
+		Category:  string(node.Category),
+		Name:      node.Name,
+		Config:    node.Config,
+		Enabled:   node.Enabled,
+		PositionX: node.PositionX,
+		PositionY: node.PositionY,
+	}
+
+	// Only include provider_id and event_type for trigger nodes
+	if node.Category == models.CategoryTypeTrigger {
+		response.ProviderID = node.ProviderID
+		response.EventType = node.EventType
+	}
+
+	return response
 }
