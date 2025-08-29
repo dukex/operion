@@ -465,16 +465,21 @@ func TestAPIHandlers_GetWorkflows_WithOwnerFilter(t *testing.T) {
 
 			assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-			var workflows []models.Workflow
+			var response struct {
+				Workflows   []models.Workflow `json:"workflows"`
+				TotalCount  int64             `json:"total_count"`
+				HasNextPage bool              `json:"has_next_page"`
+			}
 
-			err = json.NewDecoder(resp.Body).Decode(&workflows)
+			err = json.NewDecoder(resp.Body).Decode(&response)
 			require.NoError(t, err)
 
-			assert.Len(t, workflows, tt.expectedCount)
+			assert.Len(t, response.Workflows, tt.expectedCount)
+			assert.Equal(t, int64(tt.expectedCount), response.TotalCount)
 
 			if tt.expectedCount > 0 {
-				actualNames := make([]string, len(workflows))
-				for i, w := range workflows {
+				actualNames := make([]string, len(response.Workflows))
+				for i, w := range response.Workflows {
 					actualNames[i] = w.Name
 				}
 

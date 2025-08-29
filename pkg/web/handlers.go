@@ -3,6 +3,7 @@ package web
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -36,23 +37,93 @@ func NewAPIHandlers(
 }
 
 func (h *APIHandlers) GetWorkflows(c fiber.Ctx) error {
-	ownerID := c.Query("owner_id")
-
-	var workflows []*models.Workflow
-
-	var err error
-
-	if ownerID != "" {
-		workflows, err = h.workflowService.FetchAllByOwner(c.Context(), ownerID)
-	} else {
-		workflows, err = h.workflowService.FetchAll(c.Context())
+	// Parse query parameters
+	req, err := h.parseListWorkflowsRequest(c)
+	if err != nil {
+		return badRequest(c, "Invalid query parameters: "+err.Error())
 	}
 
+	// Call service layer
+	result, err := h.workflowService.ListWorkflows(c.Context(), *req)
 	if err != nil {
+		if strings.Contains(err.Error(), "invalid request") {
+			return badRequest(c, err.Error())
+		}
+
 		return internalError(c, err)
 	}
 
-	return c.JSON(workflows)
+	// Return structured response with pagination metadata
+	return c.JSON(fiber.Map{
+		"workflows":     result.Workflows,
+		"total_count":   result.TotalCount,
+		"has_next_page": result.HasNextPage,
+		"pagination": fiber.Map{
+			"limit":  req.Limit,
+			"offset": req.Offset,
+		},
+		"sorting": fiber.Map{
+			"sort_by":    req.SortBy,
+			"sort_order": req.SortOrder,
+		},
+	})
+}
+
+// parseListWorkflowsRequest parses and validates query parameters for listing workflows.
+func (h *APIHandlers) parseListWorkflowsRequest(c fiber.Ctx) (*services.ListWorkflowsRequest, error) {
+	req := &services.ListWorkflowsRequest{}
+
+	// Parse pagination parameters
+	if limitStr := c.Query("limit"); limitStr != "" {
+		limit, err := strconv.Atoi(limitStr)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Limit = limit
+	}
+
+	if offsetStr := c.Query("offset"); offsetStr != "" {
+		offset, err := strconv.Atoi(offsetStr)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Offset = offset
+	}
+
+	// Parse filtering parameters
+	req.OwnerID = c.Query("owner_id")
+
+	if statusStr := c.Query("status"); statusStr != "" {
+		status := models.WorkflowStatus(statusStr)
+		req.Status = &status
+	}
+
+	// Parse sorting parameters
+	req.SortBy = c.Query("sort_by")
+	req.SortOrder = c.Query("sort_order")
+
+	// Parse data loading parameters
+	if includeNodesStr := c.Query("include_nodes"); includeNodesStr != "" {
+		includeNodes, err := strconv.ParseBool(includeNodesStr)
+		if err != nil {
+			return nil, err
+		}
+
+		req.IncludeNodes = includeNodes
+	}
+
+	if includeConnectionsStr := c.Query("include_connections"); includeConnectionsStr != "" {
+		includeConnections, err := strconv.ParseBool(includeConnectionsStr)
+		if err != nil {
+			return nil, err
+		}
+
+		req.IncludeConnections = includeConnections
+	}
+
+	return req, nil
 }
 
 func (h *APIHandlers) GetWorkflow(c fiber.Ctx) error {

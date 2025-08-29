@@ -17,24 +17,61 @@ type testWorkflowRepository struct {
 	workflows map[string]*models.Workflow
 }
 
-func (r *testWorkflowRepository) GetAll(ctx context.Context) ([]*models.Workflow, error) {
-	workflows := make([]*models.Workflow, 0, len(r.workflows))
+func (r *testWorkflowRepository) ListWorkflows(ctx context.Context, opts persistence.ListWorkflowsOptions) (*persistence.WorkflowListResult, error) {
+	// Get all workflows from map
+	allWorkflows := make([]*models.Workflow, 0, len(r.workflows))
 	for _, w := range r.workflows {
-		workflows = append(workflows, w)
+		allWorkflows = append(allWorkflows, w)
 	}
 
-	return workflows, nil
-}
+	// Apply filtering
+	filteredWorkflows := make([]*models.Workflow, 0)
 
-func (r *testWorkflowRepository) GetAllByOwner(ctx context.Context, ownerID string) ([]*models.Workflow, error) {
-	var workflows []*models.Workflow
-	for _, w := range r.workflows {
-		if w.Owner == ownerID {
-			workflows = append(workflows, w)
+	for _, workflow := range allWorkflows {
+		// Owner filter
+		if opts.OwnerID != "" && workflow.Owner != opts.OwnerID {
+			continue
 		}
+
+		// Status filter
+		if opts.Status != nil && workflow.Status != *opts.Status {
+			continue
+		}
+
+		filteredWorkflows = append(filteredWorkflows, workflow)
 	}
 
-	return workflows, nil
+	// Apply simple pagination (for tests)
+	totalCount := int64(len(filteredWorkflows))
+
+	// Set defaults for tests
+	if opts.Limit <= 0 {
+		opts.Limit = 20
+	}
+
+	startIdx := opts.Offset
+	endIdx := opts.Offset + opts.Limit
+
+	if startIdx >= len(filteredWorkflows) {
+		return &persistence.WorkflowListResult{
+			Workflows:   make([]*models.Workflow, 0),
+			TotalCount:  totalCount,
+			HasNextPage: false,
+		}, nil
+	}
+
+	if endIdx > len(filteredWorkflows) {
+		endIdx = len(filteredWorkflows)
+	}
+
+	paginatedWorkflows := filteredWorkflows[startIdx:endIdx]
+	hasNextPage := endIdx < len(filteredWorkflows)
+
+	return &persistence.WorkflowListResult{
+		Workflows:   paginatedWorkflows,
+		TotalCount:  totalCount,
+		HasNextPage: hasNextPage,
+	}, nil
 }
 
 func (r *testWorkflowRepository) Save(ctx context.Context, workflow *models.Workflow) error {

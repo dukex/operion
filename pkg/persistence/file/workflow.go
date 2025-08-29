@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"time"
 
@@ -25,8 +26,32 @@ func NewWorkflowRepository(root string) *WorkflowRepository {
 	return &WorkflowRepository{root: root}
 }
 
-// GetAll returns all workflows from the file system.
-func (wr *WorkflowRepository) GetAll(ctx context.Context) ([]*models.Workflow, error) {
+// ListWorkflows returns paginated and filtered workflows with in-memory operations.
+func (wr *WorkflowRepository) ListWorkflows(ctx context.Context, opts persistence.ListWorkflowsOptions) (*persistence.WorkflowListResult, error) {
+	// Set defaults
+	if opts.Limit <= 0 || opts.Limit > 100 {
+		opts.Limit = 20
+	}
+
+	if opts.SortBy == "" {
+		opts.SortBy = "created_at"
+	}
+
+	if opts.SortOrder == "" {
+		opts.SortOrder = "desc"
+	}
+
+	// Validate sort parameters against allowlist (security)
+	allowedSorts := map[string]bool{
+		"created_at": true,
+		"updated_at": true,
+		"name":       true,
+	}
+	if !allowedSorts[opts.SortBy] {
+		return nil, fmt.Errorf("invalid sort field: %s", opts.SortBy)
+	}
+
+	// Get all workflows from filesystem
 	root := os.DirFS(wr.root + "/workflows")
 
 	jsonFiles, err := fs.Glob(root, "*.json")
@@ -35,39 +60,101 @@ func (wr *WorkflowRepository) GetAll(ctx context.Context) ([]*models.Workflow, e
 	}
 
 	if len(jsonFiles) == 0 {
-		return make([]*models.Workflow, 0), nil
+		return &persistence.WorkflowListResult{
+			Workflows:   make([]*models.Workflow, 0),
+			TotalCount:  0,
+			HasNextPage: false,
+		}, nil
 	}
 
-	workflows := make([]*models.Workflow, 0, len(jsonFiles))
-
+	// Load all workflows
+	allWorkflows := make([]*models.Workflow, 0, len(jsonFiles))
 	for _, file := range jsonFiles {
-		workflow, err := wr.GetByID(ctx, file[:len(file)-5])
+		workflowID := file[:len(file)-5] // Remove .json extension
+
+		workflow, err := wr.GetByID(ctx, workflowID)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to load workflow %s: %w", workflowID, err)
 		}
 
-		workflows = append(workflows, workflow)
+		if workflow != nil {
+			allWorkflows = append(allWorkflows, workflow)
+		}
 	}
 
-	return workflows, nil
-}
-
-// GetAllByOwner returns all workflows for a specific owner from the file system.
-func (wr *WorkflowRepository) GetAllByOwner(ctx context.Context, ownerID string) ([]*models.Workflow, error) {
-	allWorkflows, err := wr.GetAll(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get all workflows: %w", err)
-	}
-
-	workflows := make([]*models.Workflow, 0)
+	// Apply filtering
+	filteredWorkflows := make([]*models.Workflow, 0)
 
 	for _, workflow := range allWorkflows {
-		if workflow.Owner == ownerID {
-			workflows = append(workflows, workflow)
+		// Owner filter
+		if opts.OwnerID != "" && workflow.Owner != opts.OwnerID {
+			continue
 		}
+
+		// Status filter
+		if opts.Status != nil && workflow.Status != *opts.Status {
+			continue
+		}
+
+		filteredWorkflows = append(filteredWorkflows, workflow)
 	}
 
-	return workflows, nil
+	// Apply sorting
+	wr.sortWorkflows(filteredWorkflows, opts.SortBy, opts.SortOrder)
+
+	// Calculate pagination
+	totalCount := int64(len(filteredWorkflows))
+	startIdx := opts.Offset
+	endIdx := opts.Offset + opts.Limit
+
+	if startIdx >= len(filteredWorkflows) {
+		return &persistence.WorkflowListResult{
+			Workflows:   make([]*models.Workflow, 0),
+			TotalCount:  totalCount,
+			HasNextPage: false,
+		}, nil
+	}
+
+	if endIdx > len(filteredWorkflows) {
+		endIdx = len(filteredWorkflows)
+	}
+
+	paginatedWorkflows := filteredWorkflows[startIdx:endIdx]
+	hasNextPage := endIdx < len(filteredWorkflows)
+
+	// For file-based storage, workflows already contain all data
+	// IncludeNodes and IncludeConnections flags are handled automatically
+
+	return &persistence.WorkflowListResult{
+		Workflows:   paginatedWorkflows,
+		TotalCount:  totalCount,
+		HasNextPage: hasNextPage,
+	}, nil
+}
+
+// sortWorkflows sorts workflows in-place based on the specified field and order.
+func (wr *WorkflowRepository) sortWorkflows(workflows []*models.Workflow, sortBy, sortOrder string) {
+	sort.Slice(workflows, func(i, j int) bool {
+		var less bool
+
+		switch sortBy {
+		case "created_at":
+			less = workflows[i].CreatedAt.Before(workflows[j].CreatedAt)
+		case "updated_at":
+			less = workflows[i].UpdatedAt.Before(workflows[j].UpdatedAt)
+		case "name":
+			less = workflows[i].Name < workflows[j].Name
+		default:
+			// Default to created_at
+			less = workflows[i].CreatedAt.Before(workflows[j].CreatedAt)
+		}
+
+		if sortOrder == "desc" {
+			return !less
+		}
+
+		return less
+	})
 }
 
 // GetByID retrieves a workflow by its ID from the file system.
@@ -152,13 +239,17 @@ func (wr *WorkflowRepository) GetCurrentWorkflow(ctx context.Context, workflowGr
 
 // GetDraftWorkflow returns the draft version of a workflow group.
 func (wr *WorkflowRepository) GetDraftWorkflow(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
-	workflows, err := wr.GetAll(ctx)
+	result, err := wr.ListWorkflows(ctx, persistence.ListWorkflowsOptions{
+		Limit:     100, // Get all workflows to find the latest draft
+		SortBy:    "created_at",
+		SortOrder: "desc",
+	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get all workflows: %w", err)
+		return nil, fmt.Errorf("failed to list workflows: %w", err)
 	}
 
 	var latestDraft *models.Workflow
-	for _, workflow := range workflows {
+	for _, workflow := range result.Workflows {
 		if workflow.WorkflowGroupID == workflowGroupID && workflow.Status == models.WorkflowStatusDraft {
 			if latestDraft == nil || workflow.CreatedAt.After(latestDraft.CreatedAt) {
 				latestDraft = workflow
@@ -171,13 +262,17 @@ func (wr *WorkflowRepository) GetDraftWorkflow(ctx context.Context, workflowGrou
 
 // GetPublishedWorkflow returns the published version of a workflow group.
 func (wr *WorkflowRepository) GetPublishedWorkflow(ctx context.Context, workflowGroupID string) (*models.Workflow, error) {
-	workflows, err := wr.GetAll(ctx)
+	result, err := wr.ListWorkflows(ctx, persistence.ListWorkflowsOptions{
+		Limit:     100, // Get all workflows to find the latest published
+		SortBy:    "created_at",
+		SortOrder: "desc",
+	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get all workflows: %w", err)
+		return nil, fmt.Errorf("failed to list workflows: %w", err)
 	}
 
 	var currentPublished *models.Workflow
-	for _, workflow := range workflows {
+	for _, workflow := range result.Workflows {
 		if workflow.WorkflowGroupID == workflowGroupID && workflow.Status == models.WorkflowStatusPublished {
 			if currentPublished == nil || workflow.CreatedAt.After(currentPublished.CreatedAt) {
 				currentPublished = workflow
@@ -201,13 +296,15 @@ func (wr *WorkflowRepository) PublishWorkflow(ctx context.Context, workflowID st
 	}
 
 	// Get all workflows to find ones in the same group
-	allWorkflows, err := wr.GetAll(ctx)
+	result, err := wr.ListWorkflows(ctx, persistence.ListWorkflowsOptions{
+		Limit: 100, // Get all workflows to manage publishing state
+	})
 	if err != nil {
 		return fmt.Errorf("failed to get all workflows: %w", err)
 	}
 
 	// Set all other workflows in group to unpublished
-	for _, wf := range allWorkflows {
+	for _, wf := range result.Workflows {
 		if wf.WorkflowGroupID == workflow.WorkflowGroupID && wf.Status == models.WorkflowStatusPublished {
 			wf.Status = models.WorkflowStatusUnpublished
 

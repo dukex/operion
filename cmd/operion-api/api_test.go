@@ -81,11 +81,17 @@ func TestAPI_GetWorkflows_Empty(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-	var workflows []models.Workflow
+	var response struct {
+		Workflows   []models.Workflow `json:"workflows"`
+		TotalCount  int64             `json:"total_count"`
+		HasNextPage bool              `json:"has_next_page"`
+	}
 
-	err = json.NewDecoder(resp.Body).Decode(&workflows)
+	err = json.NewDecoder(resp.Body).Decode(&response)
 	require.NoError(t, err)
-	assert.Empty(t, workflows)
+	assert.Empty(t, response.Workflows)
+	assert.Equal(t, int64(0), response.TotalCount)
+	assert.False(t, response.HasNextPage)
 }
 
 func TestAPI_GetWorkflows_WithData(t *testing.T) {
@@ -154,14 +160,20 @@ func TestAPI_GetWorkflows_WithData(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-	var workflows []models.Workflow
+	var response struct {
+		Workflows   []models.Workflow `json:"workflows"`
+		TotalCount  int64             `json:"total_count"`
+		HasNextPage bool              `json:"has_next_page"`
+	}
 
-	err = json.NewDecoder(resp.Body).Decode(&workflows)
+	err = json.NewDecoder(resp.Body).Decode(&response)
 	require.NoError(t, err)
-	assert.Len(t, workflows, 2)
+	assert.Len(t, response.Workflows, 2)
+	assert.Equal(t, int64(2), response.TotalCount)
+	assert.False(t, response.HasNextPage)
 
 	// Verify workflow data
-	workflowIDs := []string{workflows[0].ID, workflows[1].ID}
+	workflowIDs := []string{response.Workflows[0].ID, response.Workflows[1].ID}
 	assert.Contains(t, workflowIDs, createdWorkflow1.ID)
 	assert.Contains(t, workflowIDs, createdWorkflow2.ID)
 }
@@ -420,12 +432,18 @@ func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-	var workflows []models.Workflow
+	var response struct {
+		Workflows   []models.Workflow `json:"workflows"`
+		TotalCount  int64             `json:"total_count"`
+		HasNextPage bool              `json:"has_next_page"`
+	}
 
-	err = json.NewDecoder(resp.Body).Decode(&workflows)
+	err = json.NewDecoder(resp.Body).Decode(&response)
 	require.NoError(t, err)
-	assert.Len(t, workflows, 1)
-	assert.Equal(t, workflowCreated.ID, workflows[0].ID)
+	assert.Len(t, response.Workflows, 1)
+	assert.Equal(t, int64(1), response.TotalCount)
+	assert.False(t, response.HasNextPage)
+	assert.Equal(t, workflowCreated.ID, response.Workflows[0].ID)
 
 	// Test 2: Fetch specific workflow and verify all details
 	req = httptest.NewRequest(http.MethodGet, "/workflows/"+workflowCreated.ID, nil)
