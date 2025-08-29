@@ -1,4 +1,4 @@
-package workflow
+package services
 
 import (
 	"context"
@@ -166,9 +166,9 @@ func createTestPersistence() *testPersistence {
 	}
 }
 
-func TestPublishingService_PublishWorkflow_Success(t *testing.T) {
+func TestPublishing_PublishWorkflow_Success(t *testing.T) {
 	persistence := createTestPersistence()
-	service := NewPublishingService(persistence)
+	service := NewPublishing(persistence)
 
 	// Create a valid draft workflow
 	workflow := &models.Workflow{
@@ -200,9 +200,9 @@ func TestPublishingService_PublishWorkflow_Success(t *testing.T) {
 	assert.NotNil(t, published.PublishedAt)
 }
 
-func TestPublishingService_PublishWorkflow_ValidationError(t *testing.T) {
+func TestPublishing_PublishWorkflow_ValidationError(t *testing.T) {
 	persistence := createTestPersistence()
-	service := NewPublishingService(persistence)
+	service := NewPublishing(persistence)
 
 	// Create an invalid workflow (no trigger nodes)
 	workflow := &models.Workflow{
@@ -224,9 +224,9 @@ func TestPublishingService_PublishWorkflow_ValidationError(t *testing.T) {
 	assert.Contains(t, err.Error(), "must have at least one node")
 }
 
-func TestPublishingService_GetPublishedWorkflow(t *testing.T) {
+func TestPublishing_GetPublishedWorkflow(t *testing.T) {
 	persistence := createTestPersistence()
-	service := NewPublishingService(persistence)
+	service := NewPublishing(persistence)
 
 	// Create and save a published workflow
 	workflow := &models.Workflow{
@@ -246,9 +246,9 @@ func TestPublishingService_GetPublishedWorkflow(t *testing.T) {
 	assert.Equal(t, models.WorkflowStatusPublished, retrieved.Status)
 }
 
-func TestPublishingService_CreateDraftFromPublished(t *testing.T) {
+func TestPublishing_CreateDraftFromPublished(t *testing.T) {
 	persistence := createTestPersistence()
-	service := NewPublishingService(persistence)
+	service := NewPublishing(persistence)
 
 	// Create and save a published workflow
 	published := &models.Workflow{

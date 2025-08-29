@@ -7,8 +7,8 @@ import (
 
 	"github.com/dukex/operion/pkg/persistence"
 	"github.com/dukex/operion/pkg/registry"
+	"github.com/dukex/operion/pkg/services"
 	"github.com/dukex/operion/pkg/web"
-	"github.com/dukex/operion/pkg/workflow"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
@@ -37,9 +37,9 @@ func NewAPI(
 }
 
 func (a *API) App() *fiber.App {
-	workflowRepository := workflow.NewRepository(a.persistence)
+	workflowService := services.NewWorkflow(a.persistence)
 
-	handlers := web.NewAPIHandlers(workflowRepository, a.validate, a.registry)
+	handlers := web.NewAPIHandlers(workflowService, a.validate, a.registry)
 
 	app := fiber.New()
 	app.Use(cors.New())

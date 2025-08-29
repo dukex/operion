@@ -13,7 +13,7 @@ import (
 	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/persistence/file"
 	"github.com/dukex/operion/pkg/registry"
-	"github.com/dukex/operion/pkg/workflow"
+	"github.com/dukex/operion/pkg/services"
 	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -137,7 +137,7 @@ func TestAPI_GetWorkflows_WithData(t *testing.T) {
 	}
 
 	// Save workflows
-	repo := workflow.NewRepository(persistence)
+	repo := services.NewWorkflow(persistence)
 	createdWorkflow1, err := repo.Create(t.Context(), workflow1)
 	require.NoError(t, err)
 	createdWorkflow2, err := repo.Create(t.Context(), workflow2)
@@ -198,7 +198,7 @@ func TestAPI_GetWorkflow_Success(t *testing.T) {
 	}
 
 	// Save workflow
-	repo := workflow.NewRepository(persistence)
+	repo := services.NewWorkflow(persistence)
 	workflowCreated, err := repo.Create(t.Context(), workflow1)
 	require.NoError(t, err)
 
@@ -404,7 +404,7 @@ func TestAPI_Integration_WorkflowLifecycle(t *testing.T) {
 	}
 
 	// Save workflow
-	repo := workflow.NewRepository(persistence)
+	repo := services.NewWorkflow(persistence)
 	workflowCreated, err := repo.Create(t.Context(), complexWorkflow)
 	require.NoError(t, err)
 

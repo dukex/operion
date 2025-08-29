@@ -1,4 +1,4 @@
-package workflow
+package services
 
 import (
 	"testing"
@@ -9,18 +9,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewRepository(t *testing.T) {
+func TestNewWorkflow(t *testing.T) {
 	persistence := file.NewPersistence(t.TempDir())
-	repo := NewRepository(persistence)
+	service := NewWorkflow(persistence)
 
-	assert.NotNil(t, repo)
-	assert.Equal(t, persistence, repo.persistence)
+	assert.NotNil(t, service)
+	assert.Equal(t, persistence, service.persistence)
 }
 
-func TestRepository_Create(t *testing.T) {
+func TestWorkflow_Create(t *testing.T) {
 	testDir := t.TempDir()
 	persistence := file.NewPersistence(testDir)
-	repo := NewRepository(persistence)
+	service := NewWorkflow(persistence)
 
 	workflow := &models.Workflow{
 		Name:        "Test Workflow",
@@ -42,7 +42,7 @@ func TestRepository_Create(t *testing.T) {
 	}
 
 	// Create workflow
-	created, err := repo.Create(t.Context(), workflow)
+	created, err := service.Create(t.Context(), workflow)
 	require.NoError(t, err)
 	require.NotNil(t, created)
 
@@ -61,10 +61,10 @@ func TestRepository_Create(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestRepository_FetchByID(t *testing.T) {
+func TestWorkflow_FetchByID(t *testing.T) {
 	testDir := t.TempDir()
 	persistence := file.NewPersistence(testDir)
-	repo := NewRepository(persistence)
+	service := NewWorkflow(persistence)
 
 	// Create test workflow
 	workflow := &models.Workflow{
@@ -75,11 +75,11 @@ func TestRepository_FetchByID(t *testing.T) {
 	}
 
 	// Save workflow
-	workflowCreated, err := repo.Create(t.Context(), workflow)
+	workflowCreated, err := service.Create(t.Context(), workflow)
 	require.NoError(t, err)
 
 	// Fetch workflow
-	fetched, err := repo.FetchByID(t.Context(), workflowCreated.ID)
+	fetched, err := service.FetchByID(t.Context(), workflowCreated.ID)
 	require.NoError(t, err)
 	require.NotNil(t, fetched)
 
@@ -89,26 +89,26 @@ func TestRepository_FetchByID(t *testing.T) {
 	assert.Equal(t, "Test workflow for fetching", fetched.Description)
 
 	// Clean up
-	err = repo.Delete(t.Context(), workflowCreated.ID)
+	err = service.Delete(t.Context(), workflowCreated.ID)
 	assert.NoError(t, err)
 }
 
-func TestRepository_FetchByID_NotFound(t *testing.T) {
+func TestWorkflow_FetchByID_NotFound(t *testing.T) {
 	testDir := t.TempDir()
 	persistence := file.NewPersistence(testDir)
-	repo := NewRepository(persistence)
+	service := NewWorkflow(persistence)
 
 	// Try to fetch non-existent workflow
-	workflow, err := repo.FetchByID(t.Context(), "non-existent")
+	workflow, err := service.FetchByID(t.Context(), "non-existent")
 	assert.Error(t, err)
 	assert.Nil(t, workflow)
 	assert.Contains(t, err.Error(), "workflow not found")
 }
 
-func TestRepository_FetchAll(t *testing.T) {
+func TestWorkflow_FetchAll(t *testing.T) {
 	testDir := t.TempDir()
 	persistence := file.NewPersistence(testDir)
-	repo := NewRepository(persistence)
+	service := NewWorkflow(persistence)
 
 	workflows := []*models.Workflow{
 		{
@@ -124,12 +124,12 @@ func TestRepository_FetchAll(t *testing.T) {
 	}
 
 	for _, workflow := range workflows {
-		_, err := repo.Create(t.Context(), workflow)
+		_, err := service.Create(t.Context(), workflow)
 		require.NoError(t, err)
 	}
 
 	// Fetch all workflows
-	fetchedWorkflows, err := repo.FetchAll(t.Context())
+	fetchedWorkflows, err := service.FetchAll(t.Context())
 	require.NoError(t, err)
 	assert.Len(t, fetchedWorkflows, 2)
 
@@ -144,15 +144,15 @@ func TestRepository_FetchAll(t *testing.T) {
 
 	// Clean up
 	for _, workflow := range workflows {
-		err = repo.Delete(t.Context(), workflow.ID)
+		err = service.Delete(t.Context(), workflow.ID)
 		assert.NoError(t, err)
 	}
 }
 
-func TestRepository_Update(t *testing.T) {
+func TestWorkflow_Update(t *testing.T) {
 	testDir := t.TempDir()
 	persistence := file.NewPersistence(testDir)
-	repo := NewRepository(persistence)
+	service := NewWorkflow(persistence)
 
 	// Create initial workflow
 	originalWorkflow := &models.Workflow{
@@ -161,7 +161,7 @@ func TestRepository_Update(t *testing.T) {
 		Status:      models.WorkflowStatusDraft,
 	}
 
-	workflowCreated, err := repo.Create(t.Context(), originalWorkflow)
+	workflowCreated, err := service.Create(t.Context(), originalWorkflow)
 	require.NoError(t, err)
 
 	// Update workflow
@@ -171,7 +171,7 @@ func TestRepository_Update(t *testing.T) {
 		Status:      models.WorkflowStatusPublished,
 	}
 
-	result, err := repo.Update(t.Context(), workflowCreated.ID, updatedWorkflow)
+	result, err := service.Update(t.Context(), workflowCreated.ID, updatedWorkflow)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -187,61 +187,61 @@ func TestRepository_Update(t *testing.T) {
 			result.UpdatedAt.Equal(originalWorkflow.UpdatedAt))
 
 	// Clean up
-	err = repo.Delete(t.Context(), workflowCreated.ID)
+	err = service.Delete(t.Context(), workflowCreated.ID)
 	assert.NoError(t, err)
 }
 
-func TestRepository_Update_NotFound(t *testing.T) {
+func TestWorkflow_Update_NotFound(t *testing.T) {
 	testDir := t.TempDir()
 	persistence := file.NewPersistence(testDir)
-	repo := NewRepository(persistence)
+	service := NewWorkflow(persistence)
 
 	updatedWorkflow := &models.Workflow{
 		Name: "Updated Workflow",
 	}
 
 	// Try to update non-existent workflow
-	result, err := repo.Update(t.Context(), "non-existent", updatedWorkflow)
+	result, err := service.Update(t.Context(), "non-existent", updatedWorkflow)
 	assert.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "workflow not found")
 }
 
-func TestRepository_Delete(t *testing.T) {
+func TestWorkflow_Delete(t *testing.T) {
 	testDir := t.TempDir()
 	persistence := file.NewPersistence(testDir)
-	repo := NewRepository(persistence)
+	service := NewWorkflow(persistence)
 
 	// Create test workflow
 	workflow := &models.Workflow{
 		Name: "Delete Test Workflow",
 	}
 
-	workflowCreated, err := repo.Create(t.Context(), workflow)
+	workflowCreated, err := service.Create(t.Context(), workflow)
 	require.NoError(t, err)
 
 	// Verify workflow exists
-	fetched, err := repo.FetchByID(t.Context(), workflowCreated.ID)
+	fetched, err := service.FetchByID(t.Context(), workflowCreated.ID)
 	require.NoError(t, err)
 	assert.NotNil(t, fetched)
 
 	// Delete workflow
-	err = repo.Delete(t.Context(), workflowCreated.ID)
+	err = service.Delete(t.Context(), workflowCreated.ID)
 	require.NoError(t, err)
 
 	// Verify workflow was deleted
-	fetched, err = repo.FetchByID(t.Context(), workflowCreated.ID)
+	fetched, err = service.FetchByID(t.Context(), workflowCreated.ID)
 	assert.Error(t, err)
 	assert.Nil(t, fetched)
 }
 
-func TestRepository_Delete_NotFound(t *testing.T) {
+func TestWorkflow_Delete_NotFound(t *testing.T) {
 	testDir := t.TempDir()
 	persistence := file.NewPersistence(testDir)
-	repo := NewRepository(persistence)
+	service := NewWorkflow(persistence)
 
 	// Try to delete non-existent workflow
-	err := repo.Delete(t.Context(), "non-existent")
+	err := service.Delete(t.Context(), "non-existent")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "workflow not found")
 }
