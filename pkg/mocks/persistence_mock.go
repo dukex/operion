@@ -24,6 +24,15 @@ func (m *MockWorkflowRepository) GetAll(ctx context.Context) ([]*models.Workflow
 	return args.Get(0).([]*models.Workflow), args.Error(1)
 }
 
+func (m *MockWorkflowRepository) GetAllByOwner(ctx context.Context, ownerID string) ([]*models.Workflow, error) {
+	args := m.Called(ctx, ownerID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+
+	return args.Get(0).([]*models.Workflow), args.Error(1)
+}
+
 func (m *MockWorkflowRepository) Save(ctx context.Context, workflow *models.Workflow) error {
 	args := m.Called(ctx, workflow)
 

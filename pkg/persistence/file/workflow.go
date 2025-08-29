@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/dukex/operion/pkg/models"
+	"github.com/dukex/operion/pkg/persistence"
 )
 
 // WorkflowRepository handles workflow-related file operations.
@@ -46,6 +47,23 @@ func (wr *WorkflowRepository) GetAll(ctx context.Context) ([]*models.Workflow, e
 		}
 
 		workflows = append(workflows, workflow)
+	}
+
+	return workflows, nil
+}
+
+// GetAllByOwner returns all workflows for a specific owner from the file system.
+func (wr *WorkflowRepository) GetAllByOwner(ctx context.Context, ownerID string) ([]*models.Workflow, error) {
+	allWorkflows, err := wr.GetAll(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all workflows: %w", err)
+	}
+
+	workflows := make([]*models.Workflow, 0)
+	for _, workflow := range allWorkflows {
+		if workflow.Owner == ownerID {
+			workflows = append(workflows, workflow)
+		}
 	}
 
 	return workflows, nil
@@ -230,7 +248,7 @@ func (wr *WorkflowRepository) CreateDraftFromPublished(ctx context.Context, work
 	}
 
 	if publishedWorkflow == nil {
-		return nil, fmt.Errorf("no published workflow found for group: %s", workflowGroupID)
+		return nil, persistence.NewWorkflowGroupError("CreateDraftFromPublished", workflowGroupID, persistence.ErrPublishedWorkflowNotFound)
 	}
 
 	// Create draft copy

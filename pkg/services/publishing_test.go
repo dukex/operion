@@ -26,6 +26,17 @@ func (r *testWorkflowRepository) GetAll(ctx context.Context) ([]*models.Workflow
 	return workflows, nil
 }
 
+func (r *testWorkflowRepository) GetAllByOwner(ctx context.Context, ownerID string) ([]*models.Workflow, error) {
+	var workflows []*models.Workflow
+	for _, w := range r.workflows {
+		if w.Owner == ownerID {
+			workflows = append(workflows, w)
+		}
+	}
+
+	return workflows, nil
+}
+
 func (r *testWorkflowRepository) Save(ctx context.Context, workflow *models.Workflow) error {
 	r.workflows[workflow.ID] = workflow
 

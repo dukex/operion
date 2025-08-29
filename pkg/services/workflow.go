@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -13,7 +12,7 @@ import (
 
 var (
 	// ErrWorkflowNotFound is returned when a workflow is not found.
-	ErrWorkflowNotFound = errors.New("workflow not found")
+	ErrWorkflowNotFound = persistence.ErrWorkflowNotFound
 )
 
 type Workflow struct {
@@ -44,6 +43,16 @@ func (w *Workflow) HealthCheck(ctx context.Context) (string, bool) {
 // FetchAll retrieves all workflows.
 func (w *Workflow) FetchAll(ctx context.Context) ([]*models.Workflow, error) {
 	workflows, err := w.persistence.WorkflowRepository().GetAll(ctx)
+	if err != nil {
+		return make([]*models.Workflow, 0), err
+	}
+
+	return workflows, nil
+}
+
+// FetchAllByOwner retrieves all workflows for a specific owner.
+func (w *Workflow) FetchAllByOwner(ctx context.Context, ownerID string) ([]*models.Workflow, error) {
+	workflows, err := w.persistence.WorkflowRepository().GetAllByOwner(ctx, ownerID)
 	if err != nil {
 		return make([]*models.Workflow, 0), err
 	}

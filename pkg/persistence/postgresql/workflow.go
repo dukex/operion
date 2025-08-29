@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dukex/operion/pkg/models"
+	"github.com/dukex/operion/pkg/persistence"
 	"github.com/google/uuid"
 )
 
@@ -48,6 +49,63 @@ func (r *WorkflowRepository) GetAll(ctx context.Context) ([]*models.Workflow, er
 	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query workflows: %w", err)
+	}
+
+	defer func(ctx context.Context, r *WorkflowRepository) {
+		err := rows.Close()
+		if err != nil {
+			r.logger.ErrorContext(ctx, "failed to close rows", "error", err)
+		}
+	}(ctx, r)
+
+	workflows := make([]*models.Workflow, 0)
+
+	for rows.Next() {
+		workflow, err := r.scanWorkflowBase(rows)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan workflow: %w", err)
+		}
+
+		err = r.loadWorkflowNodes(ctx, workflow)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load workflow triggers and nodes: %w", err)
+		}
+
+		workflows = append(workflows, workflow)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("error iterating workflows: %w", err)
+	}
+
+	return workflows, nil
+}
+
+// GetAllByOwner returns all workflows for a specific owner from the database.
+func (r *WorkflowRepository) GetAllByOwner(ctx context.Context, ownerID string) ([]*models.Workflow, error) {
+	query := `
+		SELECT
+			id
+		  , name
+		  , description
+		  , variables
+		  , status
+		  , metadata
+		  , owner
+		  , workflow_group_id
+		  , published_at
+		  , created_at
+		  , updated_at
+		  , deleted_at
+		FROM workflows
+		WHERE owner = $1 AND deleted_at IS NULL
+		ORDER BY created_at DESC
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, ownerID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query workflows by owner: %w", err)
 	}
 
 	defer func(ctx context.Context, r *WorkflowRepository) {
@@ -439,7 +497,7 @@ func (r *WorkflowRepository) CreateDraftFromPublished(ctx context.Context, workf
 	}
 
 	if publishedWorkflow == nil {
-		return nil, fmt.Errorf("no published workflow found for group: %s", workflowGroupID)
+		return nil, persistence.NewWorkflowGroupError("CreateDraftFromPublished", workflowGroupID, persistence.ErrPublishedWorkflowNotFound)
 	}
 
 	// Create draft copy

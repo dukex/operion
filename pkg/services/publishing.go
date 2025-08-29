@@ -31,7 +31,7 @@ func (p *Publishing) PublishWorkflow(ctx context.Context, workflowID string) (*m
 	}
 
 	if workflow == nil {
-		return nil, fmt.Errorf("workflow not found: %s", workflowID)
+		return nil, persistence.NewWorkflowError("PublishWorkflow", workflowID, persistence.ErrWorkflowNotFound)
 	}
 
 	if err := p.validateForPublishing(workflow); err != nil {

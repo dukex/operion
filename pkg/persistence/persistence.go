@@ -25,6 +25,7 @@ type Persistence interface {
 type WorkflowRepository interface {
 	// Basic CRUD operations
 	GetAll(ctx context.Context) ([]*models.Workflow, error)
+	GetAllByOwner(ctx context.Context, ownerID string) ([]*models.Workflow, error)
 	Save(ctx context.Context, workflow *models.Workflow) error
 	GetByID(ctx context.Context, id string) (*models.Workflow, error)
 	Delete(ctx context.Context, id string) error
