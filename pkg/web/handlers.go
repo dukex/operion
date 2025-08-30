@@ -325,15 +325,7 @@ func (h *APIHandlers) CreateWorkflowNode(c fiber.Ctx) error {
 
 	node, err := h.nodeService.CreateNode(c.Context(), workflowID, serviceReq)
 	if err != nil {
-		if persistence.IsWorkflowNotFound(err) {
-			return notFound(c, "Workflow not found")
-		}
-
-		if strings.Contains(err.Error(), "cannot modify nodes") {
-			return badRequest(c, err.Error())
-		}
-
-		return internalError(c, err)
+		return handleServiceError(c, err)
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(node)
@@ -371,19 +363,7 @@ func (h *APIHandlers) UpdateWorkflowNode(c fiber.Ctx) error {
 
 	node, err := h.nodeService.UpdateNode(c.Context(), workflowID, nodeID, serviceReq)
 	if err != nil {
-		if persistence.IsWorkflowNotFound(err) {
-			return notFound(c, "Workflow not found")
-		}
-
-		if strings.Contains(err.Error(), "node not found") {
-			return notFound(c, "Node not found")
-		}
-
-		if strings.Contains(err.Error(), "cannot modify nodes") {
-			return badRequest(c, err.Error())
-		}
-
-		return internalError(c, err)
+		return handleServiceError(c, err)
 	}
 
 	return c.JSON(node)
@@ -403,19 +383,7 @@ func (h *APIHandlers) DeleteWorkflowNode(c fiber.Ctx) error {
 
 	err := h.nodeService.DeleteNode(c.Context(), workflowID, nodeID)
 	if err != nil {
-		if persistence.IsWorkflowNotFound(err) {
-			return notFound(c, "Workflow not found")
-		}
-
-		if strings.Contains(err.Error(), "node not found") {
-			return notFound(c, "Node not found")
-		}
-
-		if strings.Contains(err.Error(), "cannot modify nodes") {
-			return badRequest(c, err.Error())
-		}
-
-		return internalError(c, err)
+		return handleServiceError(c, err)
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)
@@ -435,15 +403,7 @@ func (h *APIHandlers) GetWorkflowNode(c fiber.Ctx) error {
 
 	node, err := h.nodeService.GetNode(c.Context(), workflowID, nodeID)
 	if err != nil {
-		if persistence.IsWorkflowNotFound(err) {
-			return notFound(c, "Workflow not found")
-		}
-
-		if strings.Contains(err.Error(), "node not found") {
-			return notFound(c, "Node not found")
-		}
-
-		return internalError(c, err)
+		return handleServiceError(c, err)
 	}
 
 	// Transform response based on node type

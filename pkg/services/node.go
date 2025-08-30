@@ -3,6 +3,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/dukex/operion/pkg/models"
@@ -61,7 +62,17 @@ func (n *Node) CreateNode(ctx context.Context, workflowID string, req *CreateNod
 
 	// Only allow modifications on draft workflows
 	if workflow.Status != models.WorkflowStatusDraft {
-		return nil, fmt.Errorf("cannot modify nodes in %s workflow", workflow.Status)
+		switch workflow.Status {
+		case models.WorkflowStatusDraft:
+			// This case should never be reached due to the outer condition
+			return nil, errors.New("unexpected draft status in non-draft condition")
+		case models.WorkflowStatusPublished:
+			return nil, ErrCannotModifyPublished
+		case models.WorkflowStatusUnpublished:
+			return nil, ErrCannotModifyUnpublished
+		default:
+			return nil, fmt.Errorf("cannot modify nodes in %s workflow", workflow.Status)
+		}
 	}
 
 	// Create new node with generated UUID
@@ -114,7 +125,17 @@ func (n *Node) UpdateNode(ctx context.Context, workflowID, nodeID string, req *U
 
 	// Only allow modifications on draft workflows
 	if workflow.Status != models.WorkflowStatusDraft {
-		return nil, fmt.Errorf("cannot modify nodes in %s workflow", workflow.Status)
+		switch workflow.Status {
+		case models.WorkflowStatusDraft:
+			// This case should never be reached due to the outer condition
+			return nil, errors.New("unexpected draft status in non-draft condition")
+		case models.WorkflowStatusPublished:
+			return nil, ErrCannotModifyPublished
+		case models.WorkflowStatusUnpublished:
+			return nil, ErrCannotModifyUnpublished
+		default:
+			return nil, fmt.Errorf("cannot modify nodes in %s workflow", workflow.Status)
+		}
 	}
 
 	// Get existing node
@@ -163,7 +184,17 @@ func (n *Node) DeleteNode(ctx context.Context, workflowID, nodeID string) error 
 
 	// Only allow modifications on draft workflows
 	if workflow.Status != models.WorkflowStatusDraft {
-		return fmt.Errorf("cannot modify nodes in %s workflow", workflow.Status)
+		switch workflow.Status {
+		case models.WorkflowStatusDraft:
+			// This case should never be reached due to the outer condition
+			return errors.New("unexpected draft status in non-draft condition")
+		case models.WorkflowStatusPublished:
+			return ErrCannotModifyPublished
+		case models.WorkflowStatusUnpublished:
+			return ErrCannotModifyUnpublished
+		default:
+			return fmt.Errorf("cannot modify nodes in %s workflow", workflow.Status)
+		}
 	}
 
 	// Delete the node and its connections using transaction

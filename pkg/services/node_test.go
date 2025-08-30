@@ -245,7 +245,7 @@ func TestNode_CreateNode(t *testing.T) {
 				mp.On("WorkflowRepository").Return(mwr)
 				mwr.On("GetByID", mock.Anything, "published-workflow").Return(workflow, nil)
 			},
-			expectedError: "cannot modify nodes in published workflow",
+			expectedError: "cannot modify published workflow",
 		},
 	}
 
@@ -436,7 +436,7 @@ func TestNode_DeleteNode(t *testing.T) {
 				mp.On("WorkflowRepository").Return(mwr)
 				mwr.On("GetByID", mock.Anything, "published-workflow").Return(workflow, nil)
 			},
-			expectedError: "cannot modify nodes in published workflow",
+			expectedError: "cannot modify published workflow",
 		},
 	}
 

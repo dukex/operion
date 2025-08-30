@@ -9,6 +9,7 @@ import (
 	"log/slog"
 
 	"github.com/dukex/operion/pkg/models"
+	"github.com/dukex/operion/pkg/persistence"
 )
 
 // NodeRepository handles node-related database operations.
@@ -73,7 +74,7 @@ func (nr *NodeRepository) GetNodeByWorkflow(ctx context.Context, workflowID, nod
 	node, err := nr.scanNode(row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("node not found: %s in workflow %s", nodeID, workflowID)
+			return nil, persistence.ErrNodeNotFound
 		}
 
 		return nil, fmt.Errorf("failed to scan node: %w", err)

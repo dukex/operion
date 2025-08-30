@@ -104,7 +104,7 @@ func (nr *nodeRepository) GetNodeByWorkflow(ctx context.Context, workflowID, nod
 		}
 	}
 
-	return nil, fmt.Errorf("node not found: %s in workflow %s", nodeID, workflowID)
+	return nil, persistence.ErrNodeNotFound
 }
 
 func (nr *nodeRepository) SaveNode(ctx context.Context, workflowID string, node *models.WorkflowNode) error {

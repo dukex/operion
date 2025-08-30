@@ -20,6 +20,10 @@ var (
 	ErrNodesRequired        = errors.New("workflow must have at least one node")
 	ErrTriggerNodeRequired  = errors.New("workflow must have at least one enabled trigger node")
 	ErrWorkflowNil          = errors.New("workflow cannot be nil")
+
+	// Business Logic Conflicts (409 Conflict).
+	ErrCannotModifyPublished   = errors.New("cannot modify published workflow")
+	ErrCannotModifyUnpublished = errors.New("cannot modify unpublished workflow")
 )
 
 // ServiceError wraps service-level errors with additional context.
@@ -57,6 +61,12 @@ func IsValidationError(err error) bool {
 		errors.Is(err, ErrNodesRequired) ||
 		errors.Is(err, ErrTriggerNodeRequired) ||
 		errors.Is(err, ErrWorkflowNil)
+}
+
+// IsConflictError checks if an error is a business logic conflict that should return HTTP 409.
+func IsConflictError(err error) bool {
+	return errors.Is(err, ErrCannotModifyPublished) ||
+		errors.Is(err, ErrCannotModifyUnpublished)
 }
 
 // NewValidationError creates a new validation error with context.
