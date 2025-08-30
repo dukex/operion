@@ -9,7 +9,7 @@ import (
 
 	"github.com/dukex/operion/pkg/cmd"
 	"github.com/dukex/operion/pkg/models"
-	"github.com/dukex/operion/pkg/workflow"
+	"github.com/dukex/operion/pkg/services"
 	"github.com/go-playground/validator/v10"
 	"github.com/urfave/cli/v3"
 )
@@ -50,9 +50,9 @@ func NewValidateCommand() *cli.Command {
 				}
 			}()
 
-			workflowRepository := workflow.NewRepository(persistence)
+			workflowService := services.NewWorkflow(persistence)
 
-			workflows, err := workflowRepository.FetchAll(ctx)
+			workflows, err := workflowService.FetchAll(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to fetch workflows: %w", err)
 			}
