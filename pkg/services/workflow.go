@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -137,12 +136,22 @@ func (w *Workflow) validateListWorkflowsRequest(req *ListWorkflowsRequest) error
 	}
 
 	if !validSort {
-		return fmt.Errorf("invalid sort field '%s', allowed: %s", req.SortBy, strings.Join(allowedSorts, ", "))
+		return NewValidationError(
+			"validateListWorkflowsRequest",
+			"INVALID_SORT_FIELD",
+			fmt.Sprintf("invalid sort field '%s', allowed: %s", req.SortBy, strings.Join(allowedSorts, ", ")),
+			ErrInvalidSortField,
+		)
 	}
 
 	// Validate sort order
 	if req.SortOrder != "asc" && req.SortOrder != "desc" {
-		return fmt.Errorf("invalid sort order '%s', allowed: asc, desc", req.SortOrder)
+		return NewValidationError(
+			"validateListWorkflowsRequest",
+			"INVALID_SORT_ORDER",
+			fmt.Sprintf("invalid sort order '%s', allowed: asc, desc", req.SortOrder),
+			ErrInvalidSortOrder,
+		)
 	}
 
 	// Validate status if provided
@@ -163,7 +172,12 @@ func (w *Workflow) validateListWorkflowsRequest(req *ListWorkflowsRequest) error
 		}
 
 		if !validStatus {
-			return fmt.Errorf("invalid status '%s'", *req.Status)
+			return NewValidationError(
+				"validateListWorkflowsRequest",
+				"INVALID_STATUS",
+				fmt.Sprintf("invalid status '%s'", *req.Status),
+				ErrInvalidStatus,
+			)
 		}
 	}
 
@@ -171,7 +185,7 @@ func (w *Workflow) validateListWorkflowsRequest(req *ListWorkflowsRequest) error
 	if req.OwnerID != "" {
 		req.OwnerID = strings.TrimSpace(req.OwnerID)
 		if req.OwnerID == "" {
-			return errors.New("owner ID cannot be empty or whitespace")
+			return ErrEmptyOwnerID
 		}
 	}
 

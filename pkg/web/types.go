@@ -1,6 +1,12 @@
 // Package web provides HTTP request and response types for the workflow API.
 package web
 
+// ErrorResponse represents a standardized API error response.
+type ErrorResponse struct {
+	Error string `json:"error"`
+	Code  string `json:"code"`
+}
+
 // CreateWorkflowRequest represents the request body for creating a new workflow.
 type CreateWorkflowRequest struct {
 	Name        string         `json:"name"               validate:"required,min=3"`
