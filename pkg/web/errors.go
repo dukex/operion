@@ -45,11 +45,27 @@ func handleServiceError(c fiber.Ctx, err error) error {
 
 		return c.Status(fiber.StatusBadRequest).JSON(problem)
 
+	case services.IsConflictError(err):
+		problem := problems.NewStatusProblem(409).
+			WithInstance(c.Path()).
+			WithType("conflict").
+			WithDetail(err.Error())
+
+		return c.Status(fiber.StatusConflict).JSON(problem)
+
 	case persistence.IsWorkflowNotFound(err):
 		problem := problems.NewStatusProblem(404).
 			WithInstance(c.Path()).
 			WithType("workflow_not_found").
 			WithDetail("workflow not found")
+
+		return c.Status(fiber.StatusNotFound).JSON(problem)
+
+	case persistence.IsNodeNotFound(err):
+		problem := problems.NewStatusProblem(404).
+			WithInstance(c.Path()).
+			WithType("node_not_found").
+			WithDetail("node not found")
 
 		return c.Status(fiber.StatusNotFound).JSON(problem)
 
