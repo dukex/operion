@@ -3,7 +3,6 @@ package services
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/dukex/operion/pkg/models"
@@ -70,15 +69,15 @@ func (p *Publishing) GetDraftWorkflow(ctx context.Context, workflowGroupID strin
 // validateForPublishing ensures a workflow is ready to be published.
 func (p *Publishing) validateForPublishing(workflow *models.Workflow) error {
 	if workflow == nil {
-		return errors.New("workflow cannot be nil")
+		return ErrWorkflowNil
 	}
 
 	if workflow.Name == "" {
-		return errors.New("workflow name cannot be empty")
+		return ErrWorkflowNameRequired
 	}
 
 	if len(workflow.Nodes) == 0 {
-		return errors.New("workflow must have at least one node")
+		return ErrNodesRequired
 	}
 
 	// Ensure there is at least one trigger node
@@ -93,7 +92,7 @@ func (p *Publishing) validateForPublishing(workflow *models.Workflow) error {
 	}
 
 	if !hasTrigger {
-		return errors.New("workflow must have at least one enabled trigger node")
+		return ErrTriggerNodeRequired
 	}
 
 	return nil

@@ -4,7 +4,6 @@ package web
 import (
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/dukex/operion/pkg/models"
@@ -49,11 +48,7 @@ func (h *APIHandlers) GetWorkflows(c fiber.Ctx) error {
 	// Call service layer
 	result, err := h.workflowService.ListWorkflows(c.Context(), *req)
 	if err != nil {
-		if strings.Contains(err.Error(), "invalid request") {
-			return badRequest(c, err.Error())
-		}
-
-		return internalError(c, err)
+		return handleServiceError(c, err)
 	}
 
 	// Return structured response with pagination metadata
@@ -195,7 +190,7 @@ func (h *APIHandlers) CreateWorkflow(c fiber.Ctx) error {
 
 	created, err := h.workflowService.Create(c.Context(), workflow)
 	if err != nil {
-		return internalError(c, err)
+		return handleServiceError(c, err)
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(created)
@@ -277,15 +272,7 @@ func (h *APIHandlers) PublishWorkflow(c fiber.Ctx) error {
 
 	published, err := h.publishingService.PublishWorkflow(c.Context(), id)
 	if err != nil {
-		if persistence.IsWorkflowNotFound(err) {
-			return notFound(c, "Workflow not found")
-		}
-
-		if strings.Contains(err.Error(), "validation failed") {
-			return badRequest(c, err.Error())
-		}
-
-		return internalError(c, err)
+		return handleServiceError(c, err)
 	}
 
 	return c.JSON(published)
