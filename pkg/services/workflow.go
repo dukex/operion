@@ -69,9 +69,9 @@ type ListWorkflowsResponse struct {
 }
 
 // ListWorkflows retrieves workflows with filtering, sorting, and pagination.
-func (w *Workflow) ListWorkflows(ctx context.Context, req ListWorkflowsRequest) (*ListWorkflowsResponse, error) {
+func (w *Workflow) ListWorkflows(ctx context.Context, req *ListWorkflowsRequest) (*ListWorkflowsResponse, error) {
 	// Validate and set defaults
-	if err := w.validateListWorkflowsRequest(&req); err != nil {
+	if err := w.validateListWorkflowsRequest(req); err != nil {
 		return nil, fmt.Errorf("invalid request: %w", err)
 	}
 

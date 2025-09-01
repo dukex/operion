@@ -131,7 +131,7 @@ func TestWorkflow_FetchAll(t *testing.T) {
 	}
 
 	// Fetch all workflows
-	result, err := service.ListWorkflows(t.Context(), ListWorkflowsRequest{
+	result, err := service.ListWorkflows(t.Context(), &ListWorkflowsRequest{
 		Limit:     100,
 		SortBy:    "created_at",
 		SortOrder: "desc",
@@ -356,7 +356,7 @@ func TestListWorkflows_InvalidSortField(t *testing.T) {
 	}
 
 	// Test that invalid sort field returns validation error
-	_, err := service.ListWorkflows(context.Background(), req)
+	_, err := service.ListWorkflows(context.Background(), &req)
 	require.Error(t, err)
 
 	// Verify it's identified as validation error
@@ -379,7 +379,7 @@ func TestListWorkflows_InvalidSortOrder(t *testing.T) {
 	}
 
 	// Test that invalid sort order returns validation error
-	_, err := service.ListWorkflows(context.Background(), req)
+	_, err := service.ListWorkflows(context.Background(), &req)
 	require.Error(t, err)
 
 	// Verify it's identified as validation error
@@ -401,7 +401,7 @@ func TestListWorkflows_EmptyOwnerID(t *testing.T) {
 	}
 
 	// Test that empty owner ID returns validation error
-	_, err := service.ListWorkflows(context.Background(), req)
+	_, err := service.ListWorkflows(context.Background(), &req)
 	require.Error(t, err)
 
 	// Verify it's identified as validation error
@@ -409,6 +409,59 @@ func TestListWorkflows_EmptyOwnerID(t *testing.T) {
 
 	// Verify it contains the specific error
 	assert.ErrorIs(t, err, ErrEmptyOwnerID)
+}
+
+// TestWorkflow_ListWorkflows_DefaultsApplied verifies that default values are applied to the request.
+func TestWorkflow_ListWorkflows_DefaultsApplied(t *testing.T) {
+	testDir := t.TempDir()
+	persistence := file.NewPersistence(testDir)
+	service := NewWorkflow(persistence)
+
+	// Create a workflow to ensure non-empty results
+	workflow := &models.Workflow{
+		Name:        "Test Workflow",
+		Description: "Test Description",
+		Status:      models.WorkflowStatusDraft,
+		Owner:       "test-owner",
+	}
+	_, err := service.Create(t.Context(), workflow)
+	require.NoError(t, err)
+
+	// Test with empty request - should apply defaults
+	req := &ListWorkflowsRequest{}
+	
+	result, err := service.ListWorkflows(t.Context(), req)
+	require.NoError(t, err)
+	assert.NotNil(t, result)
+	
+	// Verify that defaults were applied to the original request
+	assert.Equal(t, 20, req.Limit, "Default limit should be applied")
+	assert.Equal(t, 0, req.Offset, "Default offset should be applied")
+	assert.Equal(t, "created_at", req.SortBy, "Default sort_by should be applied")
+	assert.Equal(t, "desc", req.SortOrder, "Default sort_order should be applied")
+}
+
+// TestWorkflow_ListWorkflows_PartialDefaults verifies that only missing values get defaults.
+func TestWorkflow_ListWorkflows_PartialDefaults(t *testing.T) {
+	testDir := t.TempDir()
+	persistence := file.NewPersistence(testDir)
+	service := NewWorkflow(persistence)
+
+	// Test with partial request - should only apply defaults for missing values
+	req := &ListWorkflowsRequest{
+		Limit:  50,      // Provided
+		SortBy: "name",  // Provided
+		// SortOrder and Offset not provided - should get defaults
+	}
+	
+	_, err := service.ListWorkflows(t.Context(), req)
+	require.NoError(t, err)
+	
+	// Verify that provided values are kept and defaults applied for missing ones
+	assert.Equal(t, 50, req.Limit, "Provided limit should be kept")
+	assert.Equal(t, "name", req.SortBy, "Provided sort_by should be kept")
+	assert.Equal(t, "desc", req.SortOrder, "Default sort_order should be applied")
+	assert.Equal(t, 0, req.Offset, "Default offset should be applied")
 }
 
 // TestCreateWorkflow_InvalidConnection tests that invalid connection data returns proper validation error.

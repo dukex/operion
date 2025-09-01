@@ -43,7 +43,7 @@ func (h *APIHandlers) GetWorkflows(c fiber.Ctx) error {
 	}
 
 	// Call service layer
-	result, err := h.workflowService.ListWorkflows(c.Context(), *req)
+	result, err := h.workflowService.ListWorkflows(c.Context(), req)
 	if err != nil {
 		return handleServiceError(c, err)
 	}
