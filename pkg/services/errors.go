@@ -20,6 +20,9 @@ var (
 	ErrNodesRequired        = errors.New("workflow must have at least one node")
 	ErrTriggerNodeRequired  = errors.New("workflow must have at least one enabled trigger node")
 	ErrWorkflowNil          = errors.New("workflow cannot be nil")
+
+	// Connection/Port validation errors.
+	ErrInvalidConnectionData = errors.New("invalid connection data")
 )
 
 // ServiceError wraps service-level errors with additional context.
@@ -56,7 +59,8 @@ func IsValidationError(err error) bool {
 		errors.Is(err, ErrWorkflowNameRequired) ||
 		errors.Is(err, ErrNodesRequired) ||
 		errors.Is(err, ErrTriggerNodeRequired) ||
-		errors.Is(err, ErrWorkflowNil)
+		errors.Is(err, ErrWorkflowNil) ||
+		errors.Is(err, ErrInvalidConnectionData)
 }
 
 // NewValidationError creates a new validation error with context.

@@ -48,7 +48,7 @@ func (wr *WorkflowRepository) ListWorkflows(ctx context.Context, opts persistenc
 		"name":       true,
 	}
 	if !allowedSorts[opts.SortBy] {
-		return nil, fmt.Errorf("invalid sort field: %s", opts.SortBy)
+		return nil, persistence.ErrInvalidSortField
 	}
 
 	// Get all workflows from filesystem

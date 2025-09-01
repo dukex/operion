@@ -59,10 +59,15 @@ func NewValidateCommand() *cli.Command {
 
 			workflowService := services.NewWorkflow(persistence)
 
-			workflows, err := workflowService.FetchAll(ctx)
+			result, err := workflowService.ListWorkflows(ctx, services.ListWorkflowsRequest{
+				Limit:     100,
+				SortBy:    "created_at",
+				SortOrder: "desc",
+			})
 			if err != nil {
 				return fmt.Errorf("failed to fetch workflows: %w", err)
 			}
+			workflows := result.Workflows
 
 			logger.Info("Validating source provider configurations", "workflows", len(workflows))
 

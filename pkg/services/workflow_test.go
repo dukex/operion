@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"testing"
 
 	"github.com/dukex/operion/pkg/models"
@@ -129,9 +130,14 @@ func TestWorkflow_FetchAll(t *testing.T) {
 	}
 
 	// Fetch all workflows
-	fetchedWorkflows, err := service.FetchAll(t.Context())
+	result, err := service.ListWorkflows(t.Context(), ListWorkflowsRequest{
+		Limit:     100,
+		SortBy:    "created_at",
+		SortOrder: "desc",
+	})
 	require.NoError(t, err)
-	assert.Len(t, fetchedWorkflows, 2)
+	assert.Len(t, result.Workflows, 2)
+	fetchedWorkflows := result.Workflows
 
 	// Verify workflows were fetched
 	workflowNames := make([]string, len(fetchedWorkflows))
@@ -244,4 +250,199 @@ func TestWorkflow_Delete_NotFound(t *testing.T) {
 	err := service.Delete(t.Context(), "non-existent")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "workflow not found")
+}
+
+// TestIsValidationError tests the IsValidationError function comprehensively.
+func TestIsValidationError(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      error
+		expected bool
+	}{
+		{
+			name:     "ErrInvalidRequest should be validation error",
+			err:      ErrInvalidRequest,
+			expected: true,
+		},
+		{
+			name:     "ErrInvalidSortField should be validation error",
+			err:      ErrInvalidSortField,
+			expected: true,
+		},
+		{
+			name:     "ErrInvalidSortOrder should be validation error",
+			err:      ErrInvalidSortOrder,
+			expected: true,
+		},
+		{
+			name:     "ErrInvalidStatus should be validation error",
+			err:      ErrInvalidStatus,
+			expected: true,
+		},
+		{
+			name:     "ErrEmptyOwnerID should be validation error",
+			err:      ErrEmptyOwnerID,
+			expected: true,
+		},
+		{
+			name:     "ErrWorkflowNameRequired should be validation error",
+			err:      ErrWorkflowNameRequired,
+			expected: true,
+		},
+		{
+			name:     "ErrNodesRequired should be validation error",
+			err:      ErrNodesRequired,
+			expected: true,
+		},
+		{
+			name:     "ErrTriggerNodeRequired should be validation error",
+			err:      ErrTriggerNodeRequired,
+			expected: true,
+		},
+		{
+			name:     "ErrWorkflowNil should be validation error",
+			err:      ErrWorkflowNil,
+			expected: true,
+		},
+		{
+			name:     "ErrInvalidConnectionData should be validation error",
+			err:      ErrInvalidConnectionData,
+			expected: true,
+		},
+		{
+			name:     "ErrWorkflowNotFound should NOT be validation error",
+			err:      ErrWorkflowNotFound,
+			expected: false,
+		},
+		{
+			name:     "Generic error should NOT be validation error",
+			err:      assert.AnError,
+			expected: false,
+		},
+		{
+			name:     "Nil error should NOT be validation error",
+			err:      nil,
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := IsValidationError(tt.err)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+// TestListWorkflows_InvalidSortField tests that invalid sort field returns proper validation error.
+func TestListWorkflows_InvalidSortField(t *testing.T) {
+	testDir := t.TempDir()
+	persistence := file.NewPersistence(testDir)
+	service := NewWorkflow(persistence)
+
+	req := ListWorkflowsRequest{
+		SortBy:    "invalid_field",
+		SortOrder: "asc",
+		Limit:     10,
+	}
+
+	// Test that invalid sort field returns validation error
+	_, err := service.ListWorkflows(context.Background(), req)
+	require.Error(t, err)
+
+	// Verify it's identified as validation error
+	assert.True(t, IsValidationError(err), "Invalid sort field should be identified as validation error")
+
+	// Verify it contains the specific error
+	assert.ErrorIs(t, err, ErrInvalidSortField)
+}
+
+// TestListWorkflows_InvalidSortOrder tests that invalid sort order returns proper validation error.
+func TestListWorkflows_InvalidSortOrder(t *testing.T) {
+	testDir := t.TempDir()
+	persistence := file.NewPersistence(testDir)
+	service := NewWorkflow(persistence)
+
+	req := ListWorkflowsRequest{
+		SortBy:    "name",
+		SortOrder: "invalid_order",
+		Limit:     10,
+	}
+
+	// Test that invalid sort order returns validation error
+	_, err := service.ListWorkflows(context.Background(), req)
+	require.Error(t, err)
+
+	// Verify it's identified as validation error
+	assert.True(t, IsValidationError(err), "Invalid sort order should be identified as validation error")
+
+	// Verify it contains the specific error
+	assert.ErrorIs(t, err, ErrInvalidSortOrder)
+}
+
+// TestListWorkflows_EmptyOwnerID tests that empty owner ID returns proper validation error.
+func TestListWorkflows_EmptyOwnerID(t *testing.T) {
+	testDir := t.TempDir()
+	persistence := file.NewPersistence(testDir)
+	service := NewWorkflow(persistence)
+
+	req := ListWorkflowsRequest{
+		OwnerID: "  ", // Empty after trim
+		Limit:   10,
+	}
+
+	// Test that empty owner ID returns validation error
+	_, err := service.ListWorkflows(context.Background(), req)
+	require.Error(t, err)
+
+	// Verify it's identified as validation error
+	assert.True(t, IsValidationError(err), "Empty owner ID should be identified as validation error")
+
+	// Verify it contains the specific error
+	assert.ErrorIs(t, err, ErrEmptyOwnerID)
+}
+
+// TestCreateWorkflow_InvalidConnection tests that invalid connection data returns proper validation error.
+func TestCreateWorkflow_InvalidConnection(t *testing.T) {
+	testDir := t.TempDir()
+	persistence := file.NewPersistence(testDir)
+	service := NewWorkflow(persistence)
+
+	workflow := &models.Workflow{
+		Name:   "Test Workflow",
+		Status: models.WorkflowStatusDraft,
+		Nodes: []*models.WorkflowNode{
+			{
+				ID:       "node1",
+				Type:     "log",
+				Category: models.CategoryTypeAction,
+				Config:   map[string]any{"message": "test"},
+				Enabled:  true,
+			},
+			{
+				ID:       "node2",
+				Type:     "log",
+				Category: models.CategoryTypeAction,
+				Config:   map[string]any{"message": "test2"},
+				Enabled:  true,
+			},
+		},
+		Connections: []*models.Connection{
+			{
+				ID:         "conn1",
+				SourcePort: "invalid-format", // Missing node.port format
+				TargetPort: "node2.input",
+			},
+		},
+	}
+
+	// Test that invalid connection format returns validation error
+	_, err := service.Create(context.Background(), workflow)
+	if err != nil {
+		// Verify it's identified as validation error
+		assert.True(t, IsValidationError(err), "Invalid connection data should be identified as validation error")
+
+		// Verify it contains the specific error
+		assert.ErrorIs(t, err, ErrInvalidConnectionData)
+	}
 }
