@@ -96,13 +96,13 @@ func TestWorkflowRepository_saveWorkflowConnections_InvalidPortFormat(t *testing
 		{
 			name:        "invalid source port format should return ErrInvalidPortFormat",
 			sourcePort:  "invalid-format",
-			targetPort:  "node2.input",
+			targetPort:  "node2:input",
 			expectError: true,
 			expectedErr: persistence.ErrInvalidPortFormat,
 		},
 		{
 			name:        "invalid target port format should return ErrInvalidPortFormat",
-			sourcePort:  "node1.output",
+			sourcePort:  "node1:output",
 			targetPort:  "invalid-format",
 			expectError: true,
 			expectedErr: persistence.ErrInvalidPortFormat,
@@ -117,29 +117,23 @@ func TestWorkflowRepository_saveWorkflowConnections_InvalidPortFormat(t *testing
 		{
 			name:        "empty source port should return ErrInvalidPortFormat",
 			sourcePort:  "",
-			targetPort:  "node2.input",
+			targetPort:  "node2:input",
 			expectError: true,
 			expectedErr: persistence.ErrInvalidPortFormat,
 		},
 		{
 			name:        "empty target port should return ErrInvalidPortFormat",
-			sourcePort:  "node1.output",
+			sourcePort:  "node1:output",
 			targetPort:  "",
 			expectError: true,
 			expectedErr: persistence.ErrInvalidPortFormat,
 		},
 		{
-			name:        "port without dot separator should return ErrInvalidPortFormat",
+			name:        "port without colon separator should return ErrInvalidPortFormat",
 			sourcePort:  "node1output",
-			targetPort:  "node2.input",
+			targetPort:  "node2:input",
 			expectError: true,
 			expectedErr: persistence.ErrInvalidPortFormat,
-		},
-		{
-			name:        "valid port formats should not return error initially",
-			sourcePort:  "node1.output",
-			targetPort:  "node2.input",
-			expectError: false, // Note: will fail later due to nil tx, but not on port validation
 		},
 	}
 
@@ -169,6 +163,52 @@ func TestWorkflowRepository_saveWorkflowConnections_InvalidPortFormat(t *testing
 				if err != nil {
 					assert.False(t, persistence.IsInvalidPortFormat(err))
 				}
+			}
+		})
+	}
+}
+
+// TestWorkflowRepository_ValidPortFormats tests that valid port formats are parsed correctly.
+func TestWorkflowRepository_ValidPortFormats(t *testing.T) {
+	tests := []struct {
+		name       string
+		sourcePort string
+		targetPort string
+		shouldPass bool
+	}{
+		{
+			name:       "valid port formats with colon separator",
+			sourcePort: "node1:output",
+			targetPort: "node2:input",
+			shouldPass: true,
+		},
+		{
+			name:       "invalid port format without colon",
+			sourcePort: "node1output",
+			targetPort: "node2:input",
+			shouldPass: false,
+		},
+		{
+			name:       "empty port",
+			sourcePort: "",
+			targetPort: "node2:input",
+			shouldPass: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Test source port parsing
+			_, _, sourceOK := models.ParsePortID(tt.sourcePort)
+			// Test target port parsing
+			_, _, targetOK := models.ParsePortID(tt.targetPort)
+
+			if tt.shouldPass {
+				assert.True(t, sourceOK, "Source port should be valid")
+				assert.True(t, targetOK, "Target port should be valid")
+			} else {
+				// At least one should be invalid
+				assert.False(t, sourceOK && targetOK, "At least one port should be invalid")
 			}
 		})
 	}
@@ -240,7 +280,7 @@ func TestConnectionRepository_SaveConnection_InvalidPortFormat(t *testing.T) {
 			connection: &models.Connection{
 				ID:         "conn1",
 				SourcePort: "invalid-format",
-				TargetPort: "node2.input",
+				TargetPort: "node2:input",
 			},
 			wantErr: persistence.ErrInvalidPortFormat,
 		},
@@ -248,7 +288,7 @@ func TestConnectionRepository_SaveConnection_InvalidPortFormat(t *testing.T) {
 			name: "invalid target port format should return ErrInvalidPortFormat",
 			connection: &models.Connection{
 				ID:         "conn1",
-				SourcePort: "node1.output",
+				SourcePort: "node1:output",
 				TargetPort: "invalid-format",
 			},
 			wantErr: persistence.ErrInvalidPortFormat,
@@ -258,7 +298,7 @@ func TestConnectionRepository_SaveConnection_InvalidPortFormat(t *testing.T) {
 			connection: &models.Connection{
 				ID:         "conn1",
 				SourcePort: "node1output",
-				TargetPort: "node2.input",
+				TargetPort: "node2:input",
 			},
 			wantErr: persistence.ErrInvalidPortFormat,
 		},
