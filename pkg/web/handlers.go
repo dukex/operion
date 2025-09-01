@@ -130,11 +130,7 @@ func (h *APIHandlers) GetWorkflow(c fiber.Ctx) error {
 
 	workflow, err := h.workflowService.FetchByID(c.Context(), id)
 	if err != nil {
-		if persistence.IsWorkflowNotFound(err) {
-			return notFound(c, "Workflow not found")
-		}
-
-		return internalError(c, err)
+		return handleServiceError(c, err)
 	}
 
 	return c.JSON(workflow)
@@ -211,11 +207,7 @@ func (h *APIHandlers) UpdateWorkflow(c fiber.Ctx) error {
 	// Get existing workflow and merge changes
 	existing, err := h.workflowService.FetchByID(c.Context(), id)
 	if err != nil {
-		if persistence.IsWorkflowNotFound(err) {
-			return notFound(c, "Workflow not found")
-		}
-
-		return internalError(c, err)
+		return handleServiceError(c, err)
 	}
 
 	// Apply partial updates (nodes and connections managed separately)
@@ -235,9 +227,9 @@ func (h *APIHandlers) UpdateWorkflow(c fiber.Ctx) error {
 		existing.Metadata = req.Metadata
 	}
 
-	updated, err := h.workflowService.Update(c.Context(), id, existing)
+	updated, err := h.workflowService.Update(c.Context(), existing)
 	if err != nil {
-		return internalError(c, err)
+		return handleServiceError(c, err)
 	}
 
 	return c.JSON(updated)
@@ -251,11 +243,7 @@ func (h *APIHandlers) DeleteWorkflow(c fiber.Ctx) error {
 
 	err := h.workflowService.Delete(c.Context(), id)
 	if err != nil {
-		if persistence.IsWorkflowNotFound(err) {
-			return notFound(c, "Workflow not found")
-		}
-
-		return internalError(c, err)
+		return handleServiceError(c, err)
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)

@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/persistence/file"
@@ -172,12 +173,14 @@ func TestWorkflow_Update(t *testing.T) {
 
 	// Update workflow
 	updatedWorkflow := &models.Workflow{
+		ID:          workflowCreated.ID,
 		Name:        "Updated Workflow",
 		Description: "Updated description",
 		Status:      models.WorkflowStatusPublished,
+		CreatedAt:   workflowCreated.CreatedAt, // Preserve original creation time
 	}
 
-	result, err := service.Update(t.Context(), workflowCreated.ID, updatedWorkflow)
+	result, err := service.Update(t.Context(), updatedWorkflow)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -197,20 +200,26 @@ func TestWorkflow_Update(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestWorkflow_Update_NotFound(t *testing.T) {
+func TestWorkflow_Update_DirectSave(t *testing.T) {
 	testDir := t.TempDir()
 	persistence := file.NewPersistence(testDir)
 	service := NewWorkflow(persistence)
 
-	updatedWorkflow := &models.Workflow{
-		Name: "Updated Workflow",
+	// Create a workflow object with ID (simulating what handler would do)
+	workflow := &models.Workflow{
+		ID:          "test-workflow",
+		Name:        "Updated Workflow",
+		Description: "Updated description",
+		Status:      models.WorkflowStatusPublished,
+		CreatedAt:   time.Now().UTC().Add(-1 * time.Hour), // Simulate existing workflow
 	}
 
-	// Try to update non-existent workflow
-	result, err := service.Update(t.Context(), "non-existent", updatedWorkflow)
-	assert.Error(t, err)
-	assert.Nil(t, result)
-	assert.Contains(t, err.Error(), "workflow not found")
+	// Update should succeed since it trusts the workflow is valid
+	result, err := service.Update(t.Context(), workflow)
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, "Updated Workflow", result.Name)
+	assert.True(t, result.UpdatedAt.After(workflow.CreatedAt))
 }
 
 func TestWorkflow_Delete(t *testing.T) {

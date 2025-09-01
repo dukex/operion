@@ -224,26 +224,15 @@ func (w *Workflow) Create(ctx context.Context, workflow *models.Workflow) (*mode
 	return workflow, nil
 }
 
-// Update modifies an existing workflow by its ID.
+// Update modifies an existing workflow.
 func (w *Workflow) Update(
 	ctx context.Context,
-	workflowID string,
 	workflow *models.Workflow,
 ) (*models.Workflow, error) {
-	existing, err := w.persistence.WorkflowRepository().GetByID(ctx, workflowID)
-	if err != nil {
-		return nil, err
-	}
-
-	if existing == nil {
-		return nil, ErrWorkflowNotFound
-	}
-
-	workflow.ID = workflowID
-	workflow.CreatedAt = existing.CreatedAt
+	// Update timestamp
 	workflow.UpdatedAt = time.Now().UTC()
 
-	err = w.persistence.WorkflowRepository().Save(ctx, workflow)
+	err := w.persistence.WorkflowRepository().Save(ctx, workflow)
 	if err != nil {
 		// Map persistence validation errors to service validation errors
 		if persistence.IsInvalidPortFormat(err) {
