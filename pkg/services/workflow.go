@@ -45,8 +45,8 @@ func (w *Workflow) HealthCheck(ctx context.Context) (string, bool) {
 // ListWorkflowsRequest contains options for listing workflows.
 type ListWorkflowsRequest struct {
 	// Pagination
-	Limit  int `validate:"min=1,max=100"`
-	Offset int `validate:"min=0"`
+	Page    int `validate:"min=1"`
+	PerPage int `validate:"min=1,max=100"`
 
 	// Filtering
 	OwnerID string
@@ -75,10 +75,14 @@ func (w *Workflow) ListWorkflows(ctx context.Context, req *ListWorkflowsRequest)
 		return nil, fmt.Errorf("invalid request: %w", err)
 	}
 
+	// Convert page-based pagination to limit/offset for persistence layer
+	limit := req.PerPage
+	offset := (req.Page - 1) * req.PerPage
+
 	// Convert to persistence options
 	opts := persistence.ListWorkflowsOptions{
-		Limit:              req.Limit,
-		Offset:             req.Offset,
+		Limit:              limit,
+		Offset:             offset,
 		OwnerID:            req.OwnerID,
 		Status:             req.Status,
 		SortBy:             req.SortBy,
@@ -114,16 +118,16 @@ func (w *Workflow) ListWorkflows(ctx context.Context, req *ListWorkflowsRequest)
 // validateListWorkflowsRequest validates and sets defaults for the request.
 func (w *Workflow) validateListWorkflowsRequest(req *ListWorkflowsRequest) error {
 	// Set defaults
-	if req.Limit <= 0 {
-		req.Limit = 20
+	if req.PerPage <= 0 {
+		req.PerPage = 20
 	}
 
-	if req.Limit > 100 {
-		req.Limit = 100
+	if req.PerPage > 100 {
+		req.PerPage = 100
 	}
 
-	if req.Offset < 0 {
-		req.Offset = 0
+	if req.Page <= 0 {
+		req.Page = 1
 	}
 
 	if req.SortBy == "" {

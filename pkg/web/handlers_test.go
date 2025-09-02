@@ -702,8 +702,8 @@ func TestAPIHandlers_GetWorkflows_ResponseMetadata(t *testing.T) {
 			queryParams: "",
 			expectedMeta: map[string]any{
 				"pagination": map[string]any{
-					"limit":  float64(20), // JSON numbers are float64
-					"offset": float64(0),
+					"page":     float64(1), // JSON numbers are float64
+					"per_page": float64(20),
 				},
 				"sorting": map[string]any{
 					"sort_by":    "created_at",
@@ -713,11 +713,11 @@ func TestAPIHandlers_GetWorkflows_ResponseMetadata(t *testing.T) {
 		},
 		{
 			name:        "partial parameters - should show mix of provided and defaults",
-			queryParams: "?limit=10&sort_by=name",
+			queryParams: "?per_page=10&sort_by=name",
 			expectedMeta: map[string]any{
 				"pagination": map[string]any{
-					"limit":  float64(10), // Provided
-					"offset": float64(0),  // Default
+					"per_page": float64(10), // Provided
+					"page":     float64(1),  // Default
 				},
 				"sorting": map[string]any{
 					"sort_by":    "name", // Provided
@@ -727,11 +727,11 @@ func TestAPIHandlers_GetWorkflows_ResponseMetadata(t *testing.T) {
 		},
 		{
 			name:        "all parameters provided",
-			queryParams: "?limit=5&offset=10&sort_by=updated_at&sort_order=asc",
+			queryParams: "?per_page=5&page=3&sort_by=updated_at&sort_order=asc",
 			expectedMeta: map[string]any{
 				"pagination": map[string]any{
-					"limit":  float64(5),
-					"offset": float64(10),
+					"per_page": float64(5),
+					"page":     float64(3),
 				},
 				"sorting": map[string]any{
 					"sort_by":    "updated_at",
@@ -744,7 +744,7 @@ func TestAPIHandlers_GetWorkflows_ResponseMetadata(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			
+
 			app, workflowService := setupTestApp(t)
 
 			// Create a test workflow to ensure non-empty response
@@ -778,8 +778,8 @@ func TestAPIHandlers_GetWorkflows_ResponseMetadata(t *testing.T) {
 			// Verify pagination metadata
 			if pagination, ok := response["pagination"].(map[string]any); ok {
 				expectedPagination := tt.expectedMeta["pagination"].(map[string]any)
-				assert.Equal(t, expectedPagination["limit"], pagination["limit"], "Limit should match")
-				assert.Equal(t, expectedPagination["offset"], pagination["offset"], "Offset should match")
+				assert.Equal(t, expectedPagination["page"], pagination["page"], "Page should match")
+				assert.Equal(t, expectedPagination["per_page"], pagination["per_page"], "Per_page should match")
 			} else {
 				t.Error("Response should include pagination metadata")
 			}

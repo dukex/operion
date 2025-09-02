@@ -54,8 +54,8 @@ func (h *APIHandlers) GetWorkflows(c fiber.Ctx) error {
 		"total_count":   result.TotalCount,
 		"has_next_page": result.HasNextPage,
 		"pagination": fiber.Map{
-			"limit":  req.Limit,
-			"offset": req.Offset,
+			"page":     req.Page,
+			"per_page": req.PerPage,
 		},
 		"sorting": fiber.Map{
 			"sort_by":    req.SortBy,
@@ -69,22 +69,22 @@ func (h *APIHandlers) parseListWorkflowsRequest(c fiber.Ctx) (*services.ListWork
 	req := &services.ListWorkflowsRequest{}
 
 	// Parse pagination parameters
-	if limitStr := c.Query("limit"); limitStr != "" {
-		limit, err := strconv.Atoi(limitStr)
+	if pageStr := c.Query("page"); pageStr != "" {
+		page, err := strconv.Atoi(pageStr)
 		if err != nil {
 			return nil, err
 		}
 
-		req.Limit = limit
+		req.Page = page
 	}
 
-	if offsetStr := c.Query("offset"); offsetStr != "" {
-		offset, err := strconv.Atoi(offsetStr)
+	if perPageStr := c.Query("per_page"); perPageStr != "" {
+		perPage, err := strconv.Atoi(perPageStr)
 		if err != nil {
 			return nil, err
 		}
 
-		req.Offset = offset
+		req.PerPage = perPage
 	}
 
 	// Parse filtering parameters

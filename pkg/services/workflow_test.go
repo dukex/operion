@@ -132,7 +132,8 @@ func TestWorkflow_FetchAll(t *testing.T) {
 
 	// Fetch all workflows
 	result, err := service.ListWorkflows(t.Context(), &ListWorkflowsRequest{
-		Limit:     100,
+		PerPage:   100,
+		Page:      1,
 		SortBy:    "created_at",
 		SortOrder: "desc",
 	})
@@ -352,7 +353,8 @@ func TestListWorkflows_InvalidSortField(t *testing.T) {
 	req := ListWorkflowsRequest{
 		SortBy:    "invalid_field",
 		SortOrder: "asc",
-		Limit:     10,
+		PerPage:   10,
+		Page:      1,
 	}
 
 	// Test that invalid sort field returns validation error
@@ -375,7 +377,8 @@ func TestListWorkflows_InvalidSortOrder(t *testing.T) {
 	req := ListWorkflowsRequest{
 		SortBy:    "name",
 		SortOrder: "invalid_order",
-		Limit:     10,
+		PerPage:   10,
+		Page:      1,
 	}
 
 	// Test that invalid sort order returns validation error
@@ -397,7 +400,8 @@ func TestListWorkflows_EmptyOwnerID(t *testing.T) {
 
 	req := ListWorkflowsRequest{
 		OwnerID: "  ", // Empty after trim
-		Limit:   10,
+		PerPage: 10,
+		Page:    1,
 	}
 
 	// Test that empty owner ID returns validation error
@@ -429,14 +433,14 @@ func TestWorkflow_ListWorkflows_DefaultsApplied(t *testing.T) {
 
 	// Test with empty request - should apply defaults
 	req := &ListWorkflowsRequest{}
-	
+
 	result, err := service.ListWorkflows(t.Context(), req)
 	require.NoError(t, err)
 	assert.NotNil(t, result)
-	
+
 	// Verify that defaults were applied to the original request
-	assert.Equal(t, 20, req.Limit, "Default limit should be applied")
-	assert.Equal(t, 0, req.Offset, "Default offset should be applied")
+	assert.Equal(t, 20, req.PerPage, "Default per_page should be applied")
+	assert.Equal(t, 1, req.Page, "Default page should be applied")
 	assert.Equal(t, "created_at", req.SortBy, "Default sort_by should be applied")
 	assert.Equal(t, "desc", req.SortOrder, "Default sort_order should be applied")
 }
@@ -449,19 +453,19 @@ func TestWorkflow_ListWorkflows_PartialDefaults(t *testing.T) {
 
 	// Test with partial request - should only apply defaults for missing values
 	req := &ListWorkflowsRequest{
-		Limit:  50,      // Provided
-		SortBy: "name",  // Provided
-		// SortOrder and Offset not provided - should get defaults
+		PerPage: 50,     // Provided
+		SortBy:  "name", // Provided
+		// SortOrder and Page not provided - should get defaults
 	}
-	
+
 	_, err := service.ListWorkflows(t.Context(), req)
 	require.NoError(t, err)
-	
+
 	// Verify that provided values are kept and defaults applied for missing ones
-	assert.Equal(t, 50, req.Limit, "Provided limit should be kept")
+	assert.Equal(t, 50, req.PerPage, "Provided per_page should be kept")
 	assert.Equal(t, "name", req.SortBy, "Provided sort_by should be kept")
 	assert.Equal(t, "desc", req.SortOrder, "Default sort_order should be applied")
-	assert.Equal(t, 0, req.Offset, "Default offset should be applied")
+	assert.Equal(t, 1, req.Page, "Default page should be applied")
 }
 
 // TestCreateWorkflow_InvalidConnection tests that invalid connection data returns proper validation error.

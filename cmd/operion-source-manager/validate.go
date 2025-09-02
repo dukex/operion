@@ -60,7 +60,8 @@ func NewValidateCommand() *cli.Command {
 			workflowService := services.NewWorkflow(persistence)
 
 			result, err := workflowService.ListWorkflows(ctx, &services.ListWorkflowsRequest{
-				Limit:     100,
+				PerPage:   100,
+				Page:      1,
 				SortBy:    "created_at",
 				SortOrder: "desc",
 			})
