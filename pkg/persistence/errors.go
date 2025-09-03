@@ -31,6 +31,13 @@ var (
 
 	// ErrExecutionContextNotFound indicates an execution context was not found.
 	ErrExecutionContextNotFound = errors.New("execution context not found")
+
+	// Validation errors that indicate client errors (internal to persistence layer)
+	// ErrInvalidSortField indicates an invalid sort field was provided.
+	ErrInvalidSortField = errors.New("invalid sort field")
+
+	// ErrInvalidPortFormat indicates an invalid port format was provided.
+	ErrInvalidPortFormat = errors.New("invalid port format")
 )
 
 // WorkflowError wraps workflow-related errors with additional context.
@@ -145,4 +152,14 @@ func IsNodeNotFound(err error) bool {
 // IsConnectionNotFound checks if an error indicates a connection was not found.
 func IsConnectionNotFound(err error) bool {
 	return errors.Is(err, ErrConnectionNotFound)
+}
+
+// IsInvalidSortField checks if an error indicates an invalid sort field.
+func IsInvalidSortField(err error) bool {
+	return errors.Is(err, ErrInvalidSortField)
+}
+
+// IsInvalidPortFormat checks if an error indicates an invalid port format.
+func IsInvalidPortFormat(err error) bool {
+	return errors.Is(err, ErrInvalidPortFormat)
 }

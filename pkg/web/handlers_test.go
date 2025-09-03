@@ -695,6 +695,119 @@ func TestAPIHandlers_CreateDraftFromPublished(t *testing.T) {
 	}
 }
 
+// TestAPIHandlers_GetWorkflows_ResponseMetadata tests that the API response shows actual parameters used.
+func TestAPIHandlers_GetWorkflows_ResponseMetadata(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		queryParams  string
+		expectedMeta map[string]any
+	}{
+		{
+			name:        "no parameters - should show defaults",
+			queryParams: "",
+			expectedMeta: map[string]any{
+				"pagination": map[string]any{
+					"page":     float64(1), // JSON numbers are float64
+					"per_page": float64(20),
+				},
+				"sorting": map[string]any{
+					"sort_by":    "created_at",
+					"sort_order": "desc",
+				},
+			},
+		},
+		{
+			name:        "partial parameters - should show mix of provided and defaults",
+			queryParams: "?per_page=10&sort_by=name",
+			expectedMeta: map[string]any{
+				"pagination": map[string]any{
+					"per_page": float64(10), // Provided
+					"page":     float64(1),  // Default
+				},
+				"sorting": map[string]any{
+					"sort_by":    "name", // Provided
+					"sort_order": "desc", // Default
+				},
+			},
+		},
+		{
+			name:        "all parameters provided",
+			queryParams: "?per_page=5&page=3&sort_by=updated_at&sort_order=asc",
+			expectedMeta: map[string]any{
+				"pagination": map[string]any{
+					"per_page": float64(5),
+					"page":     float64(3),
+				},
+				"sorting": map[string]any{
+					"sort_by":    "updated_at",
+					"sort_order": "asc",
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			app, workflowService, _ := setupTestApp(t)
+
+			// Create a test workflow to ensure non-empty response
+			workflow := &models.Workflow{
+				Name:        "Test Workflow",
+				Description: "Test Description",
+				Owner:       "test-owner",
+				Status:      models.WorkflowStatusDraft,
+			}
+			_, err := workflowService.Create(context.Background(), workflow)
+			require.NoError(t, err)
+
+			// Make request with query parameters
+			req := httptest.NewRequest(http.MethodGet, "/workflows"+tt.queryParams, nil)
+			resp, err := app.Test(req)
+			require.NoError(t, err)
+
+			defer func() { _ = resp.Body.Close() }()
+
+			assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+			// Parse response body
+			body, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+
+			var response map[string]any
+
+			err = json.Unmarshal(body, &response)
+			require.NoError(t, err)
+
+			// Verify pagination metadata
+			if pagination, ok := response["pagination"].(map[string]any); ok {
+				expectedPagination := tt.expectedMeta["pagination"].(map[string]any)
+				assert.Equal(t, expectedPagination["page"], pagination["page"], "Page should match")
+				assert.Equal(t, expectedPagination["per_page"], pagination["per_page"], "Per_page should match")
+			} else {
+				t.Error("Response should include pagination metadata")
+			}
+
+			// Verify sorting metadata
+			if sorting, ok := response["sorting"].(map[string]any); ok {
+				expectedSorting := tt.expectedMeta["sorting"].(map[string]any)
+				assert.Equal(t, expectedSorting["sort_by"], sorting["sort_by"], "Sort by should match")
+				assert.Equal(t, expectedSorting["sort_order"], sorting["sort_order"], "Sort order should match")
+			} else {
+				t.Error("Response should include sorting metadata")
+			}
+
+			// Verify response structure
+			assert.Contains(t, response, "workflows", "Response should include workflows")
+			assert.Contains(t, response, "total_count", "Response should include total_count")
+			assert.Contains(t, response, "has_next_page", "Response should include has_next_page")
+		})
+	}
+}
+
 func TestAPIHandlers_CreateWorkflowNode(t *testing.T) {
 	t.Parallel()
 
@@ -968,7 +1081,7 @@ func TestAPIHandlers_GetWorkflowNode(t *testing.T) {
 				// Add node directly to the workflow
 				createdWorkflow.Nodes = append(createdWorkflow.Nodes, triggerNode)
 
-				_, err = workflowService.Update(context.Background(), createdWorkflow.ID, createdWorkflow)
+				_, err = workflowService.Update(context.Background(), createdWorkflow)
 				require.NoError(t, err)
 
 				return createdWorkflow.ID, triggerNode.ID

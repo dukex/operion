@@ -121,7 +121,7 @@ func (r *WorkflowRepository) buildListQuery(opts persistence.ListWorkflowsOption
 
 		validColumn, exists := validSortColumns[opts.SortBy]
 		if !exists {
-			return "", nil, fmt.Errorf("invalid sort column: %s", opts.SortBy)
+			return "", nil, persistence.ErrInvalidSortField
 		}
 
 		validOrder := "DESC" // Default
@@ -881,12 +881,12 @@ func (r *WorkflowRepository) saveWorkflowConnections(ctx context.Context, tx *sq
 		// Parse port IDs to extract node IDs and port names
 		sourceNodeID, sourcePortName, sourceOK := models.ParsePortID(connection.SourcePort)
 		if !sourceOK {
-			return fmt.Errorf("invalid source port ID format: %s", connection.SourcePort)
+			return persistence.ErrInvalidPortFormat
 		}
 
 		targetNodeID, targetPortName, targetOK := models.ParsePortID(connection.TargetPort)
 		if !targetOK {
-			return fmt.Errorf("invalid target port ID format: %s", connection.TargetPort)
+			return persistence.ErrInvalidPortFormat
 		}
 
 		query := `

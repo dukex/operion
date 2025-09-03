@@ -21,6 +21,9 @@ var (
 	ErrTriggerNodeRequired  = errors.New("workflow must have at least one enabled trigger node")
 	ErrWorkflowNil          = errors.New("workflow cannot be nil")
 
+	// Connection/Port validation errors.
+	ErrInvalidConnectionData = errors.New("invalid connection data")
+
 	// Business Logic Conflicts (409 Conflict).
 	ErrCannotModifyPublished   = errors.New("cannot modify published workflow")
 	ErrCannotModifyUnpublished = errors.New("cannot modify unpublished workflow")
@@ -60,7 +63,8 @@ func IsValidationError(err error) bool {
 		errors.Is(err, ErrWorkflowNameRequired) ||
 		errors.Is(err, ErrNodesRequired) ||
 		errors.Is(err, ErrTriggerNodeRequired) ||
-		errors.Is(err, ErrWorkflowNil)
+		errors.Is(err, ErrWorkflowNil) ||
+		errors.Is(err, ErrInvalidConnectionData)
 }
 
 // IsConflictError checks if an error is a business logic conflict that should return HTTP 409.

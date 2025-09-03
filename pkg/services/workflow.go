@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -44,8 +45,8 @@ func (w *Workflow) HealthCheck(ctx context.Context) (string, bool) {
 // ListWorkflowsRequest contains options for listing workflows.
 type ListWorkflowsRequest struct {
 	// Pagination
-	Limit  int `validate:"min=1,max=100"`
-	Offset int `validate:"min=0"`
+	Page    int `validate:"min=1"`
+	PerPage int `validate:"min=1,max=100"`
 
 	// Filtering
 	OwnerID string
@@ -68,16 +69,20 @@ type ListWorkflowsResponse struct {
 }
 
 // ListWorkflows retrieves workflows with filtering, sorting, and pagination.
-func (w *Workflow) ListWorkflows(ctx context.Context, req ListWorkflowsRequest) (*ListWorkflowsResponse, error) {
+func (w *Workflow) ListWorkflows(ctx context.Context, req *ListWorkflowsRequest) (*ListWorkflowsResponse, error) {
 	// Validate and set defaults
-	if err := w.validateListWorkflowsRequest(&req); err != nil {
+	if err := w.validateListWorkflowsRequest(req); err != nil {
 		return nil, fmt.Errorf("invalid request: %w", err)
 	}
 
+	// Convert page-based pagination to limit/offset for persistence layer
+	limit := req.PerPage
+	offset := (req.Page - 1) * req.PerPage
+
 	// Convert to persistence options
 	opts := persistence.ListWorkflowsOptions{
-		Limit:              req.Limit,
-		Offset:             req.Offset,
+		Limit:              limit,
+		Offset:             offset,
 		OwnerID:            req.OwnerID,
 		Status:             req.Status,
 		SortBy:             req.SortBy,
@@ -89,6 +94,16 @@ func (w *Workflow) ListWorkflows(ctx context.Context, req ListWorkflowsRequest) 
 	// Call persistence layer
 	result, err := w.persistence.WorkflowRepository().ListWorkflows(ctx, opts)
 	if err != nil {
+		// Map persistence validation errors to service validation errors
+		if persistence.IsInvalidSortField(err) {
+			return nil, ErrInvalidSortField // CHANGED: Map to service error
+		}
+
+		if persistence.IsInvalidPortFormat(err) {
+			return nil, ErrInvalidConnectionData // CHANGED: Map to service error
+		}
+
+		// Other persistence errors remain as 500s
 		return nil, fmt.Errorf("failed to list workflows: %w", err)
 	}
 
@@ -103,16 +118,16 @@ func (w *Workflow) ListWorkflows(ctx context.Context, req ListWorkflowsRequest) 
 // validateListWorkflowsRequest validates and sets defaults for the request.
 func (w *Workflow) validateListWorkflowsRequest(req *ListWorkflowsRequest) error {
 	// Set defaults
-	if req.Limit <= 0 {
-		req.Limit = 20
+	if req.PerPage <= 0 {
+		req.PerPage = 20
 	}
 
-	if req.Limit > 100 {
-		req.Limit = 100
+	if req.PerPage > 100 {
+		req.PerPage = 100
 	}
 
-	if req.Offset < 0 {
-		req.Offset = 0
+	if req.Page <= 0 {
+		req.Page = 1
 	}
 
 	if req.SortBy == "" {
@@ -125,17 +140,8 @@ func (w *Workflow) validateListWorkflowsRequest(req *ListWorkflowsRequest) error
 
 	// Validate sort parameters against allowlist
 	allowedSorts := []string{"created_at", "updated_at", "name"}
-	validSort := false
 
-	for _, allowed := range allowedSorts {
-		if req.SortBy == allowed {
-			validSort = true
-
-			break
-		}
-	}
-
-	if !validSort {
+	if !slices.Contains(allowedSorts, req.SortBy) {
 		return NewValidationError(
 			"validateListWorkflowsRequest",
 			"INVALID_SORT_FIELD",
@@ -161,17 +167,8 @@ func (w *Workflow) validateListWorkflowsRequest(req *ListWorkflowsRequest) error
 			models.WorkflowStatusPublished,
 			models.WorkflowStatusUnpublished,
 		}
-		validStatus := false
 
-		for _, allowed := range allowedStatuses {
-			if *req.Status == allowed {
-				validStatus = true
-
-				break
-			}
-		}
-
-		if !validStatus {
+		if !slices.Contains(allowedStatuses, *req.Status) {
 			return NewValidationError(
 				"validateListWorkflowsRequest",
 				"INVALID_STATUS",
@@ -190,37 +187,6 @@ func (w *Workflow) validateListWorkflowsRequest(req *ListWorkflowsRequest) error
 	}
 
 	return nil
-}
-
-// FetchAll retrieves all workflows (backward compatibility).
-// Deprecated: Use ListWorkflows instead.
-func (w *Workflow) FetchAll(ctx context.Context) ([]*models.Workflow, error) {
-	result, err := w.ListWorkflows(ctx, ListWorkflowsRequest{
-		Limit:     100,
-		SortBy:    "created_at",
-		SortOrder: "desc",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return result.Workflows, nil
-}
-
-// FetchAllByOwner retrieves all workflows for a specific owner (backward compatibility).
-// Deprecated: Use ListWorkflows instead.
-func (w *Workflow) FetchAllByOwner(ctx context.Context, ownerID string) ([]*models.Workflow, error) {
-	result, err := w.ListWorkflows(ctx, ListWorkflowsRequest{
-		OwnerID:   ownerID,
-		Limit:     100,
-		SortBy:    "created_at",
-		SortOrder: "desc",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return result.Workflows, nil
 }
 
 // FetchByID retrieves a workflow by its ID.
@@ -250,34 +216,35 @@ func (w *Workflow) Create(ctx context.Context, workflow *models.Workflow) (*mode
 
 	err := w.persistence.WorkflowRepository().Save(ctx, workflow)
 	if err != nil {
-		return nil, err
+		// Map persistence validation errors to service validation errors
+		if persistence.IsInvalidPortFormat(err) {
+			return nil, ErrInvalidConnectionData
+		}
+
+		// Other persistence errors remain as 500s
+		return nil, fmt.Errorf("failed to create workflow: %w", err)
 	}
 
 	return workflow, nil
 }
 
-// Update modifies an existing workflow by its ID.
+// Update modifies an existing workflow.
 func (w *Workflow) Update(
 	ctx context.Context,
-	workflowID string,
 	workflow *models.Workflow,
 ) (*models.Workflow, error) {
-	existing, err := w.persistence.WorkflowRepository().GetByID(ctx, workflowID)
-	if err != nil {
-		return nil, err
-	}
-
-	if existing == nil {
-		return nil, ErrWorkflowNotFound
-	}
-
-	workflow.ID = workflowID
-	workflow.CreatedAt = existing.CreatedAt
+	// Update timestamp
 	workflow.UpdatedAt = time.Now().UTC()
 
-	err = w.persistence.WorkflowRepository().Save(ctx, workflow)
+	err := w.persistence.WorkflowRepository().Save(ctx, workflow)
 	if err != nil {
-		return nil, err
+		// Map persistence validation errors to service validation errors
+		if persistence.IsInvalidPortFormat(err) {
+			return nil, ErrInvalidConnectionData
+		}
+
+		// Other persistence errors remain as 500s
+		return nil, fmt.Errorf("failed to update workflow: %w", err)
 	}
 
 	return workflow, nil

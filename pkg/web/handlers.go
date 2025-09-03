@@ -46,7 +46,7 @@ func (h *APIHandlers) GetWorkflows(c fiber.Ctx) error {
 	}
 
 	// Call service layer
-	result, err := h.workflowService.ListWorkflows(c.Context(), *req)
+	result, err := h.workflowService.ListWorkflows(c.Context(), req)
 	if err != nil {
 		return handleServiceError(c, err)
 	}
@@ -57,8 +57,8 @@ func (h *APIHandlers) GetWorkflows(c fiber.Ctx) error {
 		"total_count":   result.TotalCount,
 		"has_next_page": result.HasNextPage,
 		"pagination": fiber.Map{
-			"limit":  req.Limit,
-			"offset": req.Offset,
+			"page":     req.Page,
+			"per_page": req.PerPage,
 		},
 		"sorting": fiber.Map{
 			"sort_by":    req.SortBy,
@@ -72,22 +72,22 @@ func (h *APIHandlers) parseListWorkflowsRequest(c fiber.Ctx) (*services.ListWork
 	req := &services.ListWorkflowsRequest{}
 
 	// Parse pagination parameters
-	if limitStr := c.Query("limit"); limitStr != "" {
-		limit, err := strconv.Atoi(limitStr)
+	if pageStr := c.Query("page"); pageStr != "" {
+		page, err := strconv.Atoi(pageStr)
 		if err != nil {
 			return nil, err
 		}
 
-		req.Limit = limit
+		req.Page = page
 	}
 
-	if offsetStr := c.Query("offset"); offsetStr != "" {
-		offset, err := strconv.Atoi(offsetStr)
+	if perPageStr := c.Query("per_page"); perPageStr != "" {
+		perPage, err := strconv.Atoi(perPageStr)
 		if err != nil {
 			return nil, err
 		}
 
-		req.Offset = offset
+		req.PerPage = perPage
 	}
 
 	// Parse filtering parameters
@@ -133,11 +133,7 @@ func (h *APIHandlers) GetWorkflow(c fiber.Ctx) error {
 
 	workflow, err := h.workflowService.FetchByID(c.Context(), id)
 	if err != nil {
-		if persistence.IsWorkflowNotFound(err) {
-			return notFound(c, "Workflow not found")
-		}
-
-		return internalError(c, err)
+		return handleServiceError(c, err)
 	}
 
 	return c.JSON(workflow)
@@ -214,11 +210,7 @@ func (h *APIHandlers) UpdateWorkflow(c fiber.Ctx) error {
 	// Get existing workflow and merge changes
 	existing, err := h.workflowService.FetchByID(c.Context(), id)
 	if err != nil {
-		if persistence.IsWorkflowNotFound(err) {
-			return notFound(c, "Workflow not found")
-		}
-
-		return internalError(c, err)
+		return handleServiceError(c, err)
 	}
 
 	// Apply partial updates (nodes and connections managed separately)
@@ -238,9 +230,9 @@ func (h *APIHandlers) UpdateWorkflow(c fiber.Ctx) error {
 		existing.Metadata = req.Metadata
 	}
 
-	updated, err := h.workflowService.Update(c.Context(), id, existing)
+	updated, err := h.workflowService.Update(c.Context(), existing)
 	if err != nil {
-		return internalError(c, err)
+		return handleServiceError(c, err)
 	}
 
 	return c.JSON(updated)
@@ -254,11 +246,7 @@ func (h *APIHandlers) DeleteWorkflow(c fiber.Ctx) error {
 
 	err := h.workflowService.Delete(c.Context(), id)
 	if err != nil {
-		if persistence.IsWorkflowNotFound(err) {
-			return notFound(c, "Workflow not found")
-		}
-
-		return internalError(c, err)
+		return handleServiceError(c, err)
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)

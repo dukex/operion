@@ -52,10 +52,16 @@ func NewValidateCommand() *cli.Command {
 
 			workflowService := services.NewWorkflow(persistence)
 
-			workflows, err := workflowService.FetchAll(ctx)
+			result, err := workflowService.ListWorkflows(ctx, &services.ListWorkflowsRequest{
+				PerPage:   100,
+				Page:      1,
+				SortBy:    "created_at",
+				SortOrder: "desc",
+			})
 			if err != nil {
 				return fmt.Errorf("failed to fetch workflows: %w", err)
 			}
+			workflows := result.Workflows
 
 			logger.Info("Validating source trigger nodes", "workflows", len(workflows))
 
