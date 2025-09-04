@@ -19,6 +19,10 @@ import (
 	schedulerPersistence "github.com/dukex/operion/pkg/providers/scheduler/persistence"
 )
 
+const (
+	schedulerProviderID = "scheduler"
+)
+
 // SchedulerProvider implements a centralized cron-based scheduler orchestrator
 // that polls the database for due schedules and processes them regardless of their individual cron expressions.
 type SchedulerProvider struct {
@@ -186,7 +190,7 @@ func (s *SchedulerProvider) publishScheduleEvent(ctx context.Context, schedule *
 		"published_at":    now.Format("2006-01-02 15:04:05.000"),
 	}
 
-	return s.callback(ctx, schedule.SourceID, "scheduler", "schedule_due", eventData)
+	return s.callback(ctx, schedule.SourceID, schedulerProviderID, "schedule_due", eventData)
 }
 
 // ProviderLifecycle interface implementation
@@ -228,7 +232,7 @@ func (s *SchedulerProvider) Configure(workflows []*models.Workflow) (map[string]
 
 		// Filter trigger nodes with scheduler provider
 		for _, node := range wf.Nodes {
-			if node.IsTriggerNode() && node.ProviderID != nil && *node.ProviderID == "scheduler" {
+			if node.IsTriggerNode() && node.ProviderID != nil && *node.ProviderID == schedulerProviderID {
 				if cronExpr, exists := node.Config["cron_expression"]; exists {
 					if sourceID := s.processScheduleTriggerNode(wf.ID, node, cronExpr); sourceID != "" {
 						triggerToSource[node.ID] = sourceID
@@ -257,7 +261,7 @@ func (s *SchedulerProvider) ConfigureTrigger(ctx context.Context, trigger protoc
 		"node_type", trigger.NodeType)
 
 	// Validate that this is a scheduler trigger
-	if trigger.ProviderID != "scheduler" {
+	if trigger.ProviderID != schedulerProviderID {
 		return "", fmt.Errorf("invalid provider ID for scheduler trigger: %s", trigger.ProviderID)
 	}
 
