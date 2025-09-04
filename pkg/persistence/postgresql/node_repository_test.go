@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/dukex/operion/pkg/models"
+	"github.com/dukex/operion/pkg/persistence"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -152,12 +153,12 @@ func TestNodeRepository_DeleteNode(t *testing.T) {
 	deleted, err := nodeRepo.GetNodeByWorkflow(ctx, workflow.ID, "action1")
 	require.Error(t, err)
 	assert.Nil(t, deleted)
-	assert.Contains(t, err.Error(), "node not found")
+	assert.ErrorIs(t, err, persistence.ErrNodeNotFound)
 
 	// Test deleting non-existent node
 	err = nodeRepo.DeleteNode(ctx, workflow.ID, "non_existent")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "node not found")
+	assert.ErrorIs(t, err, persistence.ErrNodeNotFound)
 }
 
 func TestNodeRepository_GetNodesByWorkflow(t *testing.T) {
@@ -318,7 +319,7 @@ func TestNodeRepository_ErrorCases(t *testing.T) {
 	node, err := nodeRepo.GetNodeByWorkflow(ctx, nonExistentWorkflowID, "some_node")
 	require.Error(t, err)
 	assert.Nil(t, node)
-	assert.Contains(t, err.Error(), "node not found")
+	assert.ErrorIs(t, err, persistence.ErrNodeNotFound)
 
 	// Test getting nodes from non-existent workflow
 	nodes, err := nodeRepo.GetNodesByWorkflow(ctx, nonExistentWorkflowID)
@@ -410,7 +411,7 @@ func TestNodeRepository_DeleteNodeWithConnections_NodeNotFound(t *testing.T) {
 	// Try to delete non-existent node
 	err = nodeRepo.DeleteNodeWithConnections(ctx, workflow.ID, "nonexistent")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "node not found: nonexistent in workflow")
+	assert.ErrorIs(t, err, persistence.ErrNodeNotFound)
 }
 
 func TestNodeRepository_DeleteNodeWithConnections_WorkflowNotFound(t *testing.T) {
@@ -422,5 +423,5 @@ func TestNodeRepository_DeleteNodeWithConnections_WorkflowNotFound(t *testing.T)
 	// Try to delete node from non-existent workflow
 	err := nodeRepo.DeleteNodeWithConnections(ctx, nonExistentWorkflowID, "some-node")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "node not found")
+	assert.ErrorIs(t, err, persistence.ErrNodeNotFound)
 }
