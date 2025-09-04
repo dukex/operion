@@ -1,6 +1,8 @@
 package web
 
 import (
+	"errors"
+
 	"github.com/dukex/operion/pkg/persistence"
 	"github.com/dukex/operion/pkg/services"
 	"github.com/gofiber/fiber/v3"
@@ -38,6 +40,17 @@ func internalError(c fiber.Ctx, err error) error {
 func handleServiceError(c fiber.Ctx, err error) error {
 	switch {
 	case services.IsValidationError(err):
+		// Check for specific node errors to provide better error messages
+		if errors.Is(err, services.ErrNodeNotFound) {
+			problem := problems.NewStatusProblem(404).
+				WithInstance(c.Path()).
+				WithType("node_not_found").
+				WithDetail("node not found")
+
+			return c.Status(fiber.StatusNotFound).JSON(problem)
+		}
+
+		// Default validation error handling
 		problem := problems.NewStatusProblem(400).
 			WithInstance(c.Path()).
 			WithType("validation_error").

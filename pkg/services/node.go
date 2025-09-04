@@ -3,13 +3,31 @@ package services
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/dukex/operion/pkg/models"
 	"github.com/dukex/operion/pkg/persistence"
 	"github.com/google/uuid"
 )
+
+// validateWorkflowForNodeModification checks if workflow allows node modifications.
+func validateWorkflowForNodeModification(workflow *models.Workflow) error {
+	if workflow.Status != models.WorkflowStatusDraft {
+		switch workflow.Status {
+		case models.WorkflowStatusDraft:
+			// This case should never be reached due to the outer condition
+			return nil
+		case models.WorkflowStatusPublished:
+			return ErrCannotModifyPublished
+		case models.WorkflowStatusUnpublished:
+			return ErrCannotModifyUnpublished
+		default:
+			return fmt.Errorf("cannot modify nodes in %s workflow", workflow.Status)
+		}
+	}
+
+	return nil
+}
 
 // CreateNodeRequest represents the request to create a new workflow node.
 type CreateNodeRequest struct {
@@ -61,18 +79,8 @@ func (n *Node) CreateNode(ctx context.Context, workflowID string, req *CreateNod
 	}
 
 	// Only allow modifications on draft workflows
-	if workflow.Status != models.WorkflowStatusDraft {
-		switch workflow.Status {
-		case models.WorkflowStatusDraft:
-			// This case should never be reached due to the outer condition
-			return nil, errors.New("unexpected draft status in non-draft condition")
-		case models.WorkflowStatusPublished:
-			return nil, ErrCannotModifyPublished
-		case models.WorkflowStatusUnpublished:
-			return nil, ErrCannotModifyUnpublished
-		default:
-			return nil, fmt.Errorf("cannot modify nodes in %s workflow", workflow.Status)
-		}
+	if err := validateWorkflowForNodeModification(workflow); err != nil {
+		return nil, err
 	}
 
 	// Create new node with generated UUID
@@ -95,6 +103,11 @@ func (n *Node) CreateNode(ctx context.Context, workflowID string, req *CreateNod
 	// Save the node
 	err = n.persistence.NodeRepository().SaveNode(ctx, workflowID, node)
 	if err != nil {
+		// Map persistence errors to service errors
+		if persistence.IsNodeNotFound(err) {
+			return nil, ErrNodeNotFound
+		}
+
 		return nil, fmt.Errorf("failed to save node: %w", err)
 	}
 
@@ -103,7 +116,17 @@ func (n *Node) CreateNode(ctx context.Context, workflowID string, req *CreateNod
 
 // GetNode retrieves a specific node from the specified workflow.
 func (n *Node) GetNode(ctx context.Context, workflowID, nodeID string) (*models.WorkflowNode, error) {
-	return n.persistence.NodeRepository().GetNodeByWorkflow(ctx, workflowID, nodeID)
+	node, err := n.persistence.NodeRepository().GetNodeByWorkflow(ctx, workflowID, nodeID)
+	if err != nil {
+		// Map persistence errors to service errors
+		if persistence.IsNodeNotFound(err) {
+			return nil, ErrNodeNotFound
+		}
+
+		return nil, fmt.Errorf("failed to get node: %w", err)
+	}
+
+	return node, nil
 }
 
 // UpdateNode updates an existing node in the specified workflow.
@@ -124,23 +147,18 @@ func (n *Node) UpdateNode(ctx context.Context, workflowID, nodeID string, req *U
 	}
 
 	// Only allow modifications on draft workflows
-	if workflow.Status != models.WorkflowStatusDraft {
-		switch workflow.Status {
-		case models.WorkflowStatusDraft:
-			// This case should never be reached due to the outer condition
-			return nil, errors.New("unexpected draft status in non-draft condition")
-		case models.WorkflowStatusPublished:
-			return nil, ErrCannotModifyPublished
-		case models.WorkflowStatusUnpublished:
-			return nil, ErrCannotModifyUnpublished
-		default:
-			return nil, fmt.Errorf("cannot modify nodes in %s workflow", workflow.Status)
-		}
+	if err := validateWorkflowForNodeModification(workflow); err != nil {
+		return nil, err
 	}
 
 	// Get existing node
 	existingNode, err := n.persistence.NodeRepository().GetNodeByWorkflow(ctx, workflowID, nodeID)
 	if err != nil {
+		// Map persistence errors to service errors
+		if persistence.IsNodeNotFound(err) {
+			return nil, ErrNodeNotFound
+		}
+
 		return nil, fmt.Errorf("failed to get node: %w", err)
 	}
 
@@ -159,6 +177,11 @@ func (n *Node) UpdateNode(ctx context.Context, workflowID, nodeID string, req *U
 	// Update the node
 	err = n.persistence.NodeRepository().UpdateNode(ctx, workflowID, existingNode)
 	if err != nil {
+		// Map persistence errors to service errors
+		if persistence.IsNodeNotFound(err) {
+			return nil, ErrNodeNotFound
+		}
+
 		return nil, fmt.Errorf("failed to update node: %w", err)
 	}
 
@@ -183,23 +206,18 @@ func (n *Node) DeleteNode(ctx context.Context, workflowID, nodeID string) error 
 	}
 
 	// Only allow modifications on draft workflows
-	if workflow.Status != models.WorkflowStatusDraft {
-		switch workflow.Status {
-		case models.WorkflowStatusDraft:
-			// This case should never be reached due to the outer condition
-			return errors.New("unexpected draft status in non-draft condition")
-		case models.WorkflowStatusPublished:
-			return ErrCannotModifyPublished
-		case models.WorkflowStatusUnpublished:
-			return ErrCannotModifyUnpublished
-		default:
-			return fmt.Errorf("cannot modify nodes in %s workflow", workflow.Status)
-		}
+	if err := validateWorkflowForNodeModification(workflow); err != nil {
+		return err
 	}
 
 	// Delete the node and its connections using transaction
 	err = n.persistence.NodeRepository().DeleteNodeWithConnections(ctx, workflowID, nodeID)
 	if err != nil {
+		// Map persistence errors to service errors
+		if persistence.IsNodeNotFound(err) {
+			return ErrNodeNotFound
+		}
+
 		return fmt.Errorf("failed to delete node: %w", err)
 	}
 

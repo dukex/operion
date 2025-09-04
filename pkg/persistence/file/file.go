@@ -156,7 +156,7 @@ func (nr *nodeRepository) DeleteNode(ctx context.Context, workflowID, nodeID str
 		}
 	}
 
-	return fmt.Errorf("node not found: %s in workflow %s", nodeID, workflowID)
+	return persistence.ErrNodeNotFound
 }
 
 func (nr *nodeRepository) DeleteNodeWithConnections(ctx context.Context, workflowID, nodeID string) error {
@@ -182,7 +182,7 @@ func (nr *nodeRepository) DeleteNodeWithConnections(ctx context.Context, workflo
 	}
 
 	if !nodeFound {
-		return fmt.Errorf("node not found: %s in workflow %s", nodeID, workflowID)
+		return persistence.ErrNodeNotFound
 	}
 
 	// Remove all connections involving this node

@@ -155,7 +155,7 @@ func (nr *NodeRepository) DeleteNode(ctx context.Context, workflowID, nodeID str
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("node not found: %s in workflow %s", nodeID, workflowID)
+		return persistence.ErrNodeNotFound
 	}
 
 	return nil
@@ -321,7 +321,7 @@ func (nr *NodeRepository) DeleteNodeWithConnections(ctx context.Context, workflo
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("node not found: %s in workflow %s", nodeID, workflowID)
+		return persistence.ErrNodeNotFound
 	}
 
 	return tx.Commit()

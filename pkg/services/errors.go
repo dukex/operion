@@ -24,6 +24,9 @@ var (
 	// Connection/Port validation errors.
 	ErrInvalidConnectionData = errors.New("invalid connection data")
 
+	// Node-specific validation errors.
+	ErrNodeNotFound = errors.New("node not found")
+
 	// Business Logic Conflicts (409 Conflict).
 	ErrCannotModifyPublished   = errors.New("cannot modify published workflow")
 	ErrCannotModifyUnpublished = errors.New("cannot modify unpublished workflow")
@@ -64,7 +67,8 @@ func IsValidationError(err error) bool {
 		errors.Is(err, ErrNodesRequired) ||
 		errors.Is(err, ErrTriggerNodeRequired) ||
 		errors.Is(err, ErrWorkflowNil) ||
-		errors.Is(err, ErrInvalidConnectionData)
+		errors.Is(err, ErrInvalidConnectionData) ||
+		errors.Is(err, ErrNodeNotFound) // Node not found error (handled as 404 in web layer)
 }
 
 // IsConflictError checks if an error is a business logic conflict that should return HTTP 409.

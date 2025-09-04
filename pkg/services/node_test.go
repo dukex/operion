@@ -551,3 +551,240 @@ func TestNode_GetNode(t *testing.T) {
 		})
 	}
 }
+
+// TestNodeService_ErrorMapping tests the error mapping from persistence to service errors.
+func TestNodeService_ErrorMapping(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name           string
+		method         string
+		persistenceErr error
+		expectedErr    error
+		shouldBeValid  bool
+	}{
+		{
+			name:           "node not found mapping in GetNode",
+			method:         "GetNode",
+			persistenceErr: persistence.ErrNodeNotFound,
+			expectedErr:    ErrNodeNotFound,
+			shouldBeValid:  true,
+		},
+		{
+			name:           "node not found mapping in UpdateNode",
+			method:         "UpdateNode",
+			persistenceErr: persistence.ErrNodeNotFound,
+			expectedErr:    ErrNodeNotFound,
+			shouldBeValid:  true,
+		},
+		{
+			name:           "node not found mapping in DeleteNode",
+			method:         "DeleteNode",
+			persistenceErr: persistence.ErrNodeNotFound,
+			expectedErr:    ErrNodeNotFound,
+			shouldBeValid:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			mockPersistence := new(MockPersistence)
+			mockNodeRepo := new(MockNodeRepository)
+			mockWorkflowRepo := new(MockWorkflowRepository)
+
+			nodeService := NewNode(mockPersistence)
+
+			switch tt.method {
+			case "GetNode":
+				mockPersistence.On("NodeRepository").Return(mockNodeRepo)
+				mockNodeRepo.On("GetNodeByWorkflow", mock.Anything, testWorkflowID, "node-123").Return(nil, tt.persistenceErr)
+
+				_, err := nodeService.GetNode(ctx, testWorkflowID, "node-123")
+
+				assert.ErrorIs(t, err, tt.expectedErr)
+
+				if tt.shouldBeValid {
+					assert.True(t, IsValidationError(err))
+				}
+
+			case "UpdateNode":
+				// Mock workflow check first
+				draftWorkflow := testutil.CreateTestWorkflow()
+				draftWorkflow.ID = testWorkflowID
+				draftWorkflow.Status = models.WorkflowStatusDraft
+
+				mockPersistence.On("WorkflowRepository").Return(mockWorkflowRepo)
+				mockWorkflowRepo.On("GetByID", mock.Anything, testWorkflowID).Return(draftWorkflow, nil)
+
+				// Mock node retrieval failure
+				mockPersistence.On("NodeRepository").Return(mockNodeRepo)
+				mockNodeRepo.On("GetNodeByWorkflow", mock.Anything, testWorkflowID, "node-123").Return(nil, tt.persistenceErr)
+
+				updateReq := &UpdateNodeRequest{Name: "Updated Node"}
+				_, err := nodeService.UpdateNode(ctx, testWorkflowID, "node-123", updateReq)
+
+				assert.ErrorIs(t, err, tt.expectedErr)
+
+				if tt.shouldBeValid {
+					assert.True(t, IsValidationError(err))
+				}
+
+			case "DeleteNode":
+				// Mock workflow check first
+				draftWorkflow := testutil.CreateTestWorkflow()
+				draftWorkflow.ID = testWorkflowID
+				draftWorkflow.Status = models.WorkflowStatusDraft
+
+				mockPersistence.On("WorkflowRepository").Return(mockWorkflowRepo)
+				mockWorkflowRepo.On("GetByID", mock.Anything, testWorkflowID).Return(draftWorkflow, nil)
+
+				// Mock delete failure
+				mockPersistence.On("NodeRepository").Return(mockNodeRepo)
+				mockNodeRepo.On("DeleteNodeWithConnections", mock.Anything, testWorkflowID, "node-123").Return(tt.persistenceErr)
+
+				err := nodeService.DeleteNode(ctx, testWorkflowID, "node-123")
+
+				assert.ErrorIs(t, err, tt.expectedErr)
+
+				if tt.shouldBeValid {
+					assert.True(t, IsValidationError(err))
+				}
+			}
+
+			mockPersistence.AssertExpectations(t)
+			mockNodeRepo.AssertExpectations(t)
+			mockWorkflowRepo.AssertExpectations(t)
+		})
+	}
+}
+
+// TestNodeService_WorkflowStatusValidation tests workflow status validation for node operations.
+func TestNodeService_WorkflowStatusValidation(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name             string
+		workflowStatus   models.WorkflowStatus
+		expectedErr      error
+		shouldBeConflict bool
+	}{
+		{
+			name:             "published workflow modification attempt",
+			workflowStatus:   models.WorkflowStatusPublished,
+			expectedErr:      ErrCannotModifyPublished,
+			shouldBeConflict: true,
+		},
+		{
+			name:             "unpublished workflow modification attempt",
+			workflowStatus:   models.WorkflowStatusUnpublished,
+			expectedErr:      ErrCannotModifyUnpublished,
+			shouldBeConflict: true,
+		},
+		{
+			name:             "draft workflow allows modification",
+			workflowStatus:   models.WorkflowStatusDraft,
+			expectedErr:      nil,
+			shouldBeConflict: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			mockPersistence := new(MockPersistence)
+			mockNodeRepo := new(MockNodeRepository)
+			mockWorkflowRepo := new(MockWorkflowRepository)
+
+			nodeService := NewNode(mockPersistence)
+
+			// Setup workflow with specific status
+			workflow := testutil.CreateTestWorkflow()
+			workflow.ID = testWorkflowID
+			workflow.Status = tt.workflowStatus
+
+			mockPersistence.On("WorkflowRepository").Return(mockWorkflowRepo)
+			mockWorkflowRepo.On("GetByID", mock.Anything, testWorkflowID).Return(workflow, nil)
+
+			if tt.expectedErr == nil {
+				// For draft workflow, also mock successful node creation
+				mockPersistence.On("NodeRepository").Return(mockNodeRepo)
+				mockNodeRepo.On("SaveNode", mock.Anything, testWorkflowID, mock.AnythingOfType("*models.WorkflowNode")).Return(nil)
+			}
+
+			// Test CreateNode operation
+			createReq := &CreateNodeRequest{
+				Type:     "log",
+				Category: "action",
+				Name:     "Test Node",
+				Enabled:  true,
+			}
+
+			_, err := nodeService.CreateNode(ctx, testWorkflowID, createReq)
+
+			if tt.expectedErr != nil {
+				assert.ErrorIs(t, err, tt.expectedErr)
+
+				if tt.shouldBeConflict {
+					assert.True(t, IsConflictError(err))
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+
+			mockPersistence.AssertExpectations(t)
+			mockWorkflowRepo.AssertExpectations(t)
+			mockNodeRepo.AssertExpectations(t)
+		})
+	}
+}
+
+// TestNodeService_IsValidationError tests the IsValidationError function includes node errors.
+func TestNodeService_IsValidationError(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		err      error
+		expected bool
+	}{
+		{
+			name:     "ErrNodeNotFound should be validation error",
+			err:      ErrNodeNotFound,
+			expected: true,
+		},
+		{
+			name:     "ErrCannotModifyPublished should not be validation error",
+			err:      ErrCannotModifyPublished,
+			expected: false,
+		},
+		{
+			name:     "ErrCannotModifyUnpublished should not be validation error",
+			err:      ErrCannotModifyUnpublished,
+			expected: false,
+		},
+		{
+			name:     "ErrInvalidRequest should be validation error",
+			err:      ErrInvalidRequest,
+			expected: true,
+		},
+		{
+			name:     "Generic error should not be validation error",
+			err:      assert.AnError,
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			result := IsValidationError(tt.err)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
