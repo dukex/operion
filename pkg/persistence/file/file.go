@@ -104,7 +104,7 @@ func (nr *nodeRepository) GetNodeByWorkflow(ctx context.Context, workflowID, nod
 		}
 	}
 
-	return nil, fmt.Errorf("node not found: %s in workflow %s", nodeID, workflowID)
+	return nil, persistence.ErrNodeNotFound
 }
 
 func (nr *nodeRepository) SaveNode(ctx context.Context, workflowID string, node *models.WorkflowNode) error {
@@ -156,7 +156,50 @@ func (nr *nodeRepository) DeleteNode(ctx context.Context, workflowID, nodeID str
 		}
 	}
 
-	return fmt.Errorf("node not found: %s in workflow %s", nodeID, workflowID)
+	return persistence.ErrNodeNotFound
+}
+
+func (nr *nodeRepository) DeleteNodeWithConnections(ctx context.Context, workflowID, nodeID string) error {
+	workflow, err := nr.persistence.workflowRepo.GetByID(ctx, workflowID)
+	if err != nil {
+		return fmt.Errorf("failed to get workflow %s: %w", workflowID, err)
+	}
+
+	if workflow == nil {
+		return fmt.Errorf("workflow not found: %s", workflowID)
+	}
+
+	nodeFound := false
+
+	// Remove the node
+	for i, node := range workflow.Nodes {
+		if node.ID == nodeID {
+			workflow.Nodes = append(workflow.Nodes[:i], workflow.Nodes[i+1:]...)
+			nodeFound = true
+
+			break
+		}
+	}
+
+	if !nodeFound {
+		return persistence.ErrNodeNotFound
+	}
+
+	// Remove all connections involving this node
+	var filteredConnections []*models.Connection
+	for _, conn := range workflow.Connections {
+		sourceNodeID, _, sourceOK := models.ParsePortID(conn.SourcePort)
+		targetNodeID, _, targetOK := models.ParsePortID(conn.TargetPort)
+
+		// Keep connection only if it doesn't involve the deleted node
+		if (!sourceOK || sourceNodeID != nodeID) && (!targetOK || targetNodeID != nodeID) {
+			filteredConnections = append(filteredConnections, conn)
+		}
+	}
+
+	workflow.Connections = filteredConnections
+
+	return nr.persistence.workflowRepo.Save(ctx, workflow)
 }
 
 func (nr *nodeRepository) FindTriggerNodesBySourceEventAndProvider(ctx context.Context, sourceID, eventType, providerID string, status models.WorkflowStatus) ([]*models.TriggerNodeMatch, error) {
