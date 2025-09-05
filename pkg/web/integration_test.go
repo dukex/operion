@@ -67,11 +67,12 @@ func setupTestDB(t *testing.T) (string, func()) {
 
 func setupIntegrationApp(t *testing.T, dbURL string) (*fiber.App, *services.Workflow, *services.Publishing) {
 	// Connect to database
-	db, err := sql.Open("postgres", dbURL)
+	_, err := sql.Open("postgres", dbURL)
 	require.NoError(t, err)
 
 	// Create persistence layer with automatic migrations
-	persistence := postgresql.NewPersistence(db, slog.Default())
+	persistence, err := postgresql.NewPersistence(context.Background(), slog.Default(), dbURL)
+	require.NoError(t, err)
 
 	// Initialize services
 	workflowService := services.NewWorkflow(persistence)
@@ -183,7 +184,7 @@ func TestWorkflowCRUD_Integration(t *testing.T) {
 			require.NoError(t, err)
 			defer resp.Body.Close()
 
-			assert.Equal(t, http.StatusOK, resp.StatusStatus)
+			assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 			var updatedWorkflow models.Workflow
 			err = json.NewDecoder(resp.Body).Decode(&updatedWorkflow)
@@ -211,12 +212,18 @@ func TestWorkflowCRUD_Integration(t *testing.T) {
 
 			assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-			var workflows []models.Workflow
-			err = json.NewDecoder(resp.Body).Decode(&workflows)
+			var response struct {
+				Workflows   []models.Workflow `json:"workflows"`
+				TotalCount  int               `json:"total_count"`
+				HasNextPage bool              `json:"has_next_page"`
+			}
+			err = json.NewDecoder(resp.Body).Decode(&response)
 			require.NoError(t, err)
 
-			assert.Len(t, workflows, 1)
-			assert.Equal(t, workflowID, workflows[0].ID)
+			assert.Len(t, response.Workflows, 1)
+			assert.Equal(t, workflowID, response.Workflows[0].ID)
+			assert.Equal(t, 1, response.TotalCount)
+			assert.False(t, response.HasNextPage)
 		})
 
 		// Test 5: List workflows with owner filter
@@ -247,13 +254,19 @@ func TestWorkflowCRUD_Integration(t *testing.T) {
 
 			assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-			var workflows []models.Workflow
-			err = json.NewDecoder(resp.Body).Decode(&workflows)
+			var response struct {
+				Workflows   []models.Workflow `json:"workflows"`
+				TotalCount  int               `json:"total_count"`
+				HasNextPage bool              `json:"has_next_page"`
+			}
+			err = json.NewDecoder(resp.Body).Decode(&response)
 			require.NoError(t, err)
 
-			assert.Len(t, workflows, 1)
-			assert.Equal(t, workflowID, workflows[0].ID)
-			assert.Equal(t, "integration-test-user", workflows[0].Owner)
+			assert.Len(t, response.Workflows, 1)
+			assert.Equal(t, workflowID, response.Workflows[0].ID)
+			assert.Equal(t, "integration-test-user", response.Workflows[0].Owner)
+			assert.Equal(t, 1, response.TotalCount)
+			assert.False(t, response.HasNextPage)
 		})
 
 		// Test 6: Delete workflow
@@ -439,9 +452,4 @@ func TestWorkflowValidation_Integration(t *testing.T) {
 			// and check for the specific validation error message
 		})
 	}
-}
-
-// Helper function for integration tests
-func stringPtr(s string) *string {
-	return &s
 }
