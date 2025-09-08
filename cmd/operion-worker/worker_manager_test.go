@@ -20,7 +20,7 @@ type MockEventBus struct {
 	publishedEvents []any
 }
 
-func (m *MockEventBus) Handle(eventType events.EventType, handler eventbus.EventHandler) error {
+func (m *MockEventBus) Handle(ctx context.Context, eventType events.EventType, handler eventbus.EventHandler) error {
 	return nil
 }
 
@@ -34,11 +34,11 @@ func (m *MockEventBus) Subscribe(ctx context.Context) error {
 	return nil
 }
 
-func (m *MockEventBus) Close() error {
+func (m *MockEventBus) Close(ctx context.Context) error {
 	return nil
 }
 
-func (m *MockEventBus) GenerateID() string {
+func (m *MockEventBus) GenerateID(ctx context.Context) string {
 	return "mock-event-id"
 }
 

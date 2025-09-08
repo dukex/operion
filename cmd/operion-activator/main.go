@@ -70,9 +70,12 @@ func main() {
 
 			logger.Info("Initializing Operion Activator", "activator_id", activatorID)
 
-			eventBus := cmd.NewEventBus(command.String("event-bus"), logger)
+			eventBus, err := cmd.NewEventBus(ctx, command.String("event-bus"), logger)
+			if err != nil {
+				return fmt.Errorf("failed to create event bus: %w", err)
+			}
 			defer func() {
-				if err := eventBus.Close(); err != nil {
+				if err := eventBus.Close(ctx); err != nil {
 					logger.Error("Failed to close workflow event bus", "error", err)
 				}
 			}()

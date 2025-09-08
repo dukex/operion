@@ -108,7 +108,7 @@ func TestActivator_HandleSourceEvent_ValidEvent(t *testing.T) {
 	mockPersistence.GetMockExecutionContextRepository().On("SaveExecutionContext", mock.Anything, mock.AnythingOfType("*models.ExecutionContext")).Return(nil)
 
 	// Mock event publishing
-	mockEventBus.On("GenerateID").Return("event-123")
+	mockEventBus.On("GenerateID", context.Background()).Return("event-123")
 	mockEventBus.On("Publish", mock.Anything, "trigger-123:event-123", mock.AnythingOfType("events.NodeActivation")).Return(nil)
 
 	err := activator.handleSourceEvent(context.Background(), sourceEvent)
@@ -256,10 +256,10 @@ func TestActivator_HandleSourceEvent_MultipleMatchingTriggers(t *testing.T) {
 	mockPersistence.GetMockExecutionContextRepository().On("SaveExecutionContext", mock.Anything, mock.AnythingOfType("*models.ExecutionContext")).Return(nil).Twice()
 
 	// Mock event publishing for both workflows - each publishNodeActivation call needs 2 GenerateID calls
-	mockEventBus.On("GenerateID").Return("event-123").Once() // execution ID for first workflow
-	mockEventBus.On("GenerateID").Return("event-456").Once() // event ID for first workflow
-	mockEventBus.On("GenerateID").Return("event-789").Once() // execution ID for second workflow
-	mockEventBus.On("GenerateID").Return("event-abc").Once() // event ID for second workflow
+	mockEventBus.On("GenerateID", context.Background()).Return("event-123").Once() // execution ID for first workflow
+	mockEventBus.On("GenerateID", context.Background()).Return("event-456").Once() // event ID for first workflow
+	mockEventBus.On("GenerateID", context.Background()).Return("event-789").Once() // execution ID for second workflow
+	mockEventBus.On("GenerateID", context.Background()).Return("event-abc").Once() // event ID for second workflow
 	mockEventBus.On("Publish", mock.Anything, "trigger-123:event-123", mock.AnythingOfType("events.NodeActivation")).Return(nil)
 	mockEventBus.On("Publish", mock.Anything, "trigger-456:event-789", mock.AnythingOfType("events.NodeActivation")).Return(nil)
 
@@ -315,7 +315,7 @@ func TestActivator_HandleSourceEvent_PublishFailure(t *testing.T) {
 	mockPersistence.GetMockExecutionContextRepository().On("SaveExecutionContext", mock.Anything, mock.AnythingOfType("*models.ExecutionContext")).Return(nil)
 
 	// Mock event publishing failure
-	mockEventBus.On("GenerateID").Return("event-123")
+	mockEventBus.On("GenerateID", context.Background()).Return("event-123")
 	mockEventBus.On("Publish", mock.Anything, "trigger-123:event-123", mock.AnythingOfType("events.NodeActivation")).Return(assert.AnError)
 
 	err := activator.handleSourceEvent(context.Background(), sourceEvent)
@@ -435,7 +435,7 @@ func TestActivator_PublishWorkflowTriggered_Success(t *testing.T) {
 	// Mock saving execution context
 	mockPersistence.GetMockExecutionContextRepository().On("SaveExecutionContext", mock.Anything, mock.AnythingOfType("*models.ExecutionContext")).Return(nil)
 
-	mockEventBus.On("GenerateID").Return("event-123")
+	mockEventBus.On("GenerateID", context.Background()).Return("event-123")
 	mockEventBus.On("Publish", mock.Anything, "trigger-123:event-123", mock.MatchedBy(func(event events.NodeActivation) bool {
 		inputDataMap, ok := event.InputData.(map[string]any)
 
@@ -473,7 +473,7 @@ func TestActivator_PublishWorkflowTriggered_EventBusFailure(t *testing.T) {
 	// Mock saving execution context
 	mockPersistence.GetMockExecutionContextRepository().On("SaveExecutionContext", mock.Anything, mock.AnythingOfType("*models.ExecutionContext")).Return(nil)
 
-	mockEventBus.On("GenerateID").Return("event-123")
+	mockEventBus.On("GenerateID", context.Background()).Return("event-123")
 	mockEventBus.On("Publish", mock.Anything, "trigger-123:event-123", mock.AnythingOfType("events.NodeActivation")).Return(assert.AnError)
 
 	err := activator.publishNodeActivation(context.Background(), "workflow-123", "trigger-123", sourceData)
@@ -509,7 +509,7 @@ func TestActivator_PublishWorkflowTriggered_ValidEventStructure(t *testing.T) {
 	// Mock saving execution context
 	mockPersistence.GetMockExecutionContextRepository().On("SaveExecutionContext", mock.Anything, mock.AnythingOfType("*models.ExecutionContext")).Return(nil)
 
-	mockEventBus.On("GenerateID").Return("event-456")
+	mockEventBus.On("GenerateID", context.Background()).Return("event-456")
 
 	// Capture the actual event to validate its structure
 	var capturedEvent events.NodeActivation
@@ -691,7 +691,7 @@ func TestActivator_EventHandlingFlow_Integration(t *testing.T) {
 	mockPersistence.GetMockWorkflowRepository().On("GetByID", mock.Anything, "workflow-integration").Return(testWorkflow, nil)
 
 	mockPersistence.GetMockExecutionContextRepository().On("SaveExecutionContext", mock.Anything, mock.AnythingOfType("*models.ExecutionContext")).Return(nil)
-	mockEventBus.On("GenerateID").Return("event-integration")
+	mockEventBus.On("GenerateID", context.Background()).Return("event-integration")
 	mockEventBus.On("Publish", mock.Anything, "trigger-integration:event-integration", mock.AnythingOfType("events.NodeActivation")).Return(nil)
 
 	// Test the complete flow

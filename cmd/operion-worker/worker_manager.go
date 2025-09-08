@@ -46,7 +46,7 @@ func (w *WorkerManager) Start(ctx context.Context) error {
 	w.logger.InfoContext(ctx, "Starting worker manager with node-based architecture", "worker_id", w.id)
 
 	// Updated for node-based architecture: handle node activations instead of step availability
-	err := w.eventBus.Handle(events.NodeActivationEvent, w.handleNodeActivation)
+	err := w.eventBus.Handle(ctx, events.NodeActivationEvent, w.handleNodeActivation)
 	if err != nil {
 		return err
 	}

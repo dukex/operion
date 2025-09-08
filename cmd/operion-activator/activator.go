@@ -204,7 +204,7 @@ func (a *Activator) publishNodeActivation(ctx context.Context, workflowID, trigg
 	logger.InfoContext(ctx, "Publishing NodeActivation event")
 
 	// Generate execution ID for this workflow execution
-	executionID := a.eventBus.GenerateID()
+	executionID := a.eventBus.GenerateID(ctx)
 	logger.InfoContext(ctx, "Generated execution ID", "execution_id", executionID)
 
 	// Load workflow to get variables
@@ -264,7 +264,7 @@ func (a *Activator) publishNodeActivation(ctx context.Context, workflowID, trigg
 		SourceNode:  "", // External source
 		SourcePort:  "", // External source
 	}
-	event.ID = a.eventBus.GenerateID()
+	event.ID = a.eventBus.GenerateID(ctx)
 
 	if err := a.eventBus.Publish(ctx, triggerNodeID+":"+executionID, event); err != nil {
 		logger.Error("Failed to publish NodeActivation event", "error", err)

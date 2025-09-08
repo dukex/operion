@@ -19,8 +19,8 @@ func (m *MockEventBus) Publish(ctx context.Context, key string, event eventbus.E
 	return args.Error(0)
 }
 
-func (m *MockEventBus) Handle(eventType events.EventType, handler eventbus.EventHandler) error {
-	args := m.Called(eventType, handler)
+func (m *MockEventBus) Handle(ctx context.Context, eventType events.EventType, handler eventbus.EventHandler) error {
+	args := m.Called(ctx, eventType, handler)
 
 	return args.Error(0)
 }
@@ -31,14 +31,14 @@ func (m *MockEventBus) Subscribe(ctx context.Context) error {
 	return args.Error(0)
 }
 
-func (m *MockEventBus) Close() error {
-	args := m.Called()
+func (m *MockEventBus) Close(ctx context.Context) error {
+	args := m.Called(ctx)
 
 	return args.Error(0)
 }
 
-func (m *MockEventBus) GenerateID() string {
-	args := m.Called()
+func (m *MockEventBus) GenerateID(ctx context.Context) string {
+	args := m.Called(ctx)
 
 	return args.String(0)
 }

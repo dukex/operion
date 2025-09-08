@@ -63,9 +63,12 @@ func main() {
 
 			registry := cmd.NewRegistry(ctx, logger, command.String("plugins-path"))
 
-			eventBus := cmd.NewEventBus(command.String("event-bus"), logger)
+			eventBus, err := cmd.NewEventBus(ctx, command.String("event-bus"), logger)
+			if err != nil {
+				return err
+			}
 			defer func() {
-				err := eventBus.Close()
+				err := eventBus.Close(ctx)
 				if err != nil {
 					logger.ErrorContext(ctx, "Failed to close event bus", "error", err)
 				}
@@ -87,7 +90,7 @@ func main() {
 				registry,
 			)
 
-			err := worker.Start(ctx)
+			err = worker.Start(ctx)
 			if err != nil {
 				logger.ErrorContext(ctx, "Failed to start event-driven worker", "error", err)
 			}
