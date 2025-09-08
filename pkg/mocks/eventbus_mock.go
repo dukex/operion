@@ -32,7 +32,7 @@ func (m *MockEventBus) Subscribe(ctx context.Context) error {
 }
 
 func (m *MockEventBus) Close(ctx context.Context) error {
-	args := m.Called()
+	args := m.Called(ctx)
 
 	return args.Error(0)
 }
