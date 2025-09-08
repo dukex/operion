@@ -34,10 +34,15 @@ func NewEventBus(ctx context.Context, logger *slog.Logger) (eventbus.EventBus, e
 		Topic:   events.Topic,
 	})
 
+	groupID := os.Getenv("KAFKA_GROUP_ID")
+	if groupID == "" {
+		groupID = "cg-operion-event-bus"
+	}
+
 	reader := kafkago.NewReader(kafkago.ReaderConfig{
 		Brokers: splitBrokers,
 		Topic:   events.Topic,
-		GroupID: "cg-operion-event-bus",
+		GroupID: groupID,
 	})
 
 	return &kafkaEventBus{

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"log/slog"
 
 	"github.com/dukex/operion/pkg/eventbus"
@@ -17,23 +18,46 @@ func consumeEvents(
 	reader *kafkago.Reader,
 	handlers map[events.EventType]eventbus.EventHandler,
 ) {
+	const maxRetries = 3
+	retryCount := 0
+
 	for {
 		message, err := reader.FetchMessage(ctx)
 		if err != nil {
+			if errors.Is(err, io.EOF) {
+				logger.InfoContext(ctx, "Reached end of stream", "error", err)
+
+				break
+			}
+			
 			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 				logger.InfoContext(ctx, "Stopping consumer due to context cancellation or deadline exceeded")
 
 				break
 			}
+			
+			if retryCount < maxRetries {
+				retryCount++
+				logger.InfoContext(ctx, "Error fetching message, retrying...", "attempt", retryCount, "error", err)
+
+				continue
+			}
 
 			logger.ErrorContext(ctx, "failed to fetch message", "error", err)
 
-			continue
+			break
 		}
 
 		logger.InfoContext(ctx, "Received message", "key", string(message.Key), "topic", message.Topic)
 
+		// Extract event type from headers
 		var eventType events.EventType
+		for _, header := range message.Headers {
+			if header.Key == events.EventTypeMetadataKey {
+				eventType = events.EventType(header.Value)
+				break
+			}
+		}
 
 		logger.InfoContext(ctx, "Processing message", "event_type", eventType)
 

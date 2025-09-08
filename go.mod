@@ -13,6 +13,7 @@ require (
 	github.com/redis/go-redis/v9 v9.12.0
 	github.com/segmentio/kafka-go v0.4.48
 	github.com/stretchr/testify v1.10.0
+	github.com/testcontainers/testcontainers-go/modules/kafka v0.38.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.38.0
 	github.com/urfave/cli/v3 v3.3.8
 	go.opentelemetry.io/otel v1.36.0
