@@ -20,7 +20,7 @@ func (m *MockEventBus) Publish(ctx context.Context, key string, event eventbus.E
 }
 
 func (m *MockEventBus) Handle(ctx context.Context, eventType events.EventType, handler eventbus.EventHandler) error {
-	args := m.Called(eventType, handler)
+	args := m.Called(ctx, eventType, handler)
 
 	return args.Error(0)
 }
