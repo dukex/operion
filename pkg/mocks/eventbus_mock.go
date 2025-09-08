@@ -38,7 +38,7 @@ func (m *MockEventBus) Close(ctx context.Context) error {
 }
 
 func (m *MockEventBus) GenerateID(ctx context.Context) string {
-	args := m.Called()
+	args := m.Called(ctx)
 
 	return args.String(0)
 }
