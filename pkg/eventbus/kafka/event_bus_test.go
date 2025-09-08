@@ -93,14 +93,14 @@ func createTestEvent(eventType events.EventType) eventbus.Event {
 		}
 	case events.NodeCompletionEvent:
 		return &events.NodeCompletion{
-			BaseEvent:    events.NewBaseEvent(eventType, "test-workflow"),
-			ExecutionID:  "test-execution",
-			NodeID:       "test-node",
-			WorkflowID:   "test-workflow",
-			Status:       models.NodeStatusSuccess,
-			OutputData:   map[string]any{"output": "data"},
-			DurationMs:   1000,
-			CompletedAt:  time.Now(),
+			BaseEvent:   events.NewBaseEvent(eventType, "test-workflow"),
+			ExecutionID: "test-execution",
+			NodeID:      "test-node",
+			WorkflowID:  "test-workflow",
+			Status:      models.NodeStatusSuccess,
+			OutputData:  map[string]any{"output": "data"},
+			DurationMs:  1000,
+			CompletedAt: time.Now(),
 		}
 	case events.NodeExecutionFinishedEvent:
 		return &events.NodeExecutionFinished{
@@ -237,7 +237,7 @@ func TestNewEventBus(t *testing.T) {
 				assert.NotNil(t, bus)
 
 				if bus != nil {
-					err = bus.Close(context.Background())	
+					err = bus.Close(context.Background())
 					assert.NoError(t, err)
 				}
 			}
@@ -253,7 +253,7 @@ func TestKafkaEventBus_GenerateID(t *testing.T) {
 
 	defer func() {
 		err := bus.Close(context.Background())
-		assert.NoError(t, err);
+		assert.NoError(t, err)
 	}()
 
 	id1 := bus.GenerateID(context.Background())
@@ -272,7 +272,7 @@ func TestKafkaEventBus_Handle(t *testing.T) {
 
 	defer func() {
 		err := bus.Close(context.Background())
-		assert.NoError(t, err);
+		assert.NoError(t, err)
 	}()
 
 	called := false
@@ -298,7 +298,7 @@ func TestKafkaEventBus_PublishAndSubscribe(t *testing.T) {
 
 	defer func() {
 		err := bus.Close(context.Background())
-		assert.NoError(t, err);
+		assert.NoError(t, err)
 	}()
 
 	receivedEvents := make(chan eventbus.Event, 1)
@@ -338,7 +338,7 @@ func TestKafkaEventBus_MultipleEventTypes(t *testing.T) {
 
 	defer func() {
 		err := bus.Close(context.Background())
-		assert.NoError(t, err);
+		assert.NoError(t, err)
 	}()
 
 	receivedEvents := make(chan eventbus.Event, 2)
@@ -403,7 +403,7 @@ func TestPublishEvent(t *testing.T) {
 
 	defer func() {
 		err := bus.Close(context.Background())
-		assert.NoError(t, err);
+		assert.NoError(t, err)
 	}()
 
 	kafkaBus := bus.(*kafkaEventBus)
@@ -451,7 +451,7 @@ func TestConsumeEvents_ErrorHandling(t *testing.T) {
 
 	defer func() {
 		err := bus.Close(context.Background())
-		assert.NoError(t, err);
+		assert.NoError(t, err)
 	}()
 
 	kafkaBus := bus.(*kafkaEventBus)
@@ -474,7 +474,7 @@ func TestKafkaEventBus_WithGroupID(t *testing.T) {
 
 	defer func() {
 		err := bus.Close(context.Background())
-		assert.NoError(t, err);
+		assert.NoError(t, err)
 	}()
 
 	kafkaBus := bus.(*kafkaEventBus)
