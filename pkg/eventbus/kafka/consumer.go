@@ -65,6 +65,8 @@ func consumeEvents(
 
 		handler, exists := handlers[eventType]
 		if !exists {
+			// [EXCEPTION] WorkflowFinishedEvent is intentionally ignored if no handler is present.
+			// This event type does not require processing or logging when unhandled.
 			if eventType == events.WorkflowFinishedEvent {
 				continue
 			}
